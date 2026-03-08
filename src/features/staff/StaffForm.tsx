@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
 import { ArrowLeft, Save } from 'lucide-react'
+import { COUNTRIES } from '@/data/countries'
 
 const staffSchema = z.object({
   full_name: z.string().min(1, 'Name is required').max(100, 'Max 100 characters'),
@@ -26,6 +27,7 @@ const staffSchema = z.object({
   start_date: z.string().nullable().or(z.literal('')),
   end_date: z.string().nullable().or(z.literal('')),
   annual_salary: z.coerce.number().min(0, 'Must be 0 or greater').nullable().optional(),
+  country: z.string().max(2).nullable().or(z.literal('')),
   is_active: z.boolean(),
 }).refine((data) => {
   if (data.start_date && data.end_date) {
@@ -69,6 +71,7 @@ export function StaffForm() {
       start_date: '',
       end_date: '',
       annual_salary: null,
+      country: '',
       is_active: true,
     },
   })
@@ -85,6 +88,7 @@ export function StaffForm() {
         start_date: person.start_date ?? '',
         end_date: person.end_date ?? '',
         annual_salary: person.annual_salary,
+        country: person.country ?? '',
         is_active: person.is_active,
       })
     }
@@ -101,6 +105,7 @@ export function StaffForm() {
         start_date: data.start_date || null,
         end_date: data.end_date || null,
         annual_salary: data.annual_salary ?? null,
+        country: data.country || null,
         org_id: orgId ?? '',
       }
 
@@ -178,6 +183,20 @@ export function StaffForm() {
                   <Label htmlFor="role">Role / Title</Label>
                   <Input id="role" {...register('role')} />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <select
+                  id="country"
+                  {...register('country')}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Select country</option>
+                  {COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

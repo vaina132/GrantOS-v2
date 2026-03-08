@@ -52,6 +52,7 @@ export interface Person {
   end_date: string | null
   annual_salary: number | null
   overhead_rate: number | null
+  country: string | null
   is_active: boolean
   created_at: string
   updated_at: string

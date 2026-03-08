@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS persons (
   end_date DATE,
   annual_salary NUMERIC,
   overhead_rate NUMERIC,
+  country TEXT,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()

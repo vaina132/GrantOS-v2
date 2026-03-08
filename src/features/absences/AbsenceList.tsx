@@ -3,7 +3,6 @@ import { absenceService } from '@/services/absenceService'
 import { useAuthStore } from '@/stores/authStore'
 import { useAbsences } from '@/hooks/useAbsences'
 import { useStaff } from '@/hooks/useStaff'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ConfirmModal } from '@/components/common/ConfirmModal'
@@ -123,17 +122,13 @@ export function AbsenceList() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Absences"
-        description="Track staff absences and leave"
-        actions={
-          can('canManageAllocations') ? (
-            <Button onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" /> Record Absence
-            </Button>
-          ) : undefined
-        }
-      />
+      {can('canManageAllocations') && (
+        <div className="flex justify-end">
+          <Button onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" /> Record Absence
+          </Button>
+        </div>
+      )}
 
       <div className="flex gap-2 flex-wrap">
         <Button
