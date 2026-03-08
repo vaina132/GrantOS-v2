@@ -16,18 +16,23 @@ import { toast } from '@/components/ui/use-toast'
 import { ArrowLeft, Save } from 'lucide-react'
 
 const staffSchema = z.object({
-  full_name: z.string().min(1, 'Name is required'),
-  email: z.string().email().nullable().or(z.literal('')),
-  department: z.string().nullable().or(z.literal('')),
-  role: z.string().nullable().or(z.literal('')),
+  full_name: z.string().min(1, 'Name is required').max(100, 'Max 100 characters'),
+  email: z.string().email('Invalid email').nullable().or(z.literal('')),
+  department: z.string().max(100).nullable().or(z.literal('')),
+  role: z.string().max(100).nullable().or(z.literal('')),
   employment_type: z.enum(['Full-time', 'Part-time', 'Contractor']),
-  fte: z.coerce.number().min(0).max(1),
+  fte: z.coerce.number().min(0, 'Min 0').max(1, 'Max 1'),
   start_date: z.string().nullable().or(z.literal('')),
   end_date: z.string().nullable().or(z.literal('')),
-  annual_salary: z.coerce.number().nullable().optional(),
-  overhead_rate: z.coerce.number().nullable().optional(),
+  annual_salary: z.coerce.number().min(0, 'Must be 0 or greater').nullable().optional(),
+  overhead_rate: z.coerce.number().min(0).max(100, 'Max 100%').nullable().optional(),
   is_active: z.boolean(),
-})
+}).refine((data) => {
+  if (data.start_date && data.end_date) {
+    return new Date(data.end_date) > new Date(data.start_date)
+  }
+  return true
+}, { message: 'End date must be after start date', path: ['end_date'] })
 
 type StaffFormData = z.infer<typeof staffSchema>
 

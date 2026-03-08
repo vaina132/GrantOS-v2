@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { writeAudit } from './auditWriter'
 import type { FundingScheme, Organisation } from '@/types'
 
 export const settingsService = {
@@ -29,6 +30,7 @@ export const settingsService = {
       .single()
 
     if (error) throw error
+    writeAudit({ orgId: scheme.org_id, entityType: 'funding_scheme', action: 'create', entityId: (data as FundingScheme).id, details: `Created funding scheme ${scheme.name}` })
     return data as FundingScheme
   },
 
@@ -41,6 +43,7 @@ export const settingsService = {
       .single()
 
     if (error) throw error
+    writeAudit({ orgId: (data as FundingScheme).org_id, entityType: 'funding_scheme', action: 'update', entityId: id, details: `Updated funding scheme ${(data as FundingScheme).name}` })
     return data as FundingScheme
   },
 
@@ -74,6 +77,7 @@ export const settingsService = {
       .single()
 
     if (error) throw error
+    writeAudit({ orgId: orgId, entityType: 'organisation', action: 'update', entityId: orgId, details: 'Updated organisation settings' })
     return data as Organisation
   },
 }

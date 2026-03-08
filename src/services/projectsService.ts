@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { writeAudit } from './auditWriter'
 import type { Project, WorkPackage } from '@/types'
 
 export interface ProjectFilters {
@@ -55,6 +56,7 @@ export const projectsService = {
       .single()
 
     if (error) throw error
+    writeAudit({ orgId: project.org_id, entityType: 'project', action: 'create', entityId: (data as Project).id, details: `Created project ${project.acronym}` })
     return data as Project
   },
 
@@ -68,16 +70,19 @@ export const projectsService = {
       .single()
 
     if (error) throw error
+    writeAudit({ orgId: (data as Project).org_id, entityType: 'project', action: 'update', entityId: id, details: `Updated project ${(data as Project).acronym}` })
     return data as Project
   },
 
   async remove(id: string): Promise<void> {
+    const proj = await this.getById(id)
     const { error } = await supabase
       .from('projects')
       .delete()
       .eq('id', id)
 
     if (error) throw error
+    if (proj) writeAudit({ orgId: proj.org_id, entityType: 'project', action: 'delete', entityId: id, details: `Deleted project ${proj.acronym}` })
   },
 
   // Work Packages

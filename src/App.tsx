@@ -4,6 +4,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { AppShell } from '@/components/layout/AppShell'
 import { Toaster } from '@/components/ui/toaster'
 import { LoginPage } from '@/features/auth/LoginPage'
+import { SignUpPage } from '@/features/auth/SignUpPage'
+import { OnboardingWizard } from '@/features/auth/OnboardingWizard'
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { ProjectsPage } from '@/features/projects/ProjectsPage'
@@ -19,6 +21,7 @@ import { ImportPage } from '@/features/import/ImportPage'
 import { AuditPage } from '@/features/audit/AuditPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { GuestAccessPage } from '@/features/guests/GuestAccessPage'
+import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { Skeleton } from '@/components/ui/skeleton'
 
 function LoadingScreen() {
@@ -36,7 +39,7 @@ function LoadingScreen() {
 }
 
 export default function App() {
-  const { initialize, isLoading, user } = useAuthStore()
+  const { initialize, isLoading, user, orgId } = useAuthStore()
 
   useEffect(() => {
     initialize()
@@ -46,98 +49,108 @@ export default function App() {
     return <LoadingScreen />
   }
 
+  // User is authenticated but has no organisation — show onboarding
+  const needsOnboarding = user && !orgId
+
   return (
     <>
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+        <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <SignUpPage />} />
 
         <Route
           path="/*"
           element={
             <ProtectedRoute>
-              <AppShell>
-                <Routes>
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/projects/*" element={<ProjectsPage />} />
-                  <Route path="/staff/*" element={<StaffPage />} />
-                  <Route
-                    path="/allocations"
-                    element={
-                      <ProtectedRoute permission="canManageAllocations">
-                        <AllocationsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/matrix"
-                    element={
-                      <ProtectedRoute permission="canManageAllocations">
-                        <MatrixPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route path="/timesheets" element={<TimesheetsPage />} />
-                  <Route
-                    path="/absences"
-                    element={
-                      <ProtectedRoute permission="canManageAllocations">
-                        <AbsencesPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/financials"
-                    element={
-                      <ProtectedRoute permission="canSeeFinancials">
-                        <FinancialsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route path="/timeline" element={<TimelinePage />} />
-                  <Route
-                    path="/reports"
-                    element={
-                      <ProtectedRoute permission="canGenerateReports">
-                        <ReportsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/import"
-                    element={
-                      <ProtectedRoute permission="canManageOrg">
-                        <ImportPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/audit"
-                    element={
-                      <ProtectedRoute permission="canSeeFinancials">
-                        <AuditPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/guests"
-                    element={
-                      <ProtectedRoute permission="canManageOrg">
-                        <GuestAccessPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/settings"
-                    element={
-                      <ProtectedRoute permission="canManageOrg">
-                        <SettingsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                </Routes>
-              </AppShell>
+              {needsOnboarding ? (
+                <OnboardingWizard />
+              ) : (
+                <AppShell>
+                  <ErrorBoundary>
+                    <Routes>
+                      <Route path="/dashboard" element={<DashboardPage />} />
+                      <Route path="/projects/*" element={<ProjectsPage />} />
+                      <Route path="/staff/*" element={<StaffPage />} />
+                      <Route
+                        path="/allocations"
+                        element={
+                          <ProtectedRoute permission="canManageAllocations">
+                            <AllocationsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/matrix"
+                        element={
+                          <ProtectedRoute permission="canManageAllocations">
+                            <MatrixPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route path="/timesheets" element={<TimesheetsPage />} />
+                      <Route
+                        path="/absences"
+                        element={
+                          <ProtectedRoute permission="canManageAllocations">
+                            <AbsencesPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/financials"
+                        element={
+                          <ProtectedRoute permission="canSeeFinancials">
+                            <FinancialsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route path="/timeline" element={<TimelinePage />} />
+                      <Route
+                        path="/reports"
+                        element={
+                          <ProtectedRoute permission="canGenerateReports">
+                            <ReportsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/import"
+                        element={
+                          <ProtectedRoute permission="canManageOrg">
+                            <ImportPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/audit"
+                        element={
+                          <ProtectedRoute permission="canSeeFinancials">
+                            <AuditPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/guests"
+                        element={
+                          <ProtectedRoute permission="canManageOrg">
+                            <GuestAccessPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/settings"
+                        element={
+                          <ProtectedRoute permission="canManageOrg">
+                            <SettingsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                    </Routes>
+                  </ErrorBoundary>
+                </AppShell>
+              )}
             </ProtectedRoute>
           }
         />

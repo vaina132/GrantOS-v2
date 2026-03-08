@@ -242,18 +242,16 @@ async function loadUserContext(
     return
   }
 
-  // No membership found — in development, bootstrap as admin
-  // In production, this would show an error
-  console.warn('[GrantOS] No org membership or guest access found — bootstrapping as admin for development.')
+  // No membership found — user needs to create an org (onboarding wizard)
   set({
     user,
     orgId: null,
-    orgName: 'Development',
-    role: 'Admin',
-    permissions: computePermissions('Admin'),
-    accessType: 'member',
+    orgName: null,
+    role: null,
+    permissions: DEFAULT_PERMISSIONS,
+    accessType: null,
     guestProjects: [],
-    orgPlan: 'enterprise',
+    orgPlan: null,
     trialEndsAt: null,
     isLoading: false,
     error: null,

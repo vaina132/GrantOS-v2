@@ -58,3 +58,12 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+@layer components {
+  .responsive-table {
+    @apply w-full overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0;
+  }
+  .responsive-table table {
+    @apply min-w-[640px];
+  }
+}

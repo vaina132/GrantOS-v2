@@ -134,8 +134,8 @@ export function FundingSchemes() {
             description="Add funding schemes to categorise your projects (e.g. Horizon Europe, ERC, national)."
           />
         ) : (
-          <div className="rounded-lg border">
-            <table className="w-full text-sm">
+          <div className="rounded-lg border overflow-x-auto">
+            <table className="w-full text-sm min-w-[480px]">
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="px-4 py-2 text-left font-medium">Name</th>

@@ -7,12 +7,14 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
-import { Save } from 'lucide-react'
+import { Save, Download } from 'lucide-react'
+import { exportService } from '@/services/exportService'
 
 export function OrgSettings() {
   const { orgId } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [name, setName] = useState('')
   const [currency, setCurrency] = useState('EUR')
   const [workingHoursPerDay, setWorkingHoursPerDay] = useState('8')
@@ -99,7 +101,43 @@ export function OrgSettings() {
             <Input value={departments} onChange={(e) => setDepartments(e.target.value)} placeholder="e.g. CS, EE, Physics" />
           </div>
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-between">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={exporting || !orgId}
+              onClick={async () => {
+                if (!orgId) return
+                setExporting(true)
+                try {
+                  await exportService.exportOrganisation(orgId, 'json')
+                  toast({ title: 'Export complete', description: 'JSON file downloaded.' })
+                } catch (_e) { toast({ title: 'Export failed', variant: 'destructive' }) }
+                finally { setExporting(false) }
+              }}
+            >
+              <Download className="mr-1 h-4 w-4" />
+              {exporting ? 'Exporting...' : 'Export JSON'}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={exporting || !orgId}
+              onClick={async () => {
+                if (!orgId) return
+                setExporting(true)
+                try {
+                  await exportService.exportOrganisation(orgId, 'csv')
+                  toast({ title: 'Export complete', description: 'CSV file downloaded.' })
+                } catch (_e) { toast({ title: 'Export failed', variant: 'destructive' }) }
+                finally { setExporting(false) }
+              }}
+            >
+              <Download className="mr-1 h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
           <Button onClick={handleSave} disabled={saving}>
             <Save className="mr-1 h-4 w-4" />
             {saving ? 'Saving...' : 'Save'}

@@ -1,34 +1,46 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { useAuthStore } from '@/stores/authStore'
+import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/use-toast'
 
-export function LoginPage() {
+export function SignUpPage() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const { signIn } = useAuthStore()
-  const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password) return
 
+    if (password.length < 8) {
+      toast({ title: 'Weak password', description: 'Password must be at least 8 characters.', variant: 'destructive' })
+      return
+    }
+
+    if (password !== confirmPassword) {
+      toast({ title: 'Passwords do not match', description: 'Please re-enter your password.', variant: 'destructive' })
+      return
+    }
+
     setLoading(true)
     try {
-      await signIn(email, password)
-      navigate('/dashboard')
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Sign in failed. Please try again.'
+      const { error } = await supabase.auth.signUp({ email, password })
+      if (error) throw error
+
       toast({
-        title: 'Sign in failed',
-        description: message,
-        variant: 'destructive',
+        title: 'Account created',
+        description: 'Check your email to confirm, then sign in.',
       })
+      navigate('/login')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Sign up failed.'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -41,8 +53,8 @@ export function LoginPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xl">
             G
           </div>
-          <CardTitle className="text-2xl">Welcome to GrantOS</CardTitle>
-          <CardDescription>Sign in to manage your grant projects</CardDescription>
+          <CardTitle className="text-2xl">Create your account</CardTitle>
+          <CardDescription>Get started with GrantOS in minutes</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -64,21 +76,33 @@ export function LoginPage() {
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder="Min 8 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                autoComplete="current-password"
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm">Confirm Password</Label>
+              <Input
+                id="confirm"
+                type="password"
+                placeholder="Re-enter password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                autoComplete="new-password"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign in'}
+              {loading ? 'Creating account...' : 'Sign up'}
             </Button>
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-primary underline underline-offset-4 hover:text-primary/80">
-              Sign up
+            Already have an account?{' '}
+            <Link to="/login" className="text-primary underline underline-offset-4 hover:text-primary/80">
+              Sign in
             </Link>
           </p>
         </CardContent>

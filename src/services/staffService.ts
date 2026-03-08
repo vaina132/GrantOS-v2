@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { writeAudit } from './auditWriter'
 import type { Person } from '@/types'
 
 export interface StaffFilters {
@@ -60,6 +61,7 @@ export const staffService = {
       .single()
 
     if (error) throw error
+    writeAudit({ orgId: person.org_id, entityType: 'person', action: 'create', entityId: (data as Person).id, details: `Created person ${person.full_name}` })
     return data as Person
   },
 
@@ -72,16 +74,19 @@ export const staffService = {
       .single()
 
     if (error) throw error
+    writeAudit({ orgId: (data as Person).org_id, entityType: 'person', action: 'update', entityId: id, details: `Updated person ${(data as Person).full_name}` })
     return data as Person
   },
 
   async remove(id: string): Promise<void> {
+    const person = await this.getById(id)
     const { error } = await supabase
       .from('persons')
       .delete()
       .eq('id', id)
 
     if (error) throw error
+    if (person) writeAudit({ orgId: person.org_id, entityType: 'person', action: 'delete', entityId: id, details: `Deleted person ${person.full_name}` })
   },
 
   async getDepartments(orgId: string | null): Promise<string[]> {

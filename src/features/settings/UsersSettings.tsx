@@ -159,8 +159,8 @@ export function UsersSettings() {
           {members.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">No members found.</p>
           ) : (
-            <div className="rounded-lg border">
-              <table className="w-full text-sm">
+            <div className="rounded-lg border overflow-x-auto">
+              <table className="w-full text-sm min-w-[640px]">
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="px-4 py-2 text-left font-medium">User ID</th>

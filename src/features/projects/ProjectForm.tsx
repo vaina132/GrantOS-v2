@@ -17,23 +17,30 @@ import { toast } from '@/components/ui/use-toast'
 import { ArrowLeft, Save } from 'lucide-react'
 import type { FundingScheme } from '@/types'
 
+const positiveOrNull = z.coerce.number().min(0, 'Must be 0 or greater').nullable().optional()
+
 const projectSchema = z.object({
-  acronym: z.string().min(1, 'Acronym is required'),
-  title: z.string().min(1, 'Title is required'),
+  acronym: z.string().min(1, 'Acronym is required').max(20, 'Max 20 characters'),
+  title: z.string().min(1, 'Title is required').max(200, 'Max 200 characters'),
   funding_scheme_id: z.string().nullable().or(z.literal('')),
   grant_number: z.string().nullable().or(z.literal('')),
   status: z.enum(['Active', 'Upcoming', 'Concluding', 'Completed', 'Suspended']),
   start_date: z.string().min(1, 'Start date is required'),
   end_date: z.string().min(1, 'End date is required'),
-  total_budget: z.coerce.number().nullable().optional(),
-  overhead_rate: z.coerce.number().nullable().optional(),
+  total_budget: positiveOrNull,
+  overhead_rate: z.coerce.number().min(0).max(100, 'Max 100%').nullable().optional(),
   has_wps: z.boolean(),
-  our_pm_rate: z.coerce.number().nullable().optional(),
-  budget_personnel: z.coerce.number().nullable().optional(),
-  budget_travel: z.coerce.number().nullable().optional(),
-  budget_subcontracting: z.coerce.number().nullable().optional(),
-  budget_other: z.coerce.number().nullable().optional(),
-})
+  our_pm_rate: positiveOrNull,
+  budget_personnel: positiveOrNull,
+  budget_travel: positiveOrNull,
+  budget_subcontracting: positiveOrNull,
+  budget_other: positiveOrNull,
+}).refine((data) => {
+  if (data.start_date && data.end_date) {
+    return new Date(data.end_date) > new Date(data.start_date)
+  }
+  return true
+}, { message: 'End date must be after start date', path: ['end_date'] })
 
 type ProjectFormData = z.infer<typeof projectSchema>
 
