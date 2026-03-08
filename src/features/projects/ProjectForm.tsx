@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
 import { ArrowLeft, Save, DollarSign, Users, Plane, Handshake, Package } from 'lucide-react'
+import { computeProjectStatus } from '@/lib/utils'
 import type { FundingScheme } from '@/types'
 
 const positiveOrNull = z.coerce.number().min(0, 'Must be 0 or greater').nullable().optional()
@@ -84,6 +85,20 @@ export function ProjectForm() {
       budget_other: null,
     },
   })
+
+  // Auto-compute status from dates
+  const watchStartDate = watch('start_date')
+  const watchEndDate = watch('end_date')
+  const watchStatus = watch('status')
+  useEffect(() => {
+    if (!watchStartDate || !watchEndDate) return
+    // Don't override if user manually set Suspended
+    if (watchStatus === 'Suspended') return
+    const computed = computeProjectStatus(watchStartDate, watchEndDate)
+    if (computed !== watchStatus) {
+      setValue('status', computed)
+    }
+  }, [watchStartDate, watchEndDate]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-fill overhead rate when funding scheme changes
   const selectedSchemeId = watch('funding_scheme_id')
