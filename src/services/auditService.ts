@@ -22,7 +22,7 @@ export interface AuditFilters {
 export const auditService = {
   async list(orgId: string | null, filters?: AuditFilters): Promise<AuditEntry[]> {
     let query = supabase
-      .from('audit_log')
+      .from('audit_logs')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(filters?.limit ?? 100)

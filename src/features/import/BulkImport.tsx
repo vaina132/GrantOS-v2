@@ -104,7 +104,7 @@ export function BulkImport() {
       let inserted = 0
       for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize)
-        const { error } = await supabase.from(config.table).insert(batch)
+        const { error } = await (supabase.from as any)(config.table).insert(batch)
         if (error) throw error
         inserted += batch.length
       }

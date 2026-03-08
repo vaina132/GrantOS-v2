@@ -24,10 +24,13 @@ interface ProjectGuest {
   id: string
   org_id: string
   project_id: string
-  user_id: string | null
-  email: string | null
-  permissions: string[]
+  user_id: string
+  invited_by: string | null
+  access_level: string
+  is_active: boolean
+  expires_at: string | null
   created_at: string
+  updated_at: string
 }
 
 export function GuestAccessPage() {
@@ -41,8 +44,9 @@ export function GuestAccessPage() {
   const [deleting, setDeleting] = useState(false)
 
   // Form state
-  const [email, setEmail] = useState('')
+  const [userId, setUserId] = useState('')
   const [projectId, setProjectId] = useState('')
+  const [accessLevel, setAccessLevel] = useState('view')
 
   const fetchGuests = async () => {
     if (!orgId) return
@@ -69,7 +73,7 @@ export function GuestAccessPage() {
   }, [orgId])
 
   const handleInvite = async () => {
-    if (!orgId || !email || !projectId) return
+    if (!orgId || !userId || !projectId) return
     setSaving(true)
     try {
       const { error } = await supabase
@@ -77,15 +81,16 @@ export function GuestAccessPage() {
         .insert({
           org_id: orgId,
           project_id: projectId,
-          email,
-          permissions: ['view'],
+          user_id: userId,
+          access_level: accessLevel,
         })
 
       if (error) throw error
-      toast({ title: 'Guest added', description: `${email} has been granted view access.` })
+      toast({ title: 'Guest added', description: `User granted ${accessLevel} access.` })
       setInviteOpen(false)
-      setEmail('')
+      setUserId('')
       setProjectId('')
+      setAccessLevel('view')
       fetchGuests()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to add guest'
@@ -155,9 +160,10 @@ export function GuestAccessPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-2 text-left font-medium">Email</th>
+                <th className="px-4 py-2 text-left font-medium">User ID</th>
                 <th className="px-4 py-2 text-left font-medium">Project</th>
-                <th className="px-4 py-2 text-left font-medium">Permissions</th>
+                <th className="px-4 py-2 text-left font-medium">Access Level</th>
+                <th className="px-4 py-2 text-left font-medium">Active</th>
                 <th className="px-4 py-2 text-left font-medium">Added</th>
                 {can('canManageOrg') && (
                   <th className="px-4 py-2 text-right font-medium">Actions</th>
@@ -167,14 +173,17 @@ export function GuestAccessPage() {
             <tbody>
               {guests.map((guest) => (
                 <tr key={guest.id} className="border-b last:border-0 hover:bg-muted/20">
-                  <td className="px-4 py-2 font-medium">{guest.email ?? '—'}</td>
+                  <td className="px-4 py-2 font-mono text-xs">{guest.user_id.slice(0, 12)}...</td>
                   <td className="px-4 py-2">
                     <span className="font-semibold text-primary">{getProjectAcronym(guest.project_id)}</span>
                   </td>
                   <td className="px-4 py-2">
-                    {(guest.permissions ?? []).map((p) => (
-                      <Badge key={p} variant="secondary" className="mr-1 text-xs">{p}</Badge>
-                    ))}
+                    <Badge variant="secondary" className="text-xs">{guest.access_level}</Badge>
+                  </td>
+                  <td className="px-4 py-2">
+                    <Badge variant={guest.is_active ? 'default' : 'outline'} className="text-xs">
+                      {guest.is_active ? 'Yes' : 'No'}
+                    </Badge>
                   </td>
                   <td className="px-4 py-2 text-xs text-muted-foreground">
                     {new Date(guest.created_at).toLocaleDateString()}
@@ -200,12 +209,11 @@ export function GuestAccessPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Email *</Label>
+              <Label>User ID *</Label>
               <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="guest@example.com"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                placeholder="Paste user UUID"
               />
             </div>
             <div className="space-y-2">
@@ -221,10 +229,21 @@ export function GuestAccessPage() {
                 ))}
               </select>
             </div>
+            <div className="space-y-2">
+              <Label>Access Level</Label>
+              <select
+                value={accessLevel}
+                onChange={(e) => setAccessLevel(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="view">View</option>
+                <option value="edit">Edit</option>
+              </select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-            <Button onClick={handleInvite} disabled={saving || !email || !projectId}>
+            <Button onClick={handleInvite} disabled={saving || !userId || !projectId}>
               {saving ? 'Adding...' : 'Add Guest'}
             </Button>
           </DialogFooter>
