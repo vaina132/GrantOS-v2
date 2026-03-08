@@ -6,6 +6,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { useStaff } from '@/hooks/useStaff'
 import { useProjects } from '@/hooks/useProjects'
 import { useAssignments, usePeriodLocks } from '@/hooks/useAllocations'
+import { useAbsences } from '@/hooks/useAbsences'
 import { useUndoRedo } from '@/hooks/useUndoRedo'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -44,9 +45,40 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
   const { assignments: actualAssignments, isLoading: loadingActual, refetch: refetchActual } = useAssignments('actual')
   const { assignments: officialAssignments, isLoading: loadingOfficial, refetch: refetchOfficial } = useAssignments('official')
   const { isLocked } = usePeriodLocks()
+  const { absences } = useAbsences()
 
   const assignments = mode === 'actual' ? actualAssignments : officialAssignments
   const isLoading = loadingStaff || loadingProjects || loadingActual || (compareMode ? loadingOfficial : false)
+
+  // Compute absence PM per person per month: "personId:month" -> PM lost
+  const absencePmMap = useMemo(() => {
+    const map: Record<string, number> = {}
+    const WORKING_DAYS_PER_MONTH = 22
+    for (const a of absences) {
+      if (!a.start_date) continue
+      const start = new Date(a.start_date)
+      const end = a.end_date ? new Date(a.end_date) : start
+      const cursor = new Date(start)
+      // Distribute absence days across months they span
+      while (cursor <= end) {
+        const m = cursor.getMonth() + 1
+        const y = cursor.getFullYear()
+        if (y === globalYear) {
+          const dow = cursor.getDay()
+          if (dow !== 0 && dow !== 6) {
+            const key = `${a.person_id}:${m}`
+            map[key] = (map[key] ?? 0) + 1
+          }
+        }
+        cursor.setDate(cursor.getDate() + 1)
+      }
+    }
+    // Convert days to PM fraction
+    for (const key of Object.keys(map)) {
+      map[key] = map[key] / WORKING_DAYS_PER_MONTH
+    }
+    return map
+  }, [absences, globalYear])
 
   // Local editable state with undo/redo
   const { state: cells, set: setCells, undo, redo, reset: resetCells, canUndo, canRedo } = useUndoRedo<Record<CellKey, number>>({})
@@ -156,6 +188,29 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
 
   const handleSave = async () => {
     if (!orgId) return
+
+    // Check for over-allocated person-months considering absences
+    const overAllocatedWarnings: string[] = []
+    const personMap = new Map(staff.map((p) => [p.id, p]))
+    for (const [pmKey, total] of Object.entries(personMonthTotals)) {
+      const [pid, mStr] = pmKey.split(':')
+      const person = personMap.get(pid)
+      if (!person) continue
+      const absencePm = absencePmMap[pmKey] ?? 0
+      const capacity = Math.max(0, person.fte - absencePm)
+      if (total > capacity + 0.001) {
+        overAllocatedWarnings.push(
+          `${person.full_name} in ${MONTHS[Number(mStr) - 1]}: ${total.toFixed(2)} PM allocated but only ${capacity.toFixed(2)} PM available`
+        )
+      }
+    }
+    if (overAllocatedWarnings.length > 0) {
+      const proceed = window.confirm(
+        `Warning: The following allocations exceed available capacity (FTE minus absences):\n\n${overAllocatedWarnings.slice(0, 5).join('\n')}${overAllocatedWarnings.length > 5 ? `\n...and ${overAllocatedWarnings.length - 5} more` : ''}\n\nSave anyway?`
+      )
+      if (!proceed) return
+    }
+
     setSaving(true)
     try {
       const upserts: (AllocationCell & { org_id: string })[] = []
@@ -328,7 +383,9 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
                     const compareValue = compareMode ? (compareCells[key] ?? 0) : null
                     const diff = compareValue !== null ? value - compareValue : null
                     const personTotal = personMonthTotals[`${row.person.id}:${month}`] ?? 0
-                    const overAllocated = personTotal > row.person.fte
+                    const absencePm = absencePmMap[`${row.person.id}:${month}`] ?? 0
+                    const availableCapacity = Math.max(0, row.person.fte - absencePm)
+                    const overAllocated = personTotal > availableCapacity
 
                     return (
                       <td
@@ -337,7 +394,9 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
                           'px-0 py-0 text-center relative',
                           locked && 'bg-amber-50/50',
                           overAllocated && 'bg-red-50',
+                          absencePm > 0 && !overAllocated && 'bg-orange-50/50',
                         )}
+                        title={absencePm > 0 ? `Capacity: ${availableCapacity.toFixed(2)} PM (${(absencePm * 22).toFixed(0)}d absent)` : undefined}
                       >
                         <input
                           type="number"

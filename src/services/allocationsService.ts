@@ -69,10 +69,37 @@ export const allocationsService = {
   },
 
   async upsertAssignment(cell: AllocationCell & { org_id: string }): Promise<Assignment> {
-    const { data, error } = await supabase
+    // Find existing row (handles NULL work_package_id correctly)
+    let query = supabase
       .from('assignments')
-      .upsert(
-        {
+      .select('id')
+      .eq('person_id', cell.person_id)
+      .eq('project_id', cell.project_id)
+      .eq('year', cell.year)
+      .eq('month', cell.month)
+      .eq('type', cell.type)
+
+    if (cell.work_package_id) {
+      query = query.eq('work_package_id', cell.work_package_id)
+    } else {
+      query = query.is('work_package_id', null)
+    }
+
+    const { data: existing } = await query.maybeSingle()
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from('assignments')
+        .update({ pms: cell.pms, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select()
+        .single()
+      if (error) throw error
+      return data as Assignment
+    } else {
+      const { data, error } = await supabase
+        .from('assignments')
+        .insert({
           org_id: cell.org_id,
           person_id: cell.person_id,
           project_id: cell.project_id,
@@ -81,45 +108,24 @@ export const allocationsService = {
           month: cell.month,
           pms: cell.pms,
           type: cell.type,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'person_id,project_id,work_package_id,year,month,type',
-        },
-      )
-      .select()
-      .single()
-
-    if (error) throw error
-    return data as Assignment
+        })
+        .select()
+        .single()
+      if (error) throw error
+      return data as Assignment
+    }
   },
 
   async bulkUpsertAssignments(
     cells: (AllocationCell & { org_id: string })[],
   ): Promise<Assignment[]> {
     if (cells.length === 0) return []
-
-    const rows = cells.map((c) => ({
-      org_id: c.org_id,
-      person_id: c.person_id,
-      project_id: c.project_id,
-      work_package_id: c.work_package_id,
-      year: c.year,
-      month: c.month,
-      pms: c.pms,
-      type: c.type,
-      updated_at: new Date().toISOString(),
-    }))
-
-    const { data, error } = await supabase
-      .from('assignments')
-      .upsert(rows, {
-        onConflict: 'person_id,project_id,work_package_id,year,month,type',
-      })
-      .select()
-
-    if (error) throw error
-    return (data ?? []) as Assignment[]
+    const results: Assignment[] = []
+    for (const cell of cells) {
+      const result = await allocationsService.upsertAssignment(cell)
+      results.push(result)
+    }
+    return results
   },
 
   async deleteAssignment(id: string): Promise<void> {
