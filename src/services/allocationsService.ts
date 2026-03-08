@@ -85,13 +85,13 @@ export const allocationsService = {
       query = query.is('work_package_id', null)
     }
 
-    const { data: existing } = await query.maybeSingle()
+    const { data: existingRows } = await query.limit(1)
 
-    if (existing) {
+    if (existingRows && existingRows.length > 0) {
       const { data, error } = await supabase
         .from('assignments')
         .update({ pms: cell.pms, updated_at: new Date().toISOString() })
-        .eq('id', existing.id)
+        .eq('id', existingRows[0].id)
         .select()
         .single()
       if (error) throw error
