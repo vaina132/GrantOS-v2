@@ -152,6 +152,21 @@ export const allocationsService = {
     return (data ?? []) as PmBudget[]
   },
 
+  async listPmBudgetsByProject(
+    projectId: string,
+    type: AssignmentType,
+  ): Promise<PmBudget[]> {
+    const { data, error } = await supabase
+      .from('pm_budgets')
+      .select('*')
+      .eq('project_id', projectId)
+      .eq('type', type)
+      .order('year')
+
+    if (error) throw error
+    return (data ?? []) as PmBudget[]
+  },
+
   async upsertPmBudget(budget: {
     org_id: string
     project_id: string
@@ -160,17 +175,40 @@ export const allocationsService = {
     target_pms: number
     type: AssignmentType
   }): Promise<PmBudget> {
-    const { data, error } = await supabase
+    // Handle NULL work_package_id correctly (same pattern as assignments)
+    let query = supabase
       .from('pm_budgets')
-      .upsert(
-        { ...budget, updated_at: new Date().toISOString() },
-        { onConflict: 'project_id,work_package_id,year,type' },
-      )
-      .select()
-      .single()
+      .select('id')
+      .eq('project_id', budget.project_id)
+      .eq('year', budget.year)
+      .eq('type', budget.type)
 
-    if (error) throw error
-    return data as PmBudget
+    if (budget.work_package_id) {
+      query = query.eq('work_package_id', budget.work_package_id)
+    } else {
+      query = query.is('work_package_id', null)
+    }
+
+    const { data: existing } = await query.limit(1)
+
+    if (existing && existing.length > 0) {
+      const { data, error } = await supabase
+        .from('pm_budgets')
+        .update({ target_pms: budget.target_pms, updated_at: new Date().toISOString() })
+        .eq('id', existing[0].id)
+        .select()
+        .single()
+      if (error) throw error
+      return data as PmBudget
+    } else {
+      const { data, error } = await supabase
+        .from('pm_budgets')
+        .insert({ ...budget, updated_at: new Date().toISOString() })
+        .select()
+        .single()
+      if (error) throw error
+      return data as PmBudget
+    }
   },
 
   // Period Locks

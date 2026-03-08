@@ -31,3 +31,29 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_assignments_unique_combo
     month,
     type
   );
+
+-- 4) Fix the same NULL issue on pm_budgets table
+DELETE FROM pm_budgets
+WHERE id IN (
+  SELECT id FROM (
+    SELECT id,
+      ROW_NUMBER() OVER (
+        PARTITION BY project_id,
+          COALESCE(work_package_id, '00000000-0000-0000-0000-000000000000'),
+          year, type
+        ORDER BY updated_at DESC, created_at DESC, id
+      ) AS rn
+    FROM pm_budgets
+  ) ranked
+  WHERE rn > 1
+);
+
+ALTER TABLE pm_budgets DROP CONSTRAINT IF EXISTS pm_budgets_project_id_work_package_id_year_type_key;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pm_budgets_unique_combo
+  ON pm_budgets (
+    project_id,
+    COALESCE(work_package_id, '00000000-0000-0000-0000-000000000000'),
+    year,
+    type
+  );

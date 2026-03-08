@@ -16,7 +16,8 @@ import { toast } from '@/components/ui/use-toast'
 import { Undo2, Redo2, Save, Grid3x3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BulkFillDialog } from './BulkFillDialog'
-import type { AssignmentType, Person, Project } from '@/types'
+import { projectsService } from '@/services/projectsService'
+import type { AssignmentType, Person, Project, WorkPackage } from '@/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -30,6 +31,7 @@ interface GridRow {
   person: Person
   project: Project
   wpId: string | null
+  wpName: string | null
 }
 
 interface AllocationGridProps {
@@ -46,6 +48,20 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
   const { assignments: officialAssignments, isLoading: loadingOfficial, refetch: refetchOfficial } = useAssignments('official')
   const { isLocked } = usePeriodLocks()
   const { absences } = useAbsences()
+
+  // Fetch work packages for projects that use them
+  const [wpsByProject, setWpsByProject] = useState<Record<string, WorkPackage[]>>({})
+  useEffect(() => {
+    const wpProjects = projects.filter((p) => p.has_wps)
+    if (wpProjects.length === 0) { setWpsByProject({}); return }
+    Promise.all(
+      wpProjects.map((p) => projectsService.listWorkPackages(p.id).then((wps) => ({ pid: p.id, wps })))
+    ).then((results) => {
+      const map: Record<string, WorkPackage[]> = {}
+      for (const r of results) map[r.pid] = r.wps
+      setWpsByProject(map)
+    }).catch(() => {})
+  }, [projects])
 
   const assignments = mode === 'actual' ? actualAssignments : officialAssignments
   const isLoading = loadingStaff || loadingProjects || loadingActual || (compareMode ? loadingOfficial : false)
@@ -113,44 +129,49 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
     return map
   }, [compareMode, mode, officialAssignments, actualAssignments])
 
-  // Build grid rows: one row per person-project combination
+  // Build grid rows: one row per person-project (or person-project-wp) combination
   const rows = useMemo(() => {
     const result: GridRow[] = []
-    const personIds = new Set(assignments.map((a) => a.person_id))
-    const projectIds = new Set(assignments.map((a) => a.project_id))
-
-    // Include all active staff and projects (even with no assignments)
-    for (const person of staff) personIds.add(person.id)
-    for (const project of projects) projectIds.add(project.id)
-
     const personMap = new Map(staff.map((p) => [p.id, p]))
     const projectMap = new Map(projects.map((p) => [p.id, p]))
 
-    // Build a set of visible person+project pairs
-    const visiblePairs = new Set<string>()
+    // Build a set of visible person+project+wp triples
+    const visibleTriples = new Set<string>()
 
     // Rows from existing assignment data
     for (const a of assignments) {
-      const pairKey = `${a.person_id}:${a.project_id}`
-      if (!visiblePairs.has(pairKey)) {
+      const tripleKey = `${a.person_id}:${a.project_id}:${a.work_package_id ?? 'null'}`
+      if (!visibleTriples.has(tripleKey)) {
         const person = personMap.get(a.person_id)
         const project = projectMap.get(a.project_id)
         if (person && project) {
-          result.push({ person, project, wpId: null })
-          visiblePairs.add(pairKey)
+          const wps = wpsByProject[project.id]
+          const wp = wps?.find((w) => w.id === a.work_package_id)
+          result.push({ person, project, wpId: a.work_package_id, wpName: wp?.name ?? null })
+          visibleTriples.add(tripleKey)
         }
       }
     }
 
-    // Manually added rows
+    // Manually added rows — expand to WP rows if project uses WPs
     for (const mr of manualRows) {
-      const pairKey = `${mr.personId}:${mr.projectId}`
-      if (!visiblePairs.has(pairKey)) {
-        const person = personMap.get(mr.personId)
-        const project = projectMap.get(mr.projectId)
-        if (person && project) {
-          result.push({ person, project, wpId: null })
-          visiblePairs.add(pairKey)
+      const person = personMap.get(mr.personId)
+      const project = projectMap.get(mr.projectId)
+      if (!person || !project) continue
+      const wps = wpsByProject[project.id]
+      if (project.has_wps && wps && wps.length > 0) {
+        for (const wp of wps) {
+          const tripleKey = `${mr.personId}:${mr.projectId}:${wp.id}`
+          if (!visibleTriples.has(tripleKey)) {
+            result.push({ person, project, wpId: wp.id, wpName: wp.name })
+            visibleTriples.add(tripleKey)
+          }
+        }
+      } else {
+        const tripleKey = `${mr.personId}:${mr.projectId}:null`
+        if (!visibleTriples.has(tripleKey)) {
+          result.push({ person, project, wpId: null, wpName: null })
+          visibleTriples.add(tripleKey)
         }
       }
     }
@@ -158,11 +179,13 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
     result.sort((a, b) => {
       const nameCmp = a.person.full_name.localeCompare(b.person.full_name)
       if (nameCmp !== 0) return nameCmp
-      return a.project.acronym.localeCompare(b.project.acronym)
+      const projCmp = a.project.acronym.localeCompare(b.project.acronym)
+      if (projCmp !== 0) return projCmp
+      return (a.wpName ?? '').localeCompare(b.wpName ?? '')
     })
 
     return result
-  }, [staff, projects, assignments, manualRows])
+  }, [staff, projects, assignments, manualRows, wpsByProject])
 
   const updateCell = useCallback(
     (personId: string, projectId: string, wpId: string | null, month: number, value: number) => {
@@ -256,8 +279,10 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
 
   const handleAddRow = () => {
     if (!addPersonId || !addProjectId) return
-    const exists = rows.some((r) => r.person.id === addPersonId && r.project.id === addProjectId)
-    if (exists) {
+    // Check both existing rows and manual rows for duplicate person+project
+    const existsInGrid = rows.some((r) => r.person.id === addPersonId && r.project.id === addProjectId)
+    const existsInManual = manualRows.some((mr) => mr.personId === addPersonId && mr.projectId === addProjectId)
+    if (existsInGrid || existsInManual) {
       toast({ title: 'Already exists', description: 'This person-project combination is already in the grid.' })
       return
     }
@@ -373,6 +398,9 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
                   </td>
                   <td className="px-3 py-1 text-xs">
                     <span className="font-semibold text-primary">{row.project.acronym}</span>
+                    {row.wpName && (
+                      <span className="block text-[10px] text-muted-foreground truncate max-w-[100px]">{row.wpName}</span>
+                    )}
                   </td>
                   {MONTHS.map((_, i) => {
                     const month = i + 1
