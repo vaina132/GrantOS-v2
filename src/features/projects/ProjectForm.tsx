@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
-import { ArrowLeft, Save } from 'lucide-react'
+import { ArrowLeft, Save, DollarSign, Users, Plane, Handshake, Package } from 'lucide-react'
 import type { FundingScheme } from '@/types'
 
 const positiveOrNull = z.coerce.number().min(0, 'Must be 0 or greater').nullable().optional()
@@ -24,7 +24,7 @@ const projectSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Max 200 characters'),
   funding_scheme_id: z.string().nullable().or(z.literal('')),
   grant_number: z.string().nullable().or(z.literal('')),
-  status: z.enum(['Active', 'Upcoming', 'Concluding', 'Completed', 'Suspended']),
+  status: z.enum(['Upcoming', 'Active', 'Completed', 'Suspended']),
   start_date: z.string().min(1, 'Start date is required'),
   end_date: z.string().min(1, 'End date is required'),
   total_budget: positiveOrNull,
@@ -61,6 +61,8 @@ export function ProjectForm() {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<ProjectFormData>({
     resolver: zodResolver(projectSchema),
@@ -83,6 +85,16 @@ export function ProjectForm() {
     },
   })
 
+  // Auto-fill overhead rate when funding scheme changes
+  const selectedSchemeId = watch('funding_scheme_id')
+  useEffect(() => {
+    if (!selectedSchemeId) return
+    const scheme = schemes.find((s) => s.id === selectedSchemeId)
+    if (scheme && scheme.overhead_rate != null) {
+      setValue('overhead_rate', scheme.overhead_rate)
+    }
+  }, [selectedSchemeId, schemes, setValue])
+
   useEffect(() => {
     if (project) {
       reset({
@@ -90,7 +102,7 @@ export function ProjectForm() {
         title: project.title,
         funding_scheme_id: project.funding_scheme_id ?? '',
         grant_number: project.grant_number ?? '',
-        status: project.status,
+        status: project.status as ProjectFormData['status'],
         start_date: project.start_date,
         end_date: project.end_date,
         total_budget: project.total_budget,
@@ -204,7 +216,6 @@ export function ProjectForm() {
                   >
                     <option value="Upcoming">Upcoming</option>
                     <option value="Active">Active</option>
-                    <option value="Concluding">Concluding</option>
                     <option value="Completed">Completed</option>
                     <option value="Suspended">Suspended</option>
                   </select>
@@ -240,7 +251,9 @@ export function ProjectForm() {
             <CardHeader><CardTitle>Budget</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="total_budget">Total Budget</Label>
+                <Label htmlFor="total_budget" className="flex items-center gap-1.5">
+                  <DollarSign className="h-4 w-4 text-muted-foreground" /> Total Budget
+                </Label>
                 <Input id="total_budget" type="number" step="0.01" {...register('total_budget')} />
               </div>
 
@@ -256,19 +269,27 @@ export function ProjectForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="budget_personnel">Personnel Budget</Label>
+                <Label htmlFor="budget_personnel" className="flex items-center gap-1.5">
+                  <Users className="h-4 w-4 text-muted-foreground" /> Personnel Budget
+                </Label>
                 <Input id="budget_personnel" type="number" step="0.01" {...register('budget_personnel')} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="budget_travel">Travel Budget</Label>
+                <Label htmlFor="budget_travel" className="flex items-center gap-1.5">
+                  <Plane className="h-4 w-4 text-muted-foreground" /> Travel Budget
+                </Label>
                 <Input id="budget_travel" type="number" step="0.01" {...register('budget_travel')} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="budget_subcontracting">Subcontracting Budget</Label>
+                <Label htmlFor="budget_subcontracting" className="flex items-center gap-1.5">
+                  <Handshake className="h-4 w-4 text-muted-foreground" /> Subcontracting Budget
+                </Label>
                 <Input id="budget_subcontracting" type="number" step="0.01" {...register('budget_subcontracting')} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="budget_other">Other Budget</Label>
+                <Label htmlFor="budget_other" className="flex items-center gap-1.5">
+                  <Package className="h-4 w-4 text-muted-foreground" /> Other Budget
+                </Label>
                 <Input id="budget_other" type="number" step="0.01" {...register('budget_other')} />
               </div>
             </CardContent>

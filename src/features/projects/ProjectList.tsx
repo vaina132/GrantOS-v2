@@ -16,7 +16,7 @@ import { Plus, Search, Trash2, Pencil, FolderKanban } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import type { Project, ProjectStatus } from '@/types'
 
-const STATUS_OPTIONS: (ProjectStatus | 'All')[] = ['All', 'Active', 'Upcoming', 'Concluding', 'Completed', 'Suspended']
+const STATUS_OPTIONS: (ProjectStatus | 'All')[] = ['All', 'Upcoming', 'Active', 'Completed', 'Suspended']
 
 export function ProjectList() {
   const navigate = useNavigate()

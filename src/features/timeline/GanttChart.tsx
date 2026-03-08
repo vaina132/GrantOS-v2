@@ -93,9 +93,8 @@ export function GanttChart() {
             const width = Math.max(1, duration) * colWidth
 
             const barColor = {
-              Active: 'bg-green-400',
               Upcoming: 'bg-blue-400',
-              Concluding: 'bg-amber-400',
+              Active: 'bg-green-400',
               Completed: 'bg-gray-400',
               Suspended: 'bg-red-400',
             }[bar.status] || 'bg-primary'
@@ -135,9 +134,8 @@ export function GanttChart() {
       {/* Legend */}
       <div className="flex gap-4 text-xs">
         {[
-          { label: 'Active', color: 'bg-green-400' },
           { label: 'Upcoming', color: 'bg-blue-400' },
-          { label: 'Concluding', color: 'bg-amber-400' },
+          { label: 'Active', color: 'bg-green-400' },
           { label: 'Completed', color: 'bg-gray-400' },
           { label: 'Suspended', color: 'bg-red-400' },
         ].map((item) => (

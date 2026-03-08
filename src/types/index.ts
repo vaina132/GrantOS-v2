@@ -3,7 +3,7 @@ export type GuestAccessLevel = 'contributor' | 'read_only'
 export type AccessType = 'member' | 'guest'
 export type OrgPlan = 'trial' | 'starter' | 'growth' | 'enterprise'
 
-export type ProjectStatus = 'Active' | 'Upcoming' | 'Concluding' | 'Completed' | 'Suspended'
+export type ProjectStatus = 'Upcoming' | 'Active' | 'Completed' | 'Suspended'
 export type AssignmentType = 'actual' | 'official'
 export type TimesheetStatus = 'Draft' | 'Confirmed' | 'Approved' | 'Rejected'
 export type EmploymentType = 'Full-time' | 'Part-time' | 'Contractor'

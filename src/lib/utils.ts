@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { format, parseISO, subMonths, isBefore, isAfter } from 'date-fns'
+import { format, parseISO, isBefore, isAfter } from 'date-fns'
 import type { ProjectStatus } from '@/types'
 
 export function cn(...inputs: ClassValue[]) {
@@ -66,11 +66,9 @@ export function computeProjectStatus(startDate: string, endDate: string, current
   const now = new Date()
   const start = parseISO(startDate)
   const end = parseISO(endDate)
-  const sixMonthsBefore = subMonths(end, 6)
 
   if (isBefore(now, start)) return 'Upcoming'
   if (isAfter(now, end)) return 'Completed'
-  if (isAfter(now, sixMonthsBefore)) return 'Concluding'
   return 'Active'
 }
 
@@ -78,7 +76,6 @@ export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
     Active: 'bg-green-100 text-green-800',
     Upcoming: 'bg-blue-100 text-blue-800',
-    Concluding: 'bg-amber-100 text-amber-800',
     Completed: 'bg-gray-100 text-gray-800',
     Suspended: 'bg-red-100 text-red-800',
     Draft: 'bg-slate-100 text-slate-800',

@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { staffService } from '@/services/staffService'
+import { settingsService } from '@/services/settingsService'
 import { useAuthStore } from '@/stores/authStore'
 import { useStaffMember } from '@/hooks/useStaff'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -25,7 +26,6 @@ const staffSchema = z.object({
   start_date: z.string().nullable().or(z.literal('')),
   end_date: z.string().nullable().or(z.literal('')),
   annual_salary: z.coerce.number().min(0, 'Must be 0 or greater').nullable().optional(),
-  overhead_rate: z.coerce.number().min(0).max(100, 'Max 100%').nullable().optional(),
   is_active: z.boolean(),
 }).refine((data) => {
   if (data.start_date && data.end_date) {
@@ -43,6 +43,14 @@ export function StaffForm() {
   const { orgId, can } = useAuthStore()
   const { person, isLoading: loadingPerson } = useStaffMember(isEdit ? id : undefined)
   const [saving, setSaving] = useState(false)
+  const [departments, setDepartments] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!orgId) return
+    settingsService.getOrganisation(orgId).then((org) => {
+      if (org?.departments) setDepartments(org.departments)
+    }).catch(() => {})
+  }, [orgId])
 
   const {
     register,
@@ -61,7 +69,6 @@ export function StaffForm() {
       start_date: '',
       end_date: '',
       annual_salary: null,
-      overhead_rate: null,
       is_active: true,
     },
   })
@@ -78,7 +85,6 @@ export function StaffForm() {
         start_date: person.start_date ?? '',
         end_date: person.end_date ?? '',
         annual_salary: person.annual_salary,
-        overhead_rate: person.overhead_rate,
         is_active: person.is_active,
       })
     }
@@ -95,7 +101,6 @@ export function StaffForm() {
         start_date: data.start_date || null,
         end_date: data.end_date || null,
         annual_salary: data.annual_salary ?? null,
-        overhead_rate: data.overhead_rate ?? null,
         org_id: orgId ?? '',
       }
 
@@ -157,8 +162,17 @@ export function StaffForm() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
-                  <Input id="department" {...register('department')} />
+                  <Label htmlFor="department">Department / Team</Label>
+                  <select
+                    id="department"
+                    {...register('department')}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">Select department</option>
+                    {departments.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Role / Title</Label>
@@ -217,26 +231,15 @@ export function StaffForm() {
               </div>
 
               {can('canSeeSalary') && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="annual_salary">Annual Salary</Label>
-                    <Input
-                      id="annual_salary"
-                      type="number"
-                      step="0.01"
-                      {...register('annual_salary')}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="overhead_rate">Overhead Rate (%)</Label>
-                    <Input
-                      id="overhead_rate"
-                      type="number"
-                      step="0.01"
-                      {...register('overhead_rate')}
-                    />
-                  </div>
-                </>
+                <div className="space-y-2">
+                  <Label htmlFor="annual_salary">Annual Salary</Label>
+                  <Input
+                    id="annual_salary"
+                    type="number"
+                    step="0.01"
+                    {...register('annual_salary')}
+                  />
+                </div>
               )}
             </CardContent>
           </Card>

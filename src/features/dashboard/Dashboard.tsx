@@ -31,9 +31,8 @@ import {
 } from 'recharts'
 
 const STATUS_COLORS: Record<string, string> = {
-  Active: '#22c55e',
   Upcoming: '#3b82f6',
-  Concluding: '#f59e0b',
+  Active: '#22c55e',
   Completed: '#6b7280',
   Suspended: '#ef4444',
 }
@@ -49,7 +48,7 @@ export function Dashboard() {
 
   // KPI data
   const kpis = useMemo(() => {
-    const activeProjects = projects.filter((p) => p.status === 'Active' || p.status === 'Concluding')
+    const activeProjects = projects.filter((p) => p.status === 'Active')
     const totalBudget = projects.reduce((sum, p) => sum + (p.total_budget ?? 0), 0)
     const activeStaff = staff.filter((s) => s.is_active)
     const totalPms = assignments.reduce((sum, a) => sum + a.pms, 0)
@@ -92,10 +91,12 @@ export function Dashboard() {
   const alerts = useMemo(() => {
     const items: { message: string; type: 'warning' | 'info' }[] = []
 
-    const concluding = projects.filter((p) => p.status === 'Concluding')
-    if (concluding.length > 0) {
+    const now = new Date()
+    const sixMonthsFromNow = new Date(now.getFullYear(), now.getMonth() + 6, now.getDate())
+    const endingSoon = projects.filter((p) => p.status === 'Active' && new Date(p.end_date) <= sixMonthsFromNow)
+    if (endingSoon.length > 0) {
       items.push({
-        message: `${concluding.length} project${concluding.length > 1 ? 's' : ''} concluding soon: ${concluding.map((p) => p.acronym).join(', ')}`,
+        message: `${endingSoon.length} project${endingSoon.length > 1 ? 's' : ''} ending soon: ${endingSoon.map((p) => p.acronym).join(', ')}`,
         type: 'warning',
       })
     }
