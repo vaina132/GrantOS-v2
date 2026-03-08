@@ -17,7 +17,7 @@ ALTER TABLE timesheet_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE absences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE financial_budgets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_changes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_guests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE period_locks ENABLE ROW LEVEL SECURITY;
@@ -211,11 +211,11 @@ CREATE POLICY "docs_all_writers"
 -- 16. AUDIT LOGS
 -- ============================================================
 CREATE POLICY "auditlog_select"
-  ON audit_logs FOR SELECT
+  ON audit_log FOR SELECT
   USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Finance Officer'));
 
 CREATE POLICY "auditlog_insert"
-  ON audit_logs FOR INSERT
+  ON audit_log FOR INSERT
   WITH CHECK (org_id = auth_org_id());
 
 -- ============================================================

@@ -22,7 +22,7 @@ export interface AuditFilters {
 export const auditService = {
   async list(orgId: string | null, filters?: AuditFilters): Promise<AuditEntry[]> {
     let query = supabase
-      .from('audit_logs')
+      .from('audit_log')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(filters?.limit ?? 100)
@@ -33,7 +33,14 @@ export const auditService = {
     if (filters?.offset) query = query.range(filters.offset, filters.offset + (filters.limit ?? 100) - 1)
 
     const { data, error } = await query
-    if (error) throw error
+    if (error) {
+      // RLS may block access if policies haven't been applied yet
+      if (error.code === '42501' || error.message?.includes('policy')) {
+        console.warn('[GrantOS] Audit log RLS error — run supabase/fix_audit_rls.sql:', error.message)
+        throw new Error('Access denied. An administrator needs to apply the audit log RLS policies in Supabase.')
+      }
+      throw error
+    }
     return (data ?? []) as AuditEntry[]
   },
 }

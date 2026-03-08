@@ -15,7 +15,7 @@ export async function writeAudit({ orgId, entityType, action, entityId, details 
   try {
     const { data: { user } } = await supabase.auth.getUser()
 
-    await (supabase.from as any)('audit_logs').insert({
+    await (supabase.from as any)('audit_log').insert({
       org_id: orgId,
       user_id: user?.id ?? null,
       user_email: user?.email ?? null,

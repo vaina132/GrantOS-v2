@@ -19,7 +19,12 @@ export function AuditLogViewer() {
   const [entityFilter, setEntityFilter] = useState('')
   const [actionFilter, setActionFilter] = useState('')
 
-  const fetch = useCallback(async () => {
+  const loadEntries = useCallback(async () => {
+    if (!orgId) {
+      setEntries([])
+      setIsLoading(false)
+      return
+    }
     setIsLoading(true)
     try {
       const filters: AuditFilters = {
@@ -40,8 +45,8 @@ export function AuditLogViewer() {
   }, [orgId, page, entityFilter, actionFilter])
 
   useEffect(() => {
-    fetch()
-  }, [fetch])
+    loadEntries()
+  }, [loadEntries])
 
   const entityTypes = ['person', 'project', 'assignment', 'timesheet', 'absence', 'budget', 'settings']
   const actions = ['create', 'update', 'delete', 'approve', 'reject', 'lock', 'unlock']

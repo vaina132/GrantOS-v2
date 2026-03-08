@@ -50,7 +50,7 @@ BEGIN
   -- Only fire when status actually changes
   IF OLD.status IS DISTINCT FROM NEW.status THEN
     -- Insert a notification record (lightweight, app polls or uses realtime)
-    INSERT INTO audit_logs (org_id, user_id, entity_type, action, entity_id, details)
+    INSERT INTO audit_log (org_id, user_id, entity_type, action, entity_id, details)
     VALUES (
       NEW.org_id,
       NEW.confirmed_by,
@@ -77,7 +77,7 @@ CREATE TRIGGER trg_timesheet_status_change
 CREATE OR REPLACE FUNCTION notify_period_locked()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO audit_logs (org_id, user_id, entity_type, action, entity_id, details)
+  INSERT INTO audit_log (org_id, user_id, entity_type, action, entity_id, details)
   VALUES (
     NEW.org_id,
     NEW.locked_by,
@@ -102,7 +102,7 @@ CREATE TRIGGER trg_period_locked
 CREATE OR REPLACE FUNCTION notify_guest_added()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO audit_logs (org_id, user_id, entity_type, action, entity_id, details)
+  INSERT INTO audit_log (org_id, user_id, entity_type, action, entity_id, details)
   VALUES (
     NEW.org_id,
     NEW.invited_by,

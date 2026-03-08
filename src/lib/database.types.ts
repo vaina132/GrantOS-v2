@@ -776,7 +776,7 @@ export type Database = {
           },
         ]
       }
-      audit_logs: {
+      audit_log: {
         Row: {
           id: string
           org_id: string
@@ -812,7 +812,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: 'audit_logs_org_id_fkey'
+            foreignKeyName: 'audit_log_org_id_fkey'
             columns: ['org_id']
             isOneToOne: false
             referencedRelation: 'organisations'
