@@ -29,18 +29,20 @@ export function ProjectDetail() {
   const { orgId, can } = useAuthStore()
   const [detailTab, setDetailTab] = useState<DetailTab>('overview')
 
+  const [wpNumber, setWpNumber] = useState<number>(1)
   const [wpName, setWpName] = useState('')
   const [wpDesc, setWpDesc] = useState('')
-  const [wpStartDate, setWpStartDate] = useState('')
-  const [wpEndDate, setWpEndDate] = useState('')
+  const [wpStartMonth, setWpStartMonth] = useState<number>(1)
+  const [wpEndMonth, setWpEndMonth] = useState<number>(1)
   const [wpSaving, setWpSaving] = useState(false)
   const [wpDeleteTarget, setWpDeleteTarget] = useState<WorkPackage | null>(null)
   const [wpDeleting, setWpDeleting] = useState(false)
   const [editingWpId, setEditingWpId] = useState<string | null>(null)
+  const [editWpNumber, setEditWpNumber] = useState<number>(1)
   const [editWpName, setEditWpName] = useState('')
   const [editWpDesc, setEditWpDesc] = useState('')
-  const [editWpStart, setEditWpStart] = useState('')
-  const [editWpEnd, setEditWpEnd] = useState('')
+  const [editWpStartMonth, setEditWpStartMonth] = useState<number>(1)
+  const [editWpEndMonth, setEditWpEndMonth] = useState<number>(1)
   const [editWpSaving, setEditWpSaving] = useState(false)
 
   // PM budget per year (project-level)
@@ -56,6 +58,39 @@ export function ProjectDetail() {
     const years: number[] = []
     for (let y = startYear; y <= endYear; y++) years.push(y)
     return years
+  }, [project])
+
+  // Project duration in months and helper to convert project month → actual date
+  const projectMonthCount = useMemo(() => {
+    if (!project) return 0
+    const s = new Date(project.start_date)
+    const e = new Date(project.end_date)
+    return (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1
+  }, [project])
+
+  const projectMonthToDate = useCallback((m: number, isEnd: boolean): string => {
+    if (!project) return ''
+    const s = new Date(project.start_date)
+    const targetMonth = s.getMonth() + (m - 1)
+    const y = s.getFullYear() + Math.floor(targetMonth / 12)
+    const mo = targetMonth % 12
+    if (isEnd) {
+      // last day of month
+      const last = new Date(y, mo + 1, 0)
+      return last.toISOString().slice(0, 10)
+    }
+    // first day of month
+    return `${y}-${String(mo + 1).padStart(2, '0')}-01`
+  }, [project])
+
+  const projectMonthLabel = useCallback((m: number): string => {
+    if (!project) return `M${m}`
+    const s = new Date(project.start_date)
+    const targetMonth = s.getMonth() + (m - 1)
+    const y = s.getFullYear() + Math.floor(targetMonth / 12)
+    const mo = targetMonth % 12
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return `M${m} (${MONTHS[mo]} ${y})`
   }, [project])
 
   // WP PM budgets: wpId -> target PMs (total across years)
@@ -182,16 +217,20 @@ export function ProjectDetail() {
       await projectsService.createWorkPackage({
         org_id: orgId ?? '',
         project_id: id,
+        number: wpNumber,
         name: wpName.trim(),
         description: wpDesc.trim() || null,
         lead_person_id: null,
-        start_date: wpStartDate || null,
-        end_date: wpEndDate || null,
+        start_month: wpStartMonth,
+        end_month: wpEndMonth,
+        start_date: projectMonthToDate(wpStartMonth, false),
+        end_date: projectMonthToDate(wpEndMonth, true),
       })
+      setWpNumber(wpNumber + 1)
       setWpName('')
       setWpDesc('')
-      setWpStartDate('')
-      setWpEndDate('')
+      setWpStartMonth(1)
+      setWpEndMonth(projectMonthCount || 1)
       toast({ title: 'Work package added' })
       refetchWPs()
     } catch (err) {
@@ -221,10 +260,11 @@ export function ProjectDetail() {
 
   const startEditWp = (wp: WorkPackage) => {
     setEditingWpId(wp.id)
+    setEditWpNumber(wp.number ?? 1)
     setEditWpName(wp.name)
     setEditWpDesc(wp.description ?? '')
-    setEditWpStart(wp.start_date ?? '')
-    setEditWpEnd(wp.end_date ?? '')
+    setEditWpStartMonth(wp.start_month ?? 1)
+    setEditWpEndMonth(wp.end_month ?? (projectMonthCount || 1))
   }
 
   const handleSaveEditWp = async () => {
@@ -232,10 +272,13 @@ export function ProjectDetail() {
     setEditWpSaving(true)
     try {
       await projectsService.updateWorkPackage(editingWpId, {
+        number: editWpNumber,
         name: editWpName.trim(),
         description: editWpDesc.trim() || null,
-        start_date: editWpStart || null,
-        end_date: editWpEnd || null,
+        start_month: editWpStartMonth,
+        end_month: editWpEndMonth,
+        start_date: projectMonthToDate(editWpStartMonth, false),
+        end_date: projectMonthToDate(editWpEndMonth, true),
       })
       toast({ title: 'Updated', description: 'Work package updated.' })
       setEditingWpId(null)
@@ -524,6 +567,7 @@ export function ProjectDetail() {
                         <table className="w-full text-sm min-w-[700px]">
                           <thead>
                             <tr className="border-b bg-muted/50">
+                              <th className="px-4 py-2 text-left font-medium w-12">#</th>
                               <th className="px-4 py-2 text-left font-medium">Name</th>
                               <th className="px-4 py-2 text-left font-medium">Period</th>
                               <th className="px-4 py-2 text-right font-medium">Budget PM</th>
@@ -543,6 +587,21 @@ export function ProjectDetail() {
 
                               return (
                                 <tr key={wp.id} className="border-b last:border-0 hover:bg-muted/20">
+                                  <td className="px-4 py-2 text-xs tabular-nums text-muted-foreground">
+                                    {isEditing ? (
+                                      <select
+                                        value={editWpNumber}
+                                        onChange={e => setEditWpNumber(Number(e.target.value))}
+                                        className="h-7 w-14 rounded border border-input bg-background px-1 text-xs"
+                                      >
+                                        {Array.from({ length: 40 }, (_, i) => i + 1).map(n => (
+                                          <option key={n} value={n}>{n}</option>
+                                        ))}
+                                      </select>
+                                    ) : (
+                                      <span className="font-semibold">{wp.number ?? '—'}</span>
+                                    )}
+                                  </td>
                                   <td className="px-4 py-2">
                                     {isEditing ? (
                                       <div className="space-y-1">
@@ -558,15 +617,32 @@ export function ProjectDetail() {
                                   </td>
                                   <td className="px-4 py-2 text-xs text-muted-foreground">
                                     {isEditing ? (
-                                      <div className="flex gap-1">
-                                        <Input type="date" value={editWpStart} onChange={e => setEditWpStart(e.target.value)} className="h-7 text-xs w-28" />
-                                        <Input type="date" value={editWpEnd} onChange={e => setEditWpEnd(e.target.value)} className="h-7 text-xs w-28" />
+                                      <div className="flex gap-1 items-center">
+                                        <select
+                                          value={editWpStartMonth}
+                                          onChange={e => setEditWpStartMonth(Number(e.target.value))}
+                                          className="h-7 rounded border border-input bg-background px-1 text-xs"
+                                        >
+                                          {Array.from({ length: projectMonthCount }, (_, i) => i + 1).map(m => (
+                                            <option key={m} value={m}>{projectMonthLabel(m)}</option>
+                                          ))}
+                                        </select>
+                                        <span className="text-muted-foreground">–</span>
+                                        <select
+                                          value={editWpEndMonth}
+                                          onChange={e => setEditWpEndMonth(Number(e.target.value))}
+                                          className="h-7 rounded border border-input bg-background px-1 text-xs"
+                                        >
+                                          {Array.from({ length: projectMonthCount }, (_, i) => i + 1).map(m => (
+                                            <option key={m} value={m}>{projectMonthLabel(m)}</option>
+                                          ))}
+                                        </select>
                                       </div>
                                     ) : (
                                       <>
-                                        {wp.start_date ? formatDate(wp.start_date) : '—'}
+                                        {wp.start_month ? projectMonthLabel(wp.start_month) : '—'}
                                         {' – '}
-                                        {wp.end_date ? formatDate(wp.end_date) : '—'}
+                                        {wp.end_month ? projectMonthLabel(wp.end_month) : '—'}
                                       </>
                                     )}
                                   </td>
@@ -627,7 +703,7 @@ export function ProjectDetail() {
                             })}
                             {/* Totals row */}
                             <tr className="bg-muted/30 font-semibold text-xs">
-                              <td className="px-4 py-2" colSpan={2}>Total</td>
+                              <td className="px-4 py-2" colSpan={3}>Total</td>
                               <td className="px-4 py-2 text-right tabular-nums">{totalWpBudgetPm.toFixed(1)} PM</td>
                               <td className="px-4 py-2 text-right tabular-nums">{totalAllocatedPm.toFixed(2)}</td>
                               <td className="px-4 py-2 text-right tabular-nums">
@@ -685,32 +761,71 @@ export function ProjectDetail() {
                     {can('canManageProjects') && (
                       <div className="space-y-3 rounded-lg border p-4 bg-muted/10">
                         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Add Work Package</div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            placeholder="WP name *"
-                            value={wpName}
-                            onChange={(e) => setWpName(e.target.value)}
-                          />
-                          <Input
-                            placeholder="Description (optional)"
-                            value={wpDesc}
-                            onChange={(e) => setWpDesc(e.target.value)}
-                          />
-                        </div>
-                        <div className="flex gap-2 items-end">
+                        <div className="flex gap-2 items-end flex-wrap">
                           <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Start Date</Label>
-                            <Input type="date" value={wpStartDate} onChange={(e) => setWpStartDate(e.target.value)} />
+                            <Label className="text-xs text-muted-foreground">WP #</Label>
+                            <select
+                              value={wpNumber}
+                              onChange={(e) => setWpNumber(Number(e.target.value))}
+                              className="flex h-9 w-16 rounded-md border border-input bg-background px-2 py-1 text-sm"
+                            >
+                              {Array.from({ length: 40 }, (_, i) => i + 1).map(n => (
+                                <option key={n} value={n}>{n}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-1 flex-1 min-w-[120px]">
+                            <Label className="text-xs text-muted-foreground">Name *</Label>
+                            <Input
+                              placeholder="WP name"
+                              value={wpName}
+                              onChange={(e) => setWpName(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1 flex-1 min-w-[120px]">
+                            <Label className="text-xs text-muted-foreground">Description</Label>
+                            <Input
+                              placeholder="Optional"
+                              value={wpDesc}
+                              onChange={(e) => setWpDesc(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2 items-end flex-wrap">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Start Month</Label>
+                            <select
+                              value={wpStartMonth}
+                              onChange={(e) => setWpStartMonth(Number(e.target.value))}
+                              className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
+                            >
+                              {Array.from({ length: projectMonthCount || 1 }, (_, i) => i + 1).map(m => (
+                                <option key={m} value={m}>{projectMonthLabel(m)}</option>
+                              ))}
+                            </select>
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">End Date</Label>
-                            <Input type="date" value={wpEndDate} onChange={(e) => setWpEndDate(e.target.value)} />
+                            <Label className="text-xs text-muted-foreground">End Month</Label>
+                            <select
+                              value={wpEndMonth}
+                              onChange={(e) => setWpEndMonth(Number(e.target.value))}
+                              className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
+                            >
+                              {Array.from({ length: projectMonthCount || 1 }, (_, i) => i + 1).map(m => (
+                                <option key={m} value={m}>{projectMonthLabel(m)}</option>
+                              ))}
+                            </select>
                           </div>
                           <Button onClick={handleAddWP} disabled={wpSaving || !wpName.trim()}>
                             <Plus className="mr-1 h-4 w-4" />
                             {wpSaving ? 'Adding...' : 'Add WP'}
                           </Button>
                         </div>
+                        {projectMonthCount > 0 && (
+                          <div className="text-[11px] text-muted-foreground">
+                            Project duration: {projectMonthCount} months ({formatDate(project!.start_date)} – {formatDate(project!.end_date)})
+                          </div>
+                        )}
                       </div>
                     )}
                   </>

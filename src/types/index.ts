@@ -87,9 +87,12 @@ export interface WorkPackage {
   id: string
   org_id: string
   project_id: string
+  number: number | null
   name: string
   description: string | null
   lead_person_id: string | null
+  start_month: number | null
+  end_month: number | null
   start_date: string | null
   end_date: string | null
   created_at: string
