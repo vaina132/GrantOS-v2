@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { MyTimesheet } from './MyTimesheet'
+import { TimesheetGrid } from './TimesheetGrid'
 import { AllTimesheets } from './AllTimesheets'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/lib/utils'
@@ -47,7 +47,7 @@ export function TimesheetsPage() {
       </div>
 
       <div className="pt-5 animate-fade-in" key={tab}>
-        {tab === 'my' && <MyTimesheet />}
+        {tab === 'my' && <TimesheetGrid />}
         {tab === 'all' && isManager && <AllTimesheets />}
       </div>
     </div>

@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase'
-import type { TimesheetEntry, TimesheetStatus } from '@/types'
+import type { TimesheetEntry, TimesheetStatus, TimesheetDay } from '@/types'
+
+// Cast for new table not yet in generated DB types
+const tsDays = () => (supabase as any).from('timesheet_days')
 
 export interface TimesheetFilters {
   person_id?: string
@@ -9,7 +12,7 @@ export interface TimesheetFilters {
   status?: TimesheetStatus
 }
 
-// Count working days (Mon-Fri) in a given month/year
+/** Count weekday (Mon-Fri) dates in a given month/year */
 export function getWorkingDays(year: number, month: number): number {
   let count = 0
   const daysInMonth = new Date(year, month, 0).getDate()
@@ -20,12 +23,31 @@ export function getWorkingDays(year: number, month: number): number {
   return count
 }
 
-const HOURS_PER_DAY = 8
+/** Get all weekday Date objects in a month */
+export function getWeekdayDates(year: number, month: number): Date[] {
+  const dates: Date[] = []
+  const daysInMonth = new Date(year, month, 0).getDate()
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month - 1, d)
+    const dow = date.getDay()
+    if (dow !== 0 && dow !== 6) dates.push(date)
+  }
+  return dates
+}
+
+/** Format a Date to YYYY-MM-DD string */
+export function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 const SELECT_WITH_JOINS = '*, persons(full_name, fte), projects(acronym, title)'
 
 export const timesheetService = {
-  async list(orgId: string | null, filters?: TimesheetFilters): Promise<TimesheetEntry[]> {
+  // ───────────────────────────────────────────────
+  // Monthly envelope (timesheet_entries) — approval flow
+  // ───────────────────────────────────────────────
+
+  async listEnvelopes(orgId: string | null, filters?: TimesheetFilters): Promise<TimesheetEntry[]> {
     let query = supabase
       .from('timesheet_entries')
       .select(SELECT_WITH_JOINS)
@@ -33,7 +55,6 @@ export const timesheetService = {
 
     if (orgId) query = query.eq('org_id', orgId)
     if (filters?.person_id) query = query.eq('person_id', filters.person_id)
-    if (filters?.project_id) query = query.eq('project_id', filters.project_id)
     if (filters?.year) query = query.eq('year', filters.year)
     if (filters?.month) query = query.eq('month', filters.month)
     if (filters?.status) query = query.eq('status', filters.status)
@@ -43,121 +64,82 @@ export const timesheetService = {
     return (data ?? []) as unknown as TimesheetEntry[]
   },
 
-  /**
-   * Smart sync: creates new entries for person-project combos that don't exist yet,
-   * and updates planned_hours for existing Draft entries whose allocations changed.
-   * Returns count of created + updated entries.
-   */
-  async generate(
+  /** Ensure a monthly envelope exists for a person+month. Returns it. */
+  async ensureEnvelope(
     orgId: string,
+    personId: string,
     year: number,
     month: number,
-  ): Promise<{ created: number; updated: number }> {
-    // 1. Fetch actual assignments for this period
-    const { data: assignments, error: aErr } = await supabase
-      .from('assignments')
-      .select('person_id, project_id, work_package_id, pms')
-      .eq('org_id', orgId)
-      .eq('year', year)
-      .eq('month', month)
-      .eq('type', 'actual')
-
-    if (aErr) throw aErr
-    if (!assignments || assignments.length === 0) {
-      throw new Error('No actual allocations found for this period. Create allocations first.')
-    }
-
-    const workingDays = getWorkingDays(year, month)
-
-    // 2. Fetch existing entries
-    const { data: existing, error: exErr } = await supabase
+  ): Promise<TimesheetEntry> {
+    // Try to find existing
+    const { data: existing } = await supabase
       .from('timesheet_entries')
-      .select('id, person_id, project_id, planned_hours, status')
+      .select('*')
       .eq('org_id', orgId)
+      .eq('person_id', personId)
       .eq('year', year)
       .eq('month', month)
+      .maybeSingle()
 
-    if (exErr) throw exErr
+    if (existing) return existing as unknown as TimesheetEntry
 
-    const existingRows = (existing ?? []) as unknown as { id: string; person_id: string; project_id: string; planned_hours: number | null; status: string }[]
-    const existingMap = new Map(
-      existingRows.map((e) => [`${e.person_id}:${e.project_id}`, e]),
-    )
-
-    // 3. Build inserts and updates
-    const toInsert: Record<string, unknown>[] = []
-    const toUpdate: { id: string; planned_hours: number }[] = []
-
-    for (const a of assignments) {
-      const key = `${a.person_id}:${a.project_id}`
-      const plannedHours = Math.round(a.pms * workingDays * HOURS_PER_DAY * 100) / 100
-
-      const ex = existingMap.get(key)
-      if (!ex) {
-        toInsert.push({
-          org_id: orgId,
-          person_id: a.person_id,
-          project_id: a.project_id,
-          work_package_id: a.work_package_id,
-          year,
-          month,
-          working_days: workingDays,
-          planned_hours: plannedHours,
-          status: 'Draft',
-        })
-      } else if (ex.status === 'Draft' && Math.abs((ex.planned_hours ?? 0) - plannedHours) > 0.01) {
-        toUpdate.push({ id: ex.id, planned_hours: plannedHours })
-      }
-    }
-
-    // 4. Execute
-    let created = 0
-    let updated = 0
-
-    if (toInsert.length > 0) {
-      const { error } = await supabase.from('timesheet_entries').insert(toInsert as any)
-      if (error) throw error
-      created = toInsert.length
-    }
-
-    for (const u of toUpdate) {
-      const { error } = await supabase
-        .from('timesheet_entries')
-        .update({ planned_hours: u.planned_hours, working_days: workingDays, updated_at: new Date().toISOString() })
-        .eq('id', u.id)
-      if (error) throw error
-      updated++
-    }
-
-    if (created === 0 && updated === 0) {
-      return { created: 0, updated: 0 }
-    }
-
-    return { created, updated }
-  },
-
-  async updateActualHours(id: string, actual_hours: number): Promise<TimesheetEntry> {
+    // Create new
     const { data, error } = await supabase
       .from('timesheet_entries')
-      .update({ actual_hours, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select(SELECT_WITH_JOINS)
+      .insert({
+        org_id: orgId,
+        person_id: personId,
+        year,
+        month,
+        status: 'Draft',
+        working_days: getWorkingDays(year, month),
+        total_hours: 0,
+      } as any)
+      .select('*')
       .single()
 
     if (error) throw error
     return data as unknown as TimesheetEntry
   },
 
-  async updateNotes(id: string, notes: string): Promise<void> {
+  /** Recompute total_hours on the envelope from timesheet_days */
+  async refreshEnvelopeTotals(
+    orgId: string,
+    personId: string,
+    year: number,
+    month: number,
+  ): Promise<void> {
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+    const { data: dayRows, error: dErr } = await tsDays()
+      .select('hours')
+      .eq('org_id', orgId)
+      .eq('person_id', personId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+
+    if (dErr) throw dErr
+
+    const totalHours = (dayRows ?? []).reduce((s: number, r: any) => s + (Number(r.hours) || 0), 0)
+
     const { error } = await supabase
       .from('timesheet_entries')
-      .update({ notes, updated_at: new Date().toISOString() })
-      .eq('id', id)
+      .update({ total_hours: totalHours, updated_at: new Date().toISOString() } as any)
+      .eq('org_id', orgId)
+      .eq('person_id', personId)
+      .eq('year', year)
+      .eq('month', month)
 
     if (error) throw error
   },
 
-  async submit(ids: string[], userId: string): Promise<void> {
+  async submit(orgId: string, personId: string, year: number, month: number, userId: string): Promise<void> {
+    // Ensure envelope, refresh totals, then mark Submitted
+    await timesheetService.ensureEnvelope(orgId, personId, year, month)
+    await timesheetService.refreshEnvelopeTotals(orgId, personId, year, month)
+
     const { error } = await supabase
       .from('timesheet_entries')
       .update({
@@ -165,42 +147,402 @@ export const timesheetService = {
         submitted_at: new Date().toISOString(),
         submitted_by: userId,
         updated_at: new Date().toISOString(),
-      })
-      .in('id', ids)
+      } as any)
+      .eq('org_id', orgId)
+      .eq('person_id', personId)
+      .eq('year', year)
+      .eq('month', month)
 
     if (error) throw error
   },
 
-  async updateStatus(
-    id: string,
+  async updateEnvelopeStatus(
+    orgId: string,
+    personId: string,
+    year: number,
+    month: number,
     status: TimesheetStatus,
     userId: string,
-    notes?: string,
-  ): Promise<TimesheetEntry> {
+  ): Promise<void> {
     const updates: Record<string, unknown> = {
       status,
       updated_at: new Date().toISOString(),
     }
-
-    if (status === 'Submitted') {
-      updates.submitted_at = new Date().toISOString()
-      updates.submitted_by = userId
-    } else if (status === 'Approved') {
+    if (status === 'Approved') {
       updates.approved_at = new Date().toISOString()
       updates.approved_by = userId
     }
 
-    if (notes !== undefined) updates.notes = notes
-
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('timesheet_entries')
-      .update(updates)
-      .eq('id', id)
-      .select(SELECT_WITH_JOINS)
-      .single()
+      .update(updates as any)
+      .eq('org_id', orgId)
+      .eq('person_id', personId)
+      .eq('year', year)
+      .eq('month', month)
 
     if (error) throw error
-    return data as unknown as TimesheetEntry
+  },
+
+  // ───────────────────────────────────────────────
+  // Daily entries (timesheet_days)
+  // ───────────────────────────────────────────────
+
+  /** Load all daily entries for a person in a given month */
+  async listDays(
+    orgId: string,
+    personId: string,
+    year: number,
+    month: number,
+  ): Promise<TimesheetDay[]> {
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+    const { data, error } = await tsDays()
+      .select('*, projects(acronym, title)')
+      .eq('org_id', orgId)
+      .eq('person_id', personId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+      .order('date')
+
+    if (error) throw error
+    return (data ?? []) as TimesheetDay[]
+  },
+
+  /** Upsert a single day entry. If hours = 0, delete it. */
+  async upsertDay(
+    orgId: string,
+    personId: string,
+    projectId: string,
+    workPackageId: string | null,
+    date: string,
+    hours: number,
+  ): Promise<void> {
+    if (hours <= 0) {
+      // Delete instead
+      let query = tsDays()
+        .delete()
+        .eq('org_id', orgId)
+        .eq('person_id', personId)
+        .eq('project_id', projectId)
+        .eq('date', date)
+
+      if (workPackageId) {
+        query = query.eq('work_package_id', workPackageId)
+      } else {
+        query = query.is('work_package_id', null)
+      }
+
+      const { error } = await query
+      if (error) throw error
+      return
+    }
+
+    // Try to find existing
+    let findQuery = tsDays()
+      .select('id')
+      .eq('org_id', orgId)
+      .eq('person_id', personId)
+      .eq('project_id', projectId)
+      .eq('date', date)
+
+    if (workPackageId) {
+      findQuery = findQuery.eq('work_package_id', workPackageId)
+    } else {
+      findQuery = findQuery.is('work_package_id', null)
+    }
+
+    const { data: existing } = await findQuery.limit(1)
+
+    if (existing && existing.length > 0) {
+      const { error } = await tsDays()
+        .update({ hours, updated_at: new Date().toISOString() })
+        .eq('id', existing[0].id)
+      if (error) throw error
+    } else {
+      const { error } = await tsDays()
+        .insert({
+          org_id: orgId,
+          person_id: personId,
+          project_id: projectId,
+          work_package_id: workPackageId,
+          date,
+          hours,
+        })
+      if (error) throw error
+    }
+  },
+
+  /** Bulk upsert multiple day entries at once (for auto-fill, copy month, etc.) */
+  async bulkUpsertDays(
+    entries: {
+      org_id: string
+      person_id: string
+      project_id: string
+      work_package_id: string | null
+      date: string
+      hours: number
+    }[],
+  ): Promise<number> {
+    if (entries.length === 0) return 0
+
+    // Split into deletes (hours=0) and upserts (hours>0)
+    const toDelete = entries.filter(e => e.hours <= 0)
+    const toUpsert = entries.filter(e => e.hours > 0)
+
+    // Delete zero-hour entries one by one (need to handle NULL wp)
+    for (const e of toDelete) {
+      let query = tsDays()
+        .delete()
+        .eq('org_id', e.org_id)
+        .eq('person_id', e.person_id)
+        .eq('project_id', e.project_id)
+        .eq('date', e.date)
+
+      if (e.work_package_id) {
+        query = query.eq('work_package_id', e.work_package_id)
+      } else {
+        query = query.is('work_package_id', null)
+      }
+      await query
+    }
+
+    // Upsert non-zero entries in batches
+    if (toUpsert.length > 0) {
+      // Upsert one by one to handle NULL work_package_id correctly
+      for (const e of toUpsert) {
+        await timesheetService.upsertDay(
+          e.org_id, e.person_id, e.project_id, e.work_package_id, e.date, e.hours,
+        )
+      }
+    }
+
+    return toUpsert.length
+  },
+
+  /** Delete all daily entries for a person in a month (for a specific project, or all) */
+  async clearDays(
+    orgId: string,
+    personId: string,
+    year: number,
+    month: number,
+    projectId?: string,
+  ): Promise<void> {
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+    let query = tsDays()
+      .delete()
+      .eq('org_id', orgId)
+      .eq('person_id', personId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+
+    if (projectId) query = query.eq('project_id', projectId)
+
+    const { error } = await query
+    if (error) throw error
+  },
+
+  // ───────────────────────────────────────────────
+  // Smart features
+  // ───────────────────────────────────────────────
+
+  /**
+   * Auto-fill from allocations: distributes each project's allocated hours
+   * evenly across available working days (minus holidays & absences).
+   * Only fills days that don't already have entries for that project.
+   */
+  async autoFillFromPlan(
+    orgId: string,
+    personId: string,
+    year: number,
+    month: number,
+    availableDates: string[], // pre-computed: weekdays minus holidays minus absences
+    hoursPerDay: number,
+  ): Promise<{ filled: number }> {
+    // 1. Get allocations for this person & month
+    const { data: assignments, error: aErr } = await supabase
+      .from('assignments')
+      .select('project_id, work_package_id, pms')
+      .eq('org_id', orgId)
+      .eq('person_id', personId)
+      .eq('year', year)
+      .eq('month', month)
+      .eq('type', 'actual')
+
+    if (aErr) throw aErr
+    if (!assignments || assignments.length === 0) {
+      throw new Error('No allocations found for this person in this period.')
+    }
+
+    // 2. Get existing day entries for this person & month
+    const existingDays = await timesheetService.listDays(orgId, personId, year, month)
+    const existingSet = new Set(
+      existingDays.map(d => `${d.project_id}:${d.work_package_id ?? ''}:${d.date}`),
+    )
+
+    // 3. For each allocation, distribute hours across available dates
+    const toInsert: {
+      org_id: string; person_id: string; project_id: string;
+      work_package_id: string | null; date: string; hours: number
+    }[] = []
+
+    for (const a of assignments) {
+      const totalAllocHours = a.pms * availableDates.length * hoursPerDay
+      const dailyHours = Math.round((totalAllocHours / availableDates.length) * 2) / 2 // round to 0.5
+
+      for (const dateStr of availableDates) {
+        const key = `${a.project_id}:${a.work_package_id ?? ''}:${dateStr}`
+        if (existingSet.has(key)) continue // don't overwrite existing entries
+
+        toInsert.push({
+          org_id: orgId,
+          person_id: personId,
+          project_id: a.project_id,
+          work_package_id: a.work_package_id,
+          date: dateStr,
+          hours: dailyHours,
+        })
+      }
+    }
+
+    if (toInsert.length > 0) {
+      await timesheetService.bulkUpsertDays(toInsert)
+    }
+
+    // Ensure envelope exists
+    await timesheetService.ensureEnvelope(orgId, personId, year, month)
+    await timesheetService.refreshEnvelopeTotals(orgId, personId, year, month)
+
+    return { filled: toInsert.length }
+  },
+
+  /**
+   * Copy daily pattern from a previous month.
+   * Takes the previous month's day entries and maps them onto the target month's
+   * available dates (same weekday pattern where possible, or just fill sequentially).
+   */
+  async copyPreviousMonth(
+    orgId: string,
+    personId: string,
+    year: number,
+    month: number,
+    availableDates: string[],
+  ): Promise<{ copied: number }> {
+    const prevMonth = month === 1 ? 12 : month - 1
+    const prevYear = month === 1 ? year - 1 : year
+
+    const prevDays = await timesheetService.listDays(orgId, personId, prevYear, prevMonth)
+    if (prevDays.length === 0) {
+      throw new Error('No timesheet data found in the previous month to copy.')
+    }
+
+    // Group by project+wp, get their daily pattern
+    const projectMap = new Map<string, { project_id: string; work_package_id: string | null; hours: number[] }>()
+    for (const d of prevDays) {
+      const key = `${d.project_id}:${d.work_package_id ?? ''}`
+      if (!projectMap.has(key)) {
+        projectMap.set(key, { project_id: d.project_id, work_package_id: d.work_package_id, hours: [] })
+      }
+      projectMap.get(key)!.hours.push(d.hours)
+    }
+
+    // For each project, compute average daily hours and apply to available dates
+    const toInsert: {
+      org_id: string; person_id: string; project_id: string;
+      work_package_id: string | null; date: string; hours: number
+    }[] = []
+
+    for (const [, proj] of projectMap) {
+      const avgHours = Math.round((proj.hours.reduce((a, b) => a + b, 0) / proj.hours.length) * 2) / 2
+
+      for (const dateStr of availableDates) {
+        toInsert.push({
+          org_id: orgId,
+          person_id: personId,
+          project_id: proj.project_id,
+          work_package_id: proj.work_package_id,
+          date: dateStr,
+          hours: avgHours,
+        })
+      }
+    }
+
+    // Clear current month first, then insert
+    await timesheetService.clearDays(orgId, personId, year, month)
+    await timesheetService.bulkUpsertDays(toInsert)
+
+    await timesheetService.ensureEnvelope(orgId, personId, year, month)
+    await timesheetService.refreshEnvelopeTotals(orgId, personId, year, month)
+
+    return { copied: toInsert.length }
+  },
+
+  // ───────────────────────────────────────────────
+  // Approval → Actuals sync
+  // ───────────────────────────────────────────────
+
+  /**
+   * When a timesheet month is approved, compute actual PMs per project
+   * from daily hours and upsert into the assignments table as 'actual' type.
+   * Formula: PM = totalProjectHours / (availableWorkingDays × hoursPerDay)
+   */
+  async syncApprovedToActuals(
+    orgId: string,
+    personId: string,
+    year: number,
+    month: number,
+    hoursPerDay: number,
+    availableDayCount: number,
+  ): Promise<{ synced: number }> {
+    const { allocationsService } = await import('@/services/allocationsService')
+
+    // Load all daily entries for this person & month
+    const days = await timesheetService.listDays(orgId, personId, year, month)
+
+    // Group by project+wp → total hours
+    const projMap = new Map<string, { project_id: string; work_package_id: string | null; totalHours: number }>()
+    for (const d of days) {
+      const key = `${d.project_id}:${d.work_package_id ?? ''}`
+      if (!projMap.has(key)) {
+        projMap.set(key, { project_id: d.project_id, work_package_id: d.work_package_id, totalHours: 0 })
+      }
+      projMap.get(key)!.totalHours += d.hours
+    }
+
+    // Compute PMs and upsert into assignments as 'actual'
+    const cells = Array.from(projMap.values()).map(p => {
+      const monthCapacity = availableDayCount * hoursPerDay
+      const pms = monthCapacity > 0 ? Math.round((p.totalHours / monthCapacity) * 10000) / 10000 : 0
+      return {
+        org_id: orgId,
+        person_id: personId,
+        project_id: p.project_id,
+        work_package_id: p.work_package_id,
+        year,
+        month,
+        pms,
+        type: 'actual' as const,
+      }
+    })
+
+    if (cells.length > 0) {
+      await allocationsService.bulkUpsertAssignments(cells)
+    }
+
+    return { synced: cells.length }
+  },
+
+  // ───────────────────────────────────────────────
+  // Legacy compatibility (keep old list method working)
+  // ───────────────────────────────────────────────
+
+  async list(orgId: string | null, filters?: TimesheetFilters): Promise<TimesheetEntry[]> {
+    return timesheetService.listEnvelopes(orgId, filters)
   },
 
   async bulkUpdateStatus(
@@ -222,7 +564,7 @@ export const timesheetService = {
 
     const { error } = await supabase
       .from('timesheet_entries')
-      .update(updates)
+      .update(updates as any)
       .in('id', ids)
 
     if (error) throw error

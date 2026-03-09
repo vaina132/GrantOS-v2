@@ -130,6 +130,7 @@ export interface TimesheetEntry {
   month: number
   planned_hours: number | null
   actual_hours: number | null
+  total_hours: number | null
   working_days: number | null
   hours: number | null
   planned_percentage: number | null
@@ -144,6 +145,26 @@ export interface TimesheetEntry {
   notes: string | null
   created_at: string
   updated_at: string
+}
+
+export interface TimesheetDay {
+  id: string
+  org_id: string
+  person_id: string
+  project_id: string
+  work_package_id: string | null
+  date: string
+  hours: number
+  created_at: string
+  updated_at: string
+}
+
+export interface Holiday {
+  id: string
+  org_id: string
+  date: string
+  name: string
+  created_at: string
 }
 
 export interface Absence {

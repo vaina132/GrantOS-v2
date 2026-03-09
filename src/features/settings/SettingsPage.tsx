@@ -5,8 +5,9 @@ import { OrgSettings } from './OrgSettings'
 import { UsersSettings } from './UsersSettings'
 import { FundingSchemes } from './FundingSchemes'
 import { PeriodLocking } from '@/features/allocations/PeriodLocking'
+import { HolidaySettings } from './HolidaySettings'
 
-type SettingsTab = 'org' | 'users' | 'funding' | 'locks'
+type SettingsTab = 'org' | 'users' | 'funding' | 'locks' | 'holidays'
 
 export function SettingsPage() {
   const [tab, setTab] = useState<SettingsTab>('org')
@@ -21,6 +22,7 @@ export function SettingsPage() {
           { key: 'users', label: 'Users' },
           { key: 'funding', label: 'Funding Schemes' },
           { key: 'locks', label: 'Period Locks' },
+          { key: 'holidays', label: 'Holidays' },
         ] as { key: SettingsTab; label: string }[]).map((t) => (
           <Button
             key={t.key}
@@ -37,6 +39,7 @@ export function SettingsPage() {
       {tab === 'users' && <UsersSettings />}
       {tab === 'funding' && <FundingSchemes />}
       {tab === 'locks' && <PeriodLocking />}
+      {tab === 'holidays' && <HolidaySettings />}
     </div>
   )
 }
