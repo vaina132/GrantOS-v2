@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
 import { Undo2, Redo2, Save, Grid3x3, Plus, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getWorkingDaysInMonth, pmToHours } from '@/lib/pmUtils'
+import { settingsService } from '@/services/settingsService'
 import { BulkFillDialog } from './BulkFillDialog'
 import { projectsService } from '@/services/projectsService'
 import type { AssignmentType, Person, Project, WorkPackage } from '@/types'
@@ -48,6 +50,15 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
   const { assignments: officialAssignments, isLoading: loadingOfficial, refetch: refetchOfficial } = useAssignments('official')
   const { isLocked } = usePeriodLocks()
   const { absences } = useAbsences()
+  const [hoursPerDay, setHoursPerDay] = useState(8)
+
+  // Load org settings for hours per day
+  useEffect(() => {
+    if (!orgId) return
+    settingsService.getOrganisation(orgId).then(org => {
+      if (org?.working_hours_per_day) setHoursPerDay(org.working_hours_per_day)
+    }).catch(() => {})
+  }, [orgId])
 
   // Fetch work packages for projects that use them
   const [wpsByProject, setWpsByProject] = useState<Record<string, WorkPackage[]>>({})
@@ -620,7 +631,22 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
                     )
                   })}
                   <td className="px-3 py-1 text-right tabular-nums text-xs font-semibold">
-                    {rowTotal > 0 ? rowTotal.toFixed(2) : '—'}
+                    {rowTotal > 0 ? (
+                      <div>
+                        <span>{rowTotal.toFixed(2)} PM</span>
+                        <span className="block text-[10px] text-muted-foreground font-normal">
+                          {(() => {
+                            let totalHours = 0
+                            for (let m = 1; m <= 12; m++) {
+                              const k = makeCellKey(row.person.id, row.project.id, row.wpId, m)
+                              const pm = cells[k] ?? 0
+                              if (pm > 0) totalHours += pmToHours(pm, getWorkingDaysInMonth(globalYear, m), hoursPerDay)
+                            }
+                            return `${totalHours.toFixed(0)}h`
+                          })()}
+                        </span>
+                      </div>
+                    ) : '—'}
                   </td>
                 </tr>
               )

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import type { TimesheetEntry, TimesheetStatus, TimesheetDay } from '@/types'
+import { hoursToPm } from '@/lib/pmUtils'
 
 // Cast for new table not yet in generated DB types
 const tsDays = () => (supabase as any).from('timesheet_days')
@@ -514,10 +515,9 @@ export const timesheetService = {
       projMap.get(key)!.totalHours += d.hours
     }
 
-    // Compute PMs and upsert into assignments as 'actual'
+    // Compute PMs using canonical formula and upsert into assignments as 'actual'
     const cells = Array.from(projMap.values()).map(p => {
-      const monthCapacity = availableDayCount * hoursPerDay
-      const pms = monthCapacity > 0 ? Math.round((p.totalHours / monthCapacity) * 10000) / 10000 : 0
+      const pms = hoursToPm(p.totalHours, availableDayCount, hoursPerDay)
       return {
         org_id: orgId,
         person_id: personId,

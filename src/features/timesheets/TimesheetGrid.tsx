@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
 import { Send, Copy, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { hoursToPm, formatPm, pmToHours } from '@/lib/pmUtils'
 import type { Holiday, Absence, Assignment, TimesheetEntry } from '@/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -216,6 +217,7 @@ export function TimesheetGrid() {
   const grandTotal = useMemo(() => Object.values(projectTotals).reduce((a, b) => a + b, 0), [projectTotals])
   const totalCapacity = availableDays.length * hoursPerDay
   const capacityPct = totalCapacity > 0 ? Math.round((grandTotal / totalCapacity) * 100) : 0
+  const grandTotalPm = hoursToPm(grandTotal, availableDays.length, hoursPerDay)
 
   // Grid cell change handler with debounced auto-save
   const handleCellChange = useCallback((projectId: string, wpId: string | null, dateStr: string, value: number) => {
@@ -369,8 +371,8 @@ export function TimesheetGrid() {
         </div>
         <div className="rounded-lg border bg-card p-3">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total Hours</div>
-          <div className="text-xl font-bold tabular-nums mt-0.5 text-primary">{grandTotal.toFixed(1)}</div>
-          <div className="text-[11px] text-muted-foreground">of {totalCapacity}h capacity</div>
+          <div className="text-xl font-bold tabular-nums mt-0.5 text-primary">{grandTotal.toFixed(1)}h</div>
+          <div className="text-[11px] text-muted-foreground">= {formatPm(grandTotalPm)} · max {totalCapacity}h</div>
         </div>
         <div className="rounded-lg border bg-card p-3">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Capacity Used</div>
@@ -442,8 +444,8 @@ export function TimesheetGrid() {
                 {projectRows.map((row, rowIdx) => {
                   const rowKey = `${row.project_id}:${row.work_package_id ?? ''}`
                   const rowTotal = projectTotals[rowKey] || 0
-                  const allocHours = row.allocPm * availableDays.length * hoursPerDay
-                  const pmEquiv = availableDays.length > 0 ? (rowTotal / (availableDays.length * hoursPerDay)).toFixed(2) : '0.00'
+                  const allocHours = pmToHours(row.allocPm, availableDays.length, hoursPerDay)
+                  const rowPm = hoursToPm(rowTotal, availableDays.length, hoursPerDay)
 
                   return (
                     <tr key={rowKey} className={cn('border-b last:border-0', rowIdx % 2 === 1 && 'bg-muted/10')}>
@@ -453,7 +455,7 @@ export function TimesheetGrid() {
                       >
                         <div className="text-primary font-semibold text-xs">{row.acronym}</div>
                         {row.wpName && <div className="text-[10px] text-muted-foreground">{row.wpName}</div>}
-                        <div className="text-[10px] text-muted-foreground">Plan: {allocHours.toFixed(1)}h ({row.allocPm} PM)</div>
+                        <div className="text-[10px] text-muted-foreground">Plan: {allocHours.toFixed(1)}h ({formatPm(row.allocPm)})</div>
                       </td>
                       {calendarDays.map(d => {
                         const cellKey = `${row.project_id}:${row.work_package_id ?? ''}:${d.dateStr}`
@@ -479,7 +481,8 @@ export function TimesheetGrid() {
                                 value={value || ''}
                                 placeholder="·"
                                 onChange={(e) => {
-                                  const v = parseFloat(e.target.value) || 0
+                                  const raw = parseFloat(e.target.value) || 0
+                                  const v = Math.min(Math.max(raw, 0), hoursPerDay)
                                   handleCellChange(row.project_id, row.work_package_id, d.dateStr, v)
                                 }}
                                 className={cn(
@@ -497,8 +500,8 @@ export function TimesheetGrid() {
                         )
                       })}
                       <td className="px-2 py-2 text-center bg-muted/30 border-l">
-                        <div className="font-bold tabular-nums text-xs">{rowTotal.toFixed(1)}h</div>
-                        <div className="text-[10px] text-muted-foreground tabular-nums">{pmEquiv} PM</div>
+                        <div className={cn('font-bold tabular-nums text-xs', rowTotal > allocHours + 0.5 && 'text-amber-600')}>{rowTotal.toFixed(1)}h</div>
+                        <div className="text-[10px] text-muted-foreground tabular-nums">{formatPm(rowPm)}</div>
                       </td>
                     </tr>
                   )
@@ -534,9 +537,9 @@ export function TimesheetGrid() {
                     )
                   })}
                   <td className="px-2 py-2 text-center bg-muted/50 border-l">
-                    <div className="font-bold tabular-nums text-sm">{grandTotal.toFixed(1)}h</div>
+                    <div className={cn('font-bold tabular-nums text-sm', capacityPct > 100 && 'text-red-500')}>{grandTotal.toFixed(1)}h</div>
                     <div className="text-[10px] text-muted-foreground tabular-nums">
-                      {availableDays.length > 0 ? (grandTotal / (availableDays.length * hoursPerDay)).toFixed(2) : '0.00'} PM
+                      {formatPm(grandTotalPm)}
                     </div>
                   </td>
                 </tr>

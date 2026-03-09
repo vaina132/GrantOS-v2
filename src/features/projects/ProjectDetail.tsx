@@ -17,7 +17,7 @@ import { toast } from '@/components/ui/use-toast'
 import { ArrowLeft, Pencil, Plus, Trash2, Save } from 'lucide-react'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { DocumentList } from '@/features/documents/DocumentList'
-import type { WorkPackage, PmBudget } from '@/types'
+import type { WorkPackage, PmBudget, Assignment } from '@/types'
 
 type DetailTab = 'overview' | 'budget' | 'workpackages' | 'documents'
 
@@ -38,8 +38,14 @@ export function ProjectDetail() {
   const [wpSaving, setWpSaving] = useState(false)
   const [wpDeleteTarget, setWpDeleteTarget] = useState<WorkPackage | null>(null)
   const [wpDeleting, setWpDeleting] = useState(false)
+  const [editingWpId, setEditingWpId] = useState<string | null>(null)
+  const [editWpName, setEditWpName] = useState('')
+  const [editWpDesc, setEditWpDesc] = useState('')
+  const [editWpStart, setEditWpStart] = useState('')
+  const [editWpEnd, setEditWpEnd] = useState('')
+  const [editWpSaving, setEditWpSaving] = useState(false)
 
-  // PM budget per year
+  // PM budget per year (project-level)
   const [, setPmBudgets] = useState<PmBudget[]>([])
   const [pmBudgetValues, setPmBudgetValues] = useState<Record<number, number>>({})
   const [pmBudgetSaving, setPmBudgetSaving] = useState(false)
@@ -54,17 +60,32 @@ export function ProjectDetail() {
     return years
   }, [project])
 
+  // WP PM budgets: wpId -> target PMs (total across years)
+  const [wpPmBudgets, setWpPmBudgets] = useState<Record<string, number>>({})
+  const [wpPmBudgetDirty, setWpPmBudgetDirty] = useState(false)
+  const [wpPmBudgetSaving, setWpPmBudgetSaving] = useState(false)
+
+  // Allocations for this project (to show allocated vs budget)
+  const [projectAllocations, setProjectAllocations] = useState<Assignment[]>([])
+
   const loadPmBudgets = useCallback(async () => {
     if (!id) return
     try {
       const data = await allocationsService.listPmBudgetsByProject(id, 'actual')
       setPmBudgets(data)
       const map: Record<number, number> = {}
+      const wpMap: Record<string, number> = {}
       for (const b of data) {
-        if (!b.work_package_id) map[b.year] = b.target_pms
+        if (!b.work_package_id) {
+          map[b.year] = b.target_pms
+        } else {
+          wpMap[b.work_package_id] = (wpMap[b.work_package_id] ?? 0) + b.target_pms
+        }
       }
       setPmBudgetValues(map)
+      setWpPmBudgets(wpMap)
       setPmBudgetDirty(false)
+      setWpPmBudgetDirty(false)
     } catch { /* ignore */ }
   }, [id])
 
@@ -95,6 +116,64 @@ export function ProjectDetail() {
       toast({ title: 'Error', description: message, variant: 'destructive' })
     } finally {
       setPmBudgetSaving(false)
+    }
+  }
+
+  // Load allocations for this project (all years)
+  const loadAllocations = useCallback(async () => {
+    if (!id) return
+    try {
+      const allAllocs: Assignment[] = []
+      for (const y of projectYears) {
+        const data = await allocationsService.listAssignmentsByProject(id, y, 'actual')
+        allAllocs.push(...data)
+      }
+      setProjectAllocations(allAllocs)
+    } catch { /* ignore */ }
+  }, [id, projectYears])
+
+  useEffect(() => {
+    if (projectYears.length > 0) loadAllocations()
+  }, [loadAllocations, projectYears])
+
+  // WP allocated PMs (from assignments)
+  const wpAllocatedPms = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const a of projectAllocations) {
+      const wpKey = a.work_package_id ?? '__project__'
+      map[wpKey] = (map[wpKey] ?? 0) + a.pms
+    }
+    return map
+  }, [projectAllocations])
+
+  // Project-level totals
+  const totalProjectBudgetPm = useMemo(() => Object.values(pmBudgetValues).reduce((a, b) => a + b, 0), [pmBudgetValues])
+  const totalWpBudgetPm = useMemo(() => Object.values(wpPmBudgets).reduce((a, b) => a + b, 0), [wpPmBudgets])
+  const totalAllocatedPm = useMemo(() => projectAllocations.reduce((a, b) => a + b.pms, 0), [projectAllocations])
+
+  const handleSaveWpPmBudgets = async () => {
+    if (!id || !orgId) return
+    setWpPmBudgetSaving(true)
+    try {
+      for (const wp of workPackages) {
+        const pms = wpPmBudgets[wp.id] ?? 0
+        await allocationsService.upsertPmBudget({
+          org_id: orgId,
+          project_id: id,
+          work_package_id: wp.id,
+          year: projectYears[0] ?? new Date().getFullYear(),
+          target_pms: pms,
+          type: 'actual',
+        })
+      }
+      toast({ title: 'Saved', description: 'WP PM budgets updated.' })
+      setWpPmBudgetDirty(false)
+      loadPmBudgets()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save WP budgets'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
+    } finally {
+      setWpPmBudgetSaving(false)
     }
   }
 
@@ -133,11 +212,41 @@ export function ProjectDetail() {
       toast({ title: 'Work package deleted' })
       setWpDeleteTarget(null)
       refetchWPs()
+      loadPmBudgets()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete'
       toast({ title: 'Error', description: message, variant: 'destructive' })
     } finally {
       setWpDeleting(false)
+    }
+  }
+
+  const startEditWp = (wp: WorkPackage) => {
+    setEditingWpId(wp.id)
+    setEditWpName(wp.name)
+    setEditWpDesc(wp.description ?? '')
+    setEditWpStart(wp.start_date ?? '')
+    setEditWpEnd(wp.end_date ?? '')
+  }
+
+  const handleSaveEditWp = async () => {
+    if (!editingWpId || !editWpName.trim()) return
+    setEditWpSaving(true)
+    try {
+      await projectsService.updateWorkPackage(editingWpId, {
+        name: editWpName.trim(),
+        description: editWpDesc.trim() || null,
+        start_date: editWpStart || null,
+        end_date: editWpEnd || null,
+      })
+      toast({ title: 'Updated', description: 'Work package updated.' })
+      setEditingWpId(null)
+      refetchWPs()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
+    } finally {
+      setEditWpSaving(false)
     }
   }
 
@@ -350,91 +459,259 @@ export function ProjectDetail() {
 
         {/* Work Packages Tab */}
         {detailTab === 'workpackages' && project.has_wps && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Work Packages</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingWPs ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-8 w-full" />
-                  <Skeleton className="h-8 w-full" />
+          <div className="space-y-6">
+            {/* Summary card: project PM budget vs WP allocation vs allocated */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-lg border bg-card p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Project Budget</div>
+                <div className="text-xl font-bold tabular-nums mt-0.5">{totalProjectBudgetPm.toFixed(1)} PM</div>
+                <div className="text-[11px] text-muted-foreground">Total across all years</div>
+              </div>
+              <div className="rounded-lg border bg-card p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Assigned to WPs</div>
+                <div className={cn('text-xl font-bold tabular-nums mt-0.5', totalWpBudgetPm > totalProjectBudgetPm + 0.01 ? 'text-red-500' : 'text-foreground')}>
+                  {totalWpBudgetPm.toFixed(1)} PM
                 </div>
-              ) : (
-                <>
-                  {workPackages.length > 0 && (
-                    <div className="rounded-lg border mb-4 overflow-x-auto">
-                      <table className="w-full text-sm min-w-[600px]">
-                        <thead>
-                          <tr className="border-b bg-muted/50">
-                            <th className="px-4 py-2 text-left font-medium">Name</th>
-                            <th className="px-4 py-2 text-left font-medium">Description</th>
-                            <th className="px-4 py-2 text-left font-medium">Start</th>
-                            <th className="px-4 py-2 text-left font-medium">End</th>
-                            {can('canManageProjects') && (
-                              <th className="px-4 py-2 text-right font-medium">Actions</th>
-                            )}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {workPackages.map((wp) => (
-                            <tr key={wp.id} className="border-b last:border-0">
-                              <td className="px-4 py-2 font-medium">{wp.name}</td>
-                              <td className="px-4 py-2 text-muted-foreground text-xs max-w-[200px] truncate">{wp.description ?? '—'}</td>
-                              <td className="px-4 py-2 text-xs text-muted-foreground">{wp.start_date ? formatDate(wp.start_date) : '—'}</td>
-                              <td className="px-4 py-2 text-xs text-muted-foreground">{wp.end_date ? formatDate(wp.end_date) : '—'}</td>
+                <div className="text-[11px] text-muted-foreground">
+                  {totalProjectBudgetPm > 0 ? `${Math.round((totalWpBudgetPm / totalProjectBudgetPm) * 100)}%` : '—'} of budget
+                </div>
+              </div>
+              <div className="rounded-lg border bg-card p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Allocated</div>
+                <div className={cn('text-xl font-bold tabular-nums mt-0.5', totalAllocatedPm > totalProjectBudgetPm + 0.01 ? 'text-amber-500' : 'text-primary')}>
+                  {totalAllocatedPm.toFixed(1)} PM
+                </div>
+                <div className="text-[11px] text-muted-foreground">People allocated to project</div>
+              </div>
+              <div className="rounded-lg border bg-card p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Remaining</div>
+                <div className={cn('text-xl font-bold tabular-nums mt-0.5', (totalProjectBudgetPm - totalAllocatedPm) < 0 ? 'text-red-500' : 'text-emerald-500')}>
+                  {(totalProjectBudgetPm - totalAllocatedPm).toFixed(1)} PM
+                </div>
+                <div className="text-[11px] text-muted-foreground">Budget minus allocated</div>
+              </div>
+            </div>
+
+            {/* WP list with PM budgets */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Work Packages</CardTitle>
+                  {can('canManageProjects') && wpPmBudgetDirty && (
+                    <Button size="sm" onClick={handleSaveWpPmBudgets} disabled={wpPmBudgetSaving}>
+                      <Save className="mr-1 h-4 w-4" />
+                      {wpPmBudgetSaving ? 'Saving...' : 'Save PM Budgets'}
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingWPs ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ) : (
+                  <>
+                    {workPackages.length > 0 && (
+                      <div className="rounded-lg border mb-4 overflow-x-auto">
+                        <table className="w-full text-sm min-w-[700px]">
+                          <thead>
+                            <tr className="border-b bg-muted/50">
+                              <th className="px-4 py-2 text-left font-medium">Name</th>
+                              <th className="px-4 py-2 text-left font-medium">Period</th>
+                              <th className="px-4 py-2 text-right font-medium">Budget PM</th>
+                              <th className="px-4 py-2 text-right font-medium">Allocated</th>
+                              <th className="px-4 py-2 text-right font-medium">Remaining</th>
                               {can('canManageProjects') && (
-                                <td className="px-4 py-2 text-right">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setWpDeleteTarget(wp)}
-                                  >
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                  </Button>
-                                </td>
+                                <th className="px-4 py-2 text-right font-medium">Actions</th>
                               )}
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                          </thead>
+                          <tbody>
+                            {workPackages.map((wp) => {
+                              const wpBudget = wpPmBudgets[wp.id] ?? 0
+                              const wpAlloc = wpAllocatedPms[wp.id] ?? 0
+                              const wpRemaining = wpBudget - wpAlloc
+                              const isEditing = editingWpId === wp.id
 
-                  {can('canManageProjects') && (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          placeholder="WP name *"
-                          value={wpName}
-                          onChange={(e) => setWpName(e.target.value)}
-                        />
-                        <Input
-                          placeholder="Description (optional)"
-                          value={wpDesc}
-                          onChange={(e) => setWpDesc(e.target.value)}
-                        />
+                              return (
+                                <tr key={wp.id} className="border-b last:border-0 hover:bg-muted/20">
+                                  <td className="px-4 py-2">
+                                    {isEditing ? (
+                                      <div className="space-y-1">
+                                        <Input value={editWpName} onChange={e => setEditWpName(e.target.value)} className="h-7 text-xs" placeholder="WP name" />
+                                        <Input value={editWpDesc} onChange={e => setEditWpDesc(e.target.value)} className="h-7 text-xs" placeholder="Description" />
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <div className="font-medium">{wp.name}</div>
+                                        {wp.description && <div className="text-muted-foreground text-xs truncate max-w-[200px]">{wp.description}</div>}
+                                      </>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2 text-xs text-muted-foreground">
+                                    {isEditing ? (
+                                      <div className="flex gap-1">
+                                        <Input type="date" value={editWpStart} onChange={e => setEditWpStart(e.target.value)} className="h-7 text-xs w-28" />
+                                        <Input type="date" value={editWpEnd} onChange={e => setEditWpEnd(e.target.value)} className="h-7 text-xs w-28" />
+                                      </div>
+                                    ) : (
+                                      <>
+                                        {wp.start_date ? formatDate(wp.start_date) : '—'}
+                                        {' – '}
+                                        {wp.end_date ? formatDate(wp.end_date) : '—'}
+                                      </>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2 text-right">
+                                    {can('canManageProjects') ? (
+                                      <Input
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        value={wpBudget || ''}
+                                        placeholder="0"
+                                        onChange={(e) => {
+                                          setWpPmBudgets(prev => ({ ...prev, [wp.id]: Number(e.target.value) || 0 }))
+                                          setWpPmBudgetDirty(true)
+                                        }}
+                                        className="w-20 ml-auto text-right tabular-nums h-7 text-xs"
+                                      />
+                                    ) : (
+                                      <span className="tabular-nums font-medium">{wpBudget.toFixed(1)}</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2 text-right tabular-nums text-xs">
+                                    <span className={cn(wpAlloc > wpBudget + 0.01 && wpBudget > 0 ? 'text-amber-600 font-semibold' : 'text-muted-foreground')}>
+                                      {wpAlloc.toFixed(2)}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-2 text-right tabular-nums text-xs">
+                                    <span className={cn(wpRemaining < 0 ? 'text-red-500 font-semibold' : 'text-emerald-600')}>
+                                      {wpBudget > 0 ? wpRemaining.toFixed(2) : '—'}
+                                    </span>
+                                  </td>
+                                  {can('canManageProjects') && (
+                                    <td className="px-4 py-2 text-right">
+                                      <div className="flex items-center justify-end gap-1">
+                                        {isEditing ? (
+                                          <>
+                                            <Button variant="ghost" size="sm" onClick={handleSaveEditWp} disabled={editWpSaving} className="h-7 text-xs">
+                                              <Save className="h-3 w-3 mr-1" />
+                                              {editWpSaving ? '...' : 'Save'}
+                                            </Button>
+                                            <Button variant="ghost" size="sm" onClick={() => setEditingWpId(null)} className="h-7 text-xs">Cancel</Button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditWp(wp)}>
+                                              <Pencil className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setWpDeleteTarget(wp)}>
+                                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                            </Button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                  )}
+                                </tr>
+                              )
+                            })}
+                            {/* Totals row */}
+                            <tr className="bg-muted/30 font-semibold text-xs">
+                              <td className="px-4 py-2" colSpan={2}>Total</td>
+                              <td className="px-4 py-2 text-right tabular-nums">{totalWpBudgetPm.toFixed(1)} PM</td>
+                              <td className="px-4 py-2 text-right tabular-nums">{totalAllocatedPm.toFixed(2)}</td>
+                              <td className="px-4 py-2 text-right tabular-nums">
+                                <span className={cn((totalWpBudgetPm - totalAllocatedPm) < 0 ? 'text-red-500' : 'text-emerald-600')}>
+                                  {totalWpBudgetPm > 0 ? (totalWpBudgetPm - totalAllocatedPm).toFixed(2) : '—'}
+                                </span>
+                              </td>
+                              {can('canManageProjects') && <td />}
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
-                      <div className="flex gap-2 items-end">
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">Start Date</Label>
-                          <Input type="date" value={wpStartDate} onChange={(e) => setWpStartDate(e.target.value)} />
+                    )}
+
+                    {/* Budget distribution bar */}
+                    {workPackages.length > 0 && totalProjectBudgetPm > 0 && (
+                      <div className="mb-4 space-y-1.5">
+                        <div className="text-xs text-muted-foreground">PM Budget Distribution</div>
+                        <div className="h-3 rounded-full bg-muted overflow-hidden flex">
+                          {workPackages.map((wp, i) => {
+                            const wpBudget = wpPmBudgets[wp.id] ?? 0
+                            const pct = totalProjectBudgetPm > 0 ? (wpBudget / totalProjectBudgetPm) * 100 : 0
+                            const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500', 'bg-red-400', 'bg-pink-500', 'bg-cyan-500', 'bg-lime-500']
+                            return pct > 0 ? (
+                              <div
+                                key={wp.id}
+                                className={cn('h-full', colors[i % colors.length])}
+                                style={{ width: `${pct}%` }}
+                                title={`${wp.name}: ${wpBudget.toFixed(1)} PM (${pct.toFixed(0)}%)`}
+                              />
+                            ) : null
+                          })}
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">End Date</Label>
-                          <Input type="date" value={wpEndDate} onChange={(e) => setWpEndDate(e.target.value)} />
+                        <div className="flex gap-3 flex-wrap text-[10px] text-muted-foreground">
+                          {workPackages.map((wp, i) => {
+                            const wpBudget = wpPmBudgets[wp.id] ?? 0
+                            const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500', 'bg-red-400', 'bg-pink-500', 'bg-cyan-500', 'bg-lime-500']
+                            return (
+                              <span key={wp.id} className="flex items-center gap-1">
+                                <span className={cn('w-2 h-2 rounded-sm', colors[i % colors.length])} />
+                                {wp.name}: {wpBudget.toFixed(1)} PM
+                              </span>
+                            )
+                          })}
+                          {totalProjectBudgetPm - totalWpBudgetPm > 0.01 && (
+                            <span className="flex items-center gap-1 text-amber-600">
+                              Unassigned: {(totalProjectBudgetPm - totalWpBudgetPm).toFixed(1)} PM
+                            </span>
+                          )}
                         </div>
-                        <Button onClick={handleAddWP} disabled={wpSaving || !wpName.trim()}>
-                          <Plus className="mr-1 h-4 w-4" />
-                          {wpSaving ? 'Adding...' : 'Add WP'}
-                        </Button>
                       </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
+                    )}
+
+                    {/* Add new WP form */}
+                    {can('canManageProjects') && (
+                      <div className="space-y-3 rounded-lg border p-4 bg-muted/10">
+                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Add Work Package</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            placeholder="WP name *"
+                            value={wpName}
+                            onChange={(e) => setWpName(e.target.value)}
+                          />
+                          <Input
+                            placeholder="Description (optional)"
+                            value={wpDesc}
+                            onChange={(e) => setWpDesc(e.target.value)}
+                          />
+                        </div>
+                        <div className="flex gap-2 items-end">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Start Date</Label>
+                            <Input type="date" value={wpStartDate} onChange={(e) => setWpStartDate(e.target.value)} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">End Date</Label>
+                            <Input type="date" value={wpEndDate} onChange={(e) => setWpEndDate(e.target.value)} />
+                          </div>
+                          <Button onClick={handleAddWP} disabled={wpSaving || !wpName.trim()}>
+                            <Plus className="mr-1 h-4 w-4" />
+                            {wpSaving ? 'Adding...' : 'Add WP'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Documents Tab */}

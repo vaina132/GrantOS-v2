@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
 import { ClipboardCheck, CheckCheck, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { hoursToPm, formatPm } from '@/lib/pmUtils'
 import type { TimesheetEntry, TimesheetStatus, Person } from '@/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -291,7 +292,8 @@ export function AllTimesheets() {
                   <div className="min-w-0">
                     <div className="font-semibold text-sm truncate">{pe.person.full_name}</div>
                     <div className="text-[11px] text-muted-foreground">
-                      {pe.totalHours > 0 ? `${pe.totalHours.toFixed(1)}h` : '0h'} / {maxCapacity}h capacity
+                      {pe.totalHours > 0 ? `${pe.totalHours.toFixed(1)}h` : '0h'} / {maxCapacity}h
+                      {pe.totalHours > 0 && ` · ${formatPm(hoursToPm(pe.totalHours, workingDays, hoursPerDay))}`}
                       {pe.totalHours > 0 && ` · ${pct}%`}
                     </div>
                   </div>
