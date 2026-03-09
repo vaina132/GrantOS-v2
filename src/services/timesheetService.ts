@@ -538,6 +538,44 @@ export const timesheetService = {
   },
 
   // ───────────────────────────────────────────────
+  // Aggregated hours for allocation sync
+  // ───────────────────────────────────────────────
+
+  /**
+   * Get total timesheet hours per person+project+wp+month for an entire year.
+   * Used by AllocationGrid when "timesheets drive allocations" is ON.
+   */
+  async aggregateHoursByYear(
+    orgId: string,
+    year: number,
+  ): Promise<{ person_id: string; project_id: string; work_package_id: string | null; month: number; totalHours: number }[]> {
+    const startDate = `${year}-01-01`
+    const endDate = `${year}-12-31`
+
+    const { data, error } = await tsDays()
+      .select('person_id, project_id, work_package_id, date, hours')
+      .eq('org_id', orgId)
+      .gte('date', startDate)
+      .lte('date', endDate)
+
+    if (error) throw error
+    if (!data || data.length === 0) return []
+
+    // Group by person+project+wp+month
+    const map = new Map<string, { person_id: string; project_id: string; work_package_id: string | null; month: number; totalHours: number }>()
+    for (const d of data as any[]) {
+      const month = parseInt(d.date.substring(5, 7), 10)
+      const key = `${d.person_id}:${d.project_id}:${d.work_package_id ?? ''}:${month}`
+      if (!map.has(key)) {
+        map.set(key, { person_id: d.person_id, project_id: d.project_id, work_package_id: d.work_package_id ?? null, month, totalHours: 0 })
+      }
+      map.get(key)!.totalHours += d.hours
+    }
+
+    return Array.from(map.values())
+  },
+
+  // ───────────────────────────────────────────────
   // Legacy compatibility (keep old list method working)
   // ───────────────────────────────────────────────
 

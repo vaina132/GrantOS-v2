@@ -25,9 +25,7 @@ export function ProjectDetail() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const { project, isLoading } = useProject(id)
-  const { workPackages, isLoading: loadingWPs, refetch: refetchWPs } = useWorkPackages(
-    project?.has_wps ? id : undefined,
-  )
+  const { workPackages, isLoading: loadingWPs, refetch: refetchWPs } = useWorkPackages(id)
   const { orgId, can } = useAuthStore()
   const [detailTab, setDetailTab] = useState<DetailTab>('overview')
 
@@ -276,7 +274,7 @@ export function ProjectDetail() {
   const detailTabs: { key: DetailTab; label: string; show: boolean }[] = [
     { key: 'overview', label: 'Overview', show: true },
     { key: 'budget', label: 'Budget', show: true },
-    { key: 'workpackages', label: 'Work Packages', show: !!project.has_wps },
+    { key: 'workpackages', label: 'Work Packages', show: true },
     { key: 'documents', label: 'Documents', show: true },
   ]
 
@@ -351,6 +349,14 @@ export function ProjectDetail() {
                   <dd>
                     <Badge variant={project.has_wps ? 'default' : 'secondary'}>
                       {project.has_wps ? 'Yes' : 'No'}
+                    </Badge>
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-sm text-muted-foreground">Led by Our Organisation</dt>
+                  <dd>
+                    <Badge variant={project.is_lead_organisation ? 'default' : 'secondary'}>
+                      {project.is_lead_organisation ? 'Yes' : 'No'}
                     </Badge>
                   </dd>
                 </div>
@@ -458,7 +464,7 @@ export function ProjectDetail() {
         )}
 
         {/* Work Packages Tab */}
-        {detailTab === 'workpackages' && project.has_wps && (
+        {detailTab === 'workpackages' && (
           <div className="space-y-6">
             {/* Summary card: project PM budget vs WP allocation vs allocated */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

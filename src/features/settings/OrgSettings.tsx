@@ -21,6 +21,7 @@ export function OrgSettings() {
   const [workingDaysPerYear, setWorkingDaysPerYear] = useState('220')
   const [defaultOverheadRate, setDefaultOverheadRate] = useState('25')
   const [departments, setDepartments] = useState('')
+  const [timesheetsDriveAllocations, setTimesheetsDriveAllocations] = useState(false)
 
   useEffect(() => {
     if (!orgId) return
@@ -33,6 +34,7 @@ export function OrgSettings() {
         setWorkingDaysPerYear(String(org.working_days_per_year ?? 220))
         setDefaultOverheadRate(String(org.default_overhead_rate ?? 25))
         setDepartments((org.departments ?? []).join(', '))
+        setTimesheetsDriveAllocations(org.timesheets_drive_allocations ?? false)
       }
     }).catch(() => {}).finally(() => setLoading(false))
   }, [orgId])
@@ -48,6 +50,7 @@ export function OrgSettings() {
         working_days_per_year: Number(workingDaysPerYear),
         default_overhead_rate: Number(defaultOverheadRate),
         departments: departments.split(',').map((d) => d.trim()).filter(Boolean),
+        timesheets_drive_allocations: timesheetsDriveAllocations,
       })
       toast({ title: 'Saved', description: 'Organisation settings updated.' })
     } catch (err) {
@@ -99,6 +102,33 @@ export function OrgSettings() {
           <div className="space-y-2">
             <Label>Departments (comma-separated)</Label>
             <Input value={departments} onChange={(e) => setDepartments(e.target.value)} placeholder="e.g. CS, EE, Physics" />
+          </div>
+        </div>
+
+        <div className="rounded-lg border p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-semibold">Timesheets Drive Allocations</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                When enabled, allocation PM values are automatically calculated from timesheet entries and become read-only.
+                When disabled, allocations can be edited manually.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={timesheetsDriveAllocations}
+              onClick={() => setTimesheetsDriveAllocations(v => !v)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                timesheetsDriveAllocations ? 'bg-primary' : 'bg-muted'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                  timesheetsDriveAllocations ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
           </div>
         </div>
         <div className="flex justify-between">

@@ -31,6 +31,7 @@ const projectSchema = z.object({
   total_budget: positiveOrNull,
   overhead_rate: z.coerce.number().min(0).max(100, 'Max 100%').nullable().optional(),
   has_wps: z.boolean(),
+  is_lead_organisation: z.boolean(),
   our_pm_rate: positiveOrNull,
   budget_personnel: positiveOrNull,
   budget_travel: positiveOrNull,
@@ -78,6 +79,7 @@ export function ProjectForm() {
       total_budget: null,
       overhead_rate: null,
       has_wps: false,
+      is_lead_organisation: false,
       our_pm_rate: null,
       budget_personnel: null,
       budget_travel: null,
@@ -123,6 +125,7 @@ export function ProjectForm() {
         total_budget: project.total_budget,
         overhead_rate: project.overhead_rate,
         has_wps: project.has_wps,
+        is_lead_organisation: project.is_lead_organisation ?? false,
         our_pm_rate: project.our_pm_rate,
         budget_personnel: project.budget_personnel,
         budget_travel: project.budget_travel,
@@ -258,6 +261,17 @@ export function ProjectForm() {
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 <Label htmlFor="has_wps">Uses Work Packages</Label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="is_lead_organisation"
+                  {...register('is_lead_organisation')}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="is_lead_organisation">Led by Our Organisation</Label>
+                <span className="text-[10px] text-muted-foreground">(enables partner invitations later)</span>
               </div>
             </CardContent>
           </Card>

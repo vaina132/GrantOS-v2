@@ -19,6 +19,7 @@ export type Database = {
           default_overhead_rate: number
           average_personnel_rate_pm: number
           departments: Json
+          timesheets_drive_allocations: boolean
           plan: string
           trial_ends_at: string | null
           is_active: boolean
@@ -34,6 +35,7 @@ export type Database = {
           default_overhead_rate?: number
           average_personnel_rate_pm?: number
           departments?: Json
+          timesheets_drive_allocations?: boolean
           plan?: string
           trial_ends_at?: string | null
           is_active?: boolean
@@ -49,6 +51,7 @@ export type Database = {
           default_overhead_rate?: number
           average_personnel_rate_pm?: number
           departments?: Json
+          timesheets_drive_allocations?: boolean
           plan?: string
           trial_ends_at?: string | null
           is_active?: boolean
@@ -266,6 +269,7 @@ export type Database = {
           total_budget: number | null
           overhead_rate: number | null
           has_wps: boolean
+          is_lead_organisation: boolean
           our_pm_rate: number | null
           budget_personnel: number | null
           budget_travel: number | null
@@ -287,6 +291,7 @@ export type Database = {
           total_budget?: number | null
           overhead_rate?: number | null
           has_wps?: boolean
+          is_lead_organisation?: boolean
           our_pm_rate?: number | null
           budget_personnel?: number | null
           budget_travel?: number | null
@@ -308,6 +313,7 @@ export type Database = {
           total_budget?: number | null
           overhead_rate?: number | null
           has_wps?: boolean
+          is_lead_organisation?: boolean
           our_pm_rate?: number | null
           budget_personnel?: number | null
           budget_travel?: number | null

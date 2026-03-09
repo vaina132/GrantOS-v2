@@ -15,8 +15,9 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
 import { Undo2, Redo2, Save, Grid3x3, Plus, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getWorkingDaysInMonth, pmToHours } from '@/lib/pmUtils'
+import { getWorkingDaysInMonth, pmToHours, hoursToPm } from '@/lib/pmUtils'
 import { settingsService } from '@/services/settingsService'
+import { timesheetService } from '@/services/timesheetService'
 import { BulkFillDialog } from './BulkFillDialog'
 import { projectsService } from '@/services/projectsService'
 import type { AssignmentType, Person, Project, WorkPackage } from '@/types'
@@ -51,14 +52,26 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
   const { isLocked } = usePeriodLocks()
   const { absences } = useAbsences()
   const [hoursPerDay, setHoursPerDay] = useState(8)
+  const [timesheetsDriveAllocations, setTimesheetsDriveAllocations] = useState(false)
+  const [tsAggregates, setTsAggregates] = useState<{ person_id: string; project_id: string; work_package_id: string | null; month: number; totalHours: number }[]>([])
 
-  // Load org settings for hours per day
+  // Load org settings
   useEffect(() => {
     if (!orgId) return
     settingsService.getOrganisation(orgId).then(org => {
       if (org?.working_hours_per_day) setHoursPerDay(org.working_hours_per_day)
+      setTimesheetsDriveAllocations(org?.timesheets_drive_allocations ?? false)
     }).catch(() => {})
   }, [orgId])
+
+  // When timesheets drive allocations: load aggregated timesheet hours
+  useEffect(() => {
+    if (!orgId || !timesheetsDriveAllocations || mode !== 'actual') { setTsAggregates([]); return }
+    timesheetService.aggregateHoursByYear(orgId, globalYear).then(setTsAggregates).catch(() => setTsAggregates([]))
+  }, [orgId, globalYear, timesheetsDriveAllocations, mode])
+
+  // When timesheets drive allocations: override cells with computed PMs from timesheet hours
+  const timesheetDriven = timesheetsDriveAllocations && mode === 'actual'
 
   // Fetch work packages for projects that use them
   const [wpsByProject, setWpsByProject] = useState<Record<string, WorkPackage[]>>({})
@@ -118,16 +131,29 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
   const [addProjectId, setAddProjectId] = useState('')
   const [addRowOpen, setAddRowOpen] = useState(false)
 
-  // Build cell map from loaded assignments
+  // Build cell map from loaded assignments OR from timesheet aggregates
   useEffect(() => {
-    const map: Record<CellKey, number> = {}
-    for (const a of assignments) {
-      const key = makeCellKey(a.person_id, a.project_id, a.work_package_id, a.month)
-      map[key] = a.pms
+    if (timesheetDriven && tsAggregates.length > 0) {
+      // Compute PMs from timesheet hours
+      const map: Record<CellKey, number> = {}
+      for (const agg of tsAggregates) {
+        const workingDays = getWorkingDaysInMonth(globalYear, agg.month)
+        const pms = hoursToPm(agg.totalHours, workingDays, hoursPerDay)
+        const key = makeCellKey(agg.person_id, agg.project_id, agg.work_package_id, agg.month)
+        map[key] = Math.round(pms * 100) / 100
+      }
+      resetCells(map)
+      setDirty(false)
+    } else {
+      const map: Record<CellKey, number> = {}
+      for (const a of assignments) {
+        const key = makeCellKey(a.person_id, a.project_id, a.work_package_id, a.month)
+        map[key] = a.pms
+      }
+      resetCells(map)
+      setDirty(false)
     }
-    resetCells(map)
-    setDirty(false)
-  }, [assignments, resetCells])
+  }, [assignments, resetCells, timesheetDriven, tsAggregates, globalYear, hoursPerDay])
 
   // Build compare map for compare mode
   const compareCells = useMemo(() => {
@@ -518,22 +544,36 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <Button variant="outline" size="sm" onClick={undo} disabled={!canUndo}>
-          <Undo2 className="mr-1 h-4 w-4" /> Undo
-        </Button>
-        <Button variant="outline" size="sm" onClick={redo} disabled={!canRedo}>
-          <Redo2 className="mr-1 h-4 w-4" /> Redo
-        </Button>
-        <div className="flex-1" />
-        {dirty && (
-          <Badge variant="secondary" className="text-xs">Unsaved changes</Badge>
-        )}
-        <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
-          <Save className="mr-1 h-4 w-4" />
-          {saving ? 'Saving...' : 'Save'}
-        </Button>
-      </div>
+      {timesheetDriven && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 px-4 py-3 flex items-start gap-3">
+          <div className="text-blue-600 text-sm mt-0.5">ℹ️</div>
+          <div>
+            <div className="text-sm font-medium text-blue-900 dark:text-blue-200">Timesheets Drive Allocations</div>
+            <div className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+              PM values are automatically calculated from timesheet entries and are read-only.
+              To change this, go to Settings → Organisation and disable "Timesheets Drive Allocations".
+            </div>
+          </div>
+        </div>
+      )}
+      {!timesheetDriven && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={undo} disabled={!canUndo}>
+            <Undo2 className="mr-1 h-4 w-4" /> Undo
+          </Button>
+          <Button variant="outline" size="sm" onClick={redo} disabled={!canRedo}>
+            <Redo2 className="mr-1 h-4 w-4" /> Redo
+          </Button>
+          <div className="flex-1" />
+          {dirty && (
+            <Badge variant="secondary" className="text-xs">Unsaved changes</Badge>
+          )}
+          <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
+            <Save className="mr-1 h-4 w-4" />
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
+        </div>
+      )}
 
       <div className="rounded-lg border overflow-x-auto">
         <table className="w-full text-sm">
@@ -601,19 +641,20 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
                           max="1"
                           value={value || ''}
                           placeholder="0"
-                          disabled={locked}
+                          disabled={locked || timesheetDriven}
                           onChange={(e) => {
                             const v = Math.min(1, Math.max(0, Number(e.target.value) || 0))
                             updateCell(row.person.id, row.project.id, row.wpId, month, v)
                           }}
                           onContextMenu={(e) => {
+                            if (timesheetDriven) return
                             e.preventDefault()
                             setBulkFillTarget({ personId: row.person.id, projectId: row.project.id, wpId: row.wpId })
                             setBulkFillOpen(true)
                           }}
                           className={cn(
                             'w-full h-8 text-center text-xs tabular-nums bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-primary',
-                            locked && 'opacity-50 cursor-not-allowed',
+                            (locked || timesheetDriven) && 'opacity-50 cursor-not-allowed',
                             value > 0 && 'font-medium',
                           )}
                         />
