@@ -577,7 +577,12 @@ export type Database = {
           hours: number | null
           planned_percentage: number | null
           confirmed_percentage: number | null
+          planned_hours: number | null
+          actual_hours: number | null
+          working_days: number | null
           status: string
+          submitted_at: string | null
+          submitted_by: string | null
           confirmed_at: string | null
           confirmed_by: string | null
           approved_at: string | null
@@ -597,7 +602,12 @@ export type Database = {
           hours?: number | null
           planned_percentage?: number | null
           confirmed_percentage?: number | null
+          planned_hours?: number | null
+          actual_hours?: number | null
+          working_days?: number | null
           status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           confirmed_at?: string | null
           confirmed_by?: string | null
           approved_at?: string | null
@@ -617,7 +627,12 @@ export type Database = {
           hours?: number | null
           planned_percentage?: number | null
           confirmed_percentage?: number | null
+          planned_hours?: number | null
+          actual_hours?: number | null
+          working_days?: number | null
           status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
           confirmed_at?: string | null
           confirmed_by?: string | null
           approved_at?: string | null
