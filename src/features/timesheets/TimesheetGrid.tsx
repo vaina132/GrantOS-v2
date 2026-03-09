@@ -65,6 +65,7 @@ export function TimesheetGrid() {
   const [hoursPerDay, setHoursPerDay] = useState(8)
   const [addProjectId, setAddProjectId] = useState('')
   const [manualProjectIds, setManualProjectIds] = useState<string[]>([])
+  const [removedProjectIds, setRemovedProjectIds] = useState<string[]>([])
 
   // Fill Month Full state
   const [fillFullOpen, setFillFullOpen] = useState(false)
@@ -126,7 +127,7 @@ export function TimesheetGrid() {
   useEffect(() => { loadData() }, [loadData])
 
   // Reset manual project additions when person changes
-  useEffect(() => { setManualProjectIds([]); setFillFullOpen(false) }, [currentPersonId])
+  useEffect(() => { setManualProjectIds([]); setRemovedProjectIds([]); setFillFullOpen(false) }, [currentPersonId])
 
   // Load assignments for person across ALL months in the year
   async function loadAssignmentsAllMonths(orgId: string, personId: string, year: number): Promise<Assignment[]> {
@@ -247,13 +248,16 @@ export function TimesheetGrid() {
       }
     }
 
-    // Fill in allocPm and colors
-    return rows.map((r, i) => ({
-      ...r,
-      allocPm: pmByKey.get(`${r.project_id}:${r.work_package_id ?? ''}`) ?? 0,
-      color: PROJECT_COLORS[i % PROJECT_COLORS.length],
-    }))
-  }, [assignments, existingDays, manualProjectIds, allProjects, selectedMonth])
+    // Fill in allocPm and colors, then filter out removed projects
+    const removedSet = new Set(removedProjectIds)
+    return rows
+      .filter(r => !removedSet.has(r.project_id))
+      .map((r, i) => ({
+        ...r,
+        allocPm: pmByKey.get(`${r.project_id}:${r.work_package_id ?? ''}`) ?? 0,
+        color: PROJECT_COLORS[i % PROJECT_COLORS.length],
+      }))
+  }, [assignments, existingDays, manualProjectIds, removedProjectIds, allProjects, selectedMonth])
 
   // Compute totals
   const projectTotals = useMemo(() => {
@@ -386,6 +390,7 @@ export function TimesheetGrid() {
       return
     }
     setManualProjectIds(prev => [...prev, addProjectId])
+    setRemovedProjectIds(prev => prev.filter(id => id !== addProjectId))
     // Persist a 0-hour entry on the first available day so the row survives person switches
     if (availableDays.length > 0) {
       try {
@@ -404,8 +409,8 @@ export function TimesheetGrid() {
     try {
       await timesheetService.clearDays(orgId, currentPersonId, globalYear, selectedMonth, projectId)
       setManualProjectIds(prev => prev.filter(id => id !== projectId))
+      setRemovedProjectIds(prev => [...prev, projectId])
       toast({ title: 'Removed', description: 'Project removed from timesheet.' })
-      await loadData()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to remove project'
       toast({ title: 'Error', description: message, variant: 'destructive' })
