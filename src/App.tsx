@@ -11,7 +11,6 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { ProjectsPage } from '@/features/projects/ProjectsPage'
 import { StaffPage } from '@/features/staff/StaffPage'
 import { AllocationsPage } from '@/features/allocations/AllocationsPage'
-import { MatrixPage } from '@/features/matrix/MatrixPage'
 import { TimesheetsPage } from '@/features/timesheets/TimesheetsPage'
 import { AbsencesPage } from '@/features/absences/AbsencesPage'
 import { FinancialsPage } from '@/features/financials/FinancialsPage'
@@ -76,14 +75,6 @@ export default function App() {
                         element={
                           <ProtectedRoute permission="canManageAllocations">
                             <AllocationsPage />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/matrix"
-                        element={
-                          <ProtectedRoute permission="canManageAllocations">
-                            <MatrixPage />
                           </ProtectedRoute>
                         }
                       />

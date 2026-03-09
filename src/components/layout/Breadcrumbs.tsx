@@ -6,7 +6,6 @@ const LABEL_MAP: Record<string, string> = {
   projects: 'Projects',
   staff: 'Staff',
   allocations: 'Allocations',
-  matrix: 'Assignment Matrix',
   timesheets: 'Timesheets',
   absences: 'Absences',
   financials: 'Financials',

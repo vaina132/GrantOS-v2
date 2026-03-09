@@ -133,7 +133,6 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { path: '/projects' },
   { path: '/staff' },
   { path: '/allocations', minPermission: 'canManageAllocations' },
-  { path: '/matrix', minPermission: 'canManageAllocations' },
   { path: '/timesheets', minPermission: 'canSubmitTimesheets', guestAllowed: true },
   { path: '/absences', minPermission: 'canManageAllocations' },
   { path: '/financials', minPermission: 'canSeeFinancials' },
