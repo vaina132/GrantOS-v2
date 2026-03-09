@@ -21,7 +21,7 @@ export function FinancialsPage() {
   const [seeding, setSeeding] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
-  const isManager = can('canManageAllocations')
+  const canManage = can('canManageBudgets') || can('canManageAllocations')
 
   const handleSeed = async () => {
     if (!orgId) return
@@ -75,7 +75,7 @@ export function FinancialsPage() {
         title="Financials"
         description={`Budget vs. actuals tracking for ${globalYear}`}
         actions={
-          isManager ? (
+          canManage ? (
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleSeed} disabled={seeding} className="gap-1.5">
                 <RefreshCw className={cn('h-3.5 w-3.5', seeding && 'animate-spin')} />
