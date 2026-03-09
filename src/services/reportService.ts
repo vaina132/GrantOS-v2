@@ -76,16 +76,16 @@ async function fetchReportData(
     case 'timesheet_summary': {
       const { data, error } = await supabase
         .from('timesheet_entries')
-        .select('month, status, planned_percentage, confirmed_percentage, persons(full_name), projects(acronym)')
+        .select('month, status, planned_hours, actual_hours, working_days, persons(full_name), projects(acronym)')
         .eq('org_id', orgId)
         .eq('year', year)
         .order('month')
       if (error) throw error
       return {
-        headers: ['Person', 'Project', 'Month', 'Planned %', 'Confirmed %', 'Status'],
+        headers: ['Person', 'Project', 'Month', 'Planned Hours', 'Actual Hours', 'Status'],
         rows: (data ?? []).map((t: any) => [
           t.persons?.full_name ?? '', t.projects?.acronym ?? '', t.month,
-          t.planned_percentage ?? '', t.confirmed_percentage ?? '', t.status,
+          t.planned_hours ?? '', t.actual_hours ?? '', t.status,
         ]),
       }
     }

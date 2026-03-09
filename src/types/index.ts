@@ -5,7 +5,7 @@ export type OrgPlan = 'trial' | 'starter' | 'growth' | 'enterprise'
 
 export type ProjectStatus = 'Upcoming' | 'Active' | 'Completed' | 'Suspended'
 export type AssignmentType = 'actual' | 'official'
-export type TimesheetStatus = 'Draft' | 'Confirmed' | 'Approved' | 'Rejected'
+export type TimesheetStatus = 'Draft' | 'Submitted' | 'Approved' | 'Rejected'
 export type EmploymentType = 'Full-time' | 'Part-time' | 'Contractor'
 export type AbsenceType = 'Annual Leave' | 'Sick Leave' | 'Training' | 'Public Holiday' | 'Other'
 export type AbsencePeriod = 'full' | 'am' | 'pm'
@@ -128,10 +128,15 @@ export interface TimesheetEntry {
   work_package_id: string | null
   year: number
   month: number
+  planned_hours: number | null
+  actual_hours: number | null
+  working_days: number | null
   hours: number | null
   planned_percentage: number | null
   confirmed_percentage: number | null
   status: TimesheetStatus
+  submitted_at: string | null
+  submitted_by: string | null
   confirmed_at: string | null
   confirmed_by: string | null
   approved_at: string | null
