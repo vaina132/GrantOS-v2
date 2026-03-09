@@ -73,16 +73,15 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
   // When timesheets drive allocations: override cells with computed PMs from timesheet hours
   const timesheetDriven = timesheetsDriveAllocations && mode === 'actual'
 
-  // Fetch work packages for projects that use them
+  // Fetch work packages for all projects
   const [wpsByProject, setWpsByProject] = useState<Record<string, WorkPackage[]>>({})
   useEffect(() => {
-    const wpProjects = projects.filter((p) => p.has_wps)
-    if (wpProjects.length === 0) { setWpsByProject({}); return }
+    if (projects.length === 0) { setWpsByProject({}); return }
     Promise.all(
-      wpProjects.map((p) => projectsService.listWorkPackages(p.id).then((wps) => ({ pid: p.id, wps })))
+      projects.map((p) => projectsService.listWorkPackages(p.id).then((wps) => ({ pid: p.id, wps })))
     ).then((results) => {
       const map: Record<string, WorkPackage[]> = {}
-      for (const r of results) map[r.pid] = r.wps
+      for (const r of results) if (r.wps.length > 0) map[r.pid] = r.wps
       setWpsByProject(map)
     }).catch(() => {})
   }, [projects])
@@ -197,7 +196,7 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
       const project = projectMap.get(mr.projectId)
       if (!person || !project) continue
       const wps = wpsByProject[project.id]
-      if (project.has_wps && wps && wps.length > 0) {
+      if (wps && wps.length > 0) {
         for (const wp of wps) {
           const tripleKey = `${mr.personId}:${mr.projectId}:${wp.id}`
           if (!visibleTriples.has(tripleKey)) {
