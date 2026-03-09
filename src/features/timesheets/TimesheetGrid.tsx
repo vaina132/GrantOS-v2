@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
 import { Send, Copy, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { TimesheetDay, Holiday, Absence, Assignment, TimesheetEntry } from '@/types'
+import type { Holiday, Absence, Assignment, TimesheetEntry } from '@/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -221,7 +221,6 @@ export function TimesheetGrid() {
   const handleCellChange = useCallback((projectId: string, wpId: string | null, dateStr: string, value: number) => {
     const key = `${projectId}:${wpId ?? ''}:${dateStr}`
     setGrid(prev => ({ ...prev, [key]: value }))
-    setDirty(true)
 
     // Debounced save
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
