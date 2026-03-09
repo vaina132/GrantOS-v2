@@ -14,15 +14,13 @@ import { cn } from '@/lib/utils'
 type Tab = 'overview' | 'actuals'
 
 export function FinancialsPage() {
-  const { orgId, can } = useAuthStore()
+  const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
   const { projects } = useProjects()
   const [tab, setTab] = useState<Tab>('overview')
   const [seeding, setSeeding] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
-  const canManage = can('canManageBudgets') || can('canManageAllocations')
-
   const handleSeed = async () => {
     if (!orgId) return
     setSeeding(true)
@@ -75,18 +73,16 @@ export function FinancialsPage() {
         title="Financials"
         description={`Budget vs. actuals tracking for ${globalYear}`}
         actions={
-          canManage ? (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleSeed} disabled={seeding} className="gap-1.5">
-                <RefreshCw className={cn('h-3.5 w-3.5', seeding && 'animate-spin')} />
-                {seeding ? 'Syncing...' : 'Sync Budgets from Projects'}
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleSyncPersonnel} disabled={syncing} className="gap-1.5">
-                <Calculator className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
-                {syncing ? 'Computing...' : 'Compute Personnel Actuals'}
-              </Button>
-            </div>
-          ) : undefined
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleSeed} disabled={seeding} className="gap-1.5">
+              <RefreshCw className={cn('h-3.5 w-3.5', seeding && 'animate-spin')} />
+              {seeding ? 'Syncing...' : 'Sync Budgets from Projects'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleSyncPersonnel} disabled={syncing} className="gap-1.5">
+              <Calculator className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
+              {syncing ? 'Computing...' : 'Compute Personnel Actuals'}
+            </Button>
+          </div>
         }
       />
 
