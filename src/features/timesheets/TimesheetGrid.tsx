@@ -6,14 +6,14 @@ import { settingsService } from '@/services/settingsService'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useStaff } from '@/hooks/useStaff'
+import { useProjects } from '@/hooks/useProjects'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
-import { StatusBadge } from '@/components/common/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
-import { Send, Copy, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Copy, Sparkles, ChevronLeft, ChevronRight, Trash2, Plus, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { hoursToPm, formatPm, pmToHours } from '@/lib/pmUtils'
-import type { Holiday, Absence, Assignment, TimesheetEntry } from '@/types'
+import type { Holiday, Absence, Assignment, TimesheetDay } from '@/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -49,19 +49,22 @@ export function TimesheetGrid() {
   const { orgId, user, can } = useAuthStore()
   const { globalYear } = useUiStore()
   const { staff } = useStaff({ is_active: true })
+  const { projects: allProjects } = useProjects()
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [selectedPersonId, setSelectedPersonId] = useState('')
   const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
   const [autoFilling, setAutoFilling] = useState(false)
   const [copying, setCopying] = useState(false)
+  const [clearing, setClearing] = useState(false)
 
   // Data state
   const [holidays, setHolidays] = useState<Holiday[]>([])
   const [absences, setAbsences] = useState<Absence[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
-  const [envelope, setEnvelope] = useState<TimesheetEntry | null>(null)
+  const [existingDays, setExistingDays] = useState<TimesheetDay[]>([])
   const [hoursPerDay, setHoursPerDay] = useState(8)
+  const [addProjectId, setAddProjectId] = useState('')
+  const [manualProjectIds, setManualProjectIds] = useState<string[]>([])
 
   // Grid state (local edits before save)
   const [grid, setGrid] = useState<GridState>({})
@@ -84,17 +87,18 @@ export function TimesheetGrid() {
     if (!orgId || !currentPersonId) { setLoading(false); return }
     setLoading(true)
     try {
-      const [days, hols, abs, alloc, env] = await Promise.all([
+      // Load assignments across ALL months of the year (not just selected month)
+      // This ensures projects show even if no PM allocated for this specific month
+      const [days, hols, abs, alloc] = await Promise.all([
         timesheetService.listDays(orgId, currentPersonId, globalYear, selectedMonth),
         holidayService.listForMonth(orgId, globalYear, selectedMonth),
         absenceService.list(orgId, { person_id: currentPersonId, year: globalYear }),
-        loadAssignments(orgId, currentPersonId, globalYear, selectedMonth),
-        timesheetService.ensureEnvelope(orgId, currentPersonId, globalYear, selectedMonth),
+        loadAssignmentsAllMonths(orgId, currentPersonId, globalYear),
       ])
       setHolidays(hols)
       setAbsences(abs)
       setAssignments(alloc)
-      setEnvelope(env)
+      setExistingDays(days)
 
       // Build grid state from loaded day entries
       const g: GridState = {}
@@ -103,6 +107,9 @@ export function TimesheetGrid() {
         g[key] = d.hours
       }
       setGrid(g)
+
+      // Ensure envelope exists (don't block on failure)
+      timesheetService.ensureEnvelope(orgId, currentPersonId, globalYear, selectedMonth).catch(() => {})
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load timesheet data'
       toast({ title: 'Error', description: message, variant: 'destructive' })
@@ -113,15 +120,17 @@ export function TimesheetGrid() {
 
   useEffect(() => { loadData() }, [loadData])
 
-  // Load assignments for person in month
-  async function loadAssignments(orgId: string, personId: string, year: number, month: number): Promise<Assignment[]> {
+  // Reset manual project additions when person changes
+  useEffect(() => { setManualProjectIds([]) }, [currentPersonId])
+
+  // Load assignments for person across ALL months in the year
+  async function loadAssignmentsAllMonths(orgId: string, personId: string, year: number): Promise<Assignment[]> {
     const { data, error } = await (await import('@/lib/supabase')).supabase
       .from('assignments')
       .select('*, projects(acronym, title), work_packages(name)')
       .eq('org_id', orgId)
       .eq('person_id', personId)
       .eq('year', year)
-      .eq('month', month)
       .eq('type', 'actual')
 
     if (error) throw error
@@ -173,18 +182,73 @@ export function TimesheetGrid() {
   const availableDays = useMemo(() => calendarDays.filter(d => d.isAvailable), [calendarDays])
   const availableDateStrs = useMemo(() => availableDays.map(d => d.dateStr), [availableDays])
 
-  // Build project rows from assignments
+  // Build project rows from: assignments (all months), existing day entries, and manually added projects
   const projectRows: ProjectRow[] = useMemo(() => {
-    if (assignments.length === 0) return []
-    return assignments.map((a: any, i: number) => ({
-      project_id: a.project_id,
-      work_package_id: a.work_package_id,
-      acronym: a.projects?.acronym ?? '—',
-      wpName: a.work_packages?.name ?? null,
-      allocPm: a.pms ?? 0,
+    const projectMap = new Map(allProjects.map(p => [p.id, p]))
+    const seen = new Set<string>() // "projectId:wpId"
+    const rows: ProjectRow[] = []
+
+    // 1) From assignments (deduplicate by project+wp, sum PM for selected month only)
+    const pmByKey = new Map<string, number>()
+    for (const a of assignments) {
+      const key = `${a.project_id}:${(a as any).work_package_id ?? ''}`
+      if (a.month === selectedMonth) {
+        pmByKey.set(key, (pmByKey.get(key) ?? 0) + (a.pms ?? 0))
+      }
+      if (!seen.has(key)) {
+        seen.add(key)
+        rows.push({
+          project_id: a.project_id,
+          work_package_id: (a as any).work_package_id,
+          acronym: (a as any).projects?.acronym ?? projectMap.get(a.project_id)?.acronym ?? '—',
+          wpName: (a as any).work_packages?.name ?? null,
+          allocPm: 0, // will be filled below
+          color: '',
+        })
+      }
+    }
+
+    // 2) From existing timesheet_days entries (e.g. hours entered without an allocation)
+    for (const d of existingDays) {
+      const key = `${d.project_id}:${d.work_package_id ?? ''}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        const proj = projectMap.get(d.project_id)
+        rows.push({
+          project_id: d.project_id,
+          work_package_id: d.work_package_id,
+          acronym: proj?.acronym ?? '—',
+          wpName: null,
+          allocPm: 0,
+          color: '',
+        })
+      }
+    }
+
+    // 3) From manually added projects
+    for (const pid of manualProjectIds) {
+      const key = `${pid}:`
+      if (!seen.has(key)) {
+        seen.add(key)
+        const proj = projectMap.get(pid)
+        rows.push({
+          project_id: pid,
+          work_package_id: null,
+          acronym: proj?.acronym ?? '—',
+          wpName: null,
+          allocPm: 0,
+          color: '',
+        })
+      }
+    }
+
+    // Fill in allocPm and colors
+    return rows.map((r, i) => ({
+      ...r,
+      allocPm: pmByKey.get(`${r.project_id}:${r.work_package_id ?? ''}`) ?? 0,
       color: PROJECT_COLORS[i % PROJECT_COLORS.length],
     }))
-  }, [assignments])
+  }, [assignments, existingDays, manualProjectIds, allProjects, selectedMonth])
 
   // Compute totals
   const projectTotals = useMemo(() => {
@@ -272,26 +336,63 @@ export function TimesheetGrid() {
     }
   }
 
-  // Submit for approval
-  const handleSubmit = async () => {
-    if (!orgId || !currentPersonId || !user) return
-    setSubmitting(true)
+  // Clear a single project row for this month
+  const handleClearRow = async (projectId: string) => {
+    if (!orgId || !currentPersonId) return
+    const proceed = window.confirm('Clear all hours for this project in the current month?')
+    if (!proceed) return
+    setClearing(true)
     try {
-      await timesheetService.submit(orgId, currentPersonId, globalYear, selectedMonth, user.id)
-      toast({ title: 'Submitted', description: 'Timesheet submitted for approval.' })
+      await timesheetService.clearDays(orgId, currentPersonId, globalYear, selectedMonth, projectId)
+      toast({ title: 'Cleared', description: 'Hours cleared for this project.' })
       await loadData()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to submit'
+      const message = err instanceof Error ? err.message : 'Failed to clear'
       toast({ title: 'Error', description: message, variant: 'destructive' })
     } finally {
-      setSubmitting(false)
+      setClearing(false)
     }
+  }
+
+  // Clear all hours for the entire month
+  const handleClearAll = async () => {
+    if (!orgId || !currentPersonId) return
+    const proceed = window.confirm(`Clear ALL hours for ${MONTHS[selectedMonth - 1]} ${globalYear}? This cannot be undone.`)
+    if (!proceed) return
+    setClearing(true)
+    try {
+      await timesheetService.clearDays(orgId, currentPersonId, globalYear, selectedMonth)
+      toast({ title: 'Cleared', description: 'All hours cleared for this month.' })
+      await loadData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to clear'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
+    } finally {
+      setClearing(false)
+    }
+  }
+
+  // Add a project manually to the timesheet
+  const handleAddProject = () => {
+    if (!addProjectId) return
+    if (projectRows.some(r => r.project_id === addProjectId)) {
+      toast({ title: 'Already added', description: 'This project is already in the timesheet.' })
+      setAddProjectId('')
+      return
+    }
+    setManualProjectIds(prev => [...prev, addProjectId])
+    setAddProjectId('')
   }
 
   const prevMonth = () => setSelectedMonth(m => m > 1 ? m - 1 : 12)
   const nextMonth = () => setSelectedMonth(m => m < 12 ? m + 1 : 1)
   const prevMonthName = MONTHS[(selectedMonth - 2 + 12) % 12]
-  const isLocked = envelope?.status === 'Submitted' || envelope?.status === 'Approved'
+
+  // Projects available to add (not already in grid)
+  const availableProjects = useMemo(() => {
+    const inGrid = new Set(projectRows.map(r => r.project_id))
+    return allProjects.filter(p => !inGrid.has(p.id))
+  }, [allProjects, projectRows])
 
   if (loading) return <SkeletonTable columns={6} rows={6} />
 
@@ -345,25 +446,25 @@ export function TimesheetGrid() {
         </div>
 
         <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={handleAutoFill} disabled={autoFilling || isLocked} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={handleAutoFill} disabled={autoFilling || projectRows.length === 0} className="gap-1.5">
             <Sparkles className="h-3.5 w-3.5" />
             {autoFilling ? 'Filling...' : 'Fill from Plan'}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleCopyPrevMonth} disabled={copying || isLocked} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={handleCopyPrevMonth} disabled={copying} className="gap-1.5">
             <Copy className="h-3.5 w-3.5" />
             {copying ? 'Copying...' : `Copy ${prevMonthName}`}
           </Button>
-          {!isLocked && grandTotal > 0 && (
-            <Button size="sm" onClick={handleSubmit} disabled={submitting} className="gap-1.5">
-              <Send className="h-3.5 w-3.5" />
-              {submitting ? 'Submitting...' : 'Submit'}
+          {grandTotal > 0 && (
+            <Button variant="outline" size="sm" onClick={handleClearAll} disabled={clearing} className="gap-1.5 text-destructive hover:text-destructive">
+              <RotateCcw className="h-3.5 w-3.5" />
+              {clearing ? 'Clearing...' : 'Clear All'}
             </Button>
           )}
         </div>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="rounded-lg border bg-card p-3">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Working Days</div>
           <div className="text-xl font-bold tabular-nums mt-0.5">{availableDays.length}</div>
@@ -383,10 +484,6 @@ export function TimesheetGrid() {
             {projectRows.length} projects
           </div>
         </div>
-        <div className="rounded-lg border bg-card p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Status</div>
-          <div className="mt-1"><StatusBadge status={envelope?.status ?? 'Draft'} /></div>
-        </div>
       </div>
 
       {/* Capacity progress bar */}
@@ -400,6 +497,26 @@ export function TimesheetGrid() {
         <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">{grandTotal.toFixed(1)} / {totalCapacity}h</span>
       </div>
 
+      {/* Add project to timesheet */}
+      {availableProjects.length > 0 && (
+        <div className="flex items-center gap-2">
+          <select
+            value={addProjectId}
+            onChange={(e) => setAddProjectId(e.target.value)}
+            className="flex h-8 rounded-md border border-input bg-background px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="">Add a project...</option>
+            {availableProjects.map(p => (
+              <option key={p.id} value={p.id}>{p.acronym} — {p.title}</option>
+            ))}
+          </select>
+          <Button variant="outline" size="sm" onClick={handleAddProject} disabled={!addProjectId} className="h-8 gap-1 text-xs">
+            <Plus className="h-3 w-3" />
+            Add
+          </Button>
+        </div>
+      )}
+
       {/* Legend */}
       <div className="flex gap-4 flex-wrap text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded border bg-background" /> Editable</span>
@@ -410,9 +527,9 @@ export function TimesheetGrid() {
 
       {/* THE GRID */}
       {projectRows.length === 0 ? (
-        <div className="rounded-lg border bg-card p-8 text-center">
-          <div className="text-muted-foreground text-sm">No allocations found for this period.</div>
-          <div className="text-muted-foreground text-xs mt-1">Create allocations in the Allocations module first, then come back here.</div>
+        <div className="rounded-lg border bg-card p-8 text-center space-y-2">
+          <div className="text-muted-foreground text-sm">No projects found for this person.</div>
+          <div className="text-muted-foreground text-xs">Use the "Add a project" dropdown above, or create allocations in the Allocations module.</div>
         </div>
       ) : (
         <div className="rounded-lg border overflow-hidden">
@@ -420,7 +537,7 @@ export function TimesheetGrid() {
             <table className="w-max min-w-full border-collapse text-xs">
               <thead>
                 <tr className="bg-muted/60">
-                  <th className="sticky left-0 z-10 bg-muted/60 px-3 py-2 text-left font-semibold text-muted-foreground min-w-[160px] border-r border-b">
+                  <th className="sticky left-0 z-10 bg-muted/60 px-3 py-2 text-left font-semibold text-muted-foreground min-w-[180px] border-r border-b">
                     Project / WP
                   </th>
                   {calendarDays.map(d => (
@@ -453,14 +570,30 @@ export function TimesheetGrid() {
                         className="sticky left-0 z-[1] bg-card px-3 py-2 border-r font-medium"
                         style={{ borderLeft: `3px solid ${row.color}` }}
                       >
-                        <div className="text-primary font-semibold text-xs">{row.acronym}</div>
-                        {row.wpName && <div className="text-[10px] text-muted-foreground">{row.wpName}</div>}
-                        <div className="text-[10px] text-muted-foreground">Plan: {allocHours.toFixed(1)}h ({formatPm(row.allocPm)})</div>
+                        <div className="flex items-start justify-between gap-1">
+                          <div>
+                            <div className="text-primary font-semibold text-xs">{row.acronym}</div>
+                            {row.wpName && <div className="text-[10px] text-muted-foreground">{row.wpName}</div>}
+                            {row.allocPm > 0 && (
+                              <div className="text-[10px] text-muted-foreground">Plan: {allocHours.toFixed(1)}h ({formatPm(row.allocPm)})</div>
+                            )}
+                          </div>
+                          {rowTotal > 0 && (
+                            <button
+                              onClick={() => handleClearRow(row.project_id)}
+                              disabled={clearing}
+                              className="text-muted-foreground/40 hover:text-destructive transition-colors p-0.5 rounded"
+                              title="Clear this row"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                       {calendarDays.map(d => {
                         const cellKey = `${row.project_id}:${row.work_package_id ?? ''}:${d.dateStr}`
                         const value = grid[cellKey] || 0
-                        const editable = d.isAvailable && !isLocked
+                        const editable = d.isAvailable
 
                         return (
                           <td
@@ -500,7 +633,7 @@ export function TimesheetGrid() {
                         )
                       })}
                       <td className="px-2 py-2 text-center bg-muted/30 border-l">
-                        <div className={cn('font-bold tabular-nums text-xs', rowTotal > allocHours + 0.5 && 'text-amber-600')}>{rowTotal.toFixed(1)}h</div>
+                        <div className={cn('font-bold tabular-nums text-xs', allocHours > 0 && rowTotal > allocHours + 0.5 && 'text-amber-600')}>{rowTotal.toFixed(1)}h</div>
                         <div className="text-[10px] text-muted-foreground tabular-nums">{formatPm(rowPm)}</div>
                       </td>
                     </tr>
@@ -551,7 +684,7 @@ export function TimesheetGrid() {
 
       {/* Bottom hint */}
       <div className="text-[11px] text-muted-foreground">
-        💡 Hours auto-save as you type. Tab between cells to navigate. Click "Fill from Plan" to auto-distribute from allocations.
+        Hours auto-save as you type. Tab between cells to navigate. Use "Add a project" to enter hours for any project. Click the trash icon to clear a row.
       </div>
     </div>
   )
