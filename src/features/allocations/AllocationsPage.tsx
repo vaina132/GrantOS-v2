@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { AllocationGrid } from './AllocationGrid'
 import { PmBudgets } from './PmBudgets'
 import { PeriodLocking } from './PeriodLocking'
@@ -12,7 +11,8 @@ import { useAssignments } from '@/hooks/useAllocations'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { toast } from '@/components/ui/use-toast'
-import { Users, FolderKanban, CalendarDays, Lock, BarChart3, ArrowRightCircle } from 'lucide-react'
+import { ArrowRightCircle, ArrowLeftRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { AssignmentType } from '@/types'
 
 type Tab = 'grid' | 'matrix-personnel' | 'matrix-projects' | 'budgets' | 'locks'
@@ -65,96 +65,113 @@ export function AllocationsPage() {
     }
   }
 
-  const tabs: { key: Tab; label: string; icon: typeof Users }[] = [
-    { key: 'grid', label: 'Allocation Grid', icon: CalendarDays },
-    { key: 'matrix-personnel', label: 'Matrix (Personnel)', icon: Users },
-    { key: 'matrix-projects', label: 'Matrix (Projects)', icon: FolderKanban },
-    { key: 'budgets', label: 'PM Budgets', icon: BarChart3 },
-    { key: 'locks', label: 'Period Locks', icon: Lock },
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'grid', label: 'Allocation Grid' },
+    { key: 'matrix-personnel', label: 'Personnel Overview' },
+    { key: 'matrix-projects', label: 'Project Overview' },
+    { key: 'budgets', label: 'PM Budgets' },
+    { key: 'locks', label: 'Period Locks' },
   ]
 
   const showModeSelector = tab === 'grid' || tab === 'matrix-personnel' || tab === 'matrix-projects'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-0">
       <PageHeader
         title="Allocations"
         description="Manage person-month allocations across projects"
       />
 
-      {/* Tab bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-1 flex-wrap">
+      {/* ── Navigation tabs ── */}
+      <div className="border-b mt-4">
+        <nav className="-mb-px flex gap-6 overflow-x-auto" aria-label="Tabs">
           {tabs.map((t) => {
-            const Icon = t.icon
+            const active = tab === t.key
             return (
-              <Button
+              <button
                 key={t.key}
-                variant={tab === t.key ? 'default' : 'outline'}
-                size="sm"
                 onClick={() => setTab(t.key)}
-                className="gap-1.5"
+                className={cn(
+                  'whitespace-nowrap pb-3 pt-1 text-sm font-medium border-b-2 transition-colors',
+                  active
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30',
+                )}
               >
-                <Icon className="h-4 w-4" />
                 {t.label}
-              </Button>
+              </button>
             )
           })}
-        </div>
-
-        {showModeSelector && (
-          <div className="flex gap-2 items-center">
-            <Button
-              variant={mode === 'actual' && !compareMode ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => { setMode('actual'); setCompareMode(false) }}
-            >
-              Actual
-            </Button>
-            <Button
-              variant={mode === 'official' && !compareMode ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => { setMode('official'); setCompareMode(false) }}
-            >
-              Official
-            </Button>
-            {tab === 'grid' && (
-              <Button
-                variant={compareMode ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setCompareMode(!compareMode)}
-              >
-                Compare
-              </Button>
-            )}
-            {tab === 'grid' && mode === 'actual' && !compareMode && (
-              <>
-                <div className="w-px h-6 bg-border mx-1" />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleMakeOfficial}
-                  disabled={makingOfficial}
-                  className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
-                >
-                  <ArrowRightCircle className="h-4 w-4" />
-                  {makingOfficial ? 'Copying...' : 'Make Official'}
-                </Button>
-              </>
-            )}
-            <Badge variant="secondary" className="text-xs ml-1">
-              {mode === 'actual' ? 'Actual' : 'Official'}
-            </Badge>
-          </div>
-        )}
+        </nav>
       </div>
 
-      {/* Content */}
-      {tab === 'grid' && <AllocationGrid mode={mode} compareMode={compareMode} />}
-      {tab === 'matrix-personnel' && <AssignmentMatrix type={mode} />}
-      {tab === 'matrix-projects' && <ProjectMatrix type={mode} />}
-      {tab === 'budgets' && <PmBudgets type={mode} />}
-      {tab === 'locks' && can('canManageOrg') && <PeriodLocking />}
+      {/* ── Contextual toolbar (only for views that have Actual / Official) ── */}
+      {showModeSelector && (
+        <div className="flex items-center justify-between gap-3 flex-wrap pt-5 pb-1">
+          {/* Left: mode toggle pill */}
+          <div className="inline-flex items-center rounded-lg border bg-muted/40 p-0.5">
+            <button
+              onClick={() => { setMode('actual'); setCompareMode(false) }}
+              className={cn(
+                'rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all',
+                mode === 'actual' && !compareMode
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              Actual
+            </button>
+            <button
+              onClick={() => { setMode('official'); setCompareMode(false) }}
+              className={cn(
+                'rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all',
+                mode === 'official' && !compareMode
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              Official
+            </button>
+            {tab === 'grid' && (
+              <button
+                onClick={() => setCompareMode(!compareMode)}
+                className={cn(
+                  'rounded-md px-3.5 py-1.5 text-xs font-semibold transition-all inline-flex items-center gap-1.5',
+                  compareMode
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+                Compare
+              </button>
+            )}
+          </div>
+
+          {/* Right: actions */}
+          {tab === 'grid' && mode === 'actual' && !compareMode && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleMakeOfficial}
+              disabled={makingOfficial}
+              className="gap-1.5"
+            >
+              <ArrowRightCircle className="h-3.5 w-3.5" />
+              {makingOfficial ? 'Copying...' : 'Make Official'}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* ── Content ── */}
+      <div className={cn(!showModeSelector && 'pt-5')}>
+        {tab === 'grid' && <AllocationGrid mode={mode} compareMode={compareMode} />}
+        {tab === 'matrix-personnel' && <AssignmentMatrix type={mode} />}
+        {tab === 'matrix-projects' && <ProjectMatrix type={mode} />}
+        {tab === 'budgets' && <PmBudgets type={mode} />}
+        {tab === 'locks' && can('canManageOrg') && <PeriodLocking />}
+      </div>
     </div>
   )
 }
