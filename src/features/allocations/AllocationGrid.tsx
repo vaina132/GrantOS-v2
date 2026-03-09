@@ -210,6 +210,49 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
     return totals
   }, [cells])
 
+  // Workload preview for the selected person
+  const selectedPerson = addPersonId ? staff.find((p) => p.id === addPersonId) : null
+  const selectedPersonLoad = useMemo(() => {
+    if (!selectedPerson) return null
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const month = i + 1
+      let allocated = 0
+      for (const [key, val] of Object.entries(cells)) {
+        const parts = key.split(':')
+        if (parts[0] === selectedPerson.id && Number(parts[3]) === month) allocated += val
+      }
+      const absencePm = absencePmMap[`${selectedPerson.id}:${month}`] ?? 0
+      const capacity = Math.max(0, selectedPerson.fte - absencePm)
+      return { month, allocated, absencePm, capacity, free: Math.max(0, capacity - allocated) }
+    })
+    const yearTotal = months.reduce((s, m) => s + m.allocated, 0)
+    return { months, yearTotal }
+  }, [selectedPerson, cells, absencePmMap])
+
+  // Already-assigned projects for selected person (for context)
+  const selectedPersonProjects = useMemo(() => {
+    if (!selectedPerson) return []
+    const projectMap = new Map(projects.map((p) => [p.id, p]))
+    const seen = new Set<string>()
+    const result: { acronym: string; total: number }[] = []
+    for (const [key, val] of Object.entries(cells)) {
+      const parts = key.split(':')
+      if (parts[0] !== selectedPerson.id || val === 0) continue
+      const pid = parts[1]
+      if (!seen.has(pid)) {
+        seen.add(pid)
+        let total = 0
+        for (const [k2, v2] of Object.entries(cells)) {
+          const p2 = k2.split(':')
+          if (p2[0] === selectedPerson.id && p2[1] === pid) total += v2
+        }
+        const proj = projectMap.get(pid)
+        if (proj) result.push({ acronym: proj.acronym, total })
+      }
+    }
+    return result.sort((a, b) => b.total - a.total)
+  }, [selectedPerson, cells, projects])
+
   const handleSave = async () => {
     if (!orgId) return
 
@@ -291,50 +334,6 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
     setAddProjectId('')
     setAddRowOpen(false)
   }
-
-  // Workload preview for the selected person
-  const selectedPerson = addPersonId ? staff.find((p) => p.id === addPersonId) : null
-  const selectedPersonLoad = useMemo(() => {
-    if (!selectedPerson) return null
-    const months = Array.from({ length: 12 }, (_, i) => {
-      const month = i + 1
-      let allocated = 0
-      for (const [key, val] of Object.entries(cells)) {
-        const parts = key.split(':')
-        if (parts[0] === selectedPerson.id && Number(parts[3]) === month) allocated += val
-      }
-      const absencePm = absencePmMap[`${selectedPerson.id}:${month}`] ?? 0
-      const capacity = Math.max(0, selectedPerson.fte - absencePm)
-      return { month, allocated, absencePm, capacity, free: Math.max(0, capacity - allocated) }
-    })
-    const yearTotal = months.reduce((s, m) => s + m.allocated, 0)
-    return { months, yearTotal }
-  }, [selectedPerson, cells, absencePmMap])
-
-  // Already-assigned projects for selected person (for context)
-  const selectedPersonProjects = useMemo(() => {
-    if (!selectedPerson) return []
-    const projectMap = new Map(projects.map((p) => [p.id, p]))
-    const seen = new Set<string>()
-    const result: { acronym: string; total: number }[] = []
-    for (const [key, val] of Object.entries(cells)) {
-      const parts = key.split(':')
-      if (parts[0] !== selectedPerson.id || val === 0) continue
-      const pid = parts[1]
-      if (!seen.has(pid)) {
-        seen.add(pid)
-        // sum all months for this person-project
-        let total = 0
-        for (const [k2, v2] of Object.entries(cells)) {
-          const p2 = k2.split(':')
-          if (p2[0] === selectedPerson.id && p2[1] === pid) total += v2
-        }
-        const proj = projectMap.get(pid)
-        if (proj) result.push({ acronym: proj.acronym, total })
-      }
-    }
-    return result.sort((a, b) => b.total - a.total)
-  }, [selectedPerson, cells, projects])
 
   const canAddRow = staff.length > 0 && projects.length > 0
 
