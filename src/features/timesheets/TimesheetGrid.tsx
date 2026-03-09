@@ -396,7 +396,7 @@ export function TimesheetGrid() {
   }
 
   // Remove a project row entirely (clear all its hours for the month)
-  const handleRemoveProject = async (projectId: string, wpId: string | null) => {
+  const handleRemoveProject = async (projectId: string) => {
     if (!orgId || !currentPersonId) return
     const proceed = window.confirm('Remove this project from the timesheet? All hours for this project in the current month will be deleted.')
     if (!proceed) return
@@ -442,9 +442,9 @@ export function TimesheetGrid() {
 
       // Save all entries
       await timesheetService.bulkUpsertDays(
-        orgId,
-        currentPersonId,
         entries.map(e => ({
+          org_id: orgId,
+          person_id: currentPersonId,
           project_id: e.projectId,
           work_package_id: e.wpId,
           date: e.dateStr,
@@ -681,7 +681,7 @@ export function TimesheetGrid() {
                               </button>
                             )}
                             <button
-                              onClick={() => handleRemoveProject(row.project_id, row.work_package_id)}
+                              onClick={() => handleRemoveProject(row.project_id)}
                               disabled={clearing}
                               className="text-muted-foreground/40 hover:text-destructive transition-colors p-0.5 rounded"
                               title="Remove project from timesheet"
