@@ -1,10 +1,14 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useRef, useCallback } from 'react'
 import { useProjects } from '@/hooks/useProjects'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { EmptyState } from '@/components/common/EmptyState'
-import { GanttChart as GanttIcon } from 'lucide-react'
+import { GanttChart as GanttIcon, ZoomIn, ZoomOut, RotateCcw, CalendarDays } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { parseISO, differenceInMonths, startOfMonth, addMonths, format, isBefore, isAfter } from 'date-fns'
+
+const ZOOM_LEVELS = [20, 30, 40, 60, 80, 110, 150]
+const DEFAULT_ZOOM_INDEX = 3 // 60px
 
 interface BarData {
   projectId: string
@@ -17,6 +21,22 @@ interface BarData {
 
 export function GanttChart() {
   const { projects, isLoading } = useProjects()
+  const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const colWidth = ZOOM_LEVELS[zoomIndex]
+
+  const handleZoomIn = useCallback(() => {
+    setZoomIndex(prev => Math.min(prev + 1, ZOOM_LEVELS.length - 1))
+  }, [])
+
+  const handleZoomOut = useCallback(() => {
+    setZoomIndex(prev => Math.max(prev - 1, 0))
+  }, [])
+
+  const handleZoomReset = useCallback(() => {
+    setZoomIndex(DEFAULT_ZOOM_INDEX)
+  }, [])
 
   const { bars, monthHeaders, timelineStart } = useMemo(() => {
     if (projects.length === 0) return { bars: [], monthHeaders: [], timelineStart: new Date() }
@@ -63,11 +83,42 @@ export function GanttChart() {
   }
 
   const totalMonths = monthHeaders.length
-  const colWidth = 60 // px per month
+
+  const scrollToToday = useCallback(() => {
+    if (!scrollRef.current) return
+    const today = new Date()
+    const monthsFromStart = differenceInMonths(today, timelineStart)
+    const scrollLeft = Math.max(0, monthsFromStart * colWidth - scrollRef.current.clientWidth / 2)
+    scrollRef.current.scrollTo({ left: scrollLeft, behavior: 'smooth' })
+  }, [timelineStart, colWidth])
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border overflow-x-auto">
+      {/* Zoom controls */}
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={handleZoomOut} disabled={zoomIndex === 0} className="gap-1">
+          <ZoomOut className="h-3.5 w-3.5" />
+          Zoom Out
+        </Button>
+        <div className="text-xs text-muted-foreground tabular-nums w-16 text-center">
+          {Math.round((colWidth / ZOOM_LEVELS[DEFAULT_ZOOM_INDEX]) * 100)}%
+        </div>
+        <Button variant="outline" size="sm" onClick={handleZoomIn} disabled={zoomIndex === ZOOM_LEVELS.length - 1} className="gap-1">
+          <ZoomIn className="h-3.5 w-3.5" />
+          Zoom In
+        </Button>
+        <Button variant="ghost" size="sm" onClick={handleZoomReset} disabled={zoomIndex === DEFAULT_ZOOM_INDEX} className="gap-1 text-muted-foreground">
+          <RotateCcw className="h-3.5 w-3.5" />
+          Reset
+        </Button>
+        <div className="flex-1" />
+        <Button variant="outline" size="sm" onClick={scrollToToday} className="gap-1">
+          <CalendarDays className="h-3.5 w-3.5" />
+          Today
+        </Button>
+      </div>
+
+      <div ref={scrollRef} className="rounded-lg border overflow-x-auto">
         <div style={{ minWidth: 200 + totalMonths * colWidth }}>
           {/* Header row */}
           <div className="flex border-b bg-muted/50">
