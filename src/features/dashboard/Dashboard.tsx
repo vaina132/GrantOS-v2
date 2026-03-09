@@ -25,6 +25,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
+import { SalaryCoverageChart } from './SalaryCoverageChart'
 
 const STATUS_COLORS: Record<string, string> = {
   Upcoming: '#3b82f6',
@@ -227,6 +228,9 @@ export function Dashboard() {
           </Card>
         </div>
       )}
+
+      {/* Salary Coverage */}
+      {!isLoading && <SalaryCoverageChart />}
 
       {/* Project Table */}
       {!isLoading && projects.length > 0 && (
