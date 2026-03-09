@@ -70,6 +70,14 @@ export function GanttChart() {
     return { bars: parsed, monthHeaders: headers, timelineStart: tStart }
   }, [projects])
 
+  const scrollToToday = useCallback(() => {
+    if (!scrollRef.current) return
+    const today = new Date()
+    const monthsFromStart = differenceInMonths(today, timelineStart)
+    const scrollLeft = Math.max(0, monthsFromStart * colWidth - scrollRef.current.clientWidth / 2)
+    scrollRef.current.scrollTo({ left: scrollLeft, behavior: 'smooth' })
+  }, [timelineStart, colWidth])
+
   if (isLoading) return <SkeletonTable columns={6} rows={6} />
 
   if (bars.length === 0) {
@@ -83,14 +91,6 @@ export function GanttChart() {
   }
 
   const totalMonths = monthHeaders.length
-
-  const scrollToToday = useCallback(() => {
-    if (!scrollRef.current) return
-    const today = new Date()
-    const monthsFromStart = differenceInMonths(today, timelineStart)
-    const scrollLeft = Math.max(0, monthsFromStart * colWidth - scrollRef.current.clientWidth / 2)
-    scrollRef.current.scrollTo({ left: scrollLeft, behavior: 'smooth' })
-  }, [timelineStart, colWidth])
 
   return (
     <div className="space-y-4">
