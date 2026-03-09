@@ -91,32 +91,63 @@ export const projectsService = {
       .from('work_packages')
       .select('*')
       .eq('project_id', projectId)
-      .order('name')
+      .order('created_at')
 
     if (error) throw error
-    return (data ?? []) as WorkPackage[]
+    // Sort by number (nulls last), then name
+    const wps = (data ?? []) as WorkPackage[]
+    wps.sort((a, b) => {
+      const an = a.number ?? 999
+      const bn = b.number ?? 999
+      if (an !== bn) return an - bn
+      return a.name.localeCompare(b.name)
+    })
+    return wps
   },
 
   async createWorkPackage(wp: Omit<WorkPackage, 'id' | 'created_at' | 'updated_at'>): Promise<WorkPackage> {
+    // Try with all fields first; if DB doesn't have new columns yet, retry without them
     const { data, error } = await supabase
       .from('work_packages')
       .insert(wp)
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      // Retry without new columns that may not exist yet
+      const { number: _n, start_month: _sm, end_month: _em, ...fallback } = wp as any
+      const { data: d2, error: e2 } = await supabase
+        .from('work_packages')
+        .insert(fallback)
+        .select()
+        .single()
+      if (e2) throw e2
+      return d2 as WorkPackage
+    }
     return data as WorkPackage
   },
 
   async updateWorkPackage(id: string, updates: Partial<WorkPackage>): Promise<WorkPackage> {
+    const payload = { ...updates, updated_at: new Date().toISOString() }
     const { data, error } = await supabase
       .from('work_packages')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update(payload)
       .eq('id', id)
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      // Retry without new columns that may not exist yet
+      const { number: _n, start_month: _sm, end_month: _em, ...fallback } = payload as any
+      const { data: d2, error: e2 } = await supabase
+        .from('work_packages')
+        .update(fallback)
+        .eq('id', id)
+        .select()
+        .single()
+      if (e2) throw e2
+      return d2 as WorkPackage
+    }
     return data as WorkPackage
   },
 
