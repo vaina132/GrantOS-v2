@@ -10,7 +10,7 @@ import { useProjects } from '@/hooks/useProjects'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
-import { Copy, Sparkles, ChevronLeft, ChevronRight, Trash2, Plus, RotateCcw } from 'lucide-react'
+import { Copy, Sparkles, ChevronLeft, ChevronRight, Trash2, Plus, RotateCcw, CalendarDays, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { hoursToPm, formatPm, pmToHours } from '@/lib/pmUtils'
 import type { Holiday, Absence, Assignment, TimesheetDay } from '@/types'
@@ -65,6 +65,11 @@ export function TimesheetGrid() {
   const [hoursPerDay, setHoursPerDay] = useState(8)
   const [addProjectId, setAddProjectId] = useState('')
   const [manualProjectIds, setManualProjectIds] = useState<string[]>([])
+
+  // Fill Month Full state
+  const [fillFullOpen, setFillFullOpen] = useState(false)
+  const [fillFullSelectedIds, setFillFullSelectedIds] = useState<string[]>([])
+  const [fillFullBusy, setFillFullBusy] = useState(false)
 
   // Grid state (local edits before save)
   const [grid, setGrid] = useState<GridState>({})
@@ -121,7 +126,7 @@ export function TimesheetGrid() {
   useEffect(() => { loadData() }, [loadData])
 
   // Reset manual project additions when person changes
-  useEffect(() => { setManualProjectIds([]) }, [currentPersonId])
+  useEffect(() => { setManualProjectIds([]); setFillFullOpen(false) }, [currentPersonId])
 
   // Load assignments for person across ALL months in the year
   async function loadAssignmentsAllMonths(orgId: string, personId: string, year: number): Promise<Assignment[]> {
@@ -372,16 +377,98 @@ export function TimesheetGrid() {
     }
   }
 
-  // Add a project manually to the timesheet
-  const handleAddProject = () => {
-    if (!addProjectId) return
+  // Add a project manually to the timesheet (persist immediately with a 0-hour entry)
+  const handleAddProject = async () => {
+    if (!addProjectId || !orgId || !currentPersonId) return
     if (projectRows.some(r => r.project_id === addProjectId)) {
       toast({ title: 'Already added', description: 'This project is already in the timesheet.' })
       setAddProjectId('')
       return
     }
     setManualProjectIds(prev => [...prev, addProjectId])
+    // Persist a 0-hour entry on the first available day so the row survives person switches
+    if (availableDays.length > 0) {
+      try {
+        await timesheetService.upsertDay(orgId, currentPersonId, addProjectId, null, availableDays[0].dateStr, 0)
+      } catch { /* non-critical */ }
+    }
     setAddProjectId('')
+  }
+
+  // Remove a project row entirely (clear all its hours for the month)
+  const handleRemoveProject = async (projectId: string, wpId: string | null) => {
+    if (!orgId || !currentPersonId) return
+    const proceed = window.confirm('Remove this project from the timesheet? All hours for this project in the current month will be deleted.')
+    if (!proceed) return
+    setClearing(true)
+    try {
+      await timesheetService.clearDays(orgId, currentPersonId, globalYear, selectedMonth, projectId)
+      setManualProjectIds(prev => prev.filter(id => id !== projectId))
+      toast({ title: 'Removed', description: 'Project removed from timesheet.' })
+      await loadData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to remove project'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
+    } finally {
+      setClearing(false)
+    }
+  }
+
+  // Fill Month Full: distribute hoursPerDay across selected projects for all available days (whole numbers only)
+  const handleFillMonthFull = async () => {
+    if (!orgId || !currentPersonId || fillFullSelectedIds.length === 0) return
+    setFillFullBusy(true)
+    try {
+      const n = fillFullSelectedIds.length
+      // Split hoursPerDay into n whole-number chunks
+      // e.g. 8h / 3 projects = [3, 3, 2] — no decimals
+      const baseHours = Math.floor(hoursPerDay / n)
+      const remainder = hoursPerDay - baseHours * n
+      const hoursPerProject = fillFullSelectedIds.map((_, i) => baseHours + (i < remainder ? 1 : 0))
+
+      const entries: { projectId: string; wpId: string | null; dateStr: string; hours: number }[] = []
+      for (const day of availableDays) {
+        for (let i = 0; i < n; i++) {
+          if (hoursPerProject[i] > 0) {
+            entries.push({
+              projectId: fillFullSelectedIds[i],
+              wpId: null, // fill at project level
+              dateStr: day.dateStr,
+              hours: hoursPerProject[i],
+            })
+          }
+        }
+      }
+
+      // Save all entries
+      await timesheetService.bulkUpsertDays(
+        orgId,
+        currentPersonId,
+        entries.map(e => ({
+          project_id: e.projectId,
+          work_package_id: e.wpId,
+          date: e.dateStr,
+          hours: e.hours,
+        })),
+      )
+
+      // Add any projects not yet in manual list
+      const currentIds = new Set(projectRows.map(r => r.project_id))
+      const newIds = fillFullSelectedIds.filter(id => !currentIds.has(id))
+      if (newIds.length > 0) {
+        setManualProjectIds(prev => [...prev, ...newIds])
+      }
+
+      toast({ title: 'Month filled', description: `${availableDays.length} days × ${n} projects filled with whole hours.` })
+      setFillFullOpen(false)
+      setFillFullSelectedIds([])
+      await loadData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fill month'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
+    } finally {
+      setFillFullBusy(false)
+    }
   }
 
   const prevMonth = () => setSelectedMonth(m => m > 1 ? m - 1 : 12)
@@ -453,6 +540,10 @@ export function TimesheetGrid() {
           <Button variant="outline" size="sm" onClick={handleCopyPrevMonth} disabled={copying} className="gap-1.5">
             <Copy className="h-3.5 w-3.5" />
             {copying ? 'Copying...' : `Copy ${prevMonthName}`}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => { setFillFullOpen(true); setFillFullSelectedIds([]) }} disabled={allProjects.length === 0} className="gap-1.5">
+            <CalendarDays className="h-3.5 w-3.5" />
+            Fill Month Full
           </Button>
           {grandTotal > 0 && (
             <Button variant="outline" size="sm" onClick={handleClearAll} disabled={clearing} className="gap-1.5 text-destructive hover:text-destructive">
@@ -578,16 +669,26 @@ export function TimesheetGrid() {
                               <div className="text-[10px] text-muted-foreground">Plan: {allocHours.toFixed(1)}h ({formatPm(row.allocPm)})</div>
                             )}
                           </div>
-                          {rowTotal > 0 && (
+                          <div className="flex items-center gap-0.5">
+                            {rowTotal > 0 && (
+                              <button
+                                onClick={() => handleClearRow(row.project_id)}
+                                disabled={clearing}
+                                className="text-muted-foreground/40 hover:text-amber-600 transition-colors p-0.5 rounded"
+                                title="Clear hours for this row"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            )}
                             <button
-                              onClick={() => handleClearRow(row.project_id)}
+                              onClick={() => handleRemoveProject(row.project_id, row.work_package_id)}
                               disabled={clearing}
                               className="text-muted-foreground/40 hover:text-destructive transition-colors p-0.5 rounded"
-                              title="Clear this row"
+                              title="Remove project from timesheet"
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <X className="h-3 w-3" />
                             </button>
-                          )}
+                          </div>
                         </div>
                       </td>
                       {calendarDays.map(d => {
@@ -682,9 +783,88 @@ export function TimesheetGrid() {
         </div>
       )}
 
+      {/* Fill Month Full Dialog */}
+      {fillFullOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setFillFullOpen(false)}>
+          <div className="bg-background rounded-lg border shadow-lg w-full max-w-md mx-4 p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-sm">Fill Month Full</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Select projects to distribute {hoursPerDay}h/day across {availableDays.length} working days. Hours are whole numbers, no decimals.
+                </p>
+              </div>
+              <button onClick={() => setFillFullOpen(false)} className="text-muted-foreground hover:text-foreground p-1 rounded">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="border rounded-lg max-h-60 overflow-y-auto divide-y">
+              {allProjects.map(p => {
+                const checked = fillFullSelectedIds.includes(p.id)
+                return (
+                  <label key={p.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        setFillFullSelectedIds(prev =>
+                          checked ? prev.filter(id => id !== p.id) : [...prev, p.id]
+                        )
+                      }}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{p.acronym}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">{p.title}</div>
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
+
+            {fillFullSelectedIds.length > 0 && (
+              <div className="rounded-lg bg-muted/50 border p-3 text-xs space-y-1">
+                <div className="font-semibold">Distribution preview:</div>
+                {(() => {
+                  const n = fillFullSelectedIds.length
+                  const base = Math.floor(hoursPerDay / n)
+                  const rem = hoursPerDay - base * n
+                  return fillFullSelectedIds.map((id, i) => {
+                    const proj = allProjects.find(p => p.id === id)
+                    const h = base + (i < rem ? 1 : 0)
+                    return (
+                      <div key={id} className="flex justify-between">
+                        <span className="truncate">{proj?.acronym ?? '—'}</span>
+                        <span className="font-bold tabular-nums">{h}h / day</span>
+                      </div>
+                    )
+                  })
+                })()}
+                <div className="border-t pt-1 mt-1 flex justify-between font-semibold">
+                  <span>Total</span>
+                  <span>{hoursPerDay}h / day × {availableDays.length} days = {hoursPerDay * availableDays.length}h</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setFillFullOpen(false)}>Cancel</Button>
+              <Button
+                size="sm"
+                onClick={handleFillMonthFull}
+                disabled={fillFullSelectedIds.length === 0 || fillFullBusy}
+              >
+                {fillFullBusy ? 'Filling...' : `Fill ${fillFullSelectedIds.length} project${fillFullSelectedIds.length !== 1 ? 's' : ''}`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bottom hint */}
       <div className="text-[11px] text-muted-foreground">
-        Hours auto-save as you type. Tab between cells to navigate. Use "Add a project" to enter hours for any project. Click the trash icon to clear a row.
+        Hours auto-save as you type. Tab between cells to navigate. Use "Add a project" to enter hours for any project. Click <X className="inline h-3 w-3" /> to remove a project.
       </div>
     </div>
   )
