@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
-import { Undo2, Redo2, Save, Grid3x3 } from 'lucide-react'
+import { Undo2, Redo2, Save, Grid3x3, Plus, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BulkFillDialog } from './BulkFillDialog'
 import { projectsService } from '@/services/projectsService'
@@ -105,6 +105,7 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
   const [manualRows, setManualRows] = useState<{ personId: string; projectId: string }[]>([])
   const [addPersonId, setAddPersonId] = useState('')
   const [addProjectId, setAddProjectId] = useState('')
+  const [addRowOpen, setAddRowOpen] = useState(false)
 
   // Build cell map from loaded assignments
   useEffect(() => {
@@ -279,7 +280,6 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
 
   const handleAddRow = () => {
     if (!addPersonId || !addProjectId) return
-    // Check both existing rows and manual rows for duplicate person+project
     const existsInGrid = rows.some((r) => r.person.id === addPersonId && r.project.id === addProjectId)
     const existsInManual = manualRows.some((mr) => mr.personId === addPersonId && mr.projectId === addProjectId)
     if (existsInGrid || existsInManual) {
@@ -289,43 +289,201 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
     setManualRows((prev) => [...prev, { personId: addPersonId, projectId: addProjectId }])
     setAddPersonId('')
     setAddProjectId('')
+    setAddRowOpen(false)
   }
 
-  const addRowUI = staff.length > 0 && projects.length > 0 ? (
-    <div className="flex items-end gap-2 flex-wrap">
-      <div className="space-y-1">
-        <label className="text-xs font-medium text-muted-foreground">Person</label>
-        <select
-          value={addPersonId}
-          onChange={(e) => setAddPersonId(e.target.value)}
-          className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+  // Workload preview for the selected person
+  const selectedPerson = addPersonId ? staff.find((p) => p.id === addPersonId) : null
+  const selectedPersonLoad = useMemo(() => {
+    if (!selectedPerson) return null
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const month = i + 1
+      let allocated = 0
+      for (const [key, val] of Object.entries(cells)) {
+        const parts = key.split(':')
+        if (parts[0] === selectedPerson.id && Number(parts[3]) === month) allocated += val
+      }
+      const absencePm = absencePmMap[`${selectedPerson.id}:${month}`] ?? 0
+      const capacity = Math.max(0, selectedPerson.fte - absencePm)
+      return { month, allocated, absencePm, capacity, free: Math.max(0, capacity - allocated) }
+    })
+    const yearTotal = months.reduce((s, m) => s + m.allocated, 0)
+    return { months, yearTotal }
+  }, [selectedPerson, cells, absencePmMap])
+
+  // Already-assigned projects for selected person (for context)
+  const selectedPersonProjects = useMemo(() => {
+    if (!selectedPerson) return []
+    const projectMap = new Map(projects.map((p) => [p.id, p]))
+    const seen = new Set<string>()
+    const result: { acronym: string; total: number }[] = []
+    for (const [key, val] of Object.entries(cells)) {
+      const parts = key.split(':')
+      if (parts[0] !== selectedPerson.id || val === 0) continue
+      const pid = parts[1]
+      if (!seen.has(pid)) {
+        seen.add(pid)
+        // sum all months for this person-project
+        let total = 0
+        for (const [k2, v2] of Object.entries(cells)) {
+          const p2 = k2.split(':')
+          if (p2[0] === selectedPerson.id && p2[1] === pid) total += v2
+        }
+        const proj = projectMap.get(pid)
+        if (proj) result.push({ acronym: proj.acronym, total })
+      }
+    }
+    return result.sort((a, b) => b.total - a.total)
+  }, [selectedPerson, cells, projects])
+
+  const canAddRow = staff.length > 0 && projects.length > 0
+
+  const addRowPanel = canAddRow ? (
+    <>
+      {!addRowOpen ? (
+        <button
+          onClick={() => setAddRowOpen(true)}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
         >
-          <option value="">Select person...</option>
-          {staff.map((p) => (
-            <option key={p.id} value={p.id}>{p.full_name}</option>
-          ))}
-        </select>
-      </div>
-      <div className="space-y-1">
-        <label className="text-xs font-medium text-muted-foreground">Project</label>
-        <select
-          value={addProjectId}
-          onChange={(e) => setAddProjectId(e.target.value)}
-          className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <option value="">Select project...</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>{p.acronym} — {p.title}</option>
-          ))}
-        </select>
-      </div>
-      <Button size="sm" variant="outline" onClick={handleAddRow} disabled={!addPersonId || !addProjectId}>
-        + Add Row
-      </Button>
-    </div>
+          <Plus className="h-4 w-4" />
+          Add person to project...
+        </button>
+      ) : (
+        <div className="rounded-lg border bg-card">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <UserPlus className="h-4 w-4 text-muted-foreground" />
+              Add Allocation Row
+            </div>
+            <button
+              onClick={() => { setAddRowOpen(false); setAddPersonId(''); setAddProjectId('') }}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div className="p-4 space-y-4">
+            {/* Dropdowns */}
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Person</label>
+                <select
+                  value={addPersonId}
+                  onChange={(e) => setAddPersonId(e.target.value)}
+                  className="flex w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Select person...</option>
+                  {staff.map((p) => (
+                    <option key={p.id} value={p.id}>{p.full_name} (FTE {p.fte})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Project</label>
+                <select
+                  value={addProjectId}
+                  onChange={(e) => setAddProjectId(e.target.value)}
+                  className="flex w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Select project...</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.acronym} — {p.title}</option>
+                  ))}
+                </select>
+              </div>
+              <Button size="sm" onClick={handleAddRow} disabled={!addPersonId || !addProjectId} className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" />
+                Add
+              </Button>
+            </div>
+
+            {/* Workload preview — only shows when a person is selected */}
+            {selectedPerson && selectedPersonLoad && (
+              <div className="space-y-3 pt-1">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs font-medium">
+                    {selectedPerson.full_name}
+                    <span className="text-muted-foreground font-normal ml-1.5">FTE {selectedPerson.fte}</span>
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Year total: <span className="font-semibold text-foreground">{selectedPersonLoad.yearTotal.toFixed(1)} PM</span>
+                  </span>
+                </div>
+
+                {/* Monthly capacity bars */}
+                <div className="grid grid-cols-12 gap-1">
+                  {selectedPersonLoad.months.map((m) => {
+                    const pct = selectedPerson.fte > 0 ? Math.min(1, m.allocated / selectedPerson.fte) : 0
+                    const absPct = selectedPerson.fte > 0 ? Math.min(1, m.absencePm / selectedPerson.fte) : 0
+                    const isOver = m.allocated > m.capacity + 0.001
+                    return (
+                      <div key={m.month} className="text-center">
+                        <div className="text-[10px] text-muted-foreground mb-1">{MONTHS[m.month - 1]}</div>
+                        <div
+                          className="h-8 rounded-sm bg-muted/60 relative overflow-hidden"
+                          title={`Allocated: ${m.allocated.toFixed(2)} / Capacity: ${m.capacity.toFixed(2)} PM${m.absencePm > 0 ? ` (${(m.absencePm * 22).toFixed(0)}d absent)` : ''}`}
+                        >
+                          {/* Absence portion (from top) */}
+                          {absPct > 0 && (
+                            <div
+                              className="absolute top-0 left-0 right-0 bg-orange-200/70"
+                              style={{ height: `${Math.round(absPct * 100)}%` }}
+                            />
+                          )}
+                          {/* Allocated portion (from bottom) */}
+                          <div
+                            className={cn(
+                              'absolute bottom-0 left-0 right-0 transition-all',
+                              isOver ? 'bg-red-400' : pct > 0.8 ? 'bg-amber-400' : 'bg-primary/60',
+                            )}
+                            style={{ height: `${Math.round(pct * 100)}%` }}
+                          />
+                        </div>
+                        <div className={cn(
+                          'text-[10px] mt-0.5 tabular-nums',
+                          m.free <= 0 ? 'text-red-500 font-semibold' : m.free < 0.3 ? 'text-amber-600' : 'text-muted-foreground',
+                        )}>
+                          {m.free.toFixed(1)}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Legend */}
+                <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-primary/60" />Allocated</span>
+                  <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-orange-200/70" />Absent</span>
+                  <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-muted/60" />Free</span>
+                  <span className="ml-auto">Numbers show free PM per month</span>
+                </div>
+
+                {/* Current projects list */}
+                {selectedPersonProjects.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    <span className="text-[10px] text-muted-foreground mr-1 self-center">Currently on:</span>
+                    {selectedPersonProjects.map((p) => (
+                      <span
+                        key={p.acronym}
+                        className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium"
+                      >
+                        {p.acronym}
+                        <span className="text-muted-foreground ml-1">{p.total.toFixed(1)}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   ) : null
 
-  if (rows.length === 0 && !addRowUI) {
+  if (rows.length === 0 && !canAddRow) {
     return (
       <EmptyState
         icon={Grid3x3}
@@ -335,15 +493,15 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
     )
   }
 
-  if (rows.length === 0 && addRowUI) {
+  if (rows.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="rounded-lg border bg-card p-6 text-center space-y-4">
+        <div className="rounded-lg border bg-card p-6 text-center space-y-3">
           <Grid3x3 className="mx-auto h-10 w-10 text-muted-foreground" />
           <h3 className="font-semibold">No allocation rows yet</h3>
-          <p className="text-sm text-muted-foreground">Select a person and project to start entering person-month allocations.</p>
+          <p className="text-sm text-muted-foreground">Select a person and project below to start entering person-month allocations.</p>
         </div>
-        {addRowUI}
+        {addRowPanel}
       </div>
     )
   }
@@ -472,7 +630,7 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
         </table>
       </div>
 
-      {addRowUI}
+      {addRowPanel}
 
       <BulkFillDialog
         open={bulkFillOpen}
