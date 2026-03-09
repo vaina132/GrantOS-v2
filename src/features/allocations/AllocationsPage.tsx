@@ -165,7 +165,7 @@ export function AllocationsPage() {
       )}
 
       {/* ── Content ── */}
-      <div className={cn(!showModeSelector && 'pt-5')}>
+      <div className={cn(!showModeSelector && 'pt-5', 'animate-fade-in')} key={`${tab}-${mode}-${compareMode}`}>
         {tab === 'grid' && <AllocationGrid mode={mode} compareMode={compareMode} />}
         {tab === 'matrix-personnel' && <AssignmentMatrix type={mode} />}
         {tab === 'matrix-projects' && <ProjectMatrix type={mode} />}

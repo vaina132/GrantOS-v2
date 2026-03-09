@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
 import { Plus, Search, Trash2, Pencil, Users } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { Person } from '@/types'
 
 export function StaffList() {
@@ -103,25 +104,32 @@ export function StaffList() {
           }
         />
       ) : (
+        <>
+        <div className="text-xs text-muted-foreground mb-2">
+          Showing {staff.length} member{staff.length !== 1 ? 's' : ''}
+        </div>
         <div className="rounded-lg border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium">Name</th>
-                  <th className="px-4 py-3 text-left font-medium">Department</th>
-                  <th className="px-4 py-3 text-left font-medium">Role</th>
-                  <th className="px-4 py-3 text-left font-medium">Type</th>
-                  <th className="px-4 py-3 text-right font-medium">FTE</th>
-                  <th className="px-4 py-3 text-left font-medium">Status</th>
-                  {can('canWrite') && <th className="px-4 py-3 text-right font-medium">Actions</th>}
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Name</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Department</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Role</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Type</th>
+                  <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">FTE</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Status</th>
+                  {can('canWrite') && <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {staff.map((person) => (
+                {staff.map((person, idx) => (
                   <tr
                     key={person.id}
-                    className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                    className={cn(
+                      'border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors',
+                      idx % 2 === 1 && 'bg-muted/[0.03]',
+                    )}
                     onClick={() => navigate(`/staff/${person.id}`)}
                   >
                     <td className="px-4 py-3">
@@ -169,6 +177,7 @@ export function StaffList() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       <ConfirmModal

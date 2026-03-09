@@ -35,54 +35,61 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xl">
-            G
-          </div>
-          <CardTitle className="text-2xl">Welcome to GrantOS</CardTitle>
-          <CardDescription>Sign in to manage your grant projects</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                autoFocus
-              />
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-muted/30 to-primary/5 p-4">
+      <div className="w-full max-w-md animate-fade-in">
+        <Card className="border-0 shadow-xl">
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground font-bold text-2xl shadow-lg shadow-primary/25">
+              G
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign in'}
-            </Button>
-          </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-primary underline underline-offset-4 hover:text-primary/80">
-              Sign up
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+            <CardTitle className="text-2xl tracking-tight">Welcome to GrantOS</CardTitle>
+            <CardDescription className="text-sm">Sign in to manage your grant projects</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  autoFocus
+                  className="h-10"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="h-10"
+                />
+              </div>
+              <Button type="submit" className="w-full h-10 font-semibold" disabled={loading}>
+                {loading ? 'Signing in...' : 'Sign in'}
+              </Button>
+            </form>
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              Don't have an account?{' '}
+              <Link to="/signup" className="font-medium text-primary hover:text-primary/80 transition-colors">
+                Sign up
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+        <p className="mt-6 text-center text-xs text-muted-foreground/60">
+          GrantOS v2.0 — Grant Project Management
+        </p>
+      </div>
     </div>
   )
 }

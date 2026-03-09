@@ -108,9 +108,9 @@ export function FinancialsPage() {
         </nav>
       </div>
 
-      <div className="pt-5">
-        {tab === 'overview' && <BudgetVsActuals key={refreshKey} />}
-        {tab === 'actuals' && <EnterActuals key={refreshKey} />}
+      <div className="pt-5 animate-fade-in" key={`${tab}-${refreshKey}`}>
+        {tab === 'overview' && <BudgetVsActuals />}
+        {tab === 'actuals' && <EnterActuals />}
       </div>
     </div>
   )

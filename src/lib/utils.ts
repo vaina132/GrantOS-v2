@@ -74,17 +74,32 @@ export function computeProjectStatus(startDate: string, endDate: string, current
 
 export function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
-    Active: 'bg-green-100 text-green-800',
-    Upcoming: 'bg-blue-100 text-blue-800',
-    Completed: 'bg-gray-100 text-gray-800',
-    Suspended: 'bg-red-100 text-red-800',
-    Draft: 'bg-slate-100 text-slate-800',
-    Submitted: 'bg-amber-100 text-amber-800',
-    Confirmed: 'bg-blue-100 text-blue-800',
-    Approved: 'bg-green-100 text-green-800',
-    Rejected: 'bg-red-100 text-red-800',
+    Active: 'bg-emerald-50 text-emerald-700',
+    Upcoming: 'bg-blue-50 text-blue-700',
+    Completed: 'bg-gray-100 text-gray-600',
+    Suspended: 'bg-red-50 text-red-700',
+    Draft: 'bg-slate-100 text-slate-600',
+    Submitted: 'bg-amber-50 text-amber-700',
+    Confirmed: 'bg-sky-50 text-sky-700',
+    Approved: 'bg-emerald-50 text-emerald-700',
+    Rejected: 'bg-red-50 text-red-700',
   }
-  return colors[status] || 'bg-gray-100 text-gray-800'
+  return colors[status] || 'bg-gray-100 text-gray-600'
+}
+
+export function getStatusDotColor(status: string): string {
+  const dots: Record<string, string> = {
+    Active: 'bg-emerald-500',
+    Upcoming: 'bg-blue-500',
+    Completed: 'bg-gray-400',
+    Suspended: 'bg-red-500',
+    Draft: 'bg-slate-400',
+    Submitted: 'bg-amber-500',
+    Confirmed: 'bg-sky-500',
+    Approved: 'bg-emerald-500',
+    Rejected: 'bg-red-500',
+  }
+  return dots[status] || 'bg-gray-400'
 }
 
 export function getMonthName(month: number): string {

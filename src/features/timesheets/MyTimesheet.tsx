@@ -37,6 +37,16 @@ export function MyTimesheet() {
   const draftEntries = useMemo(() => entries.filter((e) => e.status === 'Draft'), [entries])
   const canSubmit = draftEntries.length > 0 && draftEntries.every((e) => (e.actual_hours ?? 0) > 0)
 
+  const filledCount = useMemo(() => entries.filter((e) => (e.actual_hours ?? 0) > 0).length, [entries])
+  const progressPct = entries.length > 0 ? Math.round((filledCount / entries.length) * 100) : 0
+
+  const STATUS_BORDER: Record<string, string> = {
+    Draft: 'border-l-slate-400',
+    Submitted: 'border-l-amber-500',
+    Approved: 'border-l-emerald-500',
+    Rejected: 'border-l-red-500',
+  }
+
   const handleActualHoursChange = async (entry: TimesheetEntry, value: number) => {
     try {
       await timesheetService.updateActualHours(entry.id, value)
@@ -154,11 +164,26 @@ export function MyTimesheet() {
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Difference</div>
             <div className={cn(
               'text-lg font-semibold mt-0.5',
-              totalActual - totalPlanned > 0.5 ? 'text-amber-600' : totalActual - totalPlanned < -0.5 ? 'text-red-500' : 'text-green-600',
+              totalActual - totalPlanned > 0.5 ? 'text-amber-600' : totalActual - totalPlanned < -0.5 ? 'text-red-500' : 'text-emerald-600',
             )}>
               {totalActual - totalPlanned > 0 ? '+' : ''}{(totalActual - totalPlanned).toFixed(1)}h
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Progress indicator */}
+      {entries.length > 0 && (
+        <div className="flex items-center gap-3">
+          <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn('h-full rounded-full transition-all duration-500', progressPct === 100 ? 'bg-emerald-500' : 'bg-primary')}
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">
+            {filledCount} of {entries.length} filled ({progressPct}%)
+          </span>
         </div>
       )}
 
@@ -195,7 +220,10 @@ export function MyTimesheet() {
                   const isEditable = entry.status === 'Draft' || entry.status === 'Rejected'
 
                   return (
-                    <tr key={entry.id} className="border-b last:border-0 hover:bg-muted/20">
+                    <tr key={entry.id} className={cn(
+                      'border-b last:border-0 hover:bg-muted/20 border-l-[3px]',
+                      STATUS_BORDER[entry.status] ?? 'border-l-transparent',
+                    )}>
                       <td className="px-4 py-2.5">
                         <div className="font-semibold text-primary">
                           {(entry as any).projects?.acronym ?? '—'}

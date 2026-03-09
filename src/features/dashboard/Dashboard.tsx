@@ -24,10 +24,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
 } from 'recharts'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -127,12 +123,16 @@ export function Dashboard() {
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: 'Projects', value: kpis.totalProjects, sub: `${kpis.activeProjects} active`, icon: FolderKanban, color: 'text-blue-600' },
-          { label: 'Staff', value: kpis.totalStaff, sub: `${kpis.activeStaff} active`, icon: Users, color: 'text-green-600' },
-          { label: 'Total Budget', value: formatCurrency(kpis.totalBudget), sub: 'across all projects', icon: DollarSign, color: 'text-amber-600' },
-          { label: 'Person-Months', value: kpis.totalPms, sub: `allocated in ${globalYear}`, icon: CalendarDays, color: 'text-purple-600' },
+          { label: 'Projects', value: kpis.totalProjects, sub: `${kpis.activeProjects} active`, icon: FolderKanban, color: 'text-blue-600', href: '/projects' },
+          { label: 'Staff', value: kpis.totalStaff, sub: `${kpis.activeStaff} active`, icon: Users, color: 'text-emerald-600', href: '/staff' },
+          { label: 'Total Budget', value: formatCurrency(kpis.totalBudget), sub: 'across all projects', icon: DollarSign, color: 'text-amber-600', href: '/financials' },
+          { label: 'Person-Months', value: kpis.totalPms, sub: `allocated in ${globalYear}`, icon: CalendarDays, color: 'text-purple-600', href: '/allocations' },
         ].map((kpi) => (
-          <Card key={kpi.label}>
+          <Card
+            key={kpi.label}
+            className="cursor-pointer transition-shadow hover:shadow-md"
+            onClick={() => navigate(kpi.href)}
+          >
             <CardContent className="pt-6">
               {isLoading ? (
                 <Skeleton className="h-16 w-full" />
@@ -143,7 +143,9 @@ export function Dashboard() {
                     <p className="text-2xl font-bold mt-1">{kpi.value}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{kpi.sub}</p>
                   </div>
-                  <kpi.icon className={`h-8 w-8 ${kpi.color} opacity-80`} />
+                  <div className={`rounded-lg bg-muted p-2`}>
+                    <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -191,25 +193,35 @@ export function Dashboard() {
               {statusData.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-10">No projects yet</p>
               ) : (
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={statusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={50}
-                      outerRadius={90}
-                      dataKey="value"
-                      label={({ name, value }) => `${name} (${value})`}
-                    >
-                      {statusData.map((entry) => (
-                        <Cell key={entry.name} fill={STATUS_COLORS[entry.name] ?? '#6b7280'} />
-                      ))}
-                    </Pie>
-                    <Legend />
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div className="space-y-4">
+                  {/* Stacked bar */}
+                  <div className="flex h-8 w-full overflow-hidden rounded-lg">
+                    {statusData.map((entry) => {
+                      const total = statusData.reduce((s, d) => s + d.value, 0)
+                      const pct = total > 0 ? (entry.value / total) * 100 : 0
+                      return (
+                        <div
+                          key={entry.name}
+                          className="flex items-center justify-center text-xs font-semibold text-white transition-all"
+                          style={{ width: `${pct}%`, backgroundColor: STATUS_COLORS[entry.name] ?? '#6b7280', minWidth: pct > 0 ? '24px' : '0' }}
+                          title={`${entry.name}: ${entry.value}`}
+                        >
+                          {pct >= 12 ? entry.value : ''}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {/* Legend */}
+                  <div className="flex flex-wrap gap-4">
+                    {statusData.map((entry) => (
+                      <div key={entry.name} className="flex items-center gap-2">
+                        <span className="h-3 w-3 rounded-sm" style={{ backgroundColor: STATUS_COLORS[entry.name] ?? '#6b7280' }} />
+                        <span className="text-sm text-muted-foreground">{entry.name}</span>
+                        <span className="text-sm font-semibold">{entry.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

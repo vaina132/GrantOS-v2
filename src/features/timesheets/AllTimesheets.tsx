@@ -157,16 +157,23 @@ export function AllTimesheets() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex gap-3 items-end flex-wrap">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Month</label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
+            <label className="text-xs font-medium text-muted-foreground block mb-1">Month</label>
+            <div className="inline-flex items-center rounded-lg border bg-muted/40 p-0.5 flex-wrap gap-0.5">
               {MONTHS.map((m, i) => (
-                <option key={i} value={i + 1}>{m} {globalYear}</option>
+                <button
+                  key={i}
+                  onClick={() => setSelectedMonth(i + 1)}
+                  className={cn(
+                    'rounded-md px-2 py-1 text-[11px] font-semibold transition-all',
+                    selectedMonth === i + 1
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {m}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
         </div>
 
@@ -266,7 +273,13 @@ export function AllTimesheets() {
                       const actual = entry.actual_hours ?? 0
                       const diff = actual - planned
                       return (
-                        <tr key={entry.id} className="border-b last:border-0 hover:bg-muted/10">
+                        <tr key={entry.id} className={cn(
+                          'border-b last:border-0 hover:bg-muted/10 border-l-[3px]',
+                          entry.status === 'Draft' ? 'border-l-slate-400' :
+                          entry.status === 'Submitted' ? 'border-l-amber-500' :
+                          entry.status === 'Approved' ? 'border-l-emerald-500' :
+                          entry.status === 'Rejected' ? 'border-l-red-500' : 'border-l-transparent',
+                        )}>
                           <td className="px-4 py-2 w-[200px]">
                             <span className="font-semibold text-primary text-xs">
                               {(entry as any).projects?.acronym ?? '—'}

@@ -30,20 +30,40 @@ interface NavItem {
   guestAllowed?: boolean
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/projects', label: 'Projects', icon: FolderKanban },
-  { path: '/staff', label: 'Staff', icon: Users },
-  { path: '/allocations', label: 'Allocations', icon: CalendarDays, permission: 'canManageAllocations' },
-  { path: '/timesheets', label: 'Timesheets', icon: ClipboardCheck, permission: 'canSubmitTimesheets', guestAllowed: true },
-  { path: '/absences', label: 'Absences', icon: CalendarOff, permission: 'canManageAllocations' },
-  { path: '/financials', label: 'Financials', icon: DollarSign, permission: 'canSeeFinancials' },
-  { path: '/timeline', label: 'Project Timeline', icon: GanttChart },
-  { path: '/reports', label: 'Reports', icon: FileText, permission: 'canGenerateReports' },
-  { path: '/import', label: 'Import', icon: Upload, permission: 'canManageOrg' },
-  { path: '/audit', label: 'Audit Log', icon: Shield, permission: 'canSeeFinancials' },
-  { path: '/guests', label: 'Guest Access', icon: UserCheck, permission: 'canManageOrg' },
-  { path: '/settings', label: 'Settings', icon: Settings, permission: 'canManageOrg' },
+interface NavGroup {
+  label: string
+  items: NavItem[]
+}
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: 'Core',
+    items: [
+      { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { path: '/projects', label: 'Projects', icon: FolderKanban },
+      { path: '/staff', label: 'Staff', icon: Users },
+    ],
+  },
+  {
+    label: 'Operations',
+    items: [
+      { path: '/allocations', label: 'Allocations', icon: CalendarDays, permission: 'canManageAllocations' },
+      { path: '/timesheets', label: 'Timesheets', icon: ClipboardCheck, permission: 'canSubmitTimesheets', guestAllowed: true },
+      { path: '/absences', label: 'Absences', icon: CalendarOff, permission: 'canManageAllocations' },
+      { path: '/financials', label: 'Financials', icon: DollarSign, permission: 'canSeeFinancials' },
+      { path: '/timeline', label: 'Timeline', icon: GanttChart },
+    ],
+  },
+  {
+    label: 'Administration',
+    items: [
+      { path: '/reports', label: 'Reports', icon: FileText, permission: 'canGenerateReports' },
+      { path: '/import', label: 'Import', icon: Upload, permission: 'canManageOrg' },
+      { path: '/audit', label: 'Audit Log', icon: Shield, permission: 'canSeeFinancials' },
+      { path: '/guests', label: 'Guest Access', icon: UserCheck, permission: 'canManageOrg' },
+      { path: '/settings', label: 'Settings', icon: Settings, permission: 'canManageOrg' },
+    ],
+  },
 ]
 
 const GUEST_NAV_ITEMS: NavItem[] = [
@@ -56,12 +76,15 @@ export function Sidebar() {
   const { sidebarOpen, setSidebarOpen } = useUiStore()
   const location = useLocation()
 
-  const items = accessType === 'guest' ? GUEST_NAV_ITEMS : NAV_ITEMS
-
-  const visibleItems = items.filter((item) => {
-    if (!item.permission) return true
-    return can(item.permission)
-  })
+  const visibleGroups = accessType === 'guest'
+    ? [{ label: '', items: GUEST_NAV_ITEMS }]
+    : NAV_GROUPS.map((group) => ({
+        ...group,
+        items: group.items.filter((item) => {
+          if (!item.permission) return true
+          return can(item.permission)
+        }),
+      })).filter((group) => group.items.length > 0)
 
   return (
     <>
@@ -100,27 +123,43 @@ export function Sidebar() {
           </Button>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-          {visibleItems.map((item) => {
-            const Icon = item.icon
-            const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/')
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                )}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                {item.label}
-              </NavLink>
-            )
-          })}
+        <nav className="flex-1 overflow-y-auto px-3 py-2">
+          {visibleGroups.map((group, gi) => (
+            <div key={group.label || gi} className={cn(gi > 0 && 'mt-5')}>
+              {group.label && (
+                <div className="mb-1 px-3 pt-1 pb-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                    {group.label}
+                  </span>
+                </div>
+              )}
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const Icon = item.icon
+                  const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setSidebarOpen(false)}
+                      className={cn(
+                        'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all',
+                        isActive
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                      )}
+                    >
+                      {isActive && (
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-primary" />
+                      )}
+                      <Icon className={cn('h-4.5 w-4.5 shrink-0', isActive ? 'text-primary' : 'text-muted-foreground/70 group-hover:text-accent-foreground')} />
+                      {item.label}
+                    </NavLink>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="border-t p-4">

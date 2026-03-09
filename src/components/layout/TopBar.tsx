@@ -1,4 +1,4 @@
-import { Menu, LogOut, ChevronDown } from 'lucide-react'
+import { Menu, LogOut, ChevronDown, ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { Button } from '@/components/ui/button'
@@ -12,12 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { getYearOptions } from '@/lib/utils'
+import { getYearOptions, cn } from '@/lib/utils'
 import { differenceInDays } from 'date-fns'
 
 export function TopBar() {
   const { user, role, accessType, orgPlan, trialEndsAt, signOut } = useAuthStore()
-  const { globalYear, setGlobalYear, toggleSidebar } = useUiStore()
+  const { globalYear, setGlobalYear, toggleSidebar, darkMode, toggleDarkMode } = useUiStore()
 
   const yearOptions = getYearOptions()
   const userEmail = user?.email ?? ''
@@ -46,23 +46,53 @@ export function TopBar() {
         </div>
       )}
 
-      <div className="ml-auto flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <label htmlFor="year-selector" className="text-sm font-medium text-muted-foreground hidden sm:block">
-            Year:
-          </label>
-          <select
-            id="year-selector"
-            value={globalYear}
-            onChange={(e) => setGlobalYear(Number(e.target.value))}
-            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      <div className="ml-auto flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={toggleDarkMode}
+          aria-label="Toggle dark mode"
+        >
+          {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setGlobalYear(globalYear - 1)}
+            disabled={globalYear <= yearOptions[0]}
+            aria-label="Previous year"
           >
-            {yearOptions.map((year) => (
-              <option key={year} value={year}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <div className="inline-flex items-center rounded-lg border bg-muted/40 p-0.5">
+            {yearOptions.filter(y => Math.abs(y - globalYear) <= 2).map((year) => (
+              <button
+                key={year}
+                onClick={() => setGlobalYear(year)}
+                className={cn(
+                  'rounded-md px-3 py-1 text-xs font-semibold transition-all',
+                  year === globalYear
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
                 {year}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setGlobalYear(globalYear + 1)}
+            disabled={globalYear >= yearOptions[yearOptions.length - 1]}
+            aria-label="Next year"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
 
         <DropdownMenu>

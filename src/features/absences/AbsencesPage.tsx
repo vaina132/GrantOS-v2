@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { AbsenceList } from './AbsenceList'
 import { AbsenceTimeline } from './AbsenceTimeline'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { Button } from '@/components/ui/button'
-import { CalendarDays, List } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type View = 'timeline' | 'list'
@@ -11,33 +9,43 @@ type View = 'timeline' | 'list'
 export function AbsencesPage() {
   const [view, setView] = useState<View>('timeline')
 
+  const tabs: { key: View; label: string }[] = [
+    { key: 'timeline', label: 'Timeline' },
+    { key: 'list', label: 'List View' },
+  ]
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-0">
       <PageHeader
         title="Absences"
         description="Track staff absences and leave"
-        actions={
-          <div className="flex gap-1 rounded-md border p-0.5">
-            <Button
-              variant={view === 'timeline' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setView('timeline')}
-              className={cn('gap-1.5', view !== 'timeline' && 'text-muted-foreground')}
-            >
-              <CalendarDays className="h-4 w-4" /> Timeline
-            </Button>
-            <Button
-              variant={view === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setView('list')}
-              className={cn('gap-1.5', view !== 'list' && 'text-muted-foreground')}
-            >
-              <List className="h-4 w-4" /> List
-            </Button>
-          </div>
-        }
       />
-      {view === 'timeline' ? <AbsenceTimeline /> : <AbsenceList />}
+
+      <div className="border-b mt-4">
+        <nav className="-mb-px flex gap-6 overflow-x-auto" aria-label="Tabs">
+          {tabs.map((t) => {
+            const active = view === t.key
+            return (
+              <button
+                key={t.key}
+                onClick={() => setView(t.key)}
+                className={cn(
+                  'whitespace-nowrap pb-3 pt-1 text-sm font-medium border-b-2 transition-colors',
+                  active
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30',
+                )}
+              >
+                {t.label}
+              </button>
+            )
+          })}
+        </nav>
+      </div>
+
+      <div className="pt-5 animate-fade-in" key={view}>
+        {view === 'timeline' ? <AbsenceTimeline /> : <AbsenceList />}
+      </div>
     </div>
   )
 }

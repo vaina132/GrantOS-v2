@@ -46,7 +46,7 @@ export function TimesheetsPage() {
         </nav>
       </div>
 
-      <div className="pt-5">
+      <div className="pt-5 animate-fade-in" key={tab}>
         {tab === 'my' && <MyTimesheet />}
         {tab === 'all' && isManager && <AllTimesheets />}
       </div>

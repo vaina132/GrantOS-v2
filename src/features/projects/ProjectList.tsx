@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/use-toast'
 import { Plus, Search, Trash2, Pencil, FolderKanban } from 'lucide-react'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import type { Project, ProjectStatus } from '@/types'
 
 const STATUS_OPTIONS: (ProjectStatus | 'All')[] = ['All', 'Upcoming', 'Active', 'Completed', 'Suspended']
@@ -102,25 +102,32 @@ export function ProjectList() {
           }
         />
       ) : (
+        <>
+        <div className="text-xs text-muted-foreground mb-2">
+          Showing {projects.length} project{projects.length !== 1 ? 's' : ''}
+        </div>
         <div className="rounded-lg border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium">Acronym</th>
-                  <th className="px-4 py-3 text-left font-medium">Title</th>
-                  <th className="px-4 py-3 text-left font-medium">Scheme</th>
-                  <th className="px-4 py-3 text-left font-medium">Status</th>
-                  <th className="px-4 py-3 text-left font-medium">Period</th>
-                  <th className="px-4 py-3 text-right font-medium">Budget</th>
-                  {can('canManageProjects') && <th className="px-4 py-3 text-right font-medium">Actions</th>}
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Acronym</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Title</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Scheme</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Status</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Period</th>
+                  <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Budget</th>
+                  {can('canManageProjects') && <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Actions</th>}
                 </tr>
               </thead>
               <tbody>
-                {projects.map((project) => (
+                {projects.map((project, idx) => (
                   <tr
                     key={project.id}
-                    className="border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                    className={cn(
+                      'border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors',
+                      idx % 2 === 1 && 'bg-muted/[0.03]',
+                    )}
                     onClick={() => navigate(`/projects/${project.id}`)}
                   >
                     <td className="px-4 py-3">
@@ -165,6 +172,7 @@ export function ProjectList() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       <ConfirmModal
