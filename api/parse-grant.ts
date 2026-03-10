@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { Readable } from 'stream'
+import { createClient } from '@supabase/supabase-js'
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
 
@@ -74,69 +74,8 @@ Return ONLY valid JSON matching this exact schema (no markdown, no explanation):
   "confidence_notes": "string"
 }`
 
-// Parse multipart form data manually for Vercel serverless
-async function parseMultipart(req: VercelRequest): Promise<{
-  file: { buffer: Buffer; name: string; type: string } | null
-  fields: Record<string, string>
-}> {
-  return new Promise((resolve, reject) => {
-    const contentType = req.headers['content-type'] || ''
-    const boundaryMatch = contentType.match(/boundary=(.+)/)
-    if (!boundaryMatch) {
-      reject(new Error('No multipart boundary found'))
-      return
-    }
-
-    const chunks: Buffer[] = []
-    const stream = req instanceof Readable ? req : Readable.from(req.body ? [Buffer.from(typeof req.body === 'string' ? req.body : JSON.stringify(req.body))] : [])
-
-    stream.on('data', (chunk: Buffer) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)))
-    stream.on('end', () => {
-      const body = Buffer.concat(chunks)
-      const boundary = boundaryMatch[1]
-      const parts = body.toString('binary').split(`--${boundary}`)
-
-      let file: { buffer: Buffer; name: string; type: string } | null = null
-      const fields: Record<string, string> = {}
-
-      for (const part of parts) {
-        if (part === '--' || part.trim() === '' || part === '--\r\n') continue
-
-        const headerEnd = part.indexOf('\r\n\r\n')
-        if (headerEnd === -1) continue
-
-        const headers = part.substring(0, headerEnd)
-        const content = part.substring(headerEnd + 4).replace(/\r\n$/, '')
-
-        const nameMatch = headers.match(/name="([^"]+)"/)
-        const fileNameMatch = headers.match(/filename="([^"]+)"/)
-        const contentTypeMatch = headers.match(/Content-Type:\s*(.+)/i)
-
-        if (nameMatch) {
-          if (fileNameMatch) {
-            // It's a file
-            file = {
-              buffer: Buffer.from(content, 'binary'),
-              name: fileNameMatch[1],
-              type: contentTypeMatch ? contentTypeMatch[1].trim() : 'application/octet-stream',
-            }
-          } else {
-            // It's a text field
-            fields[nameMatch[1]] = content.trim()
-          }
-        }
-      }
-
-      resolve({ file, fields })
-    })
-    stream.on('error', reject)
-  })
-}
-
 export const config = {
-  api: {
-    bodyParser: false, // We need raw body for multipart
-  },
+  maxDuration: 60, // Claude may take a while for large documents
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -155,24 +94,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const claudeApiKey = process.env.CLAUDE_API_KEY
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY
+
     if (!claudeApiKey) {
       return res.status(500).json({ error: 'CLAUDE_API_KEY not configured on server' })
     }
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return res.status(500).json({ error: 'Supabase credentials not configured on server' })
+    }
 
-    const { file, fields } = await parseMultipart(req)
-    const organisationAbbreviation = fields['organisation_abbreviation'] || ''
-    const userInstructions = fields['user_instructions'] || ''
+    // Parse JSON body (small — just the storage path + metadata)
+    const { storage_path, file_name, organisation_abbreviation, user_instructions } = req.body || {}
 
-    if (!file) {
-      return res.status(400).json({ error: 'No file provided' })
+    if (!storage_path) {
+      return res.status(400).json({ error: 'No storage_path provided' })
+    }
+
+    // Download file from Supabase Storage
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from('grant-uploads')
+      .download(storage_path)
+
+    if (downloadError || !fileData) {
+      return res.status(400).json({ error: `Failed to download file: ${downloadError?.message || 'Not found'}` })
     }
 
     // Convert to base64
-    const base64 = file.buffer.toString('base64')
+    const arrayBuffer = await fileData.arrayBuffer()
+    const base64 = Buffer.from(arrayBuffer).toString('base64')
 
-    // Determine media type
+    // Determine media type from file name
     let mediaType = 'application/pdf'
-    const name = file.name.toLowerCase()
+    const name = (file_name || storage_path || '').toLowerCase()
     if (name.endsWith('.png')) mediaType = 'image/png'
     else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) mediaType = 'image/jpeg'
     else if (name.endsWith('.webp')) mediaType = 'image/webp'
@@ -180,11 +135,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Build user prompt with optional context
     let userPrompt = 'Please parse this grant agreement document and extract all project information as the JSON schema described in the system prompt.'
-    if (organisationAbbreviation) {
-      userPrompt += `\n\nIMPORTANT: Our organisation's abbreviation/name is "${organisationAbbreviation}". When extracting budget figures, PM rates, and personnel costs, focus on the data specific to this organisation (not the total consortium figures). Look for budget tables or annexes that break down costs per beneficiary/partner.`
+    if (organisation_abbreviation) {
+      userPrompt += `\n\nIMPORTANT: Our organisation's abbreviation/name is "${organisation_abbreviation}". When extracting budget figures, PM rates, and personnel costs, focus on the data specific to this organisation (not the total consortium figures). Look for budget tables or annexes that break down costs per beneficiary/partner.`
     }
-    if (userInstructions) {
-      userPrompt += `\n\nAdditional instructions from the user:\n${userInstructions}`
+    if (user_instructions) {
+      userPrompt += `\n\nAdditional instructions from the user:\n${user_instructions}`
     }
     userPrompt += '\n\nReturn ONLY the JSON object.'
 
