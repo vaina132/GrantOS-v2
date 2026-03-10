@@ -1,9 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pdf = require('pdf-parse/lib/pdf-parse.js')
+
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
 
-const SYSTEM_PROMPT = `You are an expert grant agreement parser. You will receive a grant agreement document (as PDF content). Extract ALL structured information and return it as a single JSON object matching the schema below. Be thorough — extract every work package, deliverable, milestone, and reporting period you can find.
+const SYSTEM_PROMPT = `You are an expert grant agreement parser. You will receive the extracted text of a grant agreement document. Extract ALL structured information and return it as a single JSON object matching the schema below. Be thorough — extract every work package, deliverable, milestone, and reporting period you can find.
 
 IMPORTANT RULES:
 - Dates should be in ISO format (YYYY-MM-DD).
@@ -75,11 +78,10 @@ Return ONLY valid JSON matching this exact schema (no markdown, no explanation):
 }`
 
 export const config = {
-  maxDuration: 60, // Claude may take a while for large documents
+  maxDuration: 60,
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type')
@@ -104,7 +106,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Supabase credentials not configured on server' })
     }
 
-    // Parse JSON body (small — just the storage path + metadata)
     const { storage_path, file_name, organisation_abbreviation, user_instructions } = req.body || {}
 
     if (!storage_path) {
@@ -121,20 +122,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: `Failed to download file: ${downloadError?.message || 'Not found'}` })
     }
 
-    // Convert to base64
+    // Extract text from PDF using pdf-parse (no page limit)
     const arrayBuffer = await fileData.arrayBuffer()
-    const base64 = Buffer.from(arrayBuffer).toString('base64')
+    const pdfBuffer = Buffer.from(arrayBuffer)
+    const pdfData = await pdf(pdfBuffer)
+    const pdfText = pdfData.text
 
-    // Determine media type from file name
-    let mediaType = 'application/pdf'
-    const name = (file_name || storage_path || '').toLowerCase()
-    if (name.endsWith('.png')) mediaType = 'image/png'
-    else if (name.endsWith('.jpg') || name.endsWith('.jpeg')) mediaType = 'image/jpeg'
-    else if (name.endsWith('.webp')) mediaType = 'image/webp'
-    else if (name.endsWith('.gif')) mediaType = 'image/gif'
+    if (!pdfText || pdfText.trim().length === 0) {
+      return res.status(400).json({ error: 'Could not extract text from PDF. The file may be scanned/image-based.' })
+    }
 
-    // Build user prompt with optional context
-    let userPrompt = 'Please parse this grant agreement document and extract all project information as the JSON schema described in the system prompt.'
+    // Build user prompt with the extracted text and optional context
+    let userPrompt = `Here is the full text extracted from the grant agreement document:\n\n---\n${pdfText}\n---\n\nPlease parse this grant agreement and extract all project information as the JSON schema described in the system prompt.`
     if (organisation_abbreviation) {
       userPrompt += `\n\nIMPORTANT: Our organisation's abbreviation/name is "${organisation_abbreviation}". When extracting budget figures, PM rates, and personnel costs, focus on the data specific to this organisation (not the total consortium figures). Look for budget tables or annexes that break down costs per beneficiary/partner.`
     }
@@ -143,18 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     userPrompt += '\n\nReturn ONLY the JSON object.'
 
-    // Build Claude API request
-    const isPdf = mediaType === 'application/pdf'
-    const content: any[] = isPdf
-      ? [
-          { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text', text: userPrompt },
-        ]
-      : [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text', text: userPrompt },
-        ]
-
+    // Send extracted text to Claude (no document/PDF content type needed)
     const claudeResponse = await fetch(CLAUDE_API_URL, {
       method: 'POST',
       headers: {
@@ -164,9 +152,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 8192,
+        max_tokens: 16384,
         system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content }],
+        messages: [{ role: 'user', content: userPrompt }],
       }),
     })
 
@@ -180,7 +168,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const claudeData = await claudeResponse.json()
 
-    // Extract text content
     const textBlock = claudeData.content?.find((b: any) => b.type === 'text')
     if (!textBlock?.text) {
       return res.status(502).json({ error: 'No text response from Claude' })
