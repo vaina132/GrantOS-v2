@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const pdf = require('pdf-parse/lib/pdf-parse.js')
+const pdfParse = require('pdf-parse')
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
 
@@ -125,7 +125,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Extract text from PDF using pdf-parse (no page limit)
     const arrayBuffer = await fileData.arrayBuffer()
     const pdfBuffer = Buffer.from(arrayBuffer)
-    const pdfData = await pdf(pdfBuffer)
+    const pdfData = await pdfParse(pdfBuffer)
     const pdfText = pdfData.text
 
     if (!pdfText || pdfText.trim().length === 0) {
