@@ -255,10 +255,17 @@ export function GanttChart() {
                     return (
                       <div
                         key={`rp-${rp.id}`}
-                        className="absolute bottom-0 h-[6px] bg-cyan-400/40 border border-cyan-500/50 rounded-sm"
-                        style={{ left: rpLeft, width: rpWidth }}
-                        title={`RP${rp.period_number}: M${rp.start_month}–M${rp.end_month}`}
-                      />
+                        className="absolute bottom-0 h-[6px] bg-cyan-400/40 border border-cyan-500/50 rounded-sm group/rp cursor-pointer"
+                        style={{ left: rpLeft, width: rpWidth, zIndex: 2 }}
+                      >
+                        <div className="hidden group-hover/rp:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 pointer-events-none">
+                          <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
+                            <div className="font-semibold text-cyan-600">RP{rp.period_number}</div>
+                            <div className="text-muted-foreground">M{rp.start_month} – M{rp.end_month}</div>
+                            {rp.notes && <div className="text-muted-foreground mt-0.5 max-w-[200px] truncate">{rp.notes}</div>}
+                          </div>
+                        </div>
+                      </div>
                     )
                   })}
 
@@ -271,13 +278,20 @@ export function GanttChart() {
                     return (
                       <div
                         key={`del-${d.id}`}
-                        className="absolute top-0"
-                        style={{ left: dLeft }}
-                        title={`${d.number}: ${d.title} (M${d.due_month})`}
+                        className="absolute top-0 group/del cursor-pointer"
+                        style={{ left: dLeft, zIndex: 3 }}
                       >
                         <svg width="10" height="10" viewBox="0 0 10 10">
                           <polygon points="5,0 10,5 5,10 0,5" className="fill-orange-500" />
                         </svg>
+                        <div className="hidden group-hover/del:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 pointer-events-none">
+                          <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
+                            <div className="font-semibold text-orange-600">{d.number}</div>
+                            <div className="font-medium">{d.title}</div>
+                            <div className="text-muted-foreground">Due: M{d.due_month}</div>
+                            {d.description && <div className="text-muted-foreground mt-0.5 max-w-[220px] truncate">{d.description}</div>}
+                          </div>
+                        </div>
                       </div>
                     )
                   })}
@@ -291,13 +305,20 @@ export function GanttChart() {
                     return (
                       <div
                         key={`ms-${m.id}`}
-                        className="absolute bottom-[6px]"
-                        style={{ left: mLeft }}
-                        title={`${m.number}: ${m.title} (M${m.due_month})`}
+                        className="absolute bottom-[6px] group/ms cursor-pointer"
+                        style={{ left: mLeft, zIndex: 3 }}
                       >
                         <svg width="10" height="10" viewBox="0 0 10 10">
                           <polygon points="5,0 10,5 5,10 0,5" className="fill-violet-500" />
                         </svg>
+                        <div className="hidden group-hover/ms:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 pointer-events-none">
+                          <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
+                            <div className="font-semibold text-violet-600">{m.number}</div>
+                            <div className="font-medium">{m.title}</div>
+                            <div className="text-muted-foreground">Due: M{m.due_month}</div>
+                            {m.verification_means && <div className="text-muted-foreground mt-0.5 max-w-[220px] truncate">{m.verification_means}</div>}
+                          </div>
+                        </div>
                       </div>
                     )
                   })}
