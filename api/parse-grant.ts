@@ -160,7 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': claudeApiKey,
-        'anthropic-version': '2023-06-01',
+        'anthropic-version': '2024-10-22',
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
@@ -173,7 +173,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!claudeResponse.ok) {
       const errBody = await claudeResponse.text()
       console.error('Claude API error:', claudeResponse.status, errBody)
-      return res.status(502).json({ error: `Claude API error: ${claudeResponse.status}`, details: errBody })
+      let details = errBody
+      try { details = JSON.parse(errBody)?.error?.message || errBody } catch {}
+      return res.status(502).json({ error: `Claude API error (${claudeResponse.status}): ${details}` })
     }
 
     const claudeData = await claudeResponse.json()
