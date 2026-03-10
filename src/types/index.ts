@@ -329,3 +329,52 @@ export interface ReportingPeriod {
   created_at: string
   updated_at: string
 }
+
+// ── AI Grant Agreement Extraction ─────────────────────────────
+export interface GrantAIExtraction {
+  project: {
+    acronym: string
+    title: string
+    grant_number: string | null
+    start_date: string
+    end_date: string
+    total_budget: number | null
+    overhead_rate: number | null
+    has_wps: boolean
+    is_lead_organisation: boolean
+    our_pm_rate: number | null
+    budget_personnel: number | null
+    budget_travel: number | null
+    budget_subcontracting: number | null
+    budget_other: number | null
+  }
+  work_packages: {
+    number: number
+    name: string
+    description: string | null
+    start_month: number
+    end_month: number
+    person_months: number | null
+  }[]
+  deliverables: {
+    number: string
+    title: string
+    description: string | null
+    wp_number: number | null
+    due_month: number
+  }[]
+  milestones: {
+    number: string
+    title: string
+    description: string | null
+    wp_number: number | null
+    due_month: number
+    verification_means: string | null
+  }[]
+  reporting_periods: {
+    period_number: number
+    start_month: number
+    end_month: number
+  }[]
+  confidence_notes: string
+}

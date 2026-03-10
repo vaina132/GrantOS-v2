@@ -12,7 +12,7 @@ import { StatusBadge } from '@/components/common/StatusBadge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/use-toast'
-import { Plus, Search, Trash2, Pencil, FolderKanban } from 'lucide-react'
+import { Plus, Search, Trash2, Pencil, FolderKanban, Sparkles } from 'lucide-react'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import type { Project, ProjectStatus } from '@/types'
 
@@ -55,9 +55,14 @@ export function ProjectList() {
         description="Manage your grant projects"
         actions={
           can('canManageProjects') ? (
-            <Button onClick={() => navigate('/projects/new')}>
-              <Plus className="mr-2 h-4 w-4" /> New Project
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/projects/import-ai')}>
+                <Sparkles className="mr-2 h-4 w-4" /> Import with AI
+              </Button>
+              <Button onClick={() => navigate('/projects/new')}>
+                <Plus className="mr-2 h-4 w-4" /> New Project
+              </Button>
+            </div>
           ) : undefined
         }
       />
