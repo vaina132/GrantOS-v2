@@ -1,11 +1,14 @@
-import { useMemo, useState, useRef, useCallback } from 'react'
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
 import { useProjects } from '@/hooks/useProjects'
+import { useAuthStore } from '@/stores/authStore'
+import { deliverablesService } from '@/services/deliverablesService'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { EmptyState } from '@/components/common/EmptyState'
-import { GanttChart as GanttIcon, ZoomIn, ZoomOut, RotateCcw, CalendarDays } from 'lucide-react'
+import { GanttChart as GanttIcon, ZoomIn, ZoomOut, RotateCcw, CalendarDays, FileText, Target, ClipboardList } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { parseISO, differenceInMonths, startOfMonth, addMonths, format, isBefore, isAfter } from 'date-fns'
+import type { Deliverable, Milestone, ReportingPeriod } from '@/types'
 
 const ZOOM_LEVELS = [20, 30, 40, 60, 80, 110, 150]
 const DEFAULT_ZOOM_INDEX = 3 // 60px
@@ -21,8 +24,55 @@ interface BarData {
 
 export function GanttChart() {
   const { projects, isLoading } = useProjects()
+  const { orgId } = useAuthStore()
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Overlay visibility toggles
+  const [showDeliverables, setShowDeliverables] = useState(true)
+  const [showMilestones, setShowMilestones] = useState(true)
+  const [showReporting, setShowReporting] = useState(false)
+
+  // Overlay data keyed by project ID
+  const [deliverablesByProject, setDeliverablesByProject] = useState<Record<string, Deliverable[]>>({})
+  const [milestonesByProject, setMilestonesByProject] = useState<Record<string, Milestone[]>>({})
+  const [reportingByProject, setReportingByProject] = useState<Record<string, ReportingPeriod[]>>({})
+
+  // Fetch overlay data for all projects
+  useEffect(() => {
+    if (!orgId || projects.length === 0) return
+    let cancelled = false
+
+    const load = async () => {
+      const delMap: Record<string, Deliverable[]> = {}
+      const msMap: Record<string, Milestone[]> = {}
+      const rpMap: Record<string, ReportingPeriod[]> = {}
+
+      await Promise.all(projects.map(async (p) => {
+        try {
+          const [dels, mss, rps] = await Promise.all([
+            deliverablesService.listDeliverables(p.id),
+            deliverablesService.listMilestones(p.id),
+            deliverablesService.listReportingPeriods(p.id),
+          ])
+          delMap[p.id] = dels
+          msMap[p.id] = mss
+          rpMap[p.id] = rps
+        } catch {
+          // silently ignore per-project errors
+        }
+      }))
+
+      if (!cancelled) {
+        setDeliverablesByProject(delMap)
+        setMilestonesByProject(msMap)
+        setReportingByProject(rpMap)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+  }, [orgId, projects])
 
   const colWidth = ZOOM_LEVELS[zoomIndex]
 
@@ -112,6 +162,24 @@ export function GanttChart() {
           Reset
         </Button>
         <div className="flex-1" />
+
+        {/* Overlay toggles */}
+        <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none" title="Show deliverables on timeline">
+          <input type="checkbox" checked={showDeliverables} onChange={e => setShowDeliverables(e.target.checked)} className="accent-orange-500" />
+          <FileText className="h-3 w-3 text-orange-500" />
+          <span className="text-muted-foreground">Deliverables</span>
+        </label>
+        <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none" title="Show milestones on timeline">
+          <input type="checkbox" checked={showMilestones} onChange={e => setShowMilestones(e.target.checked)} className="accent-violet-500" />
+          <Target className="h-3 w-3 text-violet-500" />
+          <span className="text-muted-foreground">Milestones</span>
+        </label>
+        <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none" title="Show reporting periods on timeline">
+          <input type="checkbox" checked={showReporting} onChange={e => setShowReporting(e.target.checked)} className="accent-cyan-500" />
+          <ClipboardList className="h-3 w-3 text-cyan-500" />
+          <span className="text-muted-foreground">Reporting</span>
+        </label>
+
         <Button variant="outline" size="sm" onClick={scrollToToday} className="gap-1">
           <CalendarDays className="h-3.5 w-3.5" />
           Today
@@ -175,6 +243,64 @@ export function GanttChart() {
                       {bar.acronym}
                     </span>
                   </div>
+
+                  {/* Reporting period spans */}
+                  {showReporting && (reportingByProject[bar.projectId] ?? []).map(rp => {
+                    const rpStartDate = addMonths(bar.startDate, rp.start_month - 1)
+                    const rpEndDate = addMonths(bar.startDate, rp.end_month)
+                    const rpOffset = differenceInMonths(startOfMonth(rpStartDate), timelineStart)
+                    const rpDuration = differenceInMonths(rpEndDate, rpStartDate)
+                    const rpLeft = Math.max(0, rpOffset) * colWidth
+                    const rpWidth = Math.max(1, rpDuration) * colWidth
+                    return (
+                      <div
+                        key={`rp-${rp.id}`}
+                        className="absolute bottom-0 h-[6px] bg-cyan-400/40 border border-cyan-500/50 rounded-sm"
+                        style={{ left: rpLeft, width: rpWidth }}
+                        title={`RP${rp.period_number}: M${rp.start_month}–M${rp.end_month}`}
+                      />
+                    )
+                  })}
+
+                  {/* Deliverable markers */}
+                  {showDeliverables && (deliverablesByProject[bar.projectId] ?? []).map(d => {
+                    if (!d.due_month) return null
+                    const dDate = addMonths(bar.startDate, d.due_month - 1)
+                    const dOffset = differenceInMonths(startOfMonth(dDate), timelineStart)
+                    const dLeft = dOffset * colWidth + colWidth / 2 - 5
+                    return (
+                      <div
+                        key={`del-${d.id}`}
+                        className="absolute top-0"
+                        style={{ left: dLeft }}
+                        title={`${d.number}: ${d.title} (M${d.due_month}) — ${d.status}`}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 10 10">
+                          <polygon points="5,0 10,5 5,10 0,5" className="fill-orange-500" />
+                        </svg>
+                      </div>
+                    )
+                  })}
+
+                  {/* Milestone markers */}
+                  {showMilestones && (milestonesByProject[bar.projectId] ?? []).map(m => {
+                    if (!m.due_month) return null
+                    const mDate = addMonths(bar.startDate, m.due_month - 1)
+                    const mOffset = differenceInMonths(startOfMonth(mDate), timelineStart)
+                    const mLeft = mOffset * colWidth + colWidth / 2 - 5
+                    return (
+                      <div
+                        key={`ms-${m.id}`}
+                        className="absolute bottom-[6px]"
+                        style={{ left: mLeft }}
+                        title={`${m.number}: ${m.title} (M${m.due_month}) — ${m.status}`}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 10 10">
+                          <polygon points="5,0 10,5 5,10 0,5" className="fill-violet-500" />
+                        </svg>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )
@@ -183,7 +309,7 @@ export function GanttChart() {
       </div>
 
       {/* Legend */}
-      <div className="flex gap-4 text-xs">
+      <div className="flex gap-4 flex-wrap text-xs">
         {[
           { label: 'Upcoming', color: 'bg-blue-400' },
           { label: 'Active', color: 'bg-green-400' },
@@ -195,6 +321,24 @@ export function GanttChart() {
             <span>{item.label}</span>
           </div>
         ))}
+        {showDeliverables && (
+          <div className="flex items-center gap-1">
+            <svg width="10" height="10" viewBox="0 0 10 10"><polygon points="5,0 10,5 5,10 0,5" className="fill-orange-500" /></svg>
+            <span>Deliverable</span>
+          </div>
+        )}
+        {showMilestones && (
+          <div className="flex items-center gap-1">
+            <svg width="10" height="10" viewBox="0 0 10 10"><polygon points="5,0 10,5 5,10 0,5" className="fill-violet-500" /></svg>
+            <span>Milestone</span>
+          </div>
+        )}
+        {showReporting && (
+          <div className="flex items-center gap-1">
+            <span className="inline-block w-3 h-[6px] rounded-sm bg-cyan-400/60 border border-cyan-500/50" />
+            <span>Reporting Period</span>
+          </div>
+        )}
       </div>
     </div>
   )
