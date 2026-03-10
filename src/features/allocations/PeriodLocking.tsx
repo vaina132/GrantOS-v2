@@ -33,12 +33,13 @@ export function PeriodLocking() {
       // Send period locked notification (fire-and-forget)
       if (result.locked) {
         const period = `${MONTH_LABELS[month - 1]} ${globalYear}`
-        supabase
-          .from('org_members')
-          .select('user_id')
-          .eq('org_id', orgId)
-          .neq('user_id', user.id)
-          .then(({ data: members }) => {
+        Promise.resolve(
+          supabase
+            .from('org_members')
+            .select('user_id')
+            .eq('org_id', orgId)
+            .neq('user_id', user.id)
+        ).then(({ data: members }) => {
             if (!members) return
             members.forEach(async (m: any) => {
               const { data: userData } = await supabase.auth.admin.getUserById(m.user_id).catch(() => ({ data: null }))
