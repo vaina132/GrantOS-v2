@@ -6,8 +6,9 @@ import { UsersSettings } from './UsersSettings'
 import { FundingSchemes } from './FundingSchemes'
 import { PeriodLocking } from '@/features/allocations/PeriodLocking'
 import { HolidaySettings } from './HolidaySettings'
+import { RolePermissions } from './RolePermissions'
 
-type SettingsTab = 'org' | 'users' | 'funding' | 'locks' | 'holidays'
+type SettingsTab = 'org' | 'users' | 'roles' | 'funding' | 'locks' | 'holidays'
 
 export function SettingsPage() {
   const [tab, setTab] = useState<SettingsTab>('org')
@@ -20,6 +21,7 @@ export function SettingsPage() {
         {([
           { key: 'org', label: 'Organisation' },
           { key: 'users', label: 'Users' },
+          { key: 'roles', label: 'Role Permissions' },
           { key: 'funding', label: 'Funding Schemes' },
           { key: 'locks', label: 'Period Locks' },
           { key: 'holidays', label: 'Holidays' },
@@ -37,6 +39,7 @@ export function SettingsPage() {
 
       {tab === 'org' && <OrgSettings />}
       {tab === 'users' && <UsersSettings />}
+      {tab === 'roles' && <RolePermissions />}
       {tab === 'funding' && <FundingSchemes />}
       {tab === 'locks' && <PeriodLocking />}
       {tab === 'holidays' && <HolidaySettings />}

@@ -27,7 +27,7 @@ interface OrgMember {
   user_email?: string
 }
 
-const ROLES: OrgRole[] = ['Admin', 'Grant Manager', 'Finance Officer', 'Viewer']
+const ROLES: OrgRole[] = ['Admin', 'Project Manager', 'Finance Officer', 'Viewer', 'External Participant']
 
 export function UsersSettings() {
   const { orgId, user } = useAuthStore()

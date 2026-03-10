@@ -1,4 +1,4 @@
-export type OrgRole = 'Admin' | 'Grant Manager' | 'Finance Officer' | 'Viewer'
+export type OrgRole = 'Admin' | 'Project Manager' | 'Finance Officer' | 'Viewer' | 'External Participant'
 export type GuestAccessLevel = 'contributor' | 'read_only'
 export type AccessType = 'member' | 'guest'
 export type OrgPlan = 'trial' | 'starter' | 'growth' | 'enterprise'
@@ -36,6 +36,40 @@ export interface OrgMember {
   org_id: string
   role: OrgRole
   invited_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface RolePermission {
+  id: string
+  org_id: string
+  role: OrgRole
+  // Module visibility
+  can_see_dashboard: boolean
+  can_see_projects: boolean
+  can_see_staff: boolean
+  can_see_allocations: boolean
+  can_see_timesheets: boolean
+  can_see_absences: boolean
+  can_see_financials: boolean
+  can_see_timeline: boolean
+  can_see_reports: boolean
+  can_see_import: boolean
+  can_see_audit: boolean
+  can_see_guests: boolean
+  // Data privacy
+  can_see_salary_info: boolean
+  can_see_financial_details: boolean
+  can_see_personnel_rates: boolean
+  // Action permissions
+  can_edit_projects: boolean
+  can_edit_allocations: boolean
+  can_approve_timesheets: boolean
+  can_submit_timesheets: boolean
+  can_manage_budgets: boolean
+  can_generate_reports: boolean
+  can_manage_users: boolean
+  can_manage_org: boolean
   created_at: string
   updated_at: string
 }

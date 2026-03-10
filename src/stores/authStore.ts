@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import {
   computePermissions,
   computeGuestPermissions,
+  rolePermissionToPermissions,
   DEFAULT_PERMISSIONS,
   type Permissions,
   type PermissionKey,
@@ -177,12 +178,33 @@ async function loadUserContext(
       return
     }
 
+    // Try loading configurable permissions from role_permissions table
+    let permissions: Permissions = computePermissions(role)
+    try {
+      const { data: rp } = await supabase
+        .from('role_permissions')
+        .select('*')
+        .eq('org_id', member.org_id)
+        .eq('role', role)
+        .maybeSingle()
+      if (rp) {
+        permissions = rolePermissionToPermissions(rp as any)
+      }
+    } catch {
+      // Fallback to hardcoded if table doesn't exist yet
+    }
+
+    // Admin always gets full permissions regardless of DB config
+    if (role === 'Admin') {
+      permissions = computePermissions('Admin')
+    }
+
     set({
       user,
       orgId: member.org_id,
       orgName: org?.name ?? null,
       role,
-      permissions: computePermissions(role),
+      permissions,
       accessType: 'member',
       guestProjects: [],
       orgPlan: (org?.plan as OrgPlan) ?? null,

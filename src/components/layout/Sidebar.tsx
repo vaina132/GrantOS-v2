@@ -47,20 +47,20 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Operations',
     items: [
-      { path: '/allocations', label: 'Allocations', icon: CalendarDays, permission: 'canManageAllocations' },
-      { path: '/timesheets', label: 'Timesheets', icon: ClipboardCheck, permission: 'canSubmitTimesheets', guestAllowed: true },
-      { path: '/absences', label: 'Absences', icon: CalendarOff, permission: 'canManageAllocations' },
+      { path: '/allocations', label: 'Allocations', icon: CalendarDays, permission: 'canSeeAllocations' },
+      { path: '/timesheets', label: 'Timesheets', icon: ClipboardCheck, permission: 'canSeeTimesheets', guestAllowed: true },
+      { path: '/absences', label: 'Absences', icon: CalendarOff, permission: 'canSeeAbsences' },
       { path: '/financials', label: 'Financials', icon: DollarSign, permission: 'canSeeFinancials' },
-      { path: '/timeline', label: 'Timeline', icon: GanttChart },
+      { path: '/timeline', label: 'Timeline', icon: GanttChart, permission: 'canSeeTimeline' },
     ],
   },
   {
     label: 'Administration',
     items: [
-      { path: '/reports', label: 'Reports', icon: FileText, permission: 'canGenerateReports' },
-      { path: '/import', label: 'Import', icon: Upload, permission: 'canManageOrg' },
-      { path: '/audit', label: 'Audit Log', icon: Shield, permission: 'canSeeFinancials' },
-      { path: '/guests', label: 'Guest Access', icon: UserCheck, permission: 'canManageOrg' },
+      { path: '/reports', label: 'Reports', icon: FileText, permission: 'canSeeReports' },
+      { path: '/import', label: 'Import', icon: Upload, permission: 'canSeeImport' },
+      { path: '/audit', label: 'Audit Log', icon: Shield, permission: 'canSeeAudit' },
+      { path: '/guests', label: 'Guest Access', icon: UserCheck, permission: 'canSeeGuests' },
       { path: '/settings', label: 'Settings', icon: Settings, permission: 'canManageOrg' },
     ],
   },

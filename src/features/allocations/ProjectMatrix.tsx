@@ -1,11 +1,16 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useStaff } from '@/hooks/useStaff'
 import { useProjects } from '@/hooks/useProjects'
 import { useAssignments } from '@/hooks/useAllocations'
+import { useAuthStore } from '@/stores/authStore'
+import { useUiStore } from '@/stores/uiStore'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { EmptyState } from '@/components/common/EmptyState'
 import { FolderKanban } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getWorkingDaysInMonth, hoursToPm } from '@/lib/pmUtils'
+import { settingsService } from '@/services/settingsService'
+import { timesheetService } from '@/services/timesheetService'
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
 
 function intensityColor(value: number): string {
@@ -17,9 +22,27 @@ function intensityColor(value: number): string {
 }
 
 export function ProjectMatrix() {
+  const { orgId } = useAuthStore()
+  const { globalYear } = useUiStore()
   const { staff, isLoading: loadingStaff } = useStaff({ is_active: true })
   const { projects, isLoading: loadingProjects } = useProjects()
   const { assignments, isLoading: loadingAssignments } = useAssignments('actual')
+  const [hoursPerDay, setHoursPerDay] = useState(8)
+  const [timesheetsDriveAllocations, setTimesheetsDriveAllocations] = useState(false)
+  const [tsAggregates, setTsAggregates] = useState<{ person_id: string; project_id: string; work_package_id: string | null; month: number; totalHours: number }[]>([])
+
+  useEffect(() => {
+    if (!orgId) return
+    settingsService.getOrganisation(orgId).then(org => {
+      if (org?.working_hours_per_day) setHoursPerDay(org.working_hours_per_day)
+      setTimesheetsDriveAllocations(org?.timesheets_drive_allocations ?? false)
+    }).catch(() => {})
+  }, [orgId])
+
+  useEffect(() => {
+    if (!orgId || !timesheetsDriveAllocations) { setTsAggregates([]); return }
+    timesheetService.aggregateHoursByYear(orgId, globalYear).then(setTsAggregates).catch(() => setTsAggregates([]))
+  }, [orgId, globalYear, timesheetsDriveAllocations])
 
   const isLoading = loadingStaff || loadingProjects || loadingAssignments
 
@@ -39,32 +62,53 @@ export function ProjectMatrix() {
 
     const data = new Map<string, ProjectRow>()
 
-    for (const a of assignments) {
-      const project = projectMap.get(a.project_id)
-      if (!project) continue
-
-      if (!data.has(a.project_id)) {
-        data.set(a.project_id, {
-          projectId: a.project_id,
+    const ensureRow = (projectId: string) => {
+      if (!data.has(projectId)) {
+        const project = projectMap.get(projectId)
+        if (!project) return null
+        data.set(projectId, {
+          projectId,
           acronym: project.acronym,
           title: project.title,
           months: Array.from({ length: 12 }, () => ({ total: 0, breakdown: [] })),
           yearTotal: 0,
         })
       }
+      return data.get(projectId)!
+    }
 
-      const row = data.get(a.project_id)!
-      const monthIdx = a.month - 1
-      const person = personMap.get(a.person_id)
-      const name = person?.full_name ?? '?'
-
-      row.months[monthIdx].total += a.pms
-      row.months[monthIdx].breakdown.push({ name, pms: a.pms })
-      row.yearTotal += a.pms
+    if (timesheetsDriveAllocations && tsAggregates.length > 0) {
+      // Use timesheet-derived PMs
+      for (const agg of tsAggregates) {
+        const row = ensureRow(agg.project_id)
+        if (!row) continue
+        const monthIdx = agg.month - 1
+        const person = personMap.get(agg.person_id)
+        const name = person?.full_name ?? '?'
+        const workingDays = getWorkingDaysInMonth(globalYear, agg.month)
+        const pms = Math.round(hoursToPm(agg.totalHours, workingDays, hoursPerDay) * 100) / 100
+        if (pms > 0) {
+          row.months[monthIdx].total += pms
+          row.months[monthIdx].breakdown.push({ name, pms })
+          row.yearTotal += pms
+        }
+      }
+    } else {
+      // Use saved assignments
+      for (const a of assignments) {
+        const row = ensureRow(a.project_id)
+        if (!row) continue
+        const monthIdx = a.month - 1
+        const person = personMap.get(a.person_id)
+        const name = person?.full_name ?? '?'
+        row.months[monthIdx].total += a.pms
+        row.months[monthIdx].breakdown.push({ name, pms: a.pms })
+        row.yearTotal += a.pms
+      }
     }
 
     return Array.from(data.values()).sort((a, b) => a.acronym.localeCompare(b.acronym))
-  }, [staff, projects, assignments])
+  }, [staff, projects, assignments, timesheetsDriveAllocations, tsAggregates, globalYear, hoursPerDay])
 
   if (isLoading) return <SkeletonTable columns={14} rows={8} />
 
