@@ -5,6 +5,9 @@ import { AppShell } from '@/components/layout/AppShell'
 import { Toaster } from '@/components/ui/toaster'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { SignUpPage } from '@/features/auth/SignUpPage'
+import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
+import { AuthCallbackPage } from '@/features/auth/AuthCallbackPage'
 import { OnboardingWizard } from '@/features/auth/OnboardingWizard'
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
@@ -56,6 +59,9 @@ export default function App() {
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
         <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <SignUpPage />} />
+        <Route path="/forgot-password" element={user ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
         <Route
           path="/*"

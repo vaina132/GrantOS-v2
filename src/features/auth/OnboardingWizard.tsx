@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/use-toast'
+import { emailService } from '@/services/emailService'
 import { Building2, ArrowRight, Check } from 'lucide-react'
 
 type Step = 'org' | 'project' | 'done'
@@ -92,6 +93,16 @@ export function OnboardingWizard() {
   }
 
   const handleFinish = async () => {
+    // Send welcome email (fire-and-forget)
+    if (user?.email) {
+      emailService.sendWelcome({
+        to: user.email,
+        userName: user.email.split('@')[0],
+        orgName: orgName || 'your organisation',
+        dashboardUrl: `${window.location.origin}/dashboard`,
+      }).catch(() => { /* non-blocking */ })
+    }
+
     // Re-initialize auth to pick up the new org membership
     window.location.href = '/dashboard'
   }

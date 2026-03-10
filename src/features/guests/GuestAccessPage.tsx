@@ -18,6 +18,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/use-toast'
+import { emailService } from '@/services/emailService'
 import { Plus, Trash2, UserCheck } from 'lucide-react'
 
 interface ProjectGuest {
@@ -34,7 +35,7 @@ interface ProjectGuest {
 }
 
 export function GuestAccessPage() {
-  const { orgId, can } = useAuthStore()
+  const { orgId, orgName, user, can } = useAuthStore()
   const { projects } = useProjects()
   const [guests, setGuests] = useState<ProjectGuest[]>([])
   const [loading, setLoading] = useState(true)
@@ -87,6 +88,20 @@ export function GuestAccessPage() {
 
       if (error) throw error
       toast({ title: 'Guest added', description: `User granted ${accessLevel} access.` })
+
+      // Send guest invitation email if userId looks like an email
+      const selectedProject = projects.find((p) => p.id === projectId)
+      if (userId.includes('@') && selectedProject) {
+        emailService.sendGuestInvitation({
+          guestEmail: userId,
+          orgName: orgName ?? 'the organisation',
+          projectAcronym: selectedProject.acronym,
+          invitedByName: user?.email ?? 'An administrator',
+          accessLevel,
+          loginUrl: `${window.location.origin}/login`,
+        }).catch(() => { /* non-blocking */ })
+      }
+
       setInviteOpen(false)
       setUserId('')
       setProjectId('')
