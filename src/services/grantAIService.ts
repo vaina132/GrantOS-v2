@@ -1,10 +1,9 @@
-import { supabase } from '@/lib/supabase'
 import type { GrantAIExtraction } from '@/types'
 
 export const grantAIService = {
   /**
    * Upload a grant agreement file and get AI-extracted project data.
-   * Calls the Supabase Edge Function `parse-grant`.
+   * Calls the Vercel serverless function at /api/parse-grant.
    */
   async parseGrantAgreement(
     file: File,
@@ -15,19 +14,8 @@ export const grantAIService = {
     if (opts?.organisationAbbreviation) formData.append('organisation_abbreviation', opts.organisationAbbreviation)
     if (opts?.userInstructions) formData.append('user_instructions', opts.userInstructions)
 
-    // Get the current session token for auth
-    const { data: { session } } = await supabase.auth.getSession()
-    const token = session?.access_token
-
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-    if (!supabaseUrl) throw new Error('VITE_SUPABASE_URL not configured')
-
-    const response = await fetch(`${supabaseUrl}/functions/v1/parse-grant`, {
+    const response = await fetch('/api/parse-grant', {
       method: 'POST',
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? '',
-      },
       body: formData,
     })
 

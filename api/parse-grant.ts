@@ -1,4 +1,5 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { Readable } from 'stream'
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
 
@@ -73,42 +74,101 @@ Return ONLY valid JSON matching this exact schema (no markdown, no explanation):
   "confidence_notes": "string"
 }`
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+// Parse multipart form data manually for Vercel serverless
+async function parseMultipart(req: VercelRequest): Promise<{
+  file: { buffer: Buffer; name: string; type: string } | null
+  fields: Record<string, string>
+}> {
+  return new Promise((resolve, reject) => {
+    const contentType = req.headers['content-type'] || ''
+    const boundaryMatch = contentType.match(/boundary=(.+)/)
+    if (!boundaryMatch) {
+      reject(new Error('No multipart boundary found'))
+      return
+    }
+
+    const chunks: Buffer[] = []
+    const stream = req instanceof Readable ? req : Readable.from(req.body ? [Buffer.from(typeof req.body === 'string' ? req.body : JSON.stringify(req.body))] : [])
+
+    stream.on('data', (chunk: Buffer) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)))
+    stream.on('end', () => {
+      const body = Buffer.concat(chunks)
+      const boundary = boundaryMatch[1]
+      const parts = body.toString('binary').split(`--${boundary}`)
+
+      let file: { buffer: Buffer; name: string; type: string } | null = null
+      const fields: Record<string, string> = {}
+
+      for (const part of parts) {
+        if (part === '--' || part.trim() === '' || part === '--\r\n') continue
+
+        const headerEnd = part.indexOf('\r\n\r\n')
+        if (headerEnd === -1) continue
+
+        const headers = part.substring(0, headerEnd)
+        const content = part.substring(headerEnd + 4).replace(/\r\n$/, '')
+
+        const nameMatch = headers.match(/name="([^"]+)"/)
+        const fileNameMatch = headers.match(/filename="([^"]+)"/)
+        const contentTypeMatch = headers.match(/Content-Type:\s*(.+)/i)
+
+        if (nameMatch) {
+          if (fileNameMatch) {
+            // It's a file
+            file = {
+              buffer: Buffer.from(content, 'binary'),
+              name: fileNameMatch[1],
+              type: contentTypeMatch ? contentTypeMatch[1].trim() : 'application/octet-stream',
+            }
+          } else {
+            // It's a text field
+            fields[nameMatch[1]] = content.trim()
+          }
+        }
+      }
+
+      resolve({ file, fields })
+    })
+    stream.on('error', reject)
+  })
 }
 
-serve(async (req: Request) => {
-  // Handle CORS preflight
+export const config = {
+  api: {
+    bodyParser: false, // We need raw body for multipart
+  },
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type')
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders })
+    return res.status(200).end()
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 
   try {
-    const claudeApiKey = Deno.env.get('CLAUDE_API_KEY')
+    const claudeApiKey = process.env.CLAUDE_API_KEY
     if (!claudeApiKey) {
-      return new Response(
-        JSON.stringify({ error: 'CLAUDE_API_KEY not configured on server' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
+      return res.status(500).json({ error: 'CLAUDE_API_KEY not configured on server' })
     }
 
-    const formData = await req.formData()
-    const file = formData.get('file') as File | null
-    const organisationAbbreviation = (formData.get('organisation_abbreviation') as string | null) ?? ''
-    const userInstructions = (formData.get('user_instructions') as string | null) ?? ''
+    const { file, fields } = await parseMultipart(req)
+    const organisationAbbreviation = fields['organisation_abbreviation'] || ''
+    const userInstructions = fields['user_instructions'] || ''
 
     if (!file) {
-      return new Response(
-        JSON.stringify({ error: 'No file provided' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
+      return res.status(400).json({ error: 'No file provided' })
     }
 
-    // Read file as base64
-    const arrayBuffer = await file.arrayBuffer()
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+    // Convert to base64
+    const base64 = file.buffer.toString('base64')
 
     // Determine media type
     let mediaType = 'application/pdf'
@@ -121,7 +181,7 @@ serve(async (req: Request) => {
     // Build user prompt with optional context
     let userPrompt = 'Please parse this grant agreement document and extract all project information as the JSON schema described in the system prompt.'
     if (organisationAbbreviation) {
-      userPrompt += `\n\nIMPORTANT: Our organisation\'s abbreviation/name is "${organisationAbbreviation}". When extracting budget figures, PM rates, and personnel costs, focus on the data specific to this organisation (not the total consortium figures). Look for budget tables or annexes that break down costs per beneficiary/partner.`
+      userPrompt += `\n\nIMPORTANT: Our organisation's abbreviation/name is "${organisationAbbreviation}". When extracting budget figures, PM rates, and personnel costs, focus on the data specific to this organisation (not the total consortium figures). Look for budget tables or annexes that break down costs per beneficiary/partner.`
     }
     if (userInstructions) {
       userPrompt += `\n\nAdditional instructions from the user:\n${userInstructions}`
@@ -130,27 +190,14 @@ serve(async (req: Request) => {
 
     // Build Claude API request
     const isPdf = mediaType === 'application/pdf'
-
     const content: any[] = isPdf
       ? [
-          {
-            type: 'document',
-            source: { type: 'base64', media_type: mediaType, data: base64 },
-          },
-          {
-            type: 'text',
-            text: userPrompt,
-          },
+          { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: userPrompt },
         ]
       : [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: mediaType, data: base64 },
-          },
-          {
-            type: 'text',
-            text: userPrompt,
-          },
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: userPrompt },
         ]
 
     const claudeResponse = await fetch(CLAUDE_API_URL, {
@@ -164,36 +211,25 @@ serve(async (req: Request) => {
         model: 'claude-sonnet-4-20250514',
         max_tokens: 8192,
         system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content,
-          },
-        ],
+        messages: [{ role: 'user', content }],
       }),
     })
 
     if (!claudeResponse.ok) {
       const errBody = await claudeResponse.text()
       console.error('Claude API error:', claudeResponse.status, errBody)
-      return new Response(
-        JSON.stringify({ error: `Claude API error: ${claudeResponse.status}`, details: errBody }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
+      return res.status(502).json({ error: `Claude API error: ${claudeResponse.status}`, details: errBody })
     }
 
     const claudeData = await claudeResponse.json()
 
-    // Extract the text content from Claude's response
+    // Extract text content
     const textBlock = claudeData.content?.find((b: any) => b.type === 'text')
     if (!textBlock?.text) {
-      return new Response(
-        JSON.stringify({ error: 'No text response from Claude' }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
+      return res.status(502).json({ error: 'No text response from Claude' })
     }
 
-    // Parse the JSON from Claude's response (handle possible markdown code fences)
+    // Parse JSON (handle possible markdown code fences)
     let jsonStr = textBlock.text.trim()
     if (jsonStr.startsWith('```')) {
       jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
@@ -201,15 +237,9 @@ serve(async (req: Request) => {
 
     const extraction = JSON.parse(jsonStr)
 
-    return new Response(
-      JSON.stringify({ extraction, usage: claudeData.usage }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    )
+    return res.status(200).json({ extraction, usage: claudeData.usage })
   } catch (err) {
     console.error('parse-grant error:', err)
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    )
+    return res.status(500).json({ error: err instanceof Error ? err.message : 'Unknown error' })
   }
-})
+}
