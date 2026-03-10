@@ -832,6 +832,79 @@ export type Database = {
           },
         ]
       }
+      project_expenses: {
+        Row: {
+          id: string
+          org_id: string
+          project_id: string
+          category: string
+          description: string
+          amount: number
+          expense_date: string
+          vendor: string | null
+          reference: string | null
+          person_id: string | null
+          notes: string | null
+          recorded_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          project_id: string
+          category: string
+          description: string
+          amount: number
+          expense_date: string
+          vendor?: string | null
+          reference?: string | null
+          person_id?: string | null
+          notes?: string | null
+          recorded_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          project_id?: string
+          category?: string
+          description?: string
+          amount?: number
+          expense_date?: string
+          vendor?: string | null
+          reference?: string | null
+          person_id?: string | null
+          notes?: string | null
+          recorded_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'project_expenses_org_id_fkey'
+            columns: ['org_id']
+            isOneToOne: false
+            referencedRelation: 'organisations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'project_expenses_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'project_expenses_person_id_fkey'
+            columns: ['person_id']
+            isOneToOne: false
+            referencedRelation: 'persons'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       project_documents: {
         Row: {
           id: string

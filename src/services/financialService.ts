@@ -218,6 +218,57 @@ export const financialService = {
     return Array.from(totals.entries()).map(([project_id, total]) => ({ project_id, total }))
   },
 
+  /**
+   * Sync non-personnel actuals from project_expenses into financial_budgets.
+   * Sums expenses by project × category × year and updates the actual column.
+   */
+  async syncExpenseActuals(orgId: string, year: number): Promise<number> {
+    // 1. Get expense totals per project per category for this year
+    const yearStart = `${year}-01-01`
+    const yearEnd = `${year}-12-31`
+
+    const { data: expenses, error: eErr } = await supabase
+      .from('project_expenses')
+      .select('project_id, category, amount')
+      .eq('org_id', orgId)
+      .gte('expense_date', yearStart)
+      .lte('expense_date', yearEnd)
+
+    if (eErr) throw eErr
+
+    const totals = new Map<string, number>()
+    for (const row of expenses ?? []) {
+      const key = `${row.project_id}:${row.category}`
+      totals.set(key, (totals.get(key) ?? 0) + Number(row.amount))
+    }
+
+    // 2. Fetch existing budget rows for non-personnel categories
+    const { data: budgetRows, error: bErr } = await supabase
+      .from('financial_budgets')
+      .select('id, project_id, category, actual')
+      .eq('org_id', orgId)
+      .eq('year', year)
+      .in('category', ['travel', 'subcontracting', 'other', 'indirect'])
+
+    if (bErr) throw bErr
+
+    let synced = 0
+    for (const row of budgetRows ?? []) {
+      const key = `${row.project_id}:${row.category}`
+      const computed = Math.round((totals.get(key) ?? 0) * 100) / 100
+      if (Math.abs(row.actual - computed) > 0.01) {
+        const { error: uErr } = await supabase
+          .from('financial_budgets')
+          .update({ actual: computed, updated_at: new Date().toISOString() })
+          .eq('id', row.id)
+        if (uErr) throw uErr
+        synced++
+      }
+    }
+
+    return synced
+  },
+
   async getProjectBudgetSummary(
     orgId: string | null,
     year: number,

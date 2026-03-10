@@ -234,6 +234,25 @@ export interface FinancialBudget {
   updated_at: string
 }
 
+export type ExpenseCategory = 'travel' | 'subcontracting' | 'other' | 'indirect'
+
+export interface ProjectExpense {
+  id: string
+  org_id: string
+  project_id: string
+  category: ExpenseCategory
+  description: string
+  amount: number
+  expense_date: string
+  vendor: string | null
+  reference: string | null
+  person_id: string | null
+  notes: string | null
+  recorded_by: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface FundingScheme {
   id: string
   org_id: string

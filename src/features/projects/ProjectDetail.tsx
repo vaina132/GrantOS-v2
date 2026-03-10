@@ -20,9 +20,10 @@ import { DocumentList } from '@/features/documents/DocumentList'
 import { DeliverablesTab } from './DeliverablesTab'
 import { ReportingPeriodsTab } from './ReportingPeriodsTab'
 import { BudgetConsumptionChart } from './BudgetConsumptionChart'
+import { ProjectExpenses } from './ProjectExpenses'
 import type { WorkPackage, PmBudget, Assignment } from '@/types'
 
-type DetailTab = 'overview' | 'budget' | 'workpackages' | 'deliverables' | 'reporting' | 'documents'
+type DetailTab = 'overview' | 'budget' | 'expenses' | 'workpackages' | 'deliverables' | 'reporting' | 'documents'
 
 export function ProjectDetail() {
   const navigate = useNavigate()
@@ -320,6 +321,7 @@ export function ProjectDetail() {
   const detailTabs: { key: DetailTab; label: string; show: boolean }[] = [
     { key: 'overview', label: 'Overview', show: true },
     { key: 'budget', label: 'Budget', show: can('canSeeFinancialDetails') },
+    { key: 'expenses', label: 'Expenses', show: can('canSeeFinancialDetails') },
     { key: 'workpackages', label: 'Work Packages', show: true },
     { key: 'deliverables', label: 'Deliverables', show: true },
     { key: 'reporting', label: 'Reporting', show: true },
@@ -514,6 +516,11 @@ export function ProjectDetail() {
             {/* Budget Consumption Chart */}
             <BudgetConsumptionChart project={project} projectYears={projectYears} />
           </div>
+        )}
+
+        {/* Expenses Tab */}
+        {detailTab === 'expenses' && (
+          <ProjectExpenses project={project} />
         )}
 
         {/* Work Packages Tab */}

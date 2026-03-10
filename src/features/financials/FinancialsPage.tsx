@@ -8,7 +8,7 @@ import { useProjects } from '@/hooks/useProjects'
 import { financialService } from '@/services/financialService'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
-import { RefreshCw, Calculator } from 'lucide-react'
+import { RefreshCw, Calculator, Receipt } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Tab = 'overview' | 'actuals'
@@ -20,6 +20,7 @@ export function FinancialsPage() {
   const [tab, setTab] = useState<Tab>('overview')
   const [seeding, setSeeding] = useState(false)
   const [syncing, setSyncing] = useState(false)
+  const [syncingExpenses, setSyncingExpenses] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const handleSeed = async () => {
     if (!orgId) return
@@ -62,6 +63,25 @@ export function FinancialsPage() {
     }
   }
 
+  const handleSyncExpenses = async () => {
+    if (!orgId) return
+    setSyncingExpenses(true)
+    try {
+      const count = await financialService.syncExpenseActuals(orgId, globalYear)
+      if (count === 0) {
+        toast({ title: 'Up to date', description: 'Non-personnel actuals already match expense records.' })
+      } else {
+        toast({ title: 'Synced', description: `${count} budget actual(s) updated from expense records.` })
+      }
+      setRefreshKey((k) => k + 1)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to sync expenses'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
+    } finally {
+      setSyncingExpenses(false)
+    }
+  }
+
   const tabs: { key: Tab; label: string }[] = [
     { key: 'overview', label: 'Budget Overview' },
     { key: 'actuals', label: 'Enter Actuals' },
@@ -81,6 +101,10 @@ export function FinancialsPage() {
             <Button variant="outline" size="sm" onClick={handleSyncPersonnel} disabled={syncing} className="gap-1.5">
               <Calculator className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
               {syncing ? 'Computing...' : 'Compute Personnel Actuals'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleSyncExpenses} disabled={syncingExpenses} className="gap-1.5">
+              <Receipt className={cn('h-3.5 w-3.5', syncingExpenses && 'animate-spin')} />
+              {syncingExpenses ? 'Syncing...' : 'Sync Expense Actuals'}
             </Button>
           </div>
         }
