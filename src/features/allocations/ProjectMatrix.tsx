@@ -6,8 +6,6 @@ import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { EmptyState } from '@/components/common/EmptyState'
 import { FolderKanban } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { AssignmentType } from '@/types'
-
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
 
 function intensityColor(value: number): string {
@@ -18,14 +16,10 @@ function intensityColor(value: number): string {
   return 'bg-blue-50 text-blue-800'
 }
 
-interface ProjectMatrixProps {
-  type: AssignmentType
-}
-
-export function ProjectMatrix({ type }: ProjectMatrixProps) {
+export function ProjectMatrix() {
   const { staff, isLoading: loadingStaff } = useStaff({ is_active: true })
   const { projects, isLoading: loadingProjects } = useProjects()
-  const { assignments, isLoading: loadingAssignments } = useAssignments(type)
+  const { assignments, isLoading: loadingAssignments } = useAssignments('actual')
 
   const isLoading = loadingStaff || loadingProjects || loadingAssignments
 

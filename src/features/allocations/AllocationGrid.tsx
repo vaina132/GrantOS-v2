@@ -37,18 +37,13 @@ interface GridRow {
   wpName: string | null
 }
 
-interface AllocationGridProps {
-  mode: AssignmentType
-  compareMode?: boolean
-}
-
-export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
+export function AllocationGrid() {
+  const mode: AssignmentType = 'actual'
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
   const { staff, isLoading: loadingStaff } = useStaff({ is_active: true })
   const { projects, isLoading: loadingProjects } = useProjects()
   const { assignments: actualAssignments, isLoading: loadingActual, refetch: refetchActual } = useAssignments('actual')
-  const { assignments: officialAssignments, isLoading: loadingOfficial, refetch: refetchOfficial } = useAssignments('official')
   const { isLocked } = usePeriodLocks()
   const { absences } = useAbsences()
   const [hoursPerDay, setHoursPerDay] = useState(8)
@@ -66,12 +61,12 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
 
   // When timesheets drive allocations: load aggregated timesheet hours
   useEffect(() => {
-    if (!orgId || !timesheetsDriveAllocations || mode !== 'actual') { setTsAggregates([]); return }
+    if (!orgId || !timesheetsDriveAllocations) { setTsAggregates([]); return }
     timesheetService.aggregateHoursByYear(orgId, globalYear).then(setTsAggregates).catch(() => setTsAggregates([]))
-  }, [orgId, globalYear, timesheetsDriveAllocations, mode])
+  }, [orgId, globalYear, timesheetsDriveAllocations])
 
   // When timesheets drive allocations: override cells with computed PMs from timesheet hours
-  const timesheetDriven = timesheetsDriveAllocations && mode === 'actual'
+  const timesheetDriven = timesheetsDriveAllocations
 
   // Fetch work packages for all projects
   const [wpsByProject, setWpsByProject] = useState<Record<string, WorkPackage[]>>({})
@@ -86,8 +81,8 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
     }).catch(() => {})
   }, [projects])
 
-  const assignments = mode === 'actual' ? actualAssignments : officialAssignments
-  const isLoading = loadingStaff || loadingProjects || loadingActual || (compareMode ? loadingOfficial : false)
+  const assignments = actualAssignments
+  const isLoading = loadingStaff || loadingProjects || loadingActual
 
   // Compute absence PM per person per month: "personId:month" -> PM lost
   const absencePmMap = useMemo(() => {
@@ -154,18 +149,6 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
     }
   }, [assignments, resetCells, timesheetDriven, tsAggregates, globalYear, hoursPerDay])
 
-  // Build compare map for compare mode
-  const compareCells = useMemo(() => {
-    if (!compareMode) return {}
-    const other = mode === 'actual' ? officialAssignments : actualAssignments
-    const map: Record<CellKey, number> = {}
-    for (const a of other) {
-      const key = makeCellKey(a.person_id, a.project_id, a.work_package_id, a.month)
-      map[key] = a.pms
-    }
-    return map
-  }, [compareMode, mode, officialAssignments, actualAssignments])
-
   // Build grid rows: one row per person-project (or person-project-wp) combination
   const rows = useMemo(() => {
     const result: GridRow[] = []
@@ -186,6 +169,23 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
           const wp = wps?.find((w) => w.id === a.work_package_id)
           result.push({ person, project, wpId: a.work_package_id, wpName: wp?.name ?? null })
           visibleTriples.add(tripleKey)
+        }
+      }
+    }
+
+    // Rows from timesheet aggregates (when timesheets drive allocations)
+    if (timesheetDriven) {
+      for (const agg of tsAggregates) {
+        const tripleKey = `${agg.person_id}:${agg.project_id}:${agg.work_package_id ?? 'null'}`
+        if (!visibleTriples.has(tripleKey)) {
+          const person = personMap.get(agg.person_id)
+          const project = projectMap.get(agg.project_id)
+          if (person && project) {
+            const wps = wpsByProject[project.id]
+            const wp = wps?.find((w) => w.id === agg.work_package_id)
+            result.push({ person, project, wpId: agg.work_package_id, wpName: wp?.name ?? null })
+            visibleTriples.add(tripleKey)
+          }
         }
       }
     }
@@ -222,7 +222,7 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
     })
 
     return result
-  }, [staff, projects, assignments, manualRows, wpsByProject])
+  }, [staff, projects, assignments, manualRows, wpsByProject, timesheetDriven, tsAggregates])
 
   const updateCell = useCallback(
     (personId: string, projectId: string, wpId: string | null, month: number, value: number) => {
@@ -333,8 +333,7 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
       await allocationsService.bulkUpsertAssignments(upserts)
       toast({ title: 'Saved', description: 'Allocations have been saved.' })
       setDirty(false)
-      if (mode === 'actual') refetchActual()
-      else refetchOfficial()
+      refetchActual()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save'
       toast({ title: 'Error', description: message, variant: 'destructive' })
@@ -615,8 +614,6 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
                     const value = cells[key] ?? 0
                     rowTotal += value
                     const locked = isLocked(month)
-                    const compareValue = compareMode ? (compareCells[key] ?? 0) : null
-                    const diff = compareValue !== null ? value - compareValue : null
                     const personTotal = personMonthTotals[`${row.person.id}:${month}`] ?? 0
                     const absencePm = absencePmMap[`${row.person.id}:${month}`] ?? 0
                     const availableCapacity = Math.max(0, row.person.fte - absencePm)
@@ -657,16 +654,6 @@ export function AllocationGrid({ mode, compareMode }: AllocationGridProps) {
                             value > 0 && 'font-medium',
                           )}
                         />
-                        {diff !== null && diff !== 0 && (
-                          <span
-                            className={cn(
-                              'absolute bottom-0 right-0.5 text-[9px] leading-none',
-                              diff > 0 ? 'text-green-600' : 'text-red-600',
-                            )}
-                          >
-                            {diff > 0 ? '+' : ''}{diff.toFixed(2)}
-                          </span>
-                        )}
                       </td>
                     )
                   })}

@@ -6,8 +6,6 @@ import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Grid3x3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { AssignmentType } from '@/types'
-
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']
 
 function heatColor(value: number, fte: number): string {
@@ -20,14 +18,10 @@ function heatColor(value: number, fte: number): string {
   return 'bg-green-50 text-green-800'
 }
 
-interface AssignmentMatrixProps {
-  type: AssignmentType
-}
-
-export function AssignmentMatrix({ type }: AssignmentMatrixProps) {
+export function AssignmentMatrix() {
   const { staff, isLoading: loadingStaff } = useStaff({ is_active: true })
   const { projects, isLoading: loadingProjects } = useProjects()
-  const { assignments, isLoading: loadingAssignments } = useAssignments(type)
+  const { assignments, isLoading: loadingAssignments } = useAssignments('actual')
 
   const isLoading = loadingStaff || loadingProjects || loadingAssignments
 

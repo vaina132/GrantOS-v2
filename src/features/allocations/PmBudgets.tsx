@@ -11,17 +11,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common/EmptyState'
 import { toast } from '@/components/ui/use-toast'
 import { Save, Target } from 'lucide-react'
-import type { AssignmentType } from '@/types'
-
-interface PmBudgetsProps {
-  type: AssignmentType
-}
-
-export function PmBudgets({ type }: PmBudgetsProps) {
+export function PmBudgets() {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
   const { projects, isLoading: loadingProjects } = useProjects()
-  const { budgets, isLoading: loadingBudgets, refetch } = usePmBudgets(type)
+  const { budgets, isLoading: loadingBudgets, refetch } = usePmBudgets('actual')
   const [localBudgets, setLocalBudgets] = useState<Record<string, number>>({})
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -51,7 +45,7 @@ export function PmBudgets({ type }: PmBudgetsProps) {
           work_package_id: null,
           year: globalYear,
           target_pms,
-          type,
+          type: 'actual',
         })
       }
       toast({ title: 'Saved', description: 'PM budgets have been saved.' })
@@ -82,7 +76,7 @@ export function PmBudgets({ type }: PmBudgetsProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base">PM Budgets — {type === 'actual' ? 'Actual' : 'Official'} ({globalYear})</CardTitle>
+        <CardTitle className="text-base">PM Budgets ({globalYear})</CardTitle>
         <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
           <Save className="mr-1 h-4 w-4" />
           {saving ? 'Saving...' : 'Save'}
