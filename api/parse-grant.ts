@@ -1,9 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const pdfParse = require('pdf-parse')
-
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
 
 const SYSTEM_PROMPT = `You are an expert grant agreement parser. You will receive the extracted text of a grant agreement document. Extract ALL structured information and return it as a single JSON object matching the schema below. Be thorough — extract every work package, deliverable, milestone, and reporting period you can find.
@@ -122,18 +119,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: `Failed to download file: ${downloadError?.message || 'Not found'}` })
     }
 
-    // Extract text from PDF using pdf-parse (no page limit)
+    // Extract text from PDF using unpdf (serverless-compatible, no native deps)
     const arrayBuffer = await fileData.arrayBuffer()
-    const pdfBuffer = Buffer.from(arrayBuffer)
-    const pdfData = await pdfParse(pdfBuffer)
-    const pdfText = pdfData.text
+    const { extractText } = await import('unpdf')
+    const { text: pdfPages } = await extractText(new Uint8Array(arrayBuffer))
+    const pdfText = pdfPages.join('\n')
 
     if (!pdfText || pdfText.trim().length === 0) {
       return res.status(400).json({ error: 'Could not extract text from PDF. The file may be scanned/image-based.' })
     }
 
+    // Truncate to ~180k chars to stay well within Claude's context window
+    const maxChars = 180000
+    const truncatedText = pdfText.length > maxChars
+      ? pdfText.slice(0, maxChars) + '\n\n[Document truncated — remaining pages omitted]'
+      : pdfText
+
     // Build user prompt with the extracted text and optional context
-    let userPrompt = `Here is the full text extracted from the grant agreement document:\n\n---\n${pdfText}\n---\n\nPlease parse this grant agreement and extract all project information as the JSON schema described in the system prompt.`
+    let userPrompt = `Here is the full text extracted from the grant agreement document:\n\n---\n${truncatedText}\n---\n\nPlease parse this grant agreement and extract all project information as the JSON schema described in the system prompt.`
     if (organisation_abbreviation) {
       userPrompt += `\n\nIMPORTANT: Our organisation's abbreviation/name is "${organisation_abbreviation}". When extracting budget figures, PM rates, and personnel costs, focus on the data specific to this organisation (not the total consortium figures). Look for budget tables or annexes that break down costs per beneficiary/partner.`
     }
@@ -142,7 +145,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     userPrompt += '\n\nReturn ONLY the JSON object.'
 
-    // Send extracted text to Claude (no document/PDF content type needed)
+    // Send extracted text to Claude as a plain text message
     const claudeResponse = await fetch(CLAUDE_API_URL, {
       method: 'POST',
       headers: {
@@ -184,6 +187,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ extraction, usage: claudeData.usage })
   } catch (err) {
     console.error('parse-grant error:', err)
-    return res.status(500).json({ error: err instanceof Error ? err.message : 'Unknown error' })
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    return res.status(500).json({ error: `Server error: ${message}` })
   }
 }
