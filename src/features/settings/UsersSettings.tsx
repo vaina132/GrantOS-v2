@@ -17,6 +17,7 @@ import {
 import { ConfirmModal } from '@/components/common/ConfirmModal'
 import { toast } from '@/components/ui/use-toast'
 import { Plus, Trash2 } from 'lucide-react'
+import { emailService } from '@/services/emailService'
 import type { OrgRole } from '@/types'
 
 interface OrgMember {
@@ -30,7 +31,7 @@ interface OrgMember {
 const ROLES: OrgRole[] = ['Admin', 'Project Manager', 'Finance Officer', 'Viewer', 'External Participant']
 
 export function UsersSettings() {
-  const { orgId, user } = useAuthStore()
+  const { orgId, orgName, user } = useAuthStore()
   const [members, setMembers] = useState<OrgMember[]>([])
   const [loading, setLoading] = useState(true)
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -96,6 +97,17 @@ export function UsersSettings() {
 
       if (error) throw error
       toast({ title: 'Member added', description: `${inviteEmail} added as ${inviteRole}.` })
+
+      // Send invitation email (fire-and-forget)
+      const baseUrl = window.location.origin
+      emailService.sendInvitation({
+        invitedEmail: inviteEmail,
+        orgName: orgName ?? 'your organisation',
+        role: inviteRole,
+        invitedByName: user?.email ?? 'An administrator',
+        signUpUrl: `${baseUrl}/login`,
+      }).catch(() => { /* non-blocking */ })
+
       setInviteOpen(false)
       setInviteEmail('')
       fetchMembers()
@@ -116,6 +128,20 @@ export function UsersSettings() {
 
       if (error) throw error
       toast({ title: 'Role updated' })
+
+      // Send role change notification email (fire-and-forget)
+      if (member.user_email) {
+        const baseUrl = window.location.origin
+        emailService.sendRoleChanged({
+          to: member.user_email,
+          userName: member.user_email,
+          orgName: orgName ?? 'your organisation',
+          oldRole: member.role,
+          newRole: newRole,
+          dashboardUrl: `${baseUrl}/dashboard`,
+        }).catch(() => { /* non-blocking */ })
+      }
+
       fetchMembers()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to update role'
