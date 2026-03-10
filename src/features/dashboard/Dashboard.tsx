@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useProjects } from '@/hooks/useProjects'
 import { useStaff } from '@/hooks/useStaff'
 import { useAssignments } from '@/hooks/useAllocations'
+import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,6 +37,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function Dashboard() {
   const navigate = useNavigate()
+  const { can } = useAuthStore()
   const { globalYear } = useUiStore()
   const { projects, isLoading: loadingProjects } = useProjects()
   const { staff, isLoading: loadingStaff } = useStaff({})
@@ -126,7 +128,7 @@ export function Dashboard() {
         {[
           { label: 'Projects', value: kpis.totalProjects, sub: `${kpis.activeProjects} active`, icon: FolderKanban, color: 'text-blue-600', href: '/projects' },
           { label: 'Staff', value: kpis.totalStaff, sub: `${kpis.activeStaff} active`, icon: Users, color: 'text-emerald-600', href: '/staff' },
-          { label: 'Total Budget', value: formatCurrency(kpis.totalBudget), sub: 'across all projects', icon: DollarSign, color: 'text-amber-600', href: '/financials' },
+          ...(can('canSeeFinancialDetails') ? [{ label: 'Total Budget', value: formatCurrency(kpis.totalBudget), sub: 'across all projects', icon: DollarSign, color: 'text-amber-600', href: '/financials' }] : []),
           { label: 'Person-Months', value: kpis.totalPms, sub: `allocated in ${globalYear}`, icon: CalendarDays, color: 'text-purple-600', href: '/allocations' },
         ].map((kpi) => (
           <Card
@@ -230,7 +232,7 @@ export function Dashboard() {
       )}
 
       {/* Salary Coverage */}
-      {!isLoading && <SalaryCoverageChart />}
+      {!isLoading && can('canSeeSalary') && <SalaryCoverageChart />}
 
       {/* Project Table */}
       {!isLoading && projects.length > 0 && (
@@ -246,7 +248,7 @@ export function Dashboard() {
                     <th className="px-4 py-2 text-left font-medium">Acronym</th>
                     <th className="px-4 py-2 text-left font-medium">Title</th>
                     <th className="px-4 py-2 text-left font-medium">Status</th>
-                    <th className="px-4 py-2 text-right font-medium">Budget</th>
+                    {can('canSeeFinancialDetails') && <th className="px-4 py-2 text-right font-medium">Budget</th>}
                     <th className="px-4 py-2 text-right font-medium">PMs ({globalYear})</th>
                   </tr>
                 </thead>
@@ -264,7 +266,7 @@ export function Dashboard() {
                         <td className="px-4 py-2 font-semibold text-primary">{p.acronym}</td>
                         <td className="px-4 py-2 text-muted-foreground">{p.title}</td>
                         <td className="px-4 py-2"><StatusBadge status={p.status} /></td>
-                        <td className="px-4 py-2 text-right tabular-nums">{formatCurrency(p.total_budget)}</td>
+                        {can('canSeeFinancialDetails') && <td className="px-4 py-2 text-right tabular-nums">{formatCurrency(p.total_budget)}</td>}
                         <td className="px-4 py-2 text-right tabular-nums">{projectPms > 0 ? projectPms.toFixed(2) : '—'}</td>
                       </tr>
                     )

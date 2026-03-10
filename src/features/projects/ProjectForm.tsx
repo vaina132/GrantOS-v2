@@ -50,7 +50,7 @@ export function ProjectForm() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const isEdit = !!id && id !== 'new'
-  const { orgId } = useAuthStore()
+  const { orgId, can } = useAuthStore()
   const { project, isLoading: loadingProject } = useProject(isEdit ? id : undefined)
   const [saving, setSaving] = useState(false)
   const [schemes, setSchemes] = useState<FundingScheme[]>([])
@@ -276,53 +276,57 @@ export function ProjectForm() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><CardTitle>Budget</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="total_budget" className="flex items-center gap-1.5">
-                  <DollarSign className="h-4 w-4 text-muted-foreground" /> Total Budget
-                </Label>
-                <Input id="total_budget" type="number" step="0.01" {...register('total_budget')} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+          {can('canSeeFinancialDetails') && (
+            <Card>
+              <CardHeader><CardTitle>Budget</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="overhead_rate">Overhead Rate (%)</Label>
-                  <Input id="overhead_rate" type="number" step="0.01" {...register('overhead_rate')} />
+                  <Label htmlFor="total_budget" className="flex items-center gap-1.5">
+                    <DollarSign className="h-4 w-4 text-muted-foreground" /> Total Budget
+                  </Label>
+                  <Input id="total_budget" type="number" step="0.01" {...register('total_budget')} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="overhead_rate">Overhead Rate (%)</Label>
+                    <Input id="overhead_rate" type="number" step="0.01" {...register('overhead_rate')} />
+                  </div>
+                  {can('canSeePersonnelRates') && (
+                    <div className="space-y-2">
+                      <Label htmlFor="our_pm_rate">Our PM Rate</Label>
+                      <Input id="our_pm_rate" type="number" step="0.01" {...register('our_pm_rate')} />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="budget_personnel" className="flex items-center gap-1.5">
+                    <Users className="h-4 w-4 text-muted-foreground" /> Personnel Budget
+                  </Label>
+                  <Input id="budget_personnel" type="number" step="0.01" {...register('budget_personnel')} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="our_pm_rate">Our PM Rate</Label>
-                  <Input id="our_pm_rate" type="number" step="0.01" {...register('our_pm_rate')} />
+                  <Label htmlFor="budget_travel" className="flex items-center gap-1.5">
+                    <Plane className="h-4 w-4 text-muted-foreground" /> Travel Budget
+                  </Label>
+                  <Input id="budget_travel" type="number" step="0.01" {...register('budget_travel')} />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="budget_personnel" className="flex items-center gap-1.5">
-                  <Users className="h-4 w-4 text-muted-foreground" /> Personnel Budget
-                </Label>
-                <Input id="budget_personnel" type="number" step="0.01" {...register('budget_personnel')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="budget_travel" className="flex items-center gap-1.5">
-                  <Plane className="h-4 w-4 text-muted-foreground" /> Travel Budget
-                </Label>
-                <Input id="budget_travel" type="number" step="0.01" {...register('budget_travel')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="budget_subcontracting" className="flex items-center gap-1.5">
-                  <Handshake className="h-4 w-4 text-muted-foreground" /> Subcontracting Budget
-                </Label>
-                <Input id="budget_subcontracting" type="number" step="0.01" {...register('budget_subcontracting')} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="budget_other" className="flex items-center gap-1.5">
-                  <Package className="h-4 w-4 text-muted-foreground" /> Other Budget
-                </Label>
-                <Input id="budget_other" type="number" step="0.01" {...register('budget_other')} />
-              </div>
-            </CardContent>
-          </Card>
+                <div className="space-y-2">
+                  <Label htmlFor="budget_subcontracting" className="flex items-center gap-1.5">
+                    <Handshake className="h-4 w-4 text-muted-foreground" /> Subcontracting Budget
+                  </Label>
+                  <Input id="budget_subcontracting" type="number" step="0.01" {...register('budget_subcontracting')} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="budget_other" className="flex items-center gap-1.5">
+                    <Package className="h-4 w-4 text-muted-foreground" /> Other Budget
+                  </Label>
+                  <Input id="budget_other" type="number" step="0.01" {...register('budget_other')} />
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="mt-6 flex justify-end gap-4">

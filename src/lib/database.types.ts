@@ -98,6 +98,107 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          id: string
+          org_id: string
+          role: string
+          can_see_dashboard: boolean
+          can_see_projects: boolean
+          can_see_staff: boolean
+          can_see_allocations: boolean
+          can_see_timesheets: boolean
+          can_see_absences: boolean
+          can_see_financials: boolean
+          can_see_timeline: boolean
+          can_see_reports: boolean
+          can_see_import: boolean
+          can_see_audit: boolean
+          can_see_guests: boolean
+          can_see_salary_info: boolean
+          can_see_financial_details: boolean
+          can_see_personnel_rates: boolean
+          can_edit_projects: boolean
+          can_edit_allocations: boolean
+          can_approve_timesheets: boolean
+          can_submit_timesheets: boolean
+          can_manage_budgets: boolean
+          can_generate_reports: boolean
+          can_manage_users: boolean
+          can_manage_org: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          role: string
+          can_see_dashboard?: boolean
+          can_see_projects?: boolean
+          can_see_staff?: boolean
+          can_see_allocations?: boolean
+          can_see_timesheets?: boolean
+          can_see_absences?: boolean
+          can_see_financials?: boolean
+          can_see_timeline?: boolean
+          can_see_reports?: boolean
+          can_see_import?: boolean
+          can_see_audit?: boolean
+          can_see_guests?: boolean
+          can_see_salary_info?: boolean
+          can_see_financial_details?: boolean
+          can_see_personnel_rates?: boolean
+          can_edit_projects?: boolean
+          can_edit_allocations?: boolean
+          can_approve_timesheets?: boolean
+          can_submit_timesheets?: boolean
+          can_manage_budgets?: boolean
+          can_generate_reports?: boolean
+          can_manage_users?: boolean
+          can_manage_org?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          role?: string
+          can_see_dashboard?: boolean
+          can_see_projects?: boolean
+          can_see_staff?: boolean
+          can_see_allocations?: boolean
+          can_see_timesheets?: boolean
+          can_see_absences?: boolean
+          can_see_financials?: boolean
+          can_see_timeline?: boolean
+          can_see_reports?: boolean
+          can_see_import?: boolean
+          can_see_audit?: boolean
+          can_see_guests?: boolean
+          can_see_salary_info?: boolean
+          can_see_financial_details?: boolean
+          can_see_personnel_rates?: boolean
+          can_edit_projects?: boolean
+          can_edit_allocations?: boolean
+          can_approve_timesheets?: boolean
+          can_submit_timesheets?: boolean
+          can_manage_budgets?: boolean
+          can_generate_reports?: boolean
+          can_manage_users?: boolean
+          can_manage_org?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'role_permissions_org_id_fkey'
+            columns: ['org_id']
+            isOneToOne: false
+            referencedRelation: 'organisations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       project_guests: {
         Row: {
           id: string

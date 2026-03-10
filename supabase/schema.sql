@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS org_members (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   org_id UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
-  role TEXT NOT NULL DEFAULT 'Viewer' CHECK (role IN ('Admin','Grant Manager','Finance Officer','Viewer')),
+  role TEXT NOT NULL DEFAULT 'Viewer' CHECK (role IN ('Admin','Project Manager','Finance Officer','Viewer','External Participant')),
   invited_by UUID REFERENCES auth.users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -395,7 +395,7 @@ CREATE POLICY "Members can view persons"
 
 CREATE POLICY "Writers can manage persons"
   ON persons FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- PROJECTS
 CREATE POLICY "Members can view projects"
@@ -404,7 +404,7 @@ CREATE POLICY "Members can view projects"
 
 CREATE POLICY "Project managers can manage projects"
   ON projects FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- Guests can view assigned projects
 CREATE POLICY "Guests can view assigned projects"
@@ -423,7 +423,7 @@ CREATE POLICY "Members can view work packages"
 
 CREATE POLICY "Project managers can manage work packages"
   ON work_packages FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- ASSIGNMENTS
 CREATE POLICY "Members can view assignments"
@@ -432,7 +432,7 @@ CREATE POLICY "Members can view assignments"
 
 CREATE POLICY "Managers can manage assignments"
   ON assignments FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- PM BUDGETS
 CREATE POLICY "Members can view pm budgets"
@@ -441,7 +441,7 @@ CREATE POLICY "Members can view pm budgets"
 
 CREATE POLICY "Managers can manage pm budgets"
   ON pm_budgets FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- TIMESHEET ENTRIES
 CREATE POLICY "Members can view timesheets"
@@ -450,7 +450,7 @@ CREATE POLICY "Members can view timesheets"
 
 CREATE POLICY "Writers can manage timesheets"
   ON timesheet_entries FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- ABSENCES
 CREATE POLICY "Members can view absences"
@@ -459,16 +459,16 @@ CREATE POLICY "Members can view absences"
 
 CREATE POLICY "Managers can manage absences"
   ON absences FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- FINANCIAL BUDGETS
 CREATE POLICY "Finance users can view financial budgets"
   ON financial_budgets FOR SELECT
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager','Finance Officer'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager','Finance Officer'));
 
 CREATE POLICY "Managers can manage financial budgets"
   ON financial_budgets FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- PROJECT DOCUMENTS
 CREATE POLICY "Members can view project documents"
@@ -477,7 +477,7 @@ CREATE POLICY "Members can view project documents"
 
 CREATE POLICY "Writers can manage project documents"
   ON project_documents FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- AUDIT LOG
 CREATE POLICY "Members can view audit log"

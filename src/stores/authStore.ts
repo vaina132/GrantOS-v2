@@ -188,7 +188,7 @@ async function loadUserContext(
         .eq('role', role)
         .maybeSingle()
       if (rp) {
-        permissions = rolePermissionToPermissions(rp as any)
+        permissions = rolePermissionToPermissions(rp as import('@/types').RolePermission)
       }
     } catch {
       // Fallback to hardcoded if table doesn't exist yet

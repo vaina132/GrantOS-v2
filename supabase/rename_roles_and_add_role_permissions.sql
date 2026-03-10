@@ -2,6 +2,11 @@
 -- 1. Rename existing roles in org_members
 UPDATE org_members SET role = 'Project Manager' WHERE role = 'Grant Manager';
 
+-- 2. Update the CHECK constraint to accept new role names
+ALTER TABLE org_members DROP CONSTRAINT IF EXISTS org_members_role_check;
+ALTER TABLE org_members ADD CONSTRAINT org_members_role_check
+  CHECK (role IN ('Admin','Project Manager','Finance Officer','Viewer','External Participant'));
+
 -- 2. Create role_permissions table for configurable module visibility & data privacy
 CREATE TABLE IF NOT EXISTS role_permissions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -43,11 +48,13 @@ CREATE TABLE IF NOT EXISTS role_permissions (
 ALTER TABLE role_permissions ENABLE ROW LEVEL SECURITY;
 
 -- RLS: members can read their org's role_permissions
+DROP POLICY IF EXISTS "Members can read role_permissions" ON role_permissions;
 CREATE POLICY "Members can read role_permissions"
   ON role_permissions FOR SELECT
   USING (org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid()));
 
 -- RLS: only admins can insert/update/delete
+DROP POLICY IF EXISTS "Admins can manage role_permissions" ON role_permissions;
 CREATE POLICY "Admins can manage role_permissions"
   ON role_permissions FOR ALL
   USING (

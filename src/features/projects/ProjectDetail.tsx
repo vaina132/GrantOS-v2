@@ -319,7 +319,7 @@ export function ProjectDetail() {
 
   const detailTabs: { key: DetailTab; label: string; show: boolean }[] = [
     { key: 'overview', label: 'Overview', show: true },
-    { key: 'budget', label: 'Budget', show: true },
+    { key: 'budget', label: 'Budget', show: can('canSeeFinancialDetails') },
     { key: 'workpackages', label: 'Work Packages', show: true },
     { key: 'deliverables', label: 'Deliverables', show: true },
     { key: 'reporting', label: 'Reporting', show: true },
@@ -456,12 +456,14 @@ export function ProjectDetail() {
                       {project.overhead_rate != null ? `${project.overhead_rate}%` : '—'}
                     </dd>
                   </div>
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-muted-foreground">Our PM Rate</dt>
-                    <dd className="text-sm font-medium tabular-nums">
-                      {project.our_pm_rate != null ? formatCurrency(project.our_pm_rate) : '—'}
-                    </dd>
-                  </div>
+                  {can('canSeePersonnelRates') && (
+                    <div className="flex justify-between">
+                      <dt className="text-sm text-muted-foreground">Our PM Rate</dt>
+                      <dd className="text-sm font-medium tabular-nums">
+                        {project.our_pm_rate != null ? formatCurrency(project.our_pm_rate) : '—'}
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               </CardContent>
             </Card>

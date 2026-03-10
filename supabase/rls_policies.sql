@@ -107,7 +107,7 @@ CREATE POLICY "persons_select"
 
 CREATE POLICY "persons_all_writers"
   ON persons FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- ============================================================
 -- 8. PROJECTS
@@ -118,7 +118,7 @@ CREATE POLICY "projects_select"
 
 CREATE POLICY "projects_all_managers"
   ON projects FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- Guests can view assigned projects
 CREATE POLICY "projects_select_guests"
@@ -139,7 +139,7 @@ CREATE POLICY "wp_select"
 
 CREATE POLICY "wp_all_managers"
   ON work_packages FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- ============================================================
 -- 10. ASSIGNMENTS
@@ -150,7 +150,7 @@ CREATE POLICY "assign_select"
 
 CREATE POLICY "assign_all_managers"
   ON assignments FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- ============================================================
 -- 11. PM BUDGETS
@@ -161,7 +161,7 @@ CREATE POLICY "pmb_select"
 
 CREATE POLICY "pmb_all_managers"
   ON pm_budgets FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- ============================================================
 -- 12. TIMESHEET ENTRIES
@@ -172,7 +172,7 @@ CREATE POLICY "ts_select"
 
 CREATE POLICY "ts_all_writers"
   ON timesheet_entries FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- ============================================================
 -- 13. ABSENCES
@@ -183,18 +183,18 @@ CREATE POLICY "abs_select"
 
 CREATE POLICY "abs_all_managers"
   ON absences FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- ============================================================
 -- 14. FINANCIAL BUDGETS
 -- ============================================================
 CREATE POLICY "fin_select"
   ON financial_budgets FOR SELECT
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager','Finance Officer'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager','Finance Officer'));
 
 CREATE POLICY "fin_all_managers"
   ON financial_budgets FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- ============================================================
 -- 15. PROJECT DOCUMENTS
@@ -205,7 +205,7 @@ CREATE POLICY "docs_select"
 
 CREATE POLICY "docs_all_writers"
   ON project_documents FOR ALL
-  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Grant Manager'));
+  USING (org_id = auth_org_id() AND auth_role() IN ('Admin','Project Manager'));
 
 -- ============================================================
 -- 16. AUDIT LOGS

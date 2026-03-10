@@ -73,16 +73,23 @@ export default function App() {
                       <Route
                         path="/allocations"
                         element={
-                          <ProtectedRoute permission="canManageAllocations">
+                          <ProtectedRoute permission="canSeeAllocations">
                             <AllocationsPage />
                           </ProtectedRoute>
                         }
                       />
-                      <Route path="/timesheets" element={<TimesheetsPage />} />
+                      <Route
+                        path="/timesheets"
+                        element={
+                          <ProtectedRoute permission="canSeeTimesheets">
+                            <TimesheetsPage />
+                          </ProtectedRoute>
+                        }
+                      />
                       <Route
                         path="/absences"
                         element={
-                          <ProtectedRoute permission="canManageAllocations">
+                          <ProtectedRoute permission="canSeeAbsences">
                             <AbsencesPage />
                           </ProtectedRoute>
                         }
@@ -95,11 +102,18 @@ export default function App() {
                           </ProtectedRoute>
                         }
                       />
-                      <Route path="/timeline" element={<TimelinePage />} />
+                      <Route
+                        path="/timeline"
+                        element={
+                          <ProtectedRoute permission="canSeeTimeline">
+                            <TimelinePage />
+                          </ProtectedRoute>
+                        }
+                      />
                       <Route
                         path="/reports"
                         element={
-                          <ProtectedRoute permission="canGenerateReports">
+                          <ProtectedRoute permission="canSeeReports">
                             <ReportsPage />
                           </ProtectedRoute>
                         }
@@ -107,7 +121,7 @@ export default function App() {
                       <Route
                         path="/import"
                         element={
-                          <ProtectedRoute permission="canManageOrg">
+                          <ProtectedRoute permission="canSeeImport">
                             <ImportPage />
                           </ProtectedRoute>
                         }
@@ -115,7 +129,7 @@ export default function App() {
                       <Route
                         path="/audit"
                         element={
-                          <ProtectedRoute permission="canSeeFinancials">
+                          <ProtectedRoute permission="canSeeAudit">
                             <AuditPage />
                           </ProtectedRoute>
                         }
@@ -123,7 +137,7 @@ export default function App() {
                       <Route
                         path="/guests"
                         element={
-                          <ProtectedRoute permission="canManageOrg">
+                          <ProtectedRoute permission="canSeeGuests">
                             <GuestAccessPage />
                           </ProtectedRoute>
                         }

@@ -294,16 +294,17 @@ export interface RoutePermission {
 }
 
 export const ROUTE_PERMISSIONS: RoutePermission[] = [
-  { path: '/dashboard' },
-  { path: '/projects' },
-  { path: '/staff' },
-  { path: '/allocations', minPermission: 'canManageAllocations' },
-  { path: '/timesheets', minPermission: 'canSubmitTimesheets', guestAllowed: true },
-  { path: '/absences', minPermission: 'canManageAllocations' },
+  { path: '/dashboard', minPermission: 'canSeeDashboard' },
+  { path: '/projects', minPermission: 'canSeeProjects' },
+  { path: '/staff', minPermission: 'canSeeStaff' },
+  { path: '/allocations', minPermission: 'canSeeAllocations' },
+  { path: '/timesheets', minPermission: 'canSeeTimesheets', guestAllowed: true },
+  { path: '/absences', minPermission: 'canSeeAbsences' },
   { path: '/financials', minPermission: 'canSeeFinancials' },
-  { path: '/timeline' },
-  { path: '/reports', minPermission: 'canGenerateReports' },
-  { path: '/import', minPermission: 'canManageOrg' },
-  { path: '/audit', minPermission: 'canSeeFinancials' },
+  { path: '/timeline', minPermission: 'canSeeTimeline' },
+  { path: '/reports', minPermission: 'canSeeReports' },
+  { path: '/import', minPermission: 'canSeeImport' },
+  { path: '/audit', minPermission: 'canSeeAudit' },
+  { path: '/guests', minPermission: 'canSeeGuests' },
   { path: '/settings', minPermission: 'canManageOrg' },
 ]

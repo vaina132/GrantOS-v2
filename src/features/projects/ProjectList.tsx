@@ -121,7 +121,7 @@ export function ProjectList() {
                   <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Scheme</th>
                   <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Status</th>
                   <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Period</th>
-                  <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Budget</th>
+                  {can('canSeeFinancialDetails') && <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Budget</th>}
                   {can('canManageProjects') && <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Actions</th>}
                 </tr>
               </thead>
@@ -148,9 +148,11 @@ export function ProjectList() {
                     <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
                       {formatDate(project.start_date)} – {formatDate(project.end_date)}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {project.total_budget != null ? formatCurrency(project.total_budget) : '—'}
-                    </td>
+                    {can('canSeeFinancialDetails') && (
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {project.total_budget != null ? formatCurrency(project.total_budget) : '—'}
+                      </td>
+                    )}
                     {can('canManageProjects') && (
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
