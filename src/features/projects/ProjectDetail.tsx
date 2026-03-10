@@ -17,9 +17,12 @@ import { toast } from '@/components/ui/use-toast'
 import { ArrowLeft, Pencil, Plus, Trash2, Save } from 'lucide-react'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { DocumentList } from '@/features/documents/DocumentList'
+import { DeliverablesTab } from './DeliverablesTab'
+import { ReportingPeriodsTab } from './ReportingPeriodsTab'
+import { BudgetConsumptionChart } from './BudgetConsumptionChart'
 import type { WorkPackage, PmBudget, Assignment } from '@/types'
 
-type DetailTab = 'overview' | 'budget' | 'workpackages' | 'documents'
+type DetailTab = 'overview' | 'budget' | 'workpackages' | 'deliverables' | 'reporting' | 'documents'
 
 export function ProjectDetail() {
   const navigate = useNavigate()
@@ -318,6 +321,8 @@ export function ProjectDetail() {
     { key: 'overview', label: 'Overview', show: true },
     { key: 'budget', label: 'Budget', show: true },
     { key: 'workpackages', label: 'Work Packages', show: true },
+    { key: 'deliverables', label: 'Deliverables', show: true },
+    { key: 'reporting', label: 'Reporting', show: true },
     { key: 'documents', label: 'Documents', show: true },
   ]
 
@@ -503,6 +508,9 @@ export function ProjectDetail() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Budget Consumption Chart */}
+            <BudgetConsumptionChart project={project} projectYears={projectYears} />
           </div>
         )}
 
@@ -833,6 +841,25 @@ export function ProjectDetail() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Deliverables & Milestones Tab */}
+        {detailTab === 'deliverables' && project && (
+          <DeliverablesTab
+            project={project}
+            workPackages={workPackages}
+            projectMonthLabel={projectMonthLabel}
+            projectMonthCount={projectMonthCount}
+          />
+        )}
+
+        {/* Reporting Periods Tab */}
+        {detailTab === 'reporting' && project && (
+          <ReportingPeriodsTab
+            project={project}
+            projectMonthLabel={projectMonthLabel}
+            projectMonthCount={projectMonthCount}
+          />
         )}
 
         {/* Documents Tab */}

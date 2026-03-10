@@ -287,3 +287,53 @@ export interface GuestProject {
   project_id: string
   access_level: GuestAccessLevel
 }
+
+export type DeliverableStatus = 'Not Started' | 'In Progress' | 'In Review' | 'Submitted' | 'Accepted' | 'Rejected'
+export type MilestoneStatus = 'Not Started' | 'In Progress' | 'Achieved' | 'Delayed'
+
+export interface Deliverable {
+  id: string
+  org_id: string
+  project_id: string
+  work_package_id: string | null
+  number: string
+  title: string
+  description: string | null
+  lead_person_id: string | null
+  due_month: number | null
+  status: DeliverableStatus
+  submitted_date: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Milestone {
+  id: string
+  org_id: string
+  project_id: string
+  work_package_id: string | null
+  number: string
+  title: string
+  description: string | null
+  due_month: number | null
+  verification_means: string | null
+  status: MilestoneStatus
+  achieved_date: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ReportingPeriod {
+  id: string
+  org_id: string
+  project_id: string
+  period_number: number
+  start_month: number
+  end_month: number
+  technical_report_due: string | null
+  financial_report_due: string | null
+  status: 'Upcoming' | 'In Progress' | 'Submitted' | 'Approved'
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
