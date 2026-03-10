@@ -16,8 +16,32 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/use-toast'
-import { Plus, Pencil, Trash2, Layers } from 'lucide-react'
+import { Plus, Pencil, Trash2, Layers, Download, Loader2 } from 'lucide-react'
 import type { FundingScheme } from '@/types'
+
+const FUNDING_PRESETS: { name: string; type: string; overhead_rate: number }[] = [
+  { name: 'Horizon Europe — RIA', type: 'EU Framework Programme', overhead_rate: 25 },
+  { name: 'Horizon Europe — IA', type: 'EU Framework Programme', overhead_rate: 25 },
+  { name: 'Horizon Europe — CSA', type: 'EU Framework Programme', overhead_rate: 25 },
+  { name: 'ERC Starting Grant', type: 'EU ERC', overhead_rate: 25 },
+  { name: 'ERC Consolidator Grant', type: 'EU ERC', overhead_rate: 25 },
+  { name: 'ERC Advanced Grant', type: 'EU ERC', overhead_rate: 25 },
+  { name: 'ERC Proof of Concept', type: 'EU ERC', overhead_rate: 25 },
+  { name: 'MSCA Doctoral Networks', type: 'EU Marie Sk\u0142odowska-Curie', overhead_rate: 25 },
+  { name: 'MSCA Postdoctoral Fellowships', type: 'EU Marie Sk\u0142odowska-Curie', overhead_rate: 25 },
+  { name: 'MSCA Staff Exchanges', type: 'EU Marie Sk\u0142odowska-Curie', overhead_rate: 25 },
+  { name: 'EIT KIC', type: 'EU EIT', overhead_rate: 25 },
+  { name: 'Digital Europe Programme', type: 'EU Programme', overhead_rate: 7 },
+  { name: 'Erasmus+ KA2', type: 'EU Education', overhead_rate: 7 },
+  { name: 'Creative Europe', type: 'EU Programme', overhead_rate: 7 },
+  { name: 'LIFE Programme', type: 'EU Programme', overhead_rate: 7 },
+  { name: 'Interreg', type: 'EU Territorial Cooperation', overhead_rate: 15 },
+  { name: 'COST Action', type: 'EU Networking', overhead_rate: 25 },
+  { name: 'Eurostars', type: 'Eureka', overhead_rate: 0 },
+  { name: 'National Grant', type: 'National', overhead_rate: 0 },
+  { name: 'Industry Contract', type: 'Private', overhead_rate: 0 },
+  { name: 'Internal / Self-funded', type: 'Internal', overhead_rate: 0 },
+]
 
 export function FundingSchemes() {
   const { orgId } = useAuthStore()
@@ -32,6 +56,36 @@ export function FundingSchemes() {
   const [name, setName] = useState('')
   const [type, setType] = useState('')
   const [overheadRate, setOverheadRate] = useState('')
+  const [loadingPresets, setLoadingPresets] = useState(false)
+
+  const handleLoadPresets = async () => {
+    if (!orgId) return
+    setLoadingPresets(true)
+    try {
+      const existingNames = new Set(schemes.map(s => s.name.toLowerCase()))
+      const toCreate = FUNDING_PRESETS.filter(p => !existingNames.has(p.name.toLowerCase()))
+      if (toCreate.length === 0) {
+        toast({ title: 'All presets already exist', description: 'No new funding schemes to add.' })
+        setLoadingPresets(false)
+        return
+      }
+      for (const preset of toCreate) {
+        await settingsService.createFundingScheme({
+          org_id: orgId,
+          name: preset.name,
+          type: preset.type,
+          overhead_rate: preset.overhead_rate,
+        })
+      }
+      toast({ title: 'Presets loaded', description: `${toCreate.length} funding scheme${toCreate.length > 1 ? 's' : ''} added.` })
+      fetch()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load presets'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
+    } finally {
+      setLoadingPresets(false)
+    }
+  }
 
   const fetch = useCallback(async () => {
     setIsLoading(true)
@@ -116,9 +170,15 @@ export function FundingSchemes() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Funding Schemes</CardTitle>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="mr-2 h-4 w-4" /> Add Scheme
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={handleLoadPresets} disabled={loadingPresets}>
+            {loadingPresets ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            {loadingPresets ? 'Loading...' : 'Load Presets'}
+          </Button>
+          <Button size="sm" onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" /> Add Scheme
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (

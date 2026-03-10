@@ -5,9 +5,56 @@ import { useUiStore } from '@/stores/uiStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/use-toast'
-import { Plus, Trash2, Calendar } from 'lucide-react'
+import { Plus, Trash2, Calendar, Download, Loader2 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import type { Holiday } from '@/types'
+
+// Countries supported by Nager.Date API — European countries + Turkey
+const HOLIDAY_COUNTRIES = [
+  { code: 'AL', name: 'Albania' },
+  { code: 'AD', name: 'Andorra' },
+  { code: 'AT', name: 'Austria' },
+  { code: 'BY', name: 'Belarus' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'BA', name: 'Bosnia and Herzegovina' },
+  { code: 'BG', name: 'Bulgaria' },
+  { code: 'HR', name: 'Croatia' },
+  { code: 'CY', name: 'Cyprus' },
+  { code: 'CZ', name: 'Czechia' },
+  { code: 'DK', name: 'Denmark' },
+  { code: 'EE', name: 'Estonia' },
+  { code: 'FI', name: 'Finland' },
+  { code: 'FR', name: 'France' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'GR', name: 'Greece' },
+  { code: 'HU', name: 'Hungary' },
+  { code: 'IS', name: 'Iceland' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'LV', name: 'Latvia' },
+  { code: 'LI', name: 'Liechtenstein' },
+  { code: 'LT', name: 'Lithuania' },
+  { code: 'LU', name: 'Luxembourg' },
+  { code: 'MT', name: 'Malta' },
+  { code: 'MD', name: 'Moldova' },
+  { code: 'MC', name: 'Monaco' },
+  { code: 'ME', name: 'Montenegro' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'MK', name: 'North Macedonia' },
+  { code: 'NO', name: 'Norway' },
+  { code: 'PL', name: 'Poland' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'RO', name: 'Romania' },
+  { code: 'RS', name: 'Serbia' },
+  { code: 'SK', name: 'Slovakia' },
+  { code: 'SI', name: 'Slovenia' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'SE', name: 'Sweden' },
+  { code: 'CH', name: 'Switzerland' },
+  { code: 'TR', name: 'Turkey' },
+  { code: 'UA', name: 'Ukraine' },
+  { code: 'GB', name: 'United Kingdom' },
+]
 
 export function HolidaySettings() {
   const { orgId } = useAuthStore()
@@ -20,6 +67,38 @@ export function HolidaySettings() {
   // New holiday form
   const [newDate, setNewDate] = useState('')
   const [newName, setNewName] = useState('')
+
+  // Import from country
+  const [importCountry, setImportCountry] = useState('')
+  const [importing, setImporting] = useState(false)
+
+  const handleImport = async () => {
+    if (!orgId || !importCountry) return
+    setImporting(true)
+    try {
+      const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${globalYear}/${importCountry}`)
+      if (!res.ok) throw new Error(`API returned ${res.status}`)
+      const data: { date: string; localName: string; name: string; global: boolean }[] = await res.json()
+      // Only import global (nationwide) holidays
+      const globalHolidays = data.filter(h => h.global)
+      if (globalHolidays.length === 0) {
+        toast({ title: 'No holidays found', description: `No national holidays found for ${importCountry} in ${globalYear}.` })
+        setImporting(false)
+        return
+      }
+      const items = globalHolidays.map(h => ({ date: h.date, name: h.localName || h.name }))
+      const count = await holidayService.bulkCreate(orgId, items)
+      const countryName = HOLIDAY_COUNTRIES.find(c => c.code === importCountry)?.name ?? importCountry
+      toast({ title: 'Imported', description: `${count} holidays imported for ${countryName} (${globalYear}).` })
+      setImportCountry('')
+      loadHolidays()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to import holidays'
+      toast({ title: 'Import failed', description: message, variant: 'destructive' })
+    } finally {
+      setImporting(false)
+    }
+  }
 
   const loadHolidays = useCallback(async () => {
     if (!orgId) return
@@ -84,6 +163,33 @@ export function HolidaySettings() {
         <h3 className="text-lg font-semibold">National Holidays</h3>
         <p className="text-sm text-muted-foreground mt-1">
           Define public/national holidays for your organisation. These dates will be excluded from timesheet entry.
+        </p>
+      </div>
+
+      {/* Import from country */}
+      <div className="rounded-lg border bg-muted/20 p-4 space-y-2">
+        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Import National Holidays</div>
+        <div className="flex gap-3 items-end flex-wrap">
+          <div className="space-y-1 min-w-[200px]">
+            <label className="text-xs font-medium text-muted-foreground">Country</label>
+            <select
+              value={importCountry}
+              onChange={(e) => setImportCountry(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Select country...</option>
+              {HOLIDAY_COUNTRIES.map(c => (
+                <option key={c.code} value={c.code}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <Button onClick={handleImport} disabled={importing || !importCountry} variant="outline" className="gap-1.5">
+            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {importing ? 'Importing...' : `Import ${globalYear} Holidays`}
+          </Button>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Fetches public holidays from Nager.Date (free API). Existing holidays on the same dates will be updated.
         </p>
       </div>
 
