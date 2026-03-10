@@ -288,9 +288,6 @@ export interface GuestProject {
   access_level: GuestAccessLevel
 }
 
-export type DeliverableStatus = 'Not Started' | 'In Progress' | 'In Review' | 'Submitted' | 'Accepted' | 'Rejected'
-export type MilestoneStatus = 'Not Started' | 'In Progress' | 'Achieved' | 'Delayed'
-
 export interface Deliverable {
   id: string
   org_id: string
@@ -301,8 +298,6 @@ export interface Deliverable {
   description: string | null
   lead_person_id: string | null
   due_month: number | null
-  status: DeliverableStatus
-  submitted_date: string | null
   created_at: string
   updated_at: string
 }
@@ -317,8 +312,6 @@ export interface Milestone {
   description: string | null
   due_month: number | null
   verification_means: string | null
-  status: MilestoneStatus
-  achieved_date: string | null
   created_at: string
   updated_at: string
 }
@@ -332,7 +325,6 @@ export interface ReportingPeriod {
   end_month: number
   technical_report_due: string | null
   financial_report_due: string | null
-  status: 'Upcoming' | 'In Progress' | 'Submitted' | 'Approved'
   notes: string | null
   created_at: string
   updated_at: string

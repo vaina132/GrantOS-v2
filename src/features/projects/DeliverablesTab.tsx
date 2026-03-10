@@ -9,23 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
 import { Plus, Pencil, Trash2, Save, X, FileText, Target } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import type { Deliverable, Milestone, DeliverableStatus, MilestoneStatus, WorkPackage, Project } from '@/types'
-
-const DELIVERABLE_STATUSES: DeliverableStatus[] = ['Not Started', 'In Progress', 'In Review', 'Submitted', 'Accepted', 'Rejected']
-const MILESTONE_STATUSES: MilestoneStatus[] = ['Not Started', 'In Progress', 'Achieved', 'Delayed']
-
-const statusColor = (s: string) => {
-  switch (s) {
-    case 'Not Started': return 'bg-gray-100 text-gray-700'
-    case 'In Progress': return 'bg-blue-100 text-blue-700'
-    case 'In Review': return 'bg-purple-100 text-purple-700'
-    case 'Submitted': return 'bg-amber-100 text-amber-700'
-    case 'Accepted': case 'Achieved': return 'bg-emerald-100 text-emerald-700'
-    case 'Rejected': case 'Delayed': return 'bg-red-100 text-red-700'
-    default: return 'bg-gray-100 text-gray-700'
-  }
-}
+import type { Deliverable, Milestone, WorkPackage, Project } from '@/types'
 
 interface Props {
   project: Project
@@ -53,18 +37,55 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
 
   // Add deliverable form
   const [showAddDel, setShowAddDel] = useState(false)
-  const [addDel, setAddDel] = useState({ number: '', title: '', description: '', wp_id: '', due_month: 1, status: 'Not Started' as DeliverableStatus })
+  const [addDel, setAddDel] = useState({ number: '', title: '', description: '', wp_id: '', due_month: 1 })
   const [savingDel, setSavingDel] = useState(false)
 
   // Add milestone form
   const [showAddMs, setShowAddMs] = useState(false)
-  const [addMs, setAddMs] = useState({ number: '', title: '', description: '', wp_id: '', due_month: 1, verification_means: '', status: 'Not Started' as MilestoneStatus })
+  const [addMs, setAddMs] = useState({ number: '', title: '', description: '', wp_id: '', due_month: 1, verification_means: '' })
   const [savingMs, setSavingMs] = useState(false)
 
   // Edit fields
   const [editDel, setEditDel] = useState<Partial<Deliverable>>({})
   const [editMs, setEditMs] = useState<Partial<Milestone>>({})
   const [editSaving, setEditSaving] = useState(false)
+
+  // Helper: get allowed month range for a given WP id
+  const getWpMonthRange = useCallback((wpId: string | null): { min: number; max: number } => {
+    if (!wpId) return { min: 1, max: projectMonthCount || 1 }
+    const wp = workPackages.find(w => w.id === wpId)
+    if (!wp) return { min: 1, max: projectMonthCount || 1 }
+    return { min: wp.start_month ?? 1, max: wp.end_month ?? (projectMonthCount || 1) }
+  }, [workPackages, projectMonthCount])
+
+  // Month options builder for a given WP
+  const monthOptions = useCallback((wpId: string | null) => {
+    const { min, max } = getWpMonthRange(wpId)
+    const opts: number[] = []
+    for (let m = min; m <= max; m++) opts.push(m)
+    return opts
+  }, [getWpMonthRange])
+
+  // When WP changes in add forms, clamp due_month
+  const handleDelWpChange = (wpId: string) => {
+    const { min, max } = getWpMonthRange(wpId || null)
+    setAddDel(p => ({ ...p, wp_id: wpId, due_month: Math.max(min, Math.min(p.due_month, max)) }))
+  }
+
+  const handleMsWpChange = (wpId: string) => {
+    const { min, max } = getWpMonthRange(wpId || null)
+    setAddMs(p => ({ ...p, wp_id: wpId, due_month: Math.max(min, Math.min(p.due_month, max)) }))
+  }
+
+  const handleEditDelWpChange = (wpId: string) => {
+    const { min, max } = getWpMonthRange(wpId || null)
+    setEditDel(p => ({ ...p, work_package_id: wpId || null, due_month: Math.max(min, Math.min(p.due_month ?? min, max)) }))
+  }
+
+  const handleEditMsWpChange = (wpId: string) => {
+    const { min, max } = getWpMonthRange(wpId || null)
+    setEditMs(p => ({ ...p, work_package_id: wpId || null, due_month: Math.max(min, Math.min(p.due_month ?? min, max)) }))
+  }
 
   const loadDeliverables = useCallback(async () => {
     setLoadingDel(true)
@@ -110,11 +131,9 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
         description: addDel.description.trim() || null,
         lead_person_id: null,
         due_month: addDel.due_month,
-        status: addDel.status,
-        submitted_date: null,
       })
       toast({ title: 'Added', description: `Deliverable ${addDel.number} created.` })
-      setAddDel({ number: '', title: '', description: '', wp_id: '', due_month: 1, status: 'Not Started' })
+      setAddDel({ number: '', title: '', description: '', wp_id: '', due_month: 1 })
       setShowAddDel(false)
       loadDeliverables()
     } catch (err) {
@@ -126,7 +145,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
 
   const startEditDel = (d: Deliverable) => {
     setEditingDelId(d.id)
-    setEditDel({ number: d.number, title: d.title, description: d.description, work_package_id: d.work_package_id, due_month: d.due_month, status: d.status })
+    setEditDel({ number: d.number, title: d.title, description: d.description, work_package_id: d.work_package_id, due_month: d.due_month })
   }
 
   const handleSaveEditDel = async () => {
@@ -139,7 +158,6 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
         description: editDel.description || null,
         work_package_id: editDel.work_package_id || null,
         due_month: editDel.due_month,
-        status: editDel.status,
       })
       toast({ title: 'Updated', description: 'Deliverable updated.' })
       setEditingDelId(null)
@@ -181,11 +199,9 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
         description: addMs.description.trim() || null,
         due_month: addMs.due_month,
         verification_means: addMs.verification_means.trim() || null,
-        status: addMs.status,
-        achieved_date: null,
       })
       toast({ title: 'Added', description: `Milestone ${addMs.number} created.` })
-      setAddMs({ number: '', title: '', description: '', wp_id: '', due_month: 1, verification_means: '', status: 'Not Started' })
+      setAddMs({ number: '', title: '', description: '', wp_id: '', due_month: 1, verification_means: '' })
       setShowAddMs(false)
       loadMilestones()
     } catch (err) {
@@ -197,7 +213,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
 
   const startEditMs = (m: Milestone) => {
     setEditingMsId(m.id)
-    setEditMs({ number: m.number, title: m.title, description: m.description, work_package_id: m.work_package_id, due_month: m.due_month, verification_means: m.verification_means, status: m.status })
+    setEditMs({ number: m.number, title: m.title, description: m.description, work_package_id: m.work_package_id, due_month: m.due_month, verification_means: m.verification_means })
   }
 
   const handleSaveEditMs = async () => {
@@ -211,7 +227,6 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
         work_package_id: editMs.work_package_id || null,
         due_month: editMs.due_month,
         verification_means: editMs.verification_means || null,
-        status: editMs.status,
       })
       toast({ title: 'Updated', description: 'Milestone updated.' })
       setEditingMsId(null)
@@ -244,35 +259,22 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
     return wp ? `WP${wp.number ?? ''} ${wp.name}` : '—'
   }
 
-  // Summary stats
   const delTotal = deliverables.length
-  const delSubmitted = deliverables.filter(d => d.status === 'Submitted' || d.status === 'Accepted').length
   const msTotal = milestones.length
-  const msAchieved = milestones.filter(m => m.status === 'Achieved').length
 
   return (
     <div className="space-y-6">
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <div className="rounded-lg border bg-card p-3">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Deliverables</div>
           <div className="text-xl font-bold tabular-nums mt-0.5">{delTotal}</div>
-          <div className="text-[11px] text-muted-foreground">{delSubmitted} submitted/accepted</div>
+          <div className="text-[11px] text-muted-foreground">defined for this project</div>
         </div>
         <div className="rounded-lg border bg-card p-3">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Milestones</div>
           <div className="text-xl font-bold tabular-nums mt-0.5">{msTotal}</div>
-          <div className="text-[11px] text-muted-foreground">{msAchieved} achieved</div>
-        </div>
-        <div className="rounded-lg border bg-card p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Del. Progress</div>
-          <div className="text-xl font-bold tabular-nums mt-0.5">{delTotal > 0 ? Math.round((delSubmitted / delTotal) * 100) : 0}%</div>
-          <div className="text-[11px] text-muted-foreground">submitted or accepted</div>
-        </div>
-        <div className="rounded-lg border bg-card p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ms. Progress</div>
-          <div className="text-xl font-bold tabular-nums mt-0.5">{msTotal > 0 ? Math.round((msAchieved / msTotal) * 100) : 0}%</div>
-          <div className="text-[11px] text-muted-foreground">achieved</div>
+          <div className="text-[11px] text-muted-foreground">defined for this project</div>
         </div>
       </div>
 
@@ -298,20 +300,20 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
             <>
               {deliverables.length > 0 && (
                 <div className="rounded-lg border mb-4 overflow-x-auto">
-                  <table className="w-full text-sm min-w-[700px]">
+                  <table className="w-full text-sm min-w-[600px]">
                     <thead>
                       <tr className="border-b bg-muted/50">
                         <th className="px-3 py-2 text-left font-medium w-16">#</th>
                         <th className="px-3 py-2 text-left font-medium">Title</th>
                         <th className="px-3 py-2 text-left font-medium">Work Package</th>
                         <th className="px-3 py-2 text-left font-medium">Due</th>
-                        <th className="px-3 py-2 text-left font-medium">Status</th>
                         {can('canManageProjects') && <th className="px-3 py-2 text-right font-medium">Actions</th>}
                       </tr>
                     </thead>
                     <tbody>
                       {deliverables.map(d => {
                         const isEditing = editingDelId === d.id
+                        const editMonths = monthOptions(isEditing ? (editDel.work_package_id ?? null) : null)
                         return (
                           <tr key={d.id} className="border-b last:border-0 hover:bg-muted/20">
                             <td className="px-3 py-2 text-xs font-semibold tabular-nums">
@@ -336,7 +338,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                               {isEditing ? (
                                 <select
                                   value={editDel.work_package_id ?? ''}
-                                  onChange={e => setEditDel(p => ({ ...p, work_package_id: e.target.value || null }))}
+                                  onChange={e => handleEditDelWpChange(e.target.value)}
                                   className="h-7 rounded border border-input bg-background px-1 text-xs"
                                 >
                                   <option value="">None</option>
@@ -353,27 +355,12 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                                   onChange={e => setEditDel(p => ({ ...p, due_month: Number(e.target.value) }))}
                                   className="h-7 rounded border border-input bg-background px-1 text-xs"
                                 >
-                                  {Array.from({ length: projectMonthCount || 1 }, (_, i) => i + 1).map(m => (
+                                  {editMonths.map(m => (
                                     <option key={m} value={m}>{projectMonthLabel(m)}</option>
                                   ))}
                                 </select>
                               ) : (
                                 d.due_month ? projectMonthLabel(d.due_month) : '—'
-                              )}
-                            </td>
-                            <td className="px-3 py-2">
-                              {isEditing ? (
-                                <select
-                                  value={editDel.status ?? 'Not Started'}
-                                  onChange={e => setEditDel(p => ({ ...p, status: e.target.value as DeliverableStatus }))}
-                                  className="h-7 rounded border border-input bg-background px-1 text-xs"
-                                >
-                                  {DELIVERABLE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                              ) : (
-                                <span className={cn('inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold', statusColor(d.status))}>
-                                  {d.status}
-                                </span>
                               )}
                             </td>
                             {can('canManageProjects') && (
@@ -432,7 +419,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                       <Label className="text-xs">Work Package</Label>
                       <select
                         value={addDel.wp_id}
-                        onChange={e => setAddDel(p => ({ ...p, wp_id: e.target.value }))}
+                        onChange={e => handleDelWpChange(e.target.value)}
                         className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
                       >
                         <option value="">None</option>
@@ -448,25 +435,20 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                         onChange={e => setAddDel(p => ({ ...p, due_month: Number(e.target.value) }))}
                         className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
                       >
-                        {Array.from({ length: projectMonthCount || 1 }, (_, i) => i + 1).map(m => (
+                        {monthOptions(addDel.wp_id || null).map(m => (
                           <option key={m} value={m}>{projectMonthLabel(m)}</option>
                         ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Status</Label>
-                      <select
-                        value={addDel.status}
-                        onChange={e => setAddDel(p => ({ ...p, status: e.target.value as DeliverableStatus }))}
-                        className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
-                      >
-                        {DELIVERABLE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
                     <Button onClick={handleAddDeliverable} disabled={savingDel || !addDel.number.trim() || !addDel.title.trim()}>
                       <Plus className="mr-1 h-4 w-4" /> {savingDel ? 'Adding...' : 'Add'}
                     </Button>
                   </div>
+                  {addDel.wp_id && (
+                    <div className="text-[11px] text-muted-foreground">
+                      Due month restricted to WP range: {projectMonthLabel(getWpMonthRange(addDel.wp_id).min)} – {projectMonthLabel(getWpMonthRange(addDel.wp_id).max)}
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -496,7 +478,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
             <>
               {milestones.length > 0 && (
                 <div className="rounded-lg border mb-4 overflow-x-auto">
-                  <table className="w-full text-sm min-w-[700px]">
+                  <table className="w-full text-sm min-w-[600px]">
                     <thead>
                       <tr className="border-b bg-muted/50">
                         <th className="px-3 py-2 text-left font-medium w-16">#</th>
@@ -504,13 +486,13 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                         <th className="px-3 py-2 text-left font-medium">Work Package</th>
                         <th className="px-3 py-2 text-left font-medium">Due</th>
                         <th className="px-3 py-2 text-left font-medium">Verification</th>
-                        <th className="px-3 py-2 text-left font-medium">Status</th>
                         {can('canManageProjects') && <th className="px-3 py-2 text-right font-medium">Actions</th>}
                       </tr>
                     </thead>
                     <tbody>
                       {milestones.map(m => {
                         const isEditing = editingMsId === m.id
+                        const editMonths = monthOptions(isEditing ? (editMs.work_package_id ?? null) : null)
                         return (
                           <tr key={m.id} className="border-b last:border-0 hover:bg-muted/20">
                             <td className="px-3 py-2 text-xs font-semibold tabular-nums">
@@ -535,7 +517,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                               {isEditing ? (
                                 <select
                                   value={editMs.work_package_id ?? ''}
-                                  onChange={e => setEditMs(p => ({ ...p, work_package_id: e.target.value || null }))}
+                                  onChange={e => handleEditMsWpChange(e.target.value)}
                                   className="h-7 rounded border border-input bg-background px-1 text-xs"
                                 >
                                   <option value="">None</option>
@@ -552,8 +534,8 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                                   onChange={e => setEditMs(p => ({ ...p, due_month: Number(e.target.value) }))}
                                   className="h-7 rounded border border-input bg-background px-1 text-xs"
                                 >
-                                  {Array.from({ length: projectMonthCount || 1 }, (_, i) => i + 1).map(m => (
-                                    <option key={m} value={m}>{projectMonthLabel(m)}</option>
+                                  {editMonths.map(mo => (
+                                    <option key={mo} value={mo}>{projectMonthLabel(mo)}</option>
                                   ))}
                                 </select>
                               ) : (
@@ -565,21 +547,6 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                                 <Input value={editMs.verification_means ?? ''} onChange={e => setEditMs(p => ({ ...p, verification_means: e.target.value }))} className="h-7 text-xs" placeholder="Means of verification" />
                               ) : (
                                 m.verification_means || '—'
-                              )}
-                            </td>
-                            <td className="px-3 py-2">
-                              {isEditing ? (
-                                <select
-                                  value={editMs.status ?? 'Not Started'}
-                                  onChange={e => setEditMs(p => ({ ...p, status: e.target.value as MilestoneStatus }))}
-                                  className="h-7 rounded border border-input bg-background px-1 text-xs"
-                                >
-                                  {MILESTONE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                              ) : (
-                                <span className={cn('inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold', statusColor(m.status))}>
-                                  {m.status}
-                                </span>
                               )}
                             </td>
                             {can('canManageProjects') && (
@@ -638,7 +605,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                       <Label className="text-xs">Work Package</Label>
                       <select
                         value={addMs.wp_id}
-                        onChange={e => setAddMs(p => ({ ...p, wp_id: e.target.value }))}
+                        onChange={e => handleMsWpChange(e.target.value)}
                         className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
                       >
                         <option value="">None</option>
@@ -654,25 +621,20 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                         onChange={e => setAddMs(p => ({ ...p, due_month: Number(e.target.value) }))}
                         className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
                       >
-                        {Array.from({ length: projectMonthCount || 1 }, (_, i) => i + 1).map(m => (
+                        {monthOptions(addMs.wp_id || null).map(m => (
                           <option key={m} value={m}>{projectMonthLabel(m)}</option>
                         ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Status</Label>
-                      <select
-                        value={addMs.status}
-                        onChange={e => setAddMs(p => ({ ...p, status: e.target.value as MilestoneStatus }))}
-                        className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
-                      >
-                        {MILESTONE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
                     <Button onClick={handleAddMilestone} disabled={savingMs || !addMs.number.trim() || !addMs.title.trim()}>
                       <Plus className="mr-1 h-4 w-4" /> {savingMs ? 'Adding...' : 'Add'}
                     </Button>
                   </div>
+                  {addMs.wp_id && (
+                    <div className="text-[11px] text-muted-foreground">
+                      Due month restricted to WP range: {projectMonthLabel(getWpMonthRange(addMs.wp_id).min)} – {projectMonthLabel(getWpMonthRange(addMs.wp_id).max)}
+                    </div>
+                  )}
                 </div>
               )}
             </>

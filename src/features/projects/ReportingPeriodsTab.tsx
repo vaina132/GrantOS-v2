@@ -9,21 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
 import { Plus, Pencil, Trash2, Save, X, ClipboardList } from 'lucide-react'
-import { cn, formatDate } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import type { ReportingPeriod, Project } from '@/types'
-
-type RPStatus = ReportingPeriod['status']
-const RP_STATUSES: RPStatus[] = ['Upcoming', 'In Progress', 'Submitted', 'Approved']
-
-const rpStatusColor = (s: string) => {
-  switch (s) {
-    case 'Upcoming': return 'bg-gray-100 text-gray-700'
-    case 'In Progress': return 'bg-blue-100 text-blue-700'
-    case 'Submitted': return 'bg-amber-100 text-amber-700'
-    case 'Approved': return 'bg-emerald-100 text-emerald-700'
-    default: return 'bg-gray-100 text-gray-700'
-  }
-}
 
 interface Props {
   project: Project
@@ -48,7 +35,6 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
     end_month: 18,
     technical_report_due: '',
     financial_report_due: '',
-    status: 'Upcoming' as RPStatus,
     notes: '',
   })
   const [saving, setSaving] = useState(false)
@@ -99,7 +85,6 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
         end_month: addForm.end_month,
         technical_report_due: addForm.technical_report_due || null,
         financial_report_due: addForm.financial_report_due || null,
-        status: addForm.status,
         notes: addForm.notes.trim() || null,
       })
       toast({ title: 'Added', description: `Reporting Period ${addForm.period_number} created.` })
@@ -120,7 +105,6 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
       end_month: rp.end_month,
       technical_report_due: rp.technical_report_due,
       financial_report_due: rp.financial_report_due,
-      status: rp.status,
       notes: rp.notes,
       technical_report_due_str: rp.technical_report_due ?? '',
       financial_report_due_str: rp.financial_report_due ?? '',
@@ -137,7 +121,6 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
         end_month: editForm.end_month,
         technical_report_due: editForm.technical_report_due_str || null,
         financial_report_due: editForm.financial_report_due_str || null,
-        status: editForm.status as RPStatus,
         notes: editForm.notes || null,
       })
       toast({ title: 'Updated', description: 'Reporting period updated.' })
@@ -168,21 +151,11 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <div className="rounded-lg border bg-card p-3">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Periods</div>
           <div className="text-xl font-bold tabular-nums mt-0.5">{periods.length}</div>
           <div className="text-[11px] text-muted-foreground">reporting periods defined</div>
-        </div>
-        <div className="rounded-lg border bg-card p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Submitted</div>
-          <div className="text-xl font-bold tabular-nums mt-0.5 text-amber-600">{periods.filter(p => p.status === 'Submitted').length}</div>
-          <div className="text-[11px] text-muted-foreground">reports submitted</div>
-        </div>
-        <div className="rounded-lg border bg-card p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Approved</div>
-          <div className="text-xl font-bold tabular-nums mt-0.5 text-emerald-600">{periods.filter(p => p.status === 'Approved').length}</div>
-          <div className="text-[11px] text-muted-foreground">reports approved</div>
         </div>
         <div className="rounded-lg border bg-card p-3">
           <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Project Duration</div>
@@ -219,7 +192,6 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
                         <th className="px-3 py-2 text-left font-medium">Period</th>
                         <th className="px-3 py-2 text-left font-medium">Technical Report Due</th>
                         <th className="px-3 py-2 text-left font-medium">Financial Report Due</th>
-                        <th className="px-3 py-2 text-left font-medium">Status</th>
                         <th className="px-3 py-2 text-left font-medium">Notes</th>
                         {can('canManageProjects') && <th className="px-3 py-2 text-right font-medium">Actions</th>}
                       </tr>
@@ -289,21 +261,6 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
                                 />
                               ) : (
                                 rp.financial_report_due ? formatDate(rp.financial_report_due) : '—'
-                              )}
-                            </td>
-                            <td className="px-3 py-2">
-                              {isEditing ? (
-                                <select
-                                  value={(editForm.status as RPStatus) ?? 'Upcoming'}
-                                  onChange={e => setEditForm(p => ({ ...p, status: e.target.value as RPStatus }))}
-                                  className="h-7 rounded border border-input bg-background px-1 text-xs"
-                                >
-                                  {RP_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                              ) : (
-                                <span className={cn('inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold', rpStatusColor(rp.status))}>
-                                  {rp.status}
-                                </span>
                               )}
                             </td>
                             <td className="px-3 py-2 text-xs text-muted-foreground max-w-[150px] truncate">
@@ -386,16 +343,6 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
                         {Array.from({ length: projectMonthCount || 1 }, (_, i) => i + 1).map(m => (
                           <option key={m} value={m}>{projectMonthLabel(m)}</option>
                         ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Status</Label>
-                      <select
-                        value={addForm.status}
-                        onChange={e => setAddForm(p => ({ ...p, status: e.target.value as RPStatus }))}
-                        className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
-                      >
-                        {RP_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
                   </div>

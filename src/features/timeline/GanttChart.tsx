@@ -273,7 +273,7 @@ export function GanttChart() {
                         key={`del-${d.id}`}
                         className="absolute top-0"
                         style={{ left: dLeft }}
-                        title={`${d.number}: ${d.title} (M${d.due_month}) — ${d.status}`}
+                        title={`${d.number}: ${d.title} (M${d.due_month})`}
                       >
                         <svg width="10" height="10" viewBox="0 0 10 10">
                           <polygon points="5,0 10,5 5,10 0,5" className="fill-orange-500" />
@@ -293,7 +293,7 @@ export function GanttChart() {
                         key={`ms-${m.id}`}
                         className="absolute bottom-[6px]"
                         style={{ left: mLeft }}
-                        title={`${m.number}: ${m.title} (M${m.due_month}) — ${m.status}`}
+                        title={`${m.number}: ${m.title} (M${m.due_month})`}
                       >
                         <svg width="10" height="10" viewBox="0 0 10 10">
                           <polygon points="5,0 10,5 5,10 0,5" className="fill-violet-500" />

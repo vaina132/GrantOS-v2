@@ -9,8 +9,6 @@ CREATE TABLE IF NOT EXISTS deliverables (
   description text,
   lead_person_id uuid REFERENCES persons(id) ON DELETE SET NULL,
   due_month integer,
-  status text NOT NULL DEFAULT 'Not Started',
-  submitted_date date,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -33,8 +31,6 @@ CREATE TABLE IF NOT EXISTS milestones (
   description text,
   due_month integer,
   verification_means text,
-  status text NOT NULL DEFAULT 'Not Started',
-  achieved_date date,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -56,7 +52,6 @@ CREATE TABLE IF NOT EXISTS reporting_periods (
   end_month integer NOT NULL DEFAULT 18,
   technical_report_due date,
   financial_report_due date,
-  status text NOT NULL DEFAULT 'Upcoming',
   notes text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
