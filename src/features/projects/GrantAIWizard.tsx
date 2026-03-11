@@ -196,6 +196,7 @@ export function GrantAIWizard() {
         budget_travel: p.budget_travel,
         budget_subcontracting: p.budget_subcontracting,
         budget_other: p.budget_other,
+        responsible_person_id: null,
       })
 
       // 2. Create work packages — build a map of wp_number → wp_id

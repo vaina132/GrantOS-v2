@@ -307,6 +307,7 @@ export type Database = {
           overhead_rate: number | null
           country: string | null
           is_active: boolean
+          avatar_url: string | null
           created_at: string
           updated_at: string
         }
@@ -324,6 +325,7 @@ export type Database = {
           annual_salary?: number | null
           overhead_rate?: number | null
           country?: string | null
+          avatar_url?: string | null
           is_active?: boolean
           created_at?: string
           updated_at?: string
@@ -342,6 +344,7 @@ export type Database = {
           annual_salary?: number | null
           overhead_rate?: number | null
           country?: string | null
+          avatar_url?: string | null
           is_active?: boolean
           created_at?: string
           updated_at?: string
@@ -376,6 +379,7 @@ export type Database = {
           budget_travel: number | null
           budget_subcontracting: number | null
           budget_other: number | null
+          responsible_person_id: string | null
           created_at: string
           updated_at: string
         }
@@ -398,6 +402,7 @@ export type Database = {
           budget_travel?: number | null
           budget_subcontracting?: number | null
           budget_other?: number | null
+          responsible_person_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -420,6 +425,7 @@ export type Database = {
           budget_travel?: number | null
           budget_subcontracting?: number | null
           budget_other?: number | null
+          responsible_person_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -436,6 +442,13 @@ export type Database = {
             columns: ['funding_scheme_id']
             isOneToOne: false
             referencedRelation: 'funding_schemes'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'projects_responsible_person_id_fkey'
+            columns: ['responsible_person_id']
+            isOneToOne: false
+            referencedRelation: 'persons'
             referencedColumns: ['id']
           },
         ]
@@ -1158,6 +1171,7 @@ export type Database = {
           other_budget: number
           status: string
           converted_project_id: string | null
+          responsible_person_id: string | null
           notes: string | null
           created_by: string | null
           created_at: string
@@ -1178,6 +1192,7 @@ export type Database = {
           other_budget?: number
           status?: string
           converted_project_id?: string | null
+          responsible_person_id?: string | null
           notes?: string | null
           created_by?: string | null
           created_at?: string
@@ -1198,6 +1213,7 @@ export type Database = {
           other_budget?: number
           status?: string
           converted_project_id?: string | null
+          responsible_person_id?: string | null
           notes?: string | null
           created_by?: string | null
           created_at?: string
@@ -1209,6 +1225,13 @@ export type Database = {
             columns: ['org_id']
             isOneToOne: false
             referencedRelation: 'organisations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'proposals_responsible_person_id_fkey'
+            columns: ['responsible_person_id']
+            isOneToOne: false
+            referencedRelation: 'persons'
             referencedColumns: ['id']
           },
         ]
