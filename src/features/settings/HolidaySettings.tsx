@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { holidayService } from '@/services/holidayService'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
+import { YearSelector } from '@/components/common/YearSelector'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/use-toast'
@@ -159,11 +160,14 @@ export function HolidaySettings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">National Holidays</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Define public/national holidays for your organisation. These dates will be excluded from timesheet entry.
-        </p>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">National Holidays</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Define public/national holidays for your organisation. These dates will be excluded from timesheet entry.
+          </p>
+        </div>
+        <YearSelector />
       </div>
 
       {/* Import from country */}

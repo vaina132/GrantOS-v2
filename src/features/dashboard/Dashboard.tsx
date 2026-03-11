@@ -30,6 +30,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { SalaryCoverageChart } from './SalaryCoverageChart'
+import { YearSelector } from '@/components/common/YearSelector'
 
 const STATUS_COLORS: Record<string, string> = {
   Upcoming: '#3b82f6',
@@ -132,7 +133,7 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Dashboard" description={`Portfolio overview — ${globalYear}`} />
+      <PageHeader title="Dashboard" description={`Portfolio overview — ${globalYear}`} actions={<YearSelector />} />
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

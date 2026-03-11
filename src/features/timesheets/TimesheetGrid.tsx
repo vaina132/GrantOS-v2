@@ -5,6 +5,7 @@ import { absenceService } from '@/services/absenceService'
 import { settingsService } from '@/services/settingsService'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
+import { YearSelector } from '@/components/common/YearSelector'
 import { useStaff } from '@/hooks/useStaff'
 import { useProjects } from '@/hooks/useProjects'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
@@ -508,6 +509,10 @@ export function TimesheetGrid() {
               </select>
             </div>
           )}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Year</label>
+            <YearSelector />
+          </div>
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">Month</label>
             <div className="flex items-center gap-1">

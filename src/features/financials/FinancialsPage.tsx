@@ -4,6 +4,7 @@ import { BudgetVsActuals } from './BudgetVsActuals'
 import { EnterActuals } from './EnterActuals'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
+import { YearSelector } from '@/components/common/YearSelector'
 import { useProjects } from '@/hooks/useProjects'
 import { financialService } from '@/services/financialService'
 import { Button } from '@/components/ui/button'
@@ -93,7 +94,9 @@ export function FinancialsPage() {
         title="Financials"
         description={`Budget vs. actuals tracking for ${globalYear}`}
         actions={
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <YearSelector />
+            <div className="h-6 w-px bg-border" />
             <Button variant="outline" size="sm" onClick={handleSeed} disabled={seeding} className="gap-1.5">
               <RefreshCw className={cn('h-3.5 w-3.5', seeding && 'animate-spin')} />
               {seeding ? 'Syncing...' : 'Sync Budgets from Projects'}

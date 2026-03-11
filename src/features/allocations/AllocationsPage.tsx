@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { YearSelector } from '@/components/common/YearSelector'
 import { AllocationGrid } from './AllocationGrid'
 import { PmBudgets } from './PmBudgets'
 import { PeriodLocking } from './PeriodLocking'
@@ -27,6 +28,7 @@ export function AllocationsPage() {
       <PageHeader
         title="Allocations"
         description="Manage person-month allocations across projects"
+        actions={<YearSelector />}
       />
 
       {/* ── Navigation tabs ── */}

@@ -1,4 +1,4 @@
-import { Menu, LogOut, ChevronDown, ChevronLeft, ChevronRight, Sun, Moon, Settings } from 'lucide-react'
+import { Menu, LogOut, ChevronDown, Sun, Moon, Settings } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
@@ -13,16 +13,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { getYearOptions, cn } from '@/lib/utils'
 import { differenceInDays } from 'date-fns'
 import { NotificationBell } from '@/components/layout/NotificationBell'
 
 export function TopBar() {
   const navigate = useNavigate()
   const { user, role, accessType, orgPlan, trialEndsAt, signOut } = useAuthStore()
-  const { globalYear, setGlobalYear, toggleSidebar, darkMode, toggleDarkMode } = useUiStore()
-
-  const yearOptions = getYearOptions()
+  const { toggleSidebar, darkMode, toggleDarkMode } = useUiStore()
   const userEmail = user?.email ?? ''
   const initials = userEmail.slice(0, 2).toUpperCase()
 
@@ -60,44 +57,6 @@ export function TopBar() {
           {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
         <NotificationBell />
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setGlobalYear(globalYear - 1)}
-            disabled={globalYear <= yearOptions[0]}
-            aria-label="Previous year"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="inline-flex items-center rounded-lg border bg-muted/40 p-0.5">
-            {yearOptions.filter(y => Math.abs(y - globalYear) <= 2).map((year) => (
-              <button
-                key={year}
-                onClick={() => setGlobalYear(year)}
-                className={cn(
-                  'rounded-md px-3 py-1 text-xs font-semibold transition-all',
-                  year === globalYear
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {year}
-              </button>
-            ))}
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setGlobalYear(globalYear + 1)}
-            disabled={globalYear >= yearOptions[yearOptions.length - 1]}
-            aria-label="Next year"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

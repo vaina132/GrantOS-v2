@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { timesheetService, getWorkingDays } from '@/services/timesheetService'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
+import { YearSelector } from '@/components/common/YearSelector'
 import { useStaff } from '@/hooks/useStaff'
 import { settingsService } from '@/services/settingsService'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
@@ -95,6 +96,10 @@ export function AllTimesheets() {
     <div className="space-y-5">
       {/* Controls */}
       <div className="flex gap-3 items-end flex-wrap">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground block mb-1">Year</label>
+          <YearSelector />
+        </div>
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground block mb-1">Month</label>
           <div className="flex items-center gap-1">

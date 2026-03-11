@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAbsences } from '@/hooks/useAbsences'
 import { useStaff } from '@/hooks/useStaff'
 import { useUiStore } from '@/stores/uiStore'
+import { YearSelector } from '@/components/common/YearSelector'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -301,8 +302,10 @@ export function AbsenceTimeline() {
 
   return (
     <div className="space-y-4">
-      {/* Month navigation */}
-      <div className="flex items-center gap-3">
+      {/* Year & Month navigation */}
+      <div className="flex items-center gap-4">
+        <YearSelector />
+        <div className="h-6 w-px bg-border" />
         <Button variant="outline" size="icon" onClick={prevMonth}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
