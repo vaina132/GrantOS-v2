@@ -123,7 +123,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Setting isLoading: true would cause App.tsx to show LoadingScreen,
     // which unmounts SignUpPage and resets the success state.
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -134,7 +134,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       })
+      console.log('[SignUp] Response:', { error, user: data?.user?.id, identities: data?.user?.identities?.length })
       if (error) throw error
+
+      // Supabase returns a user with empty identities when the email already exists
+      // (to prevent email enumeration). Detect this and show a helpful message.
+      if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+        throw new Error('An account with this email already exists. Please sign in instead.')
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign up failed'
       set({ error: message })
