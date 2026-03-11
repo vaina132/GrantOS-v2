@@ -24,7 +24,8 @@ export const absenceApproverService = {
       .single()
 
     if (error) throw error
-    return { ...data, person: (data as any).persons ?? null } as AbsenceApprover
+    const row = data as any
+    return { ...row, person: row.persons ?? null } as AbsenceApprover
   },
 
   async remove(id: string): Promise<void> {
