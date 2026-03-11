@@ -12,8 +12,8 @@ import {
   guestInvitationEmail,
   trialExpiringEmail,
   periodLockedEmail,
-} from './emails/templates'
-import type { EmailTemplate } from './emails/templates'
+} from './emails/templates.js'
+import type { EmailTemplate } from './emails/templates.js'
 
 const TEMPLATE_MAP: Record<string, (params: any) => EmailTemplate> = {
   invitation: invitationEmail,

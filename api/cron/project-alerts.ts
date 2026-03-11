@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
-import { projectEndingSoonEmail, trialExpiringEmail } from '../emails/templates'
+import { projectEndingSoonEmail, trialExpiringEmail } from '../emails/templates.js'
 
 /**
  * Cron job: Send project-ending-soon alerts and trial-expiring reminders.
