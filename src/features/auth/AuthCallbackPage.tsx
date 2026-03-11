@@ -1,19 +1,19 @@
 import { useEffect, useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
-import { emailService } from '@/services/emailService'
 
 /**
  * Handles Supabase auth redirects:
- * - Email confirmation after signup
+ * - Email confirmation after signup (PKCE: ?code=... or legacy: ?token_hash=...&type=signup)
  * - Magic link login
- * - OAuth callback (Google, Microsoft, Slack)
- * Supabase appends #access_token=...&type=... to the URL
+ * - OAuth callback
+ * - Password reset redirect
  */
 export function AuthCallbackPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
   const handled = useRef(false)
@@ -24,7 +24,23 @@ export function AuthCallbackPage() {
 
     const handleCallback = async () => {
       try {
-        // Supabase JS client auto-parses the hash fragment and establishes a session
+        // 1. PKCE flow — Supabase sends ?code=... in the query string
+        const code = searchParams.get('code')
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+          if (error) {
+            setStatus('error')
+            setMessage(error.message)
+            return
+          }
+          if (data.session) {
+            onSuccess(data.session)
+            return
+          }
+        }
+
+        // 2. Legacy / implicit flow — token in hash fragment
+        //    Supabase JS auto-detects hash fragments on init, so check if session exists
         const { data: { session }, error } = await supabase.auth.getSession()
 
         if (error) {
@@ -35,68 +51,42 @@ export function AuthCallbackPage() {
 
         if (session) {
           onSuccess(session)
-        } else {
-          // No session yet — the auth state change listener might handle it
-          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' && session) {
-              onSuccess(session)
-              subscription.unsubscribe()
-            }
-          })
-
-          // Timeout after 5 seconds
-          setTimeout(() => {
-            setStatus((prev) => {
-              if (prev === 'loading') {
-                setMessage('Unable to verify your email. The link may have expired. Please try signing in.')
-                subscription.unsubscribe()
-                return 'error'
-              }
-              return prev
-            })
-          }, 5000)
+          return
         }
+
+        // 3. Still no session — listen for auth state change (hash may still be processing)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+          if (newSession) {
+            onSuccess(newSession)
+            subscription.unsubscribe()
+          }
+        })
+
+        // Timeout after 10 seconds
+        setTimeout(() => {
+          setStatus((prev) => {
+            if (prev === 'loading') {
+              setMessage('Unable to verify your email. The link may have expired or already been used. Please try signing in.')
+              subscription.unsubscribe()
+              return 'error'
+            }
+            return prev
+          })
+        }, 10_000)
       } catch {
         setStatus('error')
         setMessage('Something went wrong. Please try signing in.')
       }
     }
 
-    const onSuccess = (session: any) => {
+    const onSuccess = (_session: any) => {
       setStatus('success')
-
-      // Detect if this is a new social auth signup — provider !== email
-      const provider = session?.user?.app_metadata?.provider
-      const isSocial = provider && provider !== 'email'
-      const firstName = session?.user?.user_metadata?.full_name?.split(' ')[0]
-        || session?.user?.user_metadata?.first_name
-        || session?.user?.user_metadata?.name?.split(' ')[0]
-        || 'there'
-
-      if (isSocial) {
-        setMessage(`Welcome! You're signed in via ${provider}. Redirecting...`)
-
-        // Fire social welcome email (fire-and-forget) — only for new users
-        const createdAt = new Date(session.user.created_at).getTime()
-        const isNew = Date.now() - createdAt < 60_000 // created within last minute
-        if (isNew && session.user.email) {
-          const providerLabel = provider === 'azure' ? 'Microsoft' : provider.charAt(0).toUpperCase() + provider.slice(1)
-          emailService.sendSocialWelcome({
-            to: session.user.email,
-            firstName,
-            provider: providerLabel,
-            dashboardUrl: `${window.location.origin}/dashboard`,
-          }).catch(() => { /* silent */ })
-        }
-      } else {
-        setMessage('Your email has been confirmed. Redirecting...')
-      }
-
+      setMessage('Your email has been confirmed. Redirecting...')
       setTimeout(() => navigate('/dashboard', { replace: true }), 1500)
     }
 
     handleCallback()
-  }, [navigate])
+  }, [navigate, searchParams])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6">
