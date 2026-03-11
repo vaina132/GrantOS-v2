@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/use-toast'
 import { Eye, EyeOff, CheckCircle2, Shield, Zap, CreditCard } from 'lucide-react'
-import { emailService } from '@/services/emailService'
+import { supabase } from '@/lib/supabase'
 
 export function SignUpPage() {
   const navigate = useNavigate()
@@ -74,18 +74,26 @@ export function SignUpPage() {
     try {
       await signUp(email, password, { firstName: firstName.trim(), lastName: lastName.trim() })
       setSuccess(true)
-
-      // Fire signup confirmation email (fire-and-forget)
-      emailService.sendSignupConfirmation({
-        to: email,
-        firstName: firstName.trim(),
-        confirmUrl: `${window.location.origin}/auth/callback`,
-      }).catch(() => { /* silent */ })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign up failed.'
       toast({ title: 'Error', description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResendEmail = async () => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      })
+      if (error) throw error
+      toast({ title: 'Email sent', description: 'A new confirmation email has been sent.' })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to resend email'
+      toast({ title: 'Error', description: msg, variant: 'destructive' })
     }
   }
 
@@ -102,8 +110,14 @@ export function SignUpPage() {
             We sent a confirmation link to <strong className="text-foreground">{email}</strong>.
             Click the link to activate your account and start your 14-day free trial.
           </p>
-          <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
+          <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground space-y-2">
             <p>Didn't receive the email? Check your spam folder or wait a few minutes.</p>
+            <button
+              onClick={handleResendEmail}
+              className="text-primary hover:underline font-medium"
+            >
+              Resend confirmation email
+            </button>
           </div>
           <Button variant="outline" className="w-full" onClick={() => navigate('/login')}>
             Go to login

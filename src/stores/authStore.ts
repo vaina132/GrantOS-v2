@@ -119,7 +119,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signUp: async (email, password, meta) => {
-    set({ isLoading: true, error: null })
+    // Do NOT set isLoading here — SignUpPage manages its own loading state.
+    // Setting isLoading: true would cause App.tsx to show LoadingScreen,
+    // which unmounts SignUpPage and resets the success state.
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -133,10 +135,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         },
       })
       if (error) throw error
-      set({ isLoading: false })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign up failed'
-      set({ isLoading: false, error: message })
+      set({ error: message })
       throw err
     }
   },
