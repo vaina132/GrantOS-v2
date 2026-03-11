@@ -107,6 +107,21 @@ export function ProjectForm() {
     }
   }, [watchStartDate, watchEndDate]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-compute total_budget from sub-budgets
+  const watchPersonnel = watch('budget_personnel')
+  const watchTravel = watch('budget_travel')
+  const watchSubcontracting = watch('budget_subcontracting')
+  const watchOther = watch('budget_other')
+  useEffect(() => {
+    const sum = (Number(watchPersonnel) || 0)
+      + (Number(watchTravel) || 0)
+      + (Number(watchSubcontracting) || 0)
+      + (Number(watchOther) || 0)
+    // Only set if at least one sub-budget has a value
+    const hasAny = watchPersonnel != null || watchTravel != null || watchSubcontracting != null || watchOther != null
+    setValue('total_budget', hasAny && sum > 0 ? sum : null)
+  }, [watchPersonnel, watchTravel, watchSubcontracting, watchOther, setValue])
+
   // Auto-fill overhead rate when funding scheme changes
   const selectedSchemeId = watch('funding_scheme_id')
   useEffect(() => {
@@ -306,7 +321,15 @@ export function ProjectForm() {
                   <Label htmlFor="total_budget" className="flex items-center gap-1.5">
                     <DollarSign className="h-4 w-4 text-muted-foreground" /> Total Budget
                   </Label>
-                  <Input id="total_budget" type="number" step="0.01" {...register('total_budget')} />
+                  <Input
+                    id="total_budget"
+                    type="number"
+                    step="0.01"
+                    {...register('total_budget')}
+                    readOnly
+                    className="bg-muted/50"
+                  />
+                  <p className="text-[11px] text-muted-foreground">Auto-calculated from budget categories below</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
