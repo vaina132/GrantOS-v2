@@ -33,14 +33,14 @@ async function sendEmail({ template, to, params }: SendEmailOptions): Promise<{ 
     const data = await res.json()
 
     if (!res.ok) {
-      console.error('[GrantOS] Email API error:', data.error)
+      console.error('[GrantLume] Email API error:', data.error)
       return { success: false, error: data.error }
     }
 
     return { success: true, id: data.id }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Network error'
-    console.error('[GrantOS] Email send failed:', message)
+    console.error('[GrantLume] Email send failed:', message)
     return { success: false, error: message }
   }
 }

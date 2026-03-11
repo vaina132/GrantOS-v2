@@ -125,7 +125,7 @@ export function UsersSettings() {
           : `${inviteEmail} added as ${inviteRole}.`,
       })
 
-      // Send GrantOS-branded invitation email (fire-and-forget)
+      // Send GrantLume-branded invitation email (fire-and-forget)
       const baseUrl = window.location.origin
       emailService.sendInvitation({
         invitedEmail: inviteEmail,

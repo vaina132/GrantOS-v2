@@ -39,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ emails })
   } catch (err: any) {
-    console.error('[GrantOS] resolve-emails failed:', err)
+    console.error('[GrantLume] resolve-emails failed:', err)
     return res.status(500).json({ error: err.message || 'Internal error' })
   }
 }

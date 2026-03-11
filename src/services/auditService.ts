@@ -36,7 +36,7 @@ export const auditService = {
     if (error) {
       // RLS may block access if policies haven't been applied yet
       if (error.code === '42501' || error.message?.includes('policy')) {
-        console.warn('[GrantOS] Audit log RLS error — run supabase/fix_audit_rls.sql:', error.message)
+        console.warn('[GrantLume] Audit log RLS error — run supabase/fix_audit_rls.sql:', error.message)
         throw new Error('Access denied. An administrator needs to apply the audit log RLS policies in Supabase.')
       }
       throw error

@@ -42,7 +42,7 @@ export function LoginPage() {
             <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground font-bold text-2xl shadow-lg shadow-primary/25">
               G
             </div>
-            <CardTitle className="text-2xl tracking-tight">Welcome to GrantOS</CardTitle>
+            <CardTitle className="text-2xl tracking-tight">Welcome to GrantLume</CardTitle>
             <CardDescription className="text-sm">Sign in to manage your grant projects</CardDescription>
           </CardHeader>
           <CardContent className="pt-2">
@@ -95,7 +95,7 @@ export function LoginPage() {
           </CardContent>
         </Card>
         <p className="mt-6 text-center text-xs text-muted-foreground/60">
-          GrantOS v2.0 — Grant Project Management
+          GrantLume v2.0 — Grant Project Management
         </p>
       </div>
     </div>

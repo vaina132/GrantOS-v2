@@ -23,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('[GrantOS] Uncaught error:', error, errorInfo)
+    console.error('[GrantLume] Uncaught error:', error, errorInfo)
   }
 
   handleReset = () => {

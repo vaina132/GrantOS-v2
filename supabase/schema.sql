@@ -1,4 +1,4 @@
--- GrantOS v2 Database Schema
+-- GrantLume v2 Database Schema
 -- Run this in your Supabase SQL Editor to create all required tables.
 -- This creates tables, views, indexes, and RLS policies.
 

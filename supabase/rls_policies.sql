@@ -1,4 +1,4 @@
--- GrantOS v2 — RLS Policies Migration
+-- GrantLume v2 — RLS Policies Migration
 -- Safe to re-run: drops existing policies before recreating.
 -- Run this in Supabase SQL Editor.
 

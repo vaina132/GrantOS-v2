@@ -68,20 +68,20 @@ export const preferencesService = {
           .single()
 
         if (createErr) {
-          console.warn('[GrantOS] Could not create user_preferences row:', createErr.message)
+          console.warn('[GrantLume] Could not create user_preferences row:', createErr.message)
           return makeDefaults(userId, orgId)
         }
         return created as UserPreferences
       }
 
       if (error) {
-        console.warn('[GrantOS] Could not read user_preferences:', error.message)
+        console.warn('[GrantLume] Could not read user_preferences:', error.message)
         return makeDefaults(userId, orgId)
       }
       return data as UserPreferences
     } catch (err) {
       // Table may not exist yet — return safe defaults
-      console.warn('[GrantOS] user_preferences table may not exist yet:', err)
+      console.warn('[GrantLume] user_preferences table may not exist yet:', err)
       return makeDefaults(userId, orgId)
     }
   },
@@ -90,7 +90,7 @@ export const preferencesService = {
   async update(id: string, updates: Partial<UserPreferences>): Promise<UserPreferences | null> {
     if (!id) {
       // No persisted row yet (table may not exist) — silently skip
-      console.warn('[GrantOS] Cannot update preferences: no id (table may not exist)')
+      console.warn('[GrantLume] Cannot update preferences: no id (table may not exist)')
       return null
     }
 
@@ -103,12 +103,12 @@ export const preferencesService = {
         .single()
 
       if (error) {
-        console.warn('[GrantOS] Could not update user_preferences:', error.message)
+        console.warn('[GrantLume] Could not update user_preferences:', error.message)
         return null
       }
       return data as UserPreferences
     } catch (err) {
-      console.warn('[GrantOS] user_preferences update failed:', err)
+      console.warn('[GrantLume] user_preferences update failed:', err)
       return null
     }
   },

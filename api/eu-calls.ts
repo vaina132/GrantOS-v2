@@ -44,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       method: 'GET',
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'GrantOS/1.0',
+        'User-Agent': 'GrantLume/1.0',
       },
     })
 
@@ -86,7 +86,7 @@ async function fallbackSearch(
     const response = await fetch(listUrl, {
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'GrantOS/1.0',
+        'User-Agent': 'GrantLume/1.0',
       },
     })
 

@@ -1,4 +1,4 @@
--- GrantOS v2 Seed Script
+-- GrantLume v2 Seed Script
 -- Run this AFTER schema.sql has been executed successfully.
 -- This creates a test organisation and links your test user as Admin.
 

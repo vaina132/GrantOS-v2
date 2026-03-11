@@ -25,7 +25,7 @@ export async function writeAudit({ orgId, entityType, action, entityId, details 
       details: details ?? null,
     })
   } catch (err) {
-    console.warn('[GrantOS] Audit write failed:', err)
+    console.warn('[GrantLume] Audit write failed:', err)
   }
 }
 
@@ -58,6 +58,6 @@ export async function writeAuditChanges(
       await (supabase.from as any)('audit_changes').insert(rows)
     }
   } catch (err) {
-    console.warn('[GrantOS] Audit changes write failed:', err)
+    console.warn('[GrantLume] Audit changes write failed:', err)
   }
 }

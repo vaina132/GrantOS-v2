@@ -81,14 +81,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           try {
             await resend.emails.send({
-              from: 'GrantOS <notifications@grantos.app>',
+              from: 'GrantLume <notifications@grantos.app>',
               to: email,
               subject,
               html,
             })
             totalSent++
           } catch (emailErr) {
-            console.error(`[GrantOS] Failed to send project alert to ${email}:`, emailErr)
+            console.error(`[GrantLume] Failed to send project alert to ${email}:`, emailErr)
           }
         }
       }
@@ -138,14 +138,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           try {
             await resend.emails.send({
-              from: 'GrantOS <notifications@grantos.app>',
+              from: 'GrantLume <notifications@grantos.app>',
               to: email,
               subject,
               html,
             })
             totalSent++
           } catch (emailErr) {
-            console.error(`[GrantOS] Failed to send trial alert to ${email}:`, emailErr)
+            console.error(`[GrantLume] Failed to send trial alert to ${email}:`, emailErr)
           }
         }
       }
@@ -153,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ message: 'Project alerts processed', sent: totalSent })
   } catch (err: any) {
-    console.error('[GrantOS] Cron project-alerts error:', err)
+    console.error('[GrantLume] Cron project-alerts error:', err)
     return res.status(500).json({ error: err.message })
   }
 }

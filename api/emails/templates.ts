@@ -1,5 +1,5 @@
 /**
- * Email HTML templates for GrantOS
+ * Email HTML templates for GrantLume
  * Each function returns { subject, html } for use with Resend
  */
 
@@ -23,7 +23,7 @@ function layout(title: string, body: string): string {
     <td style="background:white;border-radius:8px;width:36px;height:36px;text-align:center;vertical-align:middle;">
       <span style="font-size:18px;font-weight:700;color:${BRAND_COLOR};line-height:36px;">G</span>
     </td>
-    <td style="padding-left:12px;color:white;font-size:18px;font-weight:600;">GrantOS</td>
+    <td style="padding-left:12px;color:white;font-size:18px;font-weight:600;">GrantLume</td>
   </tr></table>
 </td></tr>
 <!-- Body -->
@@ -31,7 +31,7 @@ function layout(title: string, body: string): string {
 <!-- Footer -->
 <tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;">
   <p style="margin:0 0 8px;font-size:12px;color:${MUTED_COLOR};text-align:center;">
-    This is an automated message from GrantOS. Please do not reply directly to this email.
+    This is an automated message from GrantLume. Please do not reply directly to this email.
   </p>
   <p style="margin:0;font-size:11px;color:${MUTED_COLOR};text-align:center;">
     <a href="https://grantos.app/profile" style="color:${BRAND_COLOR};text-decoration:underline;">Manage your notification preferences</a>
@@ -85,11 +85,11 @@ export function invitationEmail(params: {
   signUpUrl: string
 }): EmailTemplate {
   return {
-    subject: `You've been invited to join ${params.orgName} on GrantOS`,
+    subject: `You've been invited to join ${params.orgName} on GrantLume`,
     html: layout('Invitation', [
       heading('You\'re invited!'),
-      paragraph(`<strong>${params.invitedByName}</strong> has invited you to join <strong>${params.orgName}</strong> on GrantOS as a <strong>${params.role}</strong>.`),
-      paragraph('GrantOS helps research teams manage grant projects, allocations, timesheets, and budgets in one place.'),
+      paragraph(`<strong>${params.invitedByName}</strong> has invited you to join <strong>${params.orgName}</strong> on GrantLume as a <strong>${params.role}</strong>.`),
+      paragraph('GrantLume helps research teams manage grant projects, allocations, timesheets, and budgets in one place.'),
       detailTable(
         detailRow('Organisation', params.orgName) +
         detailRow('Your Role', params.role) +
@@ -108,7 +108,7 @@ export function welcomeEmail(params: {
   dashboardUrl: string
 }): EmailTemplate {
   return {
-    subject: `Welcome to GrantOS — ${params.orgName}`,
+    subject: `Welcome to GrantLume — ${params.orgName}`,
     html: layout('Welcome', [
       heading(`Welcome, ${params.userName}!`),
       paragraph(`Your account for <strong>${params.orgName}</strong> is all set up. You can now start managing your grant projects, allocations, and timesheets.`),
@@ -246,7 +246,7 @@ export function guestInvitationEmail(params: {
   loginUrl: string
 }): EmailTemplate {
   return {
-    subject: `You've been given guest access to ${params.projectAcronym} on GrantOS`,
+    subject: `You've been given guest access to ${params.projectAcronym} on GrantLume`,
     html: layout('Guest Invitation', [
       heading('Guest Access Granted'),
       paragraph(`<strong>${params.invitedByName}</strong> has given you guest access to the project <strong>${params.projectAcronym}</strong> in <strong>${params.orgName}</strong>.`),
@@ -269,10 +269,10 @@ export function trialExpiringEmail(params: {
   upgradeUrl: string
 }): EmailTemplate {
   return {
-    subject: `Your GrantOS trial expires in ${params.daysRemaining} day${params.daysRemaining === 1 ? '' : 's'}`,
+    subject: `Your GrantLume trial expires in ${params.daysRemaining} day${params.daysRemaining === 1 ? '' : 's'}`,
     html: layout('Trial Expiring', [
       heading('Trial Expiring Soon'),
-      paragraph(`Hi ${params.userName}, your free trial for <strong>${params.orgName}</strong> on GrantOS expires in <strong>${params.daysRemaining} day${params.daysRemaining === 1 ? '' : 's'}</strong>.`),
+      paragraph(`Hi ${params.userName}, your free trial for <strong>${params.orgName}</strong> on GrantLume expires in <strong>${params.daysRemaining} day${params.daysRemaining === 1 ? '' : 's'}</strong>.`),
       paragraph('Upgrade now to keep your data and continue using all features without interruption.'),
       button('Upgrade Now', params.upgradeUrl),
       paragraph('If you have questions about pricing or features, don\'t hesitate to reach out to our support team.'),

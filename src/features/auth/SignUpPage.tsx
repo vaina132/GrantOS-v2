@@ -54,7 +54,7 @@ export function SignUpPage() {
             G
           </div>
           <CardTitle className="text-2xl">Create your account</CardTitle>
-          <CardDescription>Get started with GrantOS in minutes</CardDescription>
+          <CardDescription>Get started with GrantLume in minutes</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

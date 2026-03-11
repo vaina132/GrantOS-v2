@@ -108,7 +108,7 @@ export function Sidebar() {
               G
             </div>
             <div className="min-w-0">
-              <span className="text-lg font-semibold leading-tight block">GrantOS</span>
+              <span className="text-lg font-semibold leading-tight block">GrantLume</span>
               {orgName && (
                 <span className="text-xs text-muted-foreground truncate block">{orgName}</span>
               )}
@@ -165,7 +165,7 @@ export function Sidebar() {
         </nav>
 
         <div className="border-t p-4">
-          <p className="text-xs text-muted-foreground text-center">GrantOS v2.0</p>
+          <p className="text-xs text-muted-foreground text-center">GrantLume v2.0</p>
         </div>
       </aside>
     </>

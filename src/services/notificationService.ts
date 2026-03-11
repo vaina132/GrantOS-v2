@@ -88,7 +88,7 @@ export const notificationService = {
     })
 
     if (error) {
-      console.error('[GrantOS] Failed to create notification:', error)
+      console.error('[GrantLume] Failed to create notification:', error)
     }
   },
 
@@ -115,7 +115,7 @@ export const notificationService = {
     const { error } = await supabase.from('notifications').insert(rows)
 
     if (error) {
-      console.error('[GrantOS] Failed to create notifications:', error)
+      console.error('[GrantLume] Failed to create notifications:', error)
     }
   },
 

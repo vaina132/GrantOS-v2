@@ -12,7 +12,7 @@ interface UiState {
 
 const getInitialDarkMode = (): boolean => {
   if (typeof window === 'undefined') return false
-  const stored = localStorage.getItem('grantos-dark-mode')
+  const stored = localStorage.getItem('grantlume-dark-mode')
   if (stored !== null) return stored === 'true'
   return window.matchMedia('(prefers-color-scheme: dark)').matches
 }
@@ -27,7 +27,7 @@ export const useUiStore = create<UiState>((set) => ({
   toggleDarkMode: () =>
     set((state) => {
       const next = !state.darkMode
-      localStorage.setItem('grantos-dark-mode', String(next))
+      localStorage.setItem('grantlume-dark-mode', String(next))
       document.documentElement.classList.toggle('dark', next)
       return { darkMode: next }
     }),

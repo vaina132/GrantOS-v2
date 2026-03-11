@@ -84,21 +84,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         try {
           await resend.emails.send({
-            from: 'GrantOS <notifications@grantos.app>',
+            from: 'GrantLume <notifications@grantos.app>',
             to: person.email,
             subject,
             html,
           })
           totalSent++
         } catch (emailErr) {
-          console.error(`[GrantOS] Failed to send reminder to ${person.email}:`, emailErr)
+          console.error(`[GrantLume] Failed to send reminder to ${person.email}:`, emailErr)
         }
       }
     }
 
     return res.status(200).json({ message: 'Timesheet reminders sent', sent: totalSent })
   } catch (err: any) {
-    console.error('[GrantOS] Cron timesheet-reminders error:', err)
+    console.error('[GrantLume] Cron timesheet-reminders error:', err)
     return res.status(500).json({ error: err.message })
   }
 }

@@ -1,4 +1,4 @@
--- GrantOS v2 — Email Notification Triggers
+-- GrantLume v2 — Email Notification Triggers
 -- Uses Supabase's built-in pg_net extension to call Edge Functions
 -- or can be adapted to use any webhook endpoint.
 --

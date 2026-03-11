@@ -141,7 +141,7 @@ async function loadUserContext(
 
   // Any error (table missing, RLS, etc.) — bootstrap as admin in early dev
   if (memberError) {
-    console.warn('[GrantOS] org_members query failed, bootstrapping as admin:', memberError.code, memberError.message)
+    console.warn('[GrantLume] org_members query failed, bootstrapping as admin:', memberError.code, memberError.message)
     set({
       user,
       orgId: null,
@@ -224,7 +224,7 @@ async function loadUserContext(
 
   // Any error — bootstrap as admin in early dev
   if (guestError) {
-    console.warn('[GrantOS] project_guests query failed, bootstrapping as admin:', guestError.code, guestError.message)
+    console.warn('[GrantLume] project_guests query failed, bootstrapping as admin:', guestError.code, guestError.message)
     set({
       user,
       orgId: null,

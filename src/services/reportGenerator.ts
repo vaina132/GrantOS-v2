@@ -20,7 +20,7 @@ function setupDoc(title: string, subtitle?: string): jsPDF {
   doc.setTextColor(...WHITE)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
-  doc.text('GrantOS', 14, 14)
+  doc.text('GrantLume', 14, 14)
 
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
@@ -122,7 +122,7 @@ function addFooter(doc: jsPDF) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7)
     doc.setTextColor(...MUTED)
-    doc.text('GrantOS — Grant & Project Management', 14, 290)
+    doc.text('GrantLume — Grant & Project Management', 14, 290)
     doc.text(`Page ${i} of ${pageCount}`, 196, 290, { align: 'right' })
   }
 }

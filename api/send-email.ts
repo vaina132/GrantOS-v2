@@ -42,7 +42,7 @@ const PREF_COLUMN_MAP: Record<string, string> = {
   // guestInvitation — always sent (access grant, no opt-out)
 }
 
-const FROM_ADDRESS = 'GrantOS <notifications@grantos.app>'
+const FROM_ADDRESS = 'GrantLume <notifications@grantos.app>'
 
 /**
  * Check if a recipient has opted out of a given template.
@@ -134,13 +134,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
 
     if (error) {
-      console.error('[GrantOS] Resend error:', error)
+      console.error('[GrantLume] Resend error:', error)
       return res.status(500).json({ error: error.message })
     }
 
     return res.status(200).json({ success: true, id: data?.id })
   } catch (err: any) {
-    console.error('[GrantOS] Email send failed:', err)
+    console.error('[GrantLume] Email send failed:', err)
     return res.status(500).json({ error: err.message || 'Failed to send email' })
   }
 }
