@@ -215,16 +215,14 @@ async function loadUserContext(
     return
   }
 
-  // Try project_guests
+  // Try project_guests — use SECURITY DEFINER function to claim pending
+  // invitations by email and return all active guest entries in one step.
   const { data: guests, error: guestError } = await supabase
-    .from('project_guests')
-    .select('org_id, project_id, access_level')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
+    .rpc('claim_guest_invitations', { p_user_id: user.id, p_email: user.email ?? '' })
 
   // Any error — bootstrap as admin in early dev
   if (guestError) {
-    console.warn('[GrantLume] project_guests query failed, bootstrapping as admin:', guestError.code, guestError.message)
+    console.warn('[GrantLume] claim_guest_invitations failed, bootstrapping as admin:', guestError.code, guestError.message)
     set({
       user,
       orgId: null,
@@ -241,8 +239,10 @@ async function loadUserContext(
     return
   }
 
-  if (guests && guests.length > 0) {
-    const first = guests[0]
+  const guestRows = (guests ?? []) as { id: string; org_id: string; project_id: string; access_level: string; status: string }[]
+
+  if (guestRows.length > 0) {
+    const first = guestRows[0]
     const accessLevel = first.access_level as 'contributor' | 'read_only'
 
     set({
@@ -252,7 +252,7 @@ async function loadUserContext(
       role: null,
       permissions: computeGuestPermissions(accessLevel),
       accessType: 'guest',
-      guestProjects: guests.map((g) => ({
+      guestProjects: guestRows.map((g) => ({
         project_id: g.project_id,
         access_level: g.access_level as 'contributor' | 'read_only',
       })),

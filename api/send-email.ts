@@ -42,7 +42,7 @@ const PREF_COLUMN_MAP: Record<string, string> = {
   // guestInvitation — always sent (access grant, no opt-out)
 }
 
-const FROM_ADDRESS = 'GrantLume <notifications@grantos.app>'
+const FROM_ADDRESS = 'GrantLume <notifications@grantlume.com>'
 
 /**
  * Check if a recipient has opted out of a given template.

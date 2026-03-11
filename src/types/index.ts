@@ -372,13 +372,19 @@ export interface AuditChange {
   created_at: string
 }
 
+export type GuestInvitationStatus = 'pending' | 'accepted' | 'revoked'
+
 export interface ProjectGuest {
   id: string
   org_id: string
   project_id: string
-  user_id: string
+  user_id: string | null
+  invited_email: string | null
+  invited_name: string | null
+  guest_org_name: string | null
   invited_by: string | null
   access_level: GuestAccessLevel
+  status: GuestInvitationStatus
   is_active: boolean
   expires_at: string | null
   created_at: string

@@ -204,9 +204,13 @@ export type Database = {
           id: string
           org_id: string
           project_id: string
-          user_id: string
+          user_id: string | null
+          invited_email: string | null
+          invited_name: string | null
+          guest_org_name: string | null
           invited_by: string | null
           access_level: string
+          status: string
           is_active: boolean
           expires_at: string | null
           created_at: string
@@ -216,9 +220,13 @@ export type Database = {
           id?: string
           org_id: string
           project_id: string
-          user_id: string
+          user_id?: string | null
+          invited_email?: string | null
+          invited_name?: string | null
+          guest_org_name?: string | null
           invited_by?: string | null
           access_level?: string
+          status?: string
           is_active?: boolean
           expires_at?: string | null
           created_at?: string
@@ -228,9 +236,13 @@ export type Database = {
           id?: string
           org_id?: string
           project_id?: string
-          user_id?: string
+          user_id?: string | null
+          invited_email?: string | null
+          invited_name?: string | null
+          guest_org_name?: string | null
           invited_by?: string | null
           access_level?: string
+          status?: string
           is_active?: boolean
           expires_at?: string | null
           created_at?: string
@@ -1375,6 +1387,16 @@ export type Database = {
       auth_org_is_active: {
         Args: Record<string, never>
         Returns: boolean
+      }
+      claim_guest_invitations: {
+        Args: { p_user_id: string; p_email: string }
+        Returns: {
+          id: string
+          org_id: string
+          project_id: string
+          access_level: string
+          status: string
+        }[]
       }
     }
     Enums: {

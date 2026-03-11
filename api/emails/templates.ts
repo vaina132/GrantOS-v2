@@ -34,7 +34,7 @@ function layout(title: string, body: string): string {
     This is an automated message from GrantLume. Please do not reply directly to this email.
   </p>
   <p style="margin:0;font-size:11px;color:${MUTED_COLOR};text-align:center;">
-    <a href="https://grantos.app/profile" style="color:${BRAND_COLOR};text-decoration:underline;">Manage your notification preferences</a>
+    <a href="https://app.grantlume.com/profile" style="color:${BRAND_COLOR};text-decoration:underline;">Manage your notification preferences</a>
   </p>
 </td></tr>
 </table>

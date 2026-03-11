@@ -24,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const supabase = createClient(supabaseUrl, supabaseKey)
   const resend = new Resend(resendKey)
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.grantos.app'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.grantlume.com'
 
   const now = new Date()
   let totalSent = 0
@@ -81,7 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           try {
             await resend.emails.send({
-              from: 'GrantLume <notifications@grantos.app>',
+              from: 'GrantLume <notifications@grantlume.com>',
               to: email,
               subject,
               html,
@@ -138,7 +138,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           try {
             await resend.emails.send({
-              from: 'GrantLume <notifications@grantos.app>',
+              from: 'GrantLume <notifications@grantlume.com>',
               to: email,
               subject,
               html,

@@ -79,12 +79,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           userName: person.full_name,
           orgName: org.name,
           period,
-          timesheetUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.grantos.app'}/timesheets`,
+          timesheetUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.grantlume.com'}/timesheets`,
         })
 
         try {
           await resend.emails.send({
-            from: 'GrantLume <notifications@grantos.app>',
+            from: 'GrantLume <notifications@grantlume.com>',
             to: person.email,
             subject,
             html,
