@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 interface PersonAvatarProps {
   name: string
   avatarUrl?: string | null
-  size?: 'xs' | 'sm' | 'md'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl'
   className?: string
 }
 
@@ -11,6 +11,8 @@ const SIZE_MAP = {
   xs: 'h-5 w-5 text-[9px]',
   sm: 'h-6 w-6 text-[10px]',
   md: 'h-8 w-8 text-xs',
+  lg: 'h-16 w-16 text-xl',
+  xl: 'h-24 w-24 text-3xl',
 }
 
 function getInitials(name: string): string {
