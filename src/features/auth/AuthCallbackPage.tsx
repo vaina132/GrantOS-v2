@@ -1,19 +1,18 @@
 import { useEffect, useState, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 
 /**
  * Handles Supabase auth redirects:
- * - Email confirmation after signup (PKCE: ?code=... or legacy: ?token_hash=...&type=signup)
+ * - Email confirmation (PKCE: ?code=..., or token_hash: ?token_hash=...&type=signup)
+ * - Implicit flow (#access_token=...)
  * - Magic link login
- * - OAuth callback
  * - Password reset redirect
  */
 export function AuthCallbackPage() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
   const handled = useRef(false)
@@ -24,40 +23,77 @@ export function AuthCallbackPage() {
 
     const handleCallback = async () => {
       try {
-        // 1. PKCE flow — Supabase sends ?code=... in the query string
-        const code = searchParams.get('code')
+        const params = new URLSearchParams(window.location.search)
+        const hashParams = new URLSearchParams(window.location.hash.replace('#', ''))
+
+        const code = params.get('code')
+        const tokenHash = params.get('token_hash')
+        const type = params.get('type')
+        const accessToken = hashParams.get('access_token')
+
+        console.log('[AuthCallback] URL:', window.location.href)
+        console.log('[AuthCallback] code:', !!code, 'token_hash:', !!tokenHash, 'type:', type, 'hash access_token:', !!accessToken)
+
+        // 1. PKCE flow — ?code=...
         if (code) {
+          console.log('[AuthCallback] Exchanging PKCE code...')
           const { data, error } = await supabase.auth.exchangeCodeForSession(code)
           if (error) {
+            console.error('[AuthCallback] Code exchange error:', error.message)
             setStatus('error')
             setMessage(error.message)
             return
           }
           if (data.session) {
-            onSuccess(data.session)
+            console.log('[AuthCallback] Code exchange success, user:', data.session.user.email)
+            onSuccess()
             return
           }
         }
 
-        // 2. Legacy / implicit flow — token in hash fragment
-        //    Supabase JS auto-detects hash fragments on init, so check if session exists
-        const { data: { session }, error } = await supabase.auth.getSession()
+        // 2. Token hash flow — ?token_hash=...&type=signup (or type=email)
+        if (tokenHash && type) {
+          console.log('[AuthCallback] Verifying OTP with token_hash, type:', type)
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type as 'signup' | 'email',
+          })
+          if (error) {
+            console.error('[AuthCallback] verifyOtp error:', error.message)
+            setStatus('error')
+            setMessage(error.message)
+            return
+          }
+          console.log('[AuthCallback] verifyOtp success')
+          onSuccess()
+          return
+        }
 
+        // 3. Implicit flow — #access_token=... (Supabase JS client auto-processes this)
+        if (accessToken) {
+          console.log('[AuthCallback] Hash fragment detected, waiting for Supabase to process...')
+        }
+
+        // 4. Check if session already exists (hash may have been auto-processed)
+        const { data: { session }, error } = await supabase.auth.getSession()
         if (error) {
+          console.error('[AuthCallback] getSession error:', error.message)
           setStatus('error')
           setMessage(error.message)
           return
         }
-
         if (session) {
-          onSuccess(session)
+          console.log('[AuthCallback] Session found via getSession, user:', session.user.email)
+          onSuccess()
           return
         }
 
-        // 3. Still no session — listen for auth state change (hash may still be processing)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        // 5. Wait for auth state change (hash fragment may still be processing)
+        console.log('[AuthCallback] No session yet, listening for auth state change...')
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+          console.log('[AuthCallback] Auth state changed:', event, !!newSession)
           if (newSession) {
-            onSuccess(newSession)
+            onSuccess()
             subscription.unsubscribe()
           }
         })
@@ -66,6 +102,7 @@ export function AuthCallbackPage() {
         setTimeout(() => {
           setStatus((prev) => {
             if (prev === 'loading') {
+              console.error('[AuthCallback] Timed out waiting for session')
               setMessage('Unable to verify your email. The link may have expired or already been used. Please try signing in.')
               subscription.unsubscribe()
               return 'error'
@@ -73,20 +110,21 @@ export function AuthCallbackPage() {
             return prev
           })
         }, 10_000)
-      } catch {
+      } catch (err) {
+        console.error('[AuthCallback] Unexpected error:', err)
         setStatus('error')
         setMessage('Something went wrong. Please try signing in.')
       }
     }
 
-    const onSuccess = (_session: any) => {
+    const onSuccess = () => {
       setStatus('success')
       setMessage('Your email has been confirmed. Redirecting...')
       setTimeout(() => navigate('/dashboard', { replace: true }), 1500)
     }
 
     handleCallback()
-  }, [navigate, searchParams])
+  }, [navigate])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6">

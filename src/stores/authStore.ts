@@ -52,14 +52,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     initialized = true
 
     try {
-      // Handle PKCE code exchange from email confirmation / OAuth callback
-      const params = new URLSearchParams(window.location.search)
-      const code = params.get('code')
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) {
-          console.warn('Code exchange failed:', error.message)
-        }
+      // If we're on the /auth/callback route with a code param, skip initialize
+      // and let the AuthCallbackPage handle the code exchange (PKCE codes are single-use)
+      const isAuthCallback = window.location.pathname === '/auth/callback'
+      const hasCode = new URLSearchParams(window.location.search).has('code')
+      const hasHash = window.location.hash.includes('access_token')
+
+      if (isAuthCallback && (hasCode || hasHash)) {
+        set({ isLoading: false, user: null })
+        return
       }
 
       const { data: { session } } = await supabase.auth.getSession()
