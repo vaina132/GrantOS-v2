@@ -1,15 +1,66 @@
--- Fix RLS policies for onboarding flow (org + org_members creation)
+-- Fix onboarding: create org + membership via SECURITY DEFINER function
 -- Run this in Supabase SQL Editor: https://supabase.com/dashboard/project/dohxxuuysqukhwvkuajq/sql/new
--- SAFE TO RE-RUN: drops all existing policies on these two tables first.
+-- SAFE TO RE-RUN.
+--
+-- APPROACH: Instead of fighting RLS INSERT policies, use a SECURITY DEFINER
+-- function that bypasses RLS entirely. The frontend calls this function via
+-- supabase.rpc('create_organisation', { ... }) instead of direct table inserts.
 
 -- ============================================================
--- Step 1: Enable RLS
+-- Step 1: Helper functions for RLS policies (bypass RLS)
+-- ============================================================
+CREATE OR REPLACE FUNCTION get_user_org_id()
+RETURNS UUID AS $$
+  SELECT org_id FROM public.org_members WHERE user_id = auth.uid() LIMIT 1;
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+CREATE OR REPLACE FUNCTION get_user_role()
+RETURNS TEXT AS $$
+  SELECT role FROM public.org_members WHERE user_id = auth.uid() LIMIT 1;
+$$ LANGUAGE sql SECURITY DEFINER STABLE;
+
+-- ============================================================
+-- Step 2: Onboarding function — creates org + membership atomically
+-- ============================================================
+CREATE OR REPLACE FUNCTION create_organisation(
+  p_name TEXT,
+  p_currency TEXT DEFAULT 'EUR'
+)
+RETURNS UUID AS $$
+DECLARE
+  v_org_id UUID;
+  v_user_id UUID := auth.uid();
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Check user doesn't already have an org
+  IF EXISTS (SELECT 1 FROM public.org_members WHERE user_id = v_user_id) THEN
+    RAISE EXCEPTION 'User already belongs to an organisation';
+  END IF;
+
+  -- Create the organisation
+  INSERT INTO public.organisations (name, currency)
+  VALUES (p_name, p_currency)
+  RETURNING id INTO v_org_id;
+
+  -- Create the membership as Admin
+  INSERT INTO public.org_members (user_id, org_id, role)
+  VALUES (v_user_id, v_org_id, 'Admin');
+
+  RETURN v_org_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
+-- Step 3: Enable RLS
 -- ============================================================
 ALTER TABLE organisations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE org_members ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
--- Step 2: Drop ALL existing policies on organisations
+-- Step 4: Drop ALL existing policies on organisations
 -- ============================================================
 DO $$ DECLARE r RECORD;
 BEGIN
@@ -22,7 +73,7 @@ BEGIN
 END $$;
 
 -- ============================================================
--- Step 3: Drop ALL existing policies on org_members
+-- Step 5: Drop ALL existing policies on org_members
 -- ============================================================
 DO $$ DECLARE r RECORD;
 BEGIN
@@ -35,54 +86,41 @@ BEGIN
 END $$;
 
 -- ============================================================
--- Step 4: Create organisations policies
--- NOTE: We do NOT use auth_org_id() because during onboarding
--- the user has no org_members row yet, so auth_org_id() = NULL.
+-- Step 6: Organisations policies (SELECT + UPDATE only, INSERT via function)
 -- ============================================================
-
--- Any authenticated user can INSERT a new org (onboarding)
-CREATE POLICY "org_insert_authenticated"
-  ON organisations FOR INSERT
-  WITH CHECK (auth.uid() IS NOT NULL);
-
--- Members can SELECT their own org
 CREATE POLICY "org_select_members"
   ON organisations FOR SELECT
-  USING (id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid()));
+  USING (id = get_user_org_id());
 
--- Admins can UPDATE their own org
 CREATE POLICY "org_update_admin"
   ON organisations FOR UPDATE
-  USING (id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid() AND role = 'Admin'));
+  USING (id = get_user_org_id() AND get_user_role() = 'Admin');
 
 -- ============================================================
--- Step 5: Create org_members policies
+-- Step 7: Org members policies
 -- ============================================================
-
--- Users can see their own membership (auth bootstrap)
 CREATE POLICY "orgmem_select_own"
   ON org_members FOR SELECT
   USING (user_id = auth.uid());
 
--- Members can see all members in their org
 CREATE POLICY "orgmem_select_org"
   ON org_members FOR SELECT
-  USING (org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid()));
+  USING (org_id = get_user_org_id());
 
--- Any authenticated user can INSERT themselves (onboarding)
 CREATE POLICY "orgmem_insert_self"
   ON org_members FOR INSERT
   WITH CHECK (user_id = auth.uid());
 
--- Admins can do everything on org_members in their org
 CREATE POLICY "orgmem_all_admin"
   ON org_members FOR ALL
-  USING (org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid() AND role = 'Admin'));
+  USING (org_id = get_user_org_id() AND get_user_role() = 'Admin');
 
 -- ============================================================
--- Step 6: Verify
+-- Step 8: Verify
 -- ============================================================
-SELECT tablename, policyname, cmd
+SELECT 'FUNCTION' as type, 'create_organisation' as name, '' as cmd
+UNION ALL
+SELECT 'POLICY', policyname, cmd::text
 FROM pg_policies
 WHERE schemaname = 'public' AND tablename IN ('organisations', 'org_members')
-ORDER BY tablename, policyname;
+ORDER BY type, name;

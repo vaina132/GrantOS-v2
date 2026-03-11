@@ -41,30 +41,17 @@ export function OnboardingWizard() {
     if (!orgName.trim() || !user) return
     setLoading(true)
     try {
-      // Create organisation
-      const { data: org, error: orgError } = await supabase
-        .from('organisations')
-        .insert({
-          name: orgName.trim(),
-          currency,
-        })
-        .select('id')
-        .single()
-
-      if (orgError) throw orgError
-
-      // Create org membership as Admin
-      const { error: memberError } = await supabase
-        .from('org_members')
-        .insert({
-          user_id: user.id,
-          org_id: org.id,
-          role: 'Admin',
+      // Use SECURITY DEFINER function to create org + membership atomically
+      // This bypasses RLS, avoiding permission issues during onboarding
+      const { data: newOrgId, error } = await supabase
+        .rpc('create_organisation', {
+          p_name: orgName.trim(),
+          p_currency: currency,
         })
 
-      if (memberError) throw memberError
+      if (error) throw error
 
-      setOrgId(org.id)
+      setOrgId(newOrgId as string)
       toast({ title: 'Organisation created!' })
       setStep('project')
     } catch (err) {

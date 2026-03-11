@@ -1398,6 +1398,10 @@ export type Database = {
           status: string
         }[]
       }
+      create_organisation: {
+        Args: { p_name: string; p_currency?: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
