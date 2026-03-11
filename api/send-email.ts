@@ -12,6 +12,10 @@ import {
   guestInvitationEmail,
   trialExpiringEmail,
   periodLockedEmail,
+  signupConfirmationEmail,
+  socialWelcomeEmail,
+  emailChangedEmail,
+  passwordChangedEmail,
 } from './emails/templates.js'
 import type { EmailTemplate } from './emails/templates.js'
 
@@ -26,6 +30,10 @@ const TEMPLATE_MAP: Record<string, (params: any) => EmailTemplate> = {
   guestInvitation: guestInvitationEmail,
   trialExpiring: trialExpiringEmail,
   periodLocked: periodLockedEmail,
+  signupConfirmation: signupConfirmationEmail,
+  socialWelcome: socialWelcomeEmail,
+  emailChanged: emailChangedEmail,
+  passwordChanged: passwordChangedEmail,
 }
 
 /** Maps template name → user_preferences column that controls it */

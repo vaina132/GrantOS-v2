@@ -15,6 +15,10 @@ type EmailTemplate =
   | 'guestInvitation'
   | 'trialExpiring'
   | 'periodLocked'
+  | 'signupConfirmation'
+  | 'socialWelcome'
+  | 'emailChanged'
+  | 'passwordChanged'
 
 interface SendEmailOptions {
   template: EmailTemplate
@@ -161,5 +165,41 @@ export const emailService = {
     lockedBy: string
   }) {
     return sendEmail({ template: 'periodLocked', to: params.to, params })
+  },
+
+  /** Send signup confirmation email */
+  async sendSignupConfirmation(params: {
+    to: string
+    firstName: string
+    confirmUrl: string
+  }) {
+    return sendEmail({ template: 'signupConfirmation', to: params.to, params })
+  },
+
+  /** Send welcome email for social auth signups */
+  async sendSocialWelcome(params: {
+    to: string
+    firstName: string
+    provider: string
+    dashboardUrl: string
+  }) {
+    return sendEmail({ template: 'socialWelcome', to: params.to, params })
+  },
+
+  /** Notify user their email was changed */
+  async sendEmailChanged(params: {
+    to: string
+    firstName: string
+    newEmail: string
+  }) {
+    return sendEmail({ template: 'emailChanged', to: params.to, params })
+  },
+
+  /** Notify user their password was changed */
+  async sendPasswordChanged(params: {
+    to: string
+    firstName: string
+  }) {
+    return sendEmail({ template: 'passwordChanged', to: params.to, params })
   },
 }

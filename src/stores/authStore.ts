@@ -26,6 +26,8 @@ interface AuthState {
 
   initialize: () => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, meta?: { firstName?: string; lastName?: string }) => Promise<void>
+  signInWithProvider: (provider: 'google' | 'azure' | 'slack') => Promise<void>
   signOut: () => Promise<void>
   can: (permission: PermissionKey) => boolean
 }
@@ -103,6 +105,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false, error: message })
       throw err
     }
+  },
+
+  signUp: async (email, password, meta) => {
+    set({ isLoading: true, error: null })
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: meta?.firstName ?? '',
+            last_name: meta?.lastName ?? '',
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      if (error) throw error
+      set({ isLoading: false })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Sign up failed'
+      set({ isLoading: false, error: message })
+      throw err
+    }
+  },
+
+  signInWithProvider: async (provider) => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    if (error) throw error
   },
 
   signOut: async () => {

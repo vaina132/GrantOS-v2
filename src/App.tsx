@@ -25,6 +25,8 @@ import { SettingsPage } from '@/features/settings/SettingsPage'
 import { GuestAccessPage } from '@/features/guests/GuestAccessPage'
 import { ProposalsPage } from '@/features/proposals/ProposalsPage'
 import { ProfileSettingsPage } from '@/features/profile/ProfileSettingsPage'
+import { TermsPage } from '@/features/legal/TermsPage'
+import { PrivacyPage } from '@/features/legal/PrivacyPage'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -64,6 +66,8 @@ export default function App() {
         <Route path="/forgot-password" element={user ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
 
         <Route
           path="/*"

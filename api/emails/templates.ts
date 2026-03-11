@@ -296,3 +296,84 @@ export function periodLockedEmail(params: {
     ].join('')),
   }
 }
+
+/** Signup confirmation — sent immediately after a new user registers */
+export function signupConfirmationEmail(params: {
+  firstName: string
+  confirmUrl: string
+}): EmailTemplate {
+  return {
+    subject: 'Confirm your GrantLume account',
+    html: layout('Confirm Email', [
+      heading(`Welcome, ${params.firstName}!`),
+      paragraph('Thank you for signing up for GrantLume. Please confirm your email address to activate your account and start your <strong>14-day free trial</strong>.'),
+      button('Confirm Email Address', params.confirmUrl),
+      paragraph('This link will expire in 24 hours. If you didn\'t create a GrantLume account, you can safely ignore this email.'),
+      `<div style="margin:24px 0;padding:16px;background:#f0f9ff;border-radius:8px;border-left:4px solid ${BRAND_COLOR};">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#1e40af;">What happens next?</p>
+        <ol style="margin:0;padding-left:18px;font-size:13px;line-height:1.8;color:#374151;">
+          <li>Confirm your email (click the button above)</li>
+          <li>Set up your organisation</li>
+          <li>Invite your team and start managing projects</li>
+        </ol>
+      </div>`,
+      paragraph('Your trial includes all features — no credit card required, and it ends automatically after 14 days.'),
+    ].join('')),
+  }
+}
+
+/** Welcome email for users who signed up via social auth (Google/Microsoft/Slack) */
+export function socialWelcomeEmail(params: {
+  firstName: string
+  provider: string
+  dashboardUrl: string
+}): EmailTemplate {
+  return {
+    subject: 'Welcome to GrantLume — Your account is ready',
+    html: layout('Welcome', [
+      heading(`Welcome, ${params.firstName}!`),
+      paragraph(`You've successfully signed up for GrantLume using your <strong>${params.provider}</strong> account. Your account is already verified and ready to use.`),
+      paragraph('Start your <strong>14-day free trial</strong> now — no credit card required.'),
+      button('Go to Dashboard', params.dashboardUrl),
+      `<div style="margin:24px 0;padding:16px;background:#f0f9ff;border-radius:8px;border-left:4px solid ${BRAND_COLOR};">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#1e40af;">Quick start guide</p>
+        <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.8;color:#374151;">
+          <li>Create your organisation</li>
+          <li>Add your first project</li>
+          <li>Invite team members</li>
+          <li>Configure allocations and timesheets</li>
+        </ul>
+      </div>`,
+    ].join('')),
+  }
+}
+
+/** Account email changed confirmation */
+export function emailChangedEmail(params: {
+  firstName: string
+  newEmail: string
+}): EmailTemplate {
+  return {
+    subject: 'Your GrantLume email address has been changed',
+    html: layout('Email Changed', [
+      heading('Email Address Changed'),
+      paragraph(`Hi ${params.firstName}, your GrantLume account email has been updated to <strong>${params.newEmail}</strong>.`),
+      paragraph('If you did not make this change, please contact us immediately at <strong>support@grantlume.com</strong> to secure your account.'),
+    ].join('')),
+  }
+}
+
+/** Password changed confirmation */
+export function passwordChangedEmail(params: {
+  firstName: string
+}): EmailTemplate {
+  return {
+    subject: 'Your GrantLume password has been changed',
+    html: layout('Password Changed', [
+      heading('Password Changed'),
+      paragraph(`Hi ${params.firstName}, your GrantLume account password was successfully changed.`),
+      paragraph('If you did not make this change, please reset your password immediately or contact us at <strong>support@grantlume.com</strong>.'),
+      button('Reset Password', 'https://app.grantlume.com/forgot-password'),
+    ].join('')),
+  }
+}

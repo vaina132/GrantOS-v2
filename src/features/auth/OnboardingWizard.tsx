@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,15 @@ export function OnboardingWizard() {
   const { user } = useAuthStore()
   const [step, setStep] = useState<Step>('org')
   const [loading, setLoading] = useState(false)
+
+  // Derive display name from auth metadata (social auth populates these)
+  const userName = useMemo(() => {
+    const meta = user?.user_metadata
+    if (meta?.first_name && meta?.last_name) return `${meta.first_name} ${meta.last_name}`
+    if (meta?.full_name) return meta.full_name
+    if (meta?.name) return meta.name
+    return user?.email?.split('@')[0] || 'there'
+  }, [user])
 
   // Org step
   const [orgName, setOrgName] = useState('')
@@ -97,7 +106,7 @@ export function OnboardingWizard() {
     if (user?.email) {
       emailService.sendWelcome({
         to: user.email,
-        userName: user.email.split('@')[0],
+        userName,
         orgName: orgName || 'your organisation',
         dashboardUrl: `${window.location.origin}/dashboard`,
       }).catch(() => { /* non-blocking */ })
@@ -112,17 +121,17 @@ export function OnboardingWizard() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/50 p-4">
-      <Card className="w-full max-w-lg">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-4">
+      <Card className="w-full max-w-lg border-0 shadow-2xl">
         {step === 'org' && (
           <>
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                 <Building2 className="h-8 w-8 text-primary" />
               </div>
-              <CardTitle className="text-2xl">Set up your organisation</CardTitle>
+              <CardTitle className="text-2xl">Welcome, {userName.split(' ')[0]}!</CardTitle>
               <CardDescription>
-                This is your workspace where you'll manage grants, staff, and budgets.
+                Set up your organisation — this is your workspace where you'll manage grants, staff, and budgets.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
