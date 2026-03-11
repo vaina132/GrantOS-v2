@@ -23,6 +23,7 @@ import { ImportPage } from '@/features/import/ImportPage'
 import { AuditPage } from '@/features/audit/AuditPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { GuestAccessPage } from '@/features/guests/GuestAccessPage'
+import { ProfileSettingsPage } from '@/features/profile/ProfileSettingsPage'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -156,6 +157,7 @@ export default function App() {
                           </ProtectedRoute>
                         }
                       />
+                      <Route path="/profile" element={<ProfileSettingsPage />} />
                       <Route path="/" element={<Navigate to="/dashboard" replace />} />
                       <Route path="*" element={<Navigate to="/dashboard" replace />} />
                     </Routes>

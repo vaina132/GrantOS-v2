@@ -1,4 +1,5 @@
-import { Menu, LogOut, ChevronDown, ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react'
+import { Menu, LogOut, ChevronDown, ChevronLeft, ChevronRight, Sun, Moon, Settings } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ import { getYearOptions, cn } from '@/lib/utils'
 import { differenceInDays } from 'date-fns'
 
 export function TopBar() {
+  const navigate = useNavigate()
   const { user, role, accessType, orgPlan, trialEndsAt, signOut } = useAuthStore()
   const { globalYear, setGlobalYear, toggleSidebar, darkMode, toggleDarkMode } = useUiStore()
 
@@ -131,6 +133,10 @@ export function TopBar() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate('/profile')}>
+              <Settings className="mr-2 h-4 w-4" />
+              My Settings
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => signOut()} className="text-destructive focus:text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
               Sign out

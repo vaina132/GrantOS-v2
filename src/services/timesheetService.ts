@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { emailService } from './emailService'
 import type { TimesheetEntry, TimesheetStatus, TimesheetDay } from '@/types'
 import { hoursToPm } from '@/lib/pmUtils'
 
@@ -155,6 +156,46 @@ export const timesheetService = {
       .eq('month', month)
 
     if (error) throw error
+
+    // Fire-and-forget: notify admins/approvers
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    const period = `${MONTHS[month - 1]} ${year}`
+    Promise.resolve(
+      supabase
+        .from('persons')
+        .select('full_name')
+        .eq('id', personId)
+        .single()
+    ).then(({ data: person }) => {
+      const submitterName = (person as any)?.full_name ?? 'A team member'
+      // Get org admins / approvers
+      Promise.resolve(
+        supabase
+          .from('org_members')
+          .select('user_id')
+          .eq('org_id', orgId)
+          .in('role', ['Admin', 'Project Manager'])
+      ).then(({ data: admins }) => {
+        if (!admins) return
+        for (const a of admins) {
+          if (a.user_id === userId) continue
+          supabase.auth.admin.getUserById(a.user_id)
+            .then(({ data: userData }) => {
+              const email = (userData as any)?.user?.email
+              if (email) {
+                emailService.sendTimesheetSubmitted({
+                  to: email,
+                  approverName: email.split('@')[0],
+                  submitterName,
+                  orgName: '',
+                  period,
+                  timesheetUrl: `${typeof window !== 'undefined' ? window.location.origin : ''}/timesheets`,
+                }).catch(() => {})
+              }
+            }).catch(() => {})
+        }
+      }).catch(() => {})
+    }).catch(() => {})
   },
 
   async updateEnvelopeStatus(

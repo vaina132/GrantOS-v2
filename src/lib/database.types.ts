@@ -905,6 +905,68 @@ export type Database = {
           },
         ]
       }
+      user_preferences: {
+        Row: {
+          id: string
+          user_id: string
+          org_id: string
+          display_name: string | null
+          email_timesheet_reminders: boolean
+          email_timesheet_submitted: boolean
+          email_project_alerts: boolean
+          email_budget_alerts: boolean
+          email_period_locked: boolean
+          email_role_changes: boolean
+          email_invitations: boolean
+          email_welcome: boolean
+          email_trial_expiring: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          org_id: string
+          display_name?: string | null
+          email_timesheet_reminders?: boolean
+          email_timesheet_submitted?: boolean
+          email_project_alerts?: boolean
+          email_budget_alerts?: boolean
+          email_period_locked?: boolean
+          email_role_changes?: boolean
+          email_invitations?: boolean
+          email_welcome?: boolean
+          email_trial_expiring?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          org_id?: string
+          display_name?: string | null
+          email_timesheet_reminders?: boolean
+          email_timesheet_submitted?: boolean
+          email_project_alerts?: boolean
+          email_budget_alerts?: boolean
+          email_period_locked?: boolean
+          email_role_changes?: boolean
+          email_invitations?: boolean
+          email_welcome?: boolean
+          email_trial_expiring?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'user_preferences_org_id_fkey'
+            columns: ['org_id']
+            isOneToOne: false
+            referencedRelation: 'organisations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       project_documents: {
         Row: {
           id: string

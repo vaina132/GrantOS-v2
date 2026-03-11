@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useProjectExpenses } from '@/hooks/useExpenses'
 import { expenseService } from '@/services/expenseService'
+import { emailService } from '@/services/emailService'
 import { useAuthStore } from '@/stores/authStore'
 import { useStaff } from '@/hooks/useStaff'
 import { Button } from '@/components/ui/button'
@@ -47,7 +48,7 @@ interface Props {
 }
 
 export function ProjectExpenses({ project }: Props) {
-  const { orgId, user, can } = useAuthStore()
+  const { orgId, orgName, user, can } = useAuthStore()
   const { expenses, isLoading, refetch, getTotalForCategory } = useProjectExpenses(project.id)
   const { staff } = useStaff({ is_active: true })
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -134,6 +135,25 @@ export function ProjectExpenses({ project }: Props) {
           recorded_by: user?.id ?? null,
         })
         toast({ title: 'Expense recorded' })
+
+        // Fire-and-forget: send budget alert if category > 80%
+        const catBudget = getBudgetForCategory(project, category)
+        if (catBudget > 0) {
+          const newSpent = getTotalForCategory(category) + numAmount
+          const pctUsed = Math.round((newSpent / catBudget) * 100)
+          if (pctUsed >= 80 && user?.email) {
+            const catLabel = EXPENSE_CATEGORIES.find(c => c.key === category)?.label ?? category
+            emailService.sendBudgetAlert({
+              to: user.email,
+              recipientName: user.email.split('@')[0],
+              orgName: orgName ?? '',
+              projectAcronym: project.acronym,
+              budgetCategory: catLabel,
+              percentUsed: pctUsed,
+              projectUrl: `${window.location.origin}/projects/${project.id}`,
+            }).catch(() => {})
+          }
+        }
       }
       setDialogOpen(false)
       resetForm()

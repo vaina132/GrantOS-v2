@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Resend } from 'resend'
+import { createClient } from '@supabase/supabase-js'
 import {
   invitationEmail,
   welcomeEmail,
@@ -27,7 +28,62 @@ const TEMPLATE_MAP: Record<string, (params: any) => EmailTemplate> = {
   periodLocked: periodLockedEmail,
 }
 
+/** Maps template name → user_preferences column that controls it */
+const PREF_COLUMN_MAP: Record<string, string> = {
+  timesheetReminder: 'email_timesheet_reminders',
+  timesheetSubmitted: 'email_timesheet_submitted',
+  projectEndingSoon: 'email_project_alerts',
+  budgetAlert: 'email_budget_alerts',
+  periodLocked: 'email_period_locked',
+  roleChanged: 'email_role_changes',
+  invitation: 'email_invitations',
+  welcome: 'email_welcome',
+  trialExpiring: 'email_trial_expiring',
+  // guestInvitation — always sent (access grant, no opt-out)
+}
+
 const FROM_ADDRESS = 'GrantOS <notifications@grantos.app>'
+
+/**
+ * Check if a recipient has opted out of a given template.
+ * Returns true if the email should be sent, false if opted out.
+ * Uses the service role key to bypass RLS and read user_preferences.
+ */
+async function shouldSend(
+  recipientEmail: string,
+  templateName: string,
+): Promise<boolean> {
+  const prefCol = PREF_COLUMN_MAP[templateName]
+  if (!prefCol) return true // No preference column = always send
+
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceKey) return true // Can't check, default to send
+
+  try {
+    const sb = createClient(supabaseUrl, serviceKey)
+
+    // Find user ID by email via org_members join (email lives on persons table linked by org_members)
+    // Simpler: query org_members → auth.users via the admin API
+    const { data: listData } = await sb.auth.admin.listUsers({ perPage: 1000 })
+    const authUser = listData?.users?.find((u: any) => u.email === recipientEmail)
+    if (!authUser) return true // Unknown user, send anyway
+
+    // Query their preferences across all orgs
+    const { data: prefs } = await sb
+      .from('user_preferences')
+      .select(prefCol)
+      .eq('user_id', authUser.id)
+
+    if (!prefs || prefs.length === 0) return true // No prefs set, default to send
+
+    // If any org preference has this template disabled, don't send
+    return prefs.every((p: any) => p[prefCol] !== false)
+  } catch {
+    // If anything fails, default to sending
+    return true
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -54,12 +110,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Filter recipients by their email preferences
+    const recipients = Array.isArray(to) ? to : [to]
+    const allowedRecipients: string[] = []
+
+    for (const email of recipients) {
+      const allowed = await shouldSend(email, template)
+      if (allowed) allowedRecipients.push(email)
+    }
+
+    if (allowedRecipients.length === 0) {
+      return res.status(200).json({ success: true, skipped: true, reason: 'All recipients opted out' })
+    }
+
     const { subject, html } = templateFn(params ?? {})
     const resend = new Resend(apiKey)
 
     const { data, error } = await resend.emails.send({
       from: FROM_ADDRESS,
-      to: Array.isArray(to) ? to : [to],
+      to: allowedRecipients,
       subject,
       html,
     })

@@ -253,6 +253,24 @@ export interface ProjectExpense {
   updated_at: string
 }
 
+export interface UserPreferences {
+  id: string
+  user_id: string
+  org_id: string
+  display_name: string | null
+  email_timesheet_reminders: boolean
+  email_timesheet_submitted: boolean
+  email_project_alerts: boolean
+  email_budget_alerts: boolean
+  email_period_locked: boolean
+  email_role_changes: boolean
+  email_invitations: boolean
+  email_welcome: boolean
+  email_trial_expiring: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface FundingScheme {
   id: string
   org_id: string

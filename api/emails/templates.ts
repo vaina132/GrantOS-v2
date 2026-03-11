@@ -30,8 +30,11 @@ function layout(title: string, body: string): string {
 <tr><td style="padding:32px;">${body}</td></tr>
 <!-- Footer -->
 <tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;">
-  <p style="margin:0;font-size:12px;color:${MUTED_COLOR};text-align:center;">
+  <p style="margin:0 0 8px;font-size:12px;color:${MUTED_COLOR};text-align:center;">
     This is an automated message from GrantOS. Please do not reply directly to this email.
+  </p>
+  <p style="margin:0;font-size:11px;color:${MUTED_COLOR};text-align:center;">
+    <a href="https://grantos.app/profile" style="color:${BRAND_COLOR};text-decoration:underline;">Manage your notification preferences</a>
   </p>
 </td></tr>
 </table>
