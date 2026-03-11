@@ -7,8 +7,9 @@ import { FundingSchemes } from './FundingSchemes'
 import { PeriodLocking } from '@/features/allocations/PeriodLocking'
 import { HolidaySettings } from './HolidaySettings'
 import { RolePermissions } from './RolePermissions'
+import { AbsenceApprovers } from './AbsenceApprovers'
 
-type SettingsTab = 'org' | 'users' | 'roles' | 'funding' | 'locks' | 'holidays'
+type SettingsTab = 'org' | 'users' | 'roles' | 'funding' | 'locks' | 'holidays' | 'approvers'
 
 export function SettingsPage() {
   const [tab, setTab] = useState<SettingsTab>('org')
@@ -25,6 +26,7 @@ export function SettingsPage() {
           { key: 'funding', label: 'Funding Schemes' },
           { key: 'locks', label: 'Period Locks' },
           { key: 'holidays', label: 'Holidays' },
+          { key: 'approvers', label: 'Absence Approvers' },
         ] as { key: SettingsTab; label: string }[]).map((t) => (
           <Button
             key={t.key}
@@ -43,6 +45,7 @@ export function SettingsPage() {
       {tab === 'funding' && <FundingSchemes />}
       {tab === 'locks' && <PeriodLocking />}
       {tab === 'holidays' && <HolidaySettings />}
+      {tab === 'approvers' && <AbsenceApprovers />}
     </div>
   )
 }

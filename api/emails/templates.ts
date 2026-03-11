@@ -377,3 +377,87 @@ export function passwordChangedEmail(params: {
     ].join('')),
   }
 }
+
+/** Notify approver about a new absence request */
+export function absenceRequestedEmail(params: {
+  approverName: string
+  requesterName: string
+  absenceType: string
+  startDate: string
+  endDate: string
+  days: string
+  absencesUrl: string
+}): EmailTemplate {
+  return {
+    subject: `Absence Request: ${params.requesterName} — ${params.absenceType}`,
+    html: layout('Absence Request', [
+      heading('New Absence Request'),
+      paragraph(`Hi ${params.approverName},`),
+      paragraph(`<strong>${params.requesterName}</strong> has submitted an absence request that requires your approval:`),
+      `<div style="margin:16px 0;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+        <table cellpadding="0" cellspacing="0" style="font-size:14px;color:#374151;">
+          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Type</td><td style="padding:4px 0;">${params.absenceType}</td></tr>
+          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Period</td><td style="padding:4px 0;">${params.startDate} — ${params.endDate}</td></tr>
+          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Days</td><td style="padding:4px 0;">${params.days}</td></tr>
+        </table>
+      </div>`,
+      paragraph('Please review and approve or reject this request.'),
+      button('Review Request', params.absencesUrl),
+    ].join('')),
+  }
+}
+
+/** Notify employee their absence was approved */
+export function absenceApprovedEmail(params: {
+  employeeName: string
+  absenceType: string
+  startDate: string
+  endDate: string
+  days: string
+  absencesUrl: string
+}): EmailTemplate {
+  return {
+    subject: `Absence Approved: ${params.absenceType} (${params.startDate} — ${params.endDate})`,
+    html: layout('Absence Approved', [
+      heading('Absence Approved ✓'),
+      paragraph(`Hi ${params.employeeName},`),
+      paragraph('Your absence request has been <strong style="color:#059669;">approved</strong>:'),
+      `<div style="margin:16px 0;padding:16px;background:#ecfdf5;border-radius:8px;border:1px solid #a7f3d0;">
+        <table cellpadding="0" cellspacing="0" style="font-size:14px;color:#374151;">
+          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Type</td><td style="padding:4px 0;">${params.absenceType}</td></tr>
+          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Period</td><td style="padding:4px 0;">${params.startDate} — ${params.endDate}</td></tr>
+          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Days</td><td style="padding:4px 0;">${params.days}</td></tr>
+        </table>
+      </div>`,
+      button('View Absences', params.absencesUrl),
+    ].join('')),
+  }
+}
+
+/** Notify employee their absence was rejected */
+export function absenceRejectedEmail(params: {
+  employeeName: string
+  absenceType: string
+  startDate: string
+  endDate: string
+  days: string
+  absencesUrl: string
+}): EmailTemplate {
+  return {
+    subject: `Absence Rejected: ${params.absenceType} (${params.startDate} — ${params.endDate})`,
+    html: layout('Absence Rejected', [
+      heading('Absence Rejected'),
+      paragraph(`Hi ${params.employeeName},`),
+      paragraph('Unfortunately, your absence request has been <strong style="color:#dc2626;">rejected</strong>:'),
+      `<div style="margin:16px 0;padding:16px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;">
+        <table cellpadding="0" cellspacing="0" style="font-size:14px;color:#374151;">
+          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Type</td><td style="padding:4px 0;">${params.absenceType}</td></tr>
+          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Period</td><td style="padding:4px 0;">${params.startDate} — ${params.endDate}</td></tr>
+          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Days</td><td style="padding:4px 0;">${params.days}</td></tr>
+        </table>
+      </div>`,
+      paragraph('Please contact your manager for further details or to discuss alternative dates.'),
+      button('View Absences', params.absencesUrl),
+    ].join('')),
+  }
+}

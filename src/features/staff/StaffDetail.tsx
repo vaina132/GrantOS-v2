@@ -3,13 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useStaffMember } from '@/hooks/useStaff'
 import { useAuthStore } from '@/stores/authStore'
 import { supabase } from '@/lib/supabase'
+import { absenceService } from '@/services/absenceService'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Pencil, Mail, Briefcase, Calendar, DollarSign, MapPin, FolderKanban } from 'lucide-react'
+import { ArrowLeft, Pencil, Mail, Briefcase, Calendar, DollarSign, MapPin, FolderKanban, CalendarOff } from 'lucide-react'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { COUNTRIES } from '@/data/countries'
 
@@ -26,6 +27,14 @@ export function StaffDetail() {
   const { orgId, can } = useAuthStore()
   const [projects, setProjects] = useState<PersonProject[]>([])
   const [loadingProjects, setLoadingProjects] = useState(true)
+  const [absenceDaysUsed, setAbsenceDaysUsed] = useState<number>(0)
+  const currentYear = new Date().getFullYear()
+
+  // Fetch absence days used this year
+  useEffect(() => {
+    if (!id) return
+    absenceService.getPersonAbsenceDays(id, currentYear).then(setAbsenceDaysUsed).catch(() => setAbsenceDaysUsed(0))
+  }, [id, currentYear])
 
   // Fetch projects this person is involved in
   useEffect(() => {
@@ -193,6 +202,55 @@ export function StaffDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Leave balance card */}
+      {person.vacation_days_per_year != null && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-6">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-900/30">
+                <CalendarOff className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="flex-1 grid grid-cols-3 gap-4">
+                <div>
+                  <div className="text-2xl font-bold tabular-nums text-blue-600">{person.vacation_days_per_year}</div>
+                  <div className="text-xs text-muted-foreground">Entitlement / year</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold tabular-nums text-amber-600">{absenceDaysUsed}</div>
+                  <div className="text-xs text-muted-foreground">Used ({currentYear})</div>
+                </div>
+                <div>
+                  <div className={cn(
+                    'text-2xl font-bold tabular-nums',
+                    (person.vacation_days_per_year - absenceDaysUsed) <= 0 ? 'text-red-600' :
+                    (person.vacation_days_per_year - absenceDaysUsed) <= 5 ? 'text-amber-600' : 'text-emerald-600'
+                  )}>
+                    {person.vacation_days_per_year - absenceDaysUsed}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Remaining</div>
+                </div>
+              </div>
+              {/* Progress bar */}
+              <div className="w-24 hidden sm:block">
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all',
+                      (absenceDaysUsed / person.vacation_days_per_year) >= 1 ? 'bg-red-500' :
+                      (absenceDaysUsed / person.vacation_days_per_year) >= 0.8 ? 'bg-amber-500' : 'bg-blue-500'
+                    )}
+                    style={{ width: `${Math.min(100, (absenceDaysUsed / person.vacation_days_per_year) * 100)}%` }}
+                  />
+                </div>
+                <div className="text-[10px] text-muted-foreground text-center mt-1">
+                  {Math.round((absenceDaysUsed / person.vacation_days_per_year) * 100)}% used
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Info cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

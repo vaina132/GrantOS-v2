@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Absence, AbsenceType } from '@/types'
+import type { Absence, AbsenceType, AbsenceStatus } from '@/types'
 
 export interface AbsenceFilters {
   person_id?: string
@@ -28,7 +28,7 @@ export const absenceService = {
 
     const { data, error } = await query
     if (error) throw error
-    return (data ?? []) as Absence[]
+    return (data ?? []) as unknown as Absence[]
   },
 
   async create(absence: Omit<Absence, 'id' | 'created_at' | 'updated_at' | 'persons'>): Promise<Absence> {
@@ -39,7 +39,7 @@ export const absenceService = {
       .single()
 
     if (error) throw error
-    return data as Absence
+    return data as unknown as Absence
   },
 
   async update(id: string, updates: Partial<Absence>): Promise<Absence> {
@@ -52,7 +52,7 @@ export const absenceService = {
       .single()
 
     if (error) throw error
-    return data as Absence
+    return data as unknown as Absence
   },
 
   async remove(id: string): Promise<void> {
@@ -69,7 +69,7 @@ export const absenceService = {
   ): Promise<number> {
     const { data, error } = await supabase
       .from('absences')
-      .select('days')
+      .select('*')
       .eq('person_id', personId)
       .gte('start_date', `${year}-01-01`)
       .lte('end_date', `${year}-12-31`)
@@ -77,8 +77,45 @@ export const absenceService = {
     if (error) throw error
     let total = 0
     for (const row of data ?? []) {
+      // Only count approved or legacy (null status) absences
+      const s = (row as any).status as AbsenceStatus | null
+      if (s === 'rejected' || s === 'cancelled') continue
       total += Number(row.days) || 0
     }
     return total
+  },
+
+  async approve(id: string, userId: string): Promise<Absence> {
+    const { data, error } = await supabase
+      .from('absences')
+      .update({
+        status: 'approved',
+        approved_by: userId,
+        approved_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select('*, persons(full_name)')
+      .single()
+
+    if (error) throw error
+    return data as unknown as Absence
+  },
+
+  async reject(id: string, userId: string): Promise<Absence> {
+    const { data, error } = await supabase
+      .from('absences')
+      .update({
+        status: 'rejected',
+        approved_by: userId,
+        approved_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select('*, persons(full_name)')
+      .single()
+
+    if (error) throw error
+    return data as unknown as Absence
   },
 }

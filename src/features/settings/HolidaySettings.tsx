@@ -88,7 +88,7 @@ export function HolidaySettings() {
         return
       }
       const items = globalHolidays.map(h => ({ date: h.date, name: h.localName || h.name }))
-      const count = await holidayService.bulkCreate(orgId, items)
+      const count = await holidayService.bulkCreate(orgId, items, importCountry)
       const countryName = HOLIDAY_COUNTRIES.find(c => c.code === importCountry)?.name ?? importCountry
       toast({ title: 'Imported', description: `${count} holidays imported for ${countryName} (${globalYear}).` })
       setImportCountry('')
@@ -259,6 +259,11 @@ export function HolidaySettings() {
                           {formatDate(h.date)}
                         </span>
                         <span className="text-sm font-medium">{h.name}</span>
+                        {h.country_code && (
+                          <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                            {HOLIDAY_COUNTRIES.find(c => c.code === h.country_code)?.name ?? h.country_code}
+                          </span>
+                        )}
                       </div>
                       <Button
                         variant="ghost"

@@ -16,6 +16,9 @@ import {
   socialWelcomeEmail,
   emailChangedEmail,
   passwordChangedEmail,
+  absenceRequestedEmail,
+  absenceApprovedEmail,
+  absenceRejectedEmail,
 } from './emails/templates.js'
 import type { EmailTemplate } from './emails/templates.js'
 
@@ -34,6 +37,9 @@ const TEMPLATE_MAP: Record<string, (params: any) => EmailTemplate> = {
   socialWelcome: socialWelcomeEmail,
   emailChanged: emailChangedEmail,
   passwordChanged: passwordChangedEmail,
+  absenceRequested: absenceRequestedEmail,
+  absenceApproved: absenceApprovedEmail,
+  absenceRejected: absenceRejectedEmail,
 }
 
 /** Maps template name → user_preferences column that controls it */

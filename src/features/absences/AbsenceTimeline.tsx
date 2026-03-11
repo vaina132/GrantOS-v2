@@ -1,5 +1,8 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { absenceService } from '@/services/absenceService'
+import { absenceApproverService } from '@/services/absenceApproverService'
+import { notificationService } from '@/services/notificationService'
+import { emailService } from '@/services/emailService'
 import { holidayService } from '@/services/holidayService'
 import { useAuthStore } from '@/stores/authStore'
 import { useAbsences } from '@/hooks/useAbsences'
@@ -19,7 +22,7 @@ import {
 import { toast } from '@/components/ui/use-toast'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { AbsenceType, Absence } from '@/types'
+import type { AbsenceType, Absence, AbsenceStatus } from '@/types'
 
 const ABSENCE_TYPES: AbsenceType[] = ['Annual Leave', 'Sick Leave', 'Training', 'Public Holiday', 'Other']
 
@@ -165,7 +168,7 @@ const CELL_H = 20
 const NAME_W = 160
 
 export function AbsenceTimeline() {
-  const { orgId, can } = useAuthStore()
+  const { orgId, user, can } = useAuthStore()
   const { globalYear } = useUiStore()
   const { staff } = useStaff({ is_active: true })
   const { absences, isLoading, refetch } = useAbsences()
@@ -175,15 +178,62 @@ export function AbsenceTimeline() {
   const [saving, setSaving] = useState(false)
   const [absenceType, setAbsenceType] = useState<AbsenceType>('Annual Leave')
   const [holidays, setHolidays] = useState<{ date: string; name: string }[]>([])
+  const [countryHolidaysMap, setCountryHolidaysMap] = useState<Record<string, { date: string; name: string }[]>>({})
 
-  // Load holidays for the current month
+  // Load org-wide holidays for the current month
   useEffect(() => {
     if (!orgId) return
     holidayService.listForMonth(orgId, globalYear, month + 1).then(setHolidays).catch(() => setHolidays([]))
   }, [orgId, globalYear, month])
 
+  // Load per-country holidays for each unique country among staff
+  useEffect(() => {
+    const countries = [...new Set(staff.map(p => p.country).filter(Boolean))] as string[]
+    if (countries.length === 0) { setCountryHolidaysMap({}); return }
+    const fetchCountryHolidays = async () => {
+      const map: Record<string, { date: string; name: string }[]> = {}
+      await Promise.all(countries.map(async (cc) => {
+        try {
+          const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${globalYear}/${cc}`)
+          if (!res.ok) return
+          const data: { date: string; localName: string; name: string; global: boolean }[] = await res.json()
+          map[cc] = data.filter(h => h.global).map(h => ({ date: h.date, name: h.localName || h.name }))
+        } catch { /* ignore */ }
+      }))
+      setCountryHolidaysMap(map)
+    }
+    fetchCountryHolidays()
+  }, [staff, globalYear])
+
   const holidaySet = useMemo(() => new Set(holidays.map(h => h.date)), [holidays])
   const holidayNames = useMemo(() => new Map(holidays.map(h => [h.date, h.name])), [holidays])
+
+  // Per-person holiday sets based on their country
+  const personHolidaySets = useMemo(() => {
+    const sets: Record<string, Set<string>> = {}
+    const names: Record<string, Map<string, string>> = {}
+    for (const p of staff) {
+      const countryHols = p.country ? (countryHolidaysMap[p.country] ?? []) : []
+      const merged = [...holidays, ...countryHols]
+      sets[p.id] = new Set(merged.map(h => h.date))
+      names[p.id] = new Map(merged.map(h => [h.date, h.name]))
+    }
+    return { sets, names }
+  }, [staff, holidays, countryHolidaysMap])
+
+  // Absence days per person for leave balance display
+  const [absenceDaysMap, setAbsenceDaysMap] = useState<Record<string, number>>({})
+  useEffect(() => {
+    if (!staff.length) return
+    const fetchDays = async () => {
+      const map: Record<string, number> = {}
+      await Promise.all(staff.map(async (p) => {
+        try { map[p.id] = await absenceService.getPersonAbsenceDays(p.id, globalYear) } catch { map[p.id] = 0 }
+      }))
+      setAbsenceDaysMap(map)
+    }
+    fetchDays()
+  }, [staff, globalYear])
 
   // Selection state for drag
   const [selection, setSelection] = useState<Selection | null>(null)
@@ -265,6 +315,10 @@ export function AbsenceTimeline() {
     if (!selection || !orgId) return
     setSaving(true)
     try {
+      // Check if org has approvers
+      const approvers = await absenceApproverService.list(orgId)
+      const hasApprovers = approvers.length > 0
+
       const dayCount = computeDays(selection)
       await absenceService.create({
         org_id: orgId,
@@ -279,8 +333,46 @@ export function AbsenceTimeline() {
           : null,
         notes: null,
         note: null,
+        status: hasApprovers ? 'pending' : 'approved',
+        requested_by: user?.id ?? null,
       } as any)
-      toast({ title: 'Absence recorded', description: `${dayCount} day${dayCount !== 1 ? 's' : ''} added.` })
+      toast({
+        title: hasApprovers ? 'Request submitted' : 'Absence recorded',
+        description: hasApprovers
+          ? `${dayCount} day${dayCount !== 1 ? 's' : ''} submitted for approval.`
+          : `${dayCount} day${dayCount !== 1 ? 's' : ''} added.`,
+      })
+
+      // Notify approvers
+      if (hasApprovers) {
+        const person = staff.find(p => p.id === selection.personId)
+        const personName = person?.full_name ?? 'A staff member'
+        const approverUserIds = await absenceApproverService.getApproverUserIds(orgId)
+        if (approverUserIds.length > 0) {
+          notificationService.notifyMany({
+            orgId,
+            userIds: approverUserIds,
+            type: 'approval',
+            title: 'Absence Request',
+            message: `${personName} requested ${absenceType}: ${selection.startDate} – ${selection.endDate} (${dayCount} days)`,
+            link: '/absences',
+          }).catch(() => {})
+        }
+        const approverEmails = await absenceApproverService.getApproverEmails(orgId)
+        for (const approver of approverEmails) {
+          emailService.sendAbsenceRequested({
+            to: approver.email,
+            approverName: approver.name,
+            requesterName: personName,
+            absenceType,
+            startDate: selection.startDate,
+            endDate: selection.endDate,
+            days: String(dayCount),
+            absencesUrl: `${window.location.origin}/absences`,
+          }).catch(() => {})
+        }
+      }
+
       setDialogOpen(false)
       setSelection(null)
       refetch()
@@ -343,7 +435,15 @@ export function AbsenceTimeline() {
         </div>
         <div className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-300" />
-          <span>National Holiday</span>
+          <span>Public Holiday</span>
+        </div>
+        <div className="flex items-center gap-1.5 ml-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-amber-500 border border-amber-600" />
+          <span>Pending</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 border border-emerald-600" />
+          <span>Approved</span>
         </div>
       </div>
 
@@ -378,54 +478,85 @@ export function AbsenceTimeline() {
             {/* Staff rows */}
             {staff.map((person) => {
               const absMap = absenceMaps[person.id] || {}
+              const pHolSet = personHolidaySets.sets[person.id] ?? holidaySet
+              const pHolNames = personHolidaySets.names[person.id] ?? holidayNames
+              const used = absenceDaysMap[person.id] ?? 0
+              const total = person.vacation_days_per_year ?? 0
+              const remaining = total - used
               return (
                 <div key={person.id} className="flex border-b last:border-b-0 hover:bg-muted/5">
                   <div
-                    className="shrink-0 px-3 py-0.5 text-xs font-medium border-r flex items-center truncate"
+                    className="shrink-0 px-2 py-0.5 text-xs font-medium border-r flex items-center gap-1.5 truncate"
                     style={{ width: NAME_W }}
-                    title={person.full_name}
+                    title={`${person.full_name} — ${remaining}/${total} days remaining`}
                   >
-                    {person.full_name}
+                    <span className="truncate">{person.full_name}</span>
+                    {total > 0 && (
+                      <span className={cn(
+                        'shrink-0 text-[9px] font-bold tabular-nums px-1 py-0.5 rounded',
+                        remaining <= 0 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                        remaining <= 5 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                        'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                      )}>
+                        {remaining}d
+                      </span>
+                    )}
                   </div>
                   {days.map((day) => {
                     const amAbs = absMap[day.dateStr]?.am?.absence
                     const pmAbs = absMap[day.dateStr]?.pm?.absence
                     const amSel = isDragging && isInSelection(person.id, day.dateStr, 'am')
                     const pmSel = isDragging && isInSelection(person.id, day.dateStr, 'pm')
+                    const isPersonHoliday = !day.isWeekend && pHolSet.has(day.dateStr)
+                    const holName = pHolNames.get(day.dateStr)
+
+                    const statusDot = (abs: Absence | undefined) => {
+                      if (!abs) return null
+                      const s = (abs as any).status as AbsenceStatus | undefined
+                      if (s === 'pending') return 'bg-amber-500'
+                      if (s === 'rejected') return 'bg-red-500'
+                      return null // approved = no extra dot
+                    }
 
                     return (
                       <div
                         key={day.dateStr}
                         className={cn(
-                          'border-r last:border-r-0 flex flex-col cursor-crosshair',
+                          'border-r last:border-r-0 flex flex-col cursor-crosshair relative',
                           day.isWeekend && 'bg-muted/40',
-                          !day.isWeekend && holidaySet.has(day.dateStr) && !amAbs && !pmAbs && 'bg-amber-50 dark:bg-amber-900/20',
+                          isPersonHoliday && !amAbs && !pmAbs && 'bg-amber-50 dark:bg-amber-900/20',
                         )}
                         style={{ width: CELL_W, height: CELL_H * 2 }}
-                        title={holidayNames.get(day.dateStr) ?? undefined}
+                        title={holName ?? undefined}
                       >
                         {/* AM half */}
                         <div
                           className={cn(
-                            'flex-1 border-b border-dashed border-muted-foreground/20 transition-colors',
+                            'flex-1 border-b border-dashed border-muted-foreground/20 transition-colors relative',
                             amAbs && ABSENCE_COLORS_LIGHT[amAbs.type],
+                            !amAbs && isPersonHoliday && 'bg-amber-100/70 dark:bg-amber-900/30',
                             amSel && !amAbs && 'bg-blue-200/60',
                           )}
                           onMouseDown={(e) => { e.preventDefault(); handleMouseDown(person.id, day.dateStr, 'am') }}
                           onMouseEnter={() => handleMouseEnter(person.id, day.dateStr, 'am')}
-                          title={amAbs ? `${amAbs.type} (AM)` : `${day.dateStr} AM`}
-                        />
+                          title={amAbs ? `${amAbs.type} (AM)${(amAbs as any).status ? ` [${(amAbs as any).status}]` : ''}` : holName ? `${holName} (AM)` : `${day.dateStr} AM`}
+                        >
+                          {statusDot(amAbs) && <span className={cn('absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full', statusDot(amAbs))} />}
+                        </div>
                         {/* PM half */}
                         <div
                           className={cn(
-                            'flex-1 transition-colors',
+                            'flex-1 transition-colors relative',
                             pmAbs && ABSENCE_COLORS_LIGHT[pmAbs.type],
+                            !pmAbs && isPersonHoliday && 'bg-amber-100/70 dark:bg-amber-900/30',
                             pmSel && !pmAbs && 'bg-blue-200/60',
                           )}
                           onMouseDown={(e) => { e.preventDefault(); handleMouseDown(person.id, day.dateStr, 'pm') }}
                           onMouseEnter={() => handleMouseEnter(person.id, day.dateStr, 'pm')}
-                          title={pmAbs ? `${pmAbs.type} (PM)` : `${day.dateStr} PM`}
-                        />
+                          title={pmAbs ? `${pmAbs.type} (PM)${(pmAbs as any).status ? ` [${(pmAbs as any).status}]` : ''}` : holName ? `${holName} (PM)` : `${day.dateStr} PM`}
+                        >
+                          {statusDot(pmAbs) && <span className={cn('absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full', statusDot(pmAbs))} />}
+                        </div>
                       </div>
                     )
                   })}

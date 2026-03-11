@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStaff } from '@/hooks/useStaff'
 import type { StaffFilters } from '@/services/staffService'
 import { staffService } from '@/services/staffService'
+import { absenceService } from '@/services/absenceService'
 import { useAuthStore } from '@/stores/authStore'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
@@ -30,6 +31,25 @@ export function StaffList() {
     is_active: activeFilter,
   }
   const { staff, isLoading, refetch } = useStaff(filters)
+
+  // Fetch absence days used per person for the current year
+  const currentYear = new Date().getFullYear()
+  const [absenceDaysMap, setAbsenceDaysMap] = useState<Record<string, number>>({})
+  useEffect(() => {
+    if (!staff.length) return
+    const fetchDays = async () => {
+      const map: Record<string, number> = {}
+      await Promise.all(
+        staff.map(async (p) => {
+          try {
+            map[p.id] = await absenceService.getPersonAbsenceDays(p.id, currentYear)
+          } catch { map[p.id] = 0 }
+        })
+      )
+      setAbsenceDaysMap(map)
+    }
+    fetchDays()
+  }, [staff, currentYear])
 
   const handleDelete = async () => {
     if (!deleteTarget) return
@@ -119,6 +139,7 @@ export function StaffList() {
                   <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Role</th>
                   <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Type</th>
                   <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">FTE</th>
+                  <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Leave Balance</th>
                   <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Status</th>
                   {can('canWrite') && <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Actions</th>}
                 </tr>
@@ -150,6 +171,26 @@ export function StaffList() {
                       <Badge variant="secondary">{person.employment_type}</Badge>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">{person.fte.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right">
+                      {person.vacation_days_per_year != null ? (() => {
+                        const used = absenceDaysMap[person.id] ?? 0
+                        const total = person.vacation_days_per_year ?? 0
+                        const remaining = total - used
+                        return (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className={cn(
+                              'text-xs font-semibold tabular-nums',
+                              remaining <= 0 ? 'text-red-600' : remaining <= 5 ? 'text-amber-600' : 'text-emerald-600'
+                            )}>
+                              {remaining}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">/ {total}d</span>
+                          </div>
+                        )
+                      })() : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <Badge variant={person.is_active ? 'default' : 'outline'}>
                         {person.is_active ? 'Active' : 'Inactive'}

@@ -19,6 +19,9 @@ type EmailTemplate =
   | 'socialWelcome'
   | 'emailChanged'
   | 'passwordChanged'
+  | 'absenceRequested'
+  | 'absenceApproved'
+  | 'absenceRejected'
 
 interface SendEmailOptions {
   template: EmailTemplate
@@ -201,5 +204,45 @@ export const emailService = {
     firstName: string
   }) {
     return sendEmail({ template: 'passwordChanged', to: params.to, params })
+  },
+
+  /** Notify approvers about a new absence request */
+  async sendAbsenceRequested(params: {
+    to: string
+    approverName: string
+    requesterName: string
+    absenceType: string
+    startDate: string
+    endDate: string
+    days: string
+    absencesUrl: string
+  }) {
+    return sendEmail({ template: 'absenceRequested', to: params.to, params })
+  },
+
+  /** Notify employee their absence was approved */
+  async sendAbsenceApproved(params: {
+    to: string
+    employeeName: string
+    absenceType: string
+    startDate: string
+    endDate: string
+    days: string
+    absencesUrl: string
+  }) {
+    return sendEmail({ template: 'absenceApproved', to: params.to, params })
+  },
+
+  /** Notify employee their absence was rejected */
+  async sendAbsenceRejected(params: {
+    to: string
+    employeeName: string
+    absenceType: string
+    startDate: string
+    endDate: string
+    days: string
+    absencesUrl: string
+  }) {
+    return sendEmail({ template: 'absenceRejected', to: params.to, params })
   },
 }

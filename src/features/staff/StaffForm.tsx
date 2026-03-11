@@ -29,6 +29,7 @@ const staffSchema = z.object({
   start_date: z.string().nullable().or(z.literal('')),
   end_date: z.string().nullable().or(z.literal('')),
   annual_salary: z.coerce.number().min(0, 'Must be 0 or greater').nullable().optional(),
+  vacation_days_per_year: z.coerce.number().min(0, 'Must be 0 or greater').nullable().optional(),
   country: z.string().max(2).nullable().or(z.literal('')),
   is_active: z.boolean(),
 }).refine((data) => {
@@ -78,6 +79,7 @@ export function StaffForm() {
       start_date: '',
       end_date: '',
       annual_salary: null,
+      vacation_days_per_year: 25,
       country: '',
       is_active: true,
     },
@@ -95,6 +97,7 @@ export function StaffForm() {
         start_date: person.start_date ?? '',
         end_date: person.end_date ?? '',
         annual_salary: person.annual_salary,
+        vacation_days_per_year: person.vacation_days_per_year ?? 25,
         country: person.country ?? '',
         is_active: person.is_active,
       })
@@ -136,6 +139,7 @@ export function StaffForm() {
         start_date: data.start_date || null,
         end_date: data.end_date || null,
         annual_salary: data.annual_salary ?? null,
+        vacation_days_per_year: data.vacation_days_per_year ?? null,
         country: data.country || null,
         org_id: orgId ?? '',
       }
@@ -336,6 +340,19 @@ export function StaffForm() {
                   <Label htmlFor="end_date">End Date</Label>
                   <Input id="end_date" type="date" {...register('end_date')} />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="vacation_days_per_year">Vacation Days / Year</Label>
+                <Input
+                  id="vacation_days_per_year"
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  {...register('vacation_days_per_year')}
+                  placeholder="e.g. 25"
+                />
+                <p className="text-[11px] text-muted-foreground">Annual leave entitlement in working days</p>
               </div>
 
               {can('canSeeSalary') && (

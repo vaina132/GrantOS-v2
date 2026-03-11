@@ -9,6 +9,7 @@ export type TimesheetStatus = 'Draft' | 'Submitted' | 'Approved' | 'Rejected'
 export type EmploymentType = 'Full-time' | 'Part-time' | 'Contractor'
 export type AbsenceType = 'Annual Leave' | 'Sick Leave' | 'Training' | 'Public Holiday' | 'Other'
 export type AbsencePeriod = 'full' | 'am' | 'pm'
+export type AbsenceStatus = 'pending' | 'approved' | 'rejected' | 'cancelled'
 export type FinancialCategory = 'personnel' | 'travel' | 'subcontracting' | 'other' | 'indirect'
 export type AllocationsMode = 'actual' | 'official' | 'compare'
 export type Granularity = 'monthly' | 'quarterly' | 'annual' | 'custom'
@@ -91,6 +92,7 @@ export interface Person {
   country: string | null
   is_active: boolean
   avatar_url: string | null
+  vacation_days_per_year: number | null
   created_at: string
   updated_at: string
 }
@@ -207,6 +209,7 @@ export interface Holiday {
   org_id: string
   date: string
   name: string
+  country_code: string | null
   created_at: string
 }
 
@@ -222,8 +225,21 @@ export interface Absence {
   date: string | null
   period: AbsencePeriod | null
   note: string | null
+  status: AbsenceStatus
+  approved_by: string | null
+  approved_at: string | null
+  requested_by: string | null
   created_at: string
   updated_at: string
+}
+
+export interface AbsenceApprover {
+  id: string
+  org_id: string
+  person_id: string
+  user_id: string | null
+  created_at: string
+  person?: Person
 }
 
 export interface FinancialBudget {

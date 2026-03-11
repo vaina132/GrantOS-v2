@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { absenceService } from '@/services/absenceService'
+import { absenceApproverService } from '@/services/absenceApproverService'
+import { notificationService } from '@/services/notificationService'
+import { emailService } from '@/services/emailService'
 import { useAuthStore } from '@/stores/authStore'
 import { useAbsences } from '@/hooks/useAbsences'
 import { useStaff } from '@/hooks/useStaff'
@@ -18,17 +21,38 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/use-toast'
-import { Plus, CalendarOff, Trash2, Pencil } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
-import type { Absence, AbsenceType } from '@/types'
+import { Plus, CalendarOff, Trash2, Pencil, Check, X } from 'lucide-react'
+import { formatDate, cn } from '@/lib/utils'
+import type { Absence, AbsenceType, AbsenceStatus } from '@/types'
 
 const ABSENCE_TYPES: AbsenceType[] = ['Annual Leave', 'Sick Leave', 'Training', 'Public Holiday', 'Other']
 
+const STATUS_BADGE: Record<AbsenceStatus, { label: string; className: string }> = {
+  pending: { label: 'Pending', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-300' },
+  approved: { label: 'Approved', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-300' },
+  rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-300' },
+  cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-gray-300' },
+}
+
 export function AbsenceList() {
-  const { orgId, can } = useAuthStore()
+  const { orgId, user, can } = useAuthStore()
   const { staff } = useStaff({ is_active: true })
   const [typeFilter, setTypeFilter] = useState<AbsenceType | undefined>(undefined)
+  const [statusFilter, setStatusFilter] = useState<AbsenceStatus | undefined>(undefined)
   const { absences, isLoading, refetch } = useAbsences({ type: typeFilter })
+  const [approving, setApproving] = useState<string | null>(null)
+  const [hasApprovers, setHasApprovers] = useState(false)
+
+  // Check if org has approvers configured
+  useEffect(() => {
+    if (!orgId) return
+    absenceApproverService.list(orgId).then(a => setHasApprovers(a.length > 0)).catch(() => {})
+  }, [orgId])
+
+  // Filter by status client-side
+  const filteredAbsences = statusFilter
+    ? absences.filter(a => (a as any).status === statusFilter)
+    : absences
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Absence | null>(null)
@@ -81,13 +105,45 @@ export function AbsenceList() {
         period: null,
         notes: notes || null,
         note: notes || null,
+        status: (hasApprovers ? 'pending' : 'approved') as AbsenceStatus,
+        requested_by: user?.id ?? null,
       }
       if (editTarget) {
         await absenceService.update(editTarget.id, payload)
         toast({ title: 'Updated', description: 'Absence updated.' })
       } else {
         await absenceService.create(payload as any)
-        toast({ title: 'Created', description: 'Absence recorded.' })
+        toast({ title: 'Created', description: hasApprovers ? 'Absence request submitted for approval.' : 'Absence recorded.' })
+
+        // Notify approvers if any
+        if (hasApprovers && orgId) {
+          const personName = staff.find(p => p.id === personId)?.full_name ?? 'A staff member'
+          const approverUserIds = await absenceApproverService.getApproverUserIds(orgId)
+          if (approverUserIds.length > 0) {
+            notificationService.notifyMany({
+              orgId,
+              userIds: approverUserIds,
+              type: 'approval',
+              title: 'Absence Request',
+              message: `${personName} requested ${absenceType}: ${startDate} – ${endDate ?? startDate} (${days || '?'} days)`,
+              link: '/absences',
+            }).catch(() => {})
+          }
+          // Send email to approvers
+          const approverEmails = await absenceApproverService.getApproverEmails(orgId)
+          for (const approver of approverEmails) {
+            emailService.sendAbsenceRequested({
+              to: approver.email,
+              approverName: approver.name,
+              requesterName: personName,
+              absenceType,
+              startDate: startDate || '',
+              endDate: endDate || startDate || '',
+              days: days || '?',
+              absencesUrl: `${window.location.origin}/absences`,
+            }).catch(() => {})
+          }
+        }
       }
       setDialogOpen(false)
       refetch()
@@ -96,6 +152,88 @@ export function AbsenceList() {
       toast({ title: 'Error', description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleApprove = async (absence: Absence) => {
+    if (!user || !orgId) return
+    setApproving(absence.id)
+    try {
+      await absenceService.approve(absence.id, user.id)
+      toast({ title: 'Approved', description: 'Absence request approved.' })
+      refetch()
+
+      // Notify the requester
+      const personName = (absence as any).persons?.full_name ?? getPersonName(absence.person_id)
+      if (absence.requested_by) {
+        notificationService.notify({
+          orgId,
+          userId: absence.requested_by,
+          type: 'success',
+          title: 'Absence Approved',
+          message: `Your absence request for ${personName} (${absence.type}: ${formatDate(absence.start_date)} – ${formatDate(absence.end_date)}) has been approved.`,
+          link: '/absences',
+        }).catch(() => {})
+      }
+      // Email the person
+      const person = staff.find(p => p.id === absence.person_id)
+      if (person?.email) {
+        emailService.sendAbsenceApproved({
+          to: person.email,
+          employeeName: person.full_name,
+          absenceType: absence.type,
+          startDate: absence.start_date || '',
+          endDate: absence.end_date || absence.start_date || '',
+          days: String(absence.days ?? ''),
+          absencesUrl: `${window.location.origin}/absences`,
+        }).catch(() => {})
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to approve'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
+    } finally {
+      setApproving(null)
+    }
+  }
+
+  const handleReject = async (absence: Absence) => {
+    if (!user || !orgId) return
+    setApproving(absence.id)
+    try {
+      await absenceService.reject(absence.id, user.id)
+      toast({ title: 'Rejected', description: 'Absence request rejected.' })
+      refetch()
+
+      // Notify the requester
+      const personName = (absence as any).persons?.full_name ?? getPersonName(absence.person_id)
+      if (absence.requested_by) {
+        notificationService.notify({
+          orgId,
+          userId: absence.requested_by,
+          type: 'warning',
+          title: 'Absence Rejected',
+          message: `Your absence request for ${personName} (${absence.type}: ${formatDate(absence.start_date)} – ${formatDate(absence.end_date)}) has been rejected.`,
+          link: '/absences',
+        }).catch(() => {})
+      }
+      // Email the person
+      const person = staff.find(p => p.id === absence.person_id)
+      if (person?.email) {
+        emailService.sendAbsenceRejected({
+          to: person.email,
+          employeeName: person.full_name,
+          absenceType: absence.type,
+          startDate: absence.start_date || '',
+          endDate: absence.end_date || absence.start_date || '',
+          days: String(absence.days ?? ''),
+          absencesUrl: `${window.location.origin}/absences`,
+        }).catch(() => {})
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to reject'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
+    } finally {
+      setApproving(null)
     }
   }
 
@@ -130,29 +268,52 @@ export function AbsenceList() {
         </div>
       )}
 
-      <div className="flex gap-2 flex-wrap">
-        <Button
-          variant={!typeFilter ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setTypeFilter(undefined)}
-        >
-          All Types
-        </Button>
-        {ABSENCE_TYPES.map((t) => (
+      {/* Filters */}
+      <div className="space-y-2">
+        <div className="flex gap-2 flex-wrap">
           <Button
-            key={t}
-            variant={typeFilter === t ? 'default' : 'outline'}
+            variant={!typeFilter ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setTypeFilter(t)}
+            onClick={() => setTypeFilter(undefined)}
           >
-            {t}
+            All Types
           </Button>
-        ))}
+          {ABSENCE_TYPES.map((t) => (
+            <Button
+              key={t}
+              variant={typeFilter === t ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setTypeFilter(t)}
+            >
+              {t}
+            </Button>
+          ))}
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant={!statusFilter ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setStatusFilter(undefined)}
+          >
+            All Status
+          </Button>
+          {(['pending', 'approved', 'rejected', 'cancelled'] as AbsenceStatus[]).map((s) => (
+            <Button
+              key={s}
+              variant={statusFilter === s ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setStatusFilter(s)}
+              className="capitalize"
+            >
+              {s}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {isLoading ? (
         <SkeletonTable columns={6} rows={6} />
-      ) : absences.length === 0 ? (
+      ) : filteredAbsences.length === 0 ? (
         <EmptyState
           icon={CalendarOff}
           title="No absences recorded"
@@ -176,6 +337,7 @@ export function AbsenceList() {
                   <th className="px-4 py-2 text-left font-medium">Start</th>
                   <th className="px-4 py-2 text-left font-medium">End</th>
                   <th className="px-4 py-2 text-right font-medium">Days</th>
+                  <th className="px-4 py-2 text-center font-medium">Status</th>
                   <th className="px-4 py-2 text-left font-medium">Notes</th>
                   {can('canManageAllocations') && (
                     <th className="px-4 py-2 text-right font-medium">Actions</th>
@@ -183,34 +345,70 @@ export function AbsenceList() {
                 </tr>
               </thead>
               <tbody>
-                {absences.map((absence) => (
-                  <tr key={absence.id} className="border-b last:border-0 hover:bg-muted/20">
-                    <td className="px-4 py-2 font-medium">
-                      {(absence as any).persons?.full_name ?? getPersonName(absence.person_id)}
-                    </td>
-                    <td className="px-4 py-2">
-                      <Badge variant="secondary">{absence.type}</Badge>
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground">{formatDate(absence.start_date)}</td>
-                    <td className="px-4 py-2 text-muted-foreground">{formatDate(absence.end_date)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{absence.days ?? '—'}</td>
-                    <td className="px-4 py-2 text-muted-foreground text-xs max-w-[200px] truncate">
-                      {absence.notes ?? absence.note ?? '—'}
-                    </td>
-                    {can('canManageAllocations') && (
-                      <td className="px-4 py-2 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(absence)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(absence)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
+                {filteredAbsences.map((absence) => {
+                  const status = ((absence as any).status as AbsenceStatus) || 'approved'
+                  const badge = STATUS_BADGE[status]
+                  return (
+                    <tr key={absence.id} className="border-b last:border-0 hover:bg-muted/20">
+                      <td className="px-4 py-2 font-medium">
+                        {(absence as any).persons?.full_name ?? getPersonName(absence.person_id)}
                       </td>
-                    )}
-                  </tr>
-                ))}
+                      <td className="px-4 py-2">
+                        <Badge variant="secondary">{absence.type}</Badge>
+                      </td>
+                      <td className="px-4 py-2 text-muted-foreground">{formatDate(absence.start_date)}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{formatDate(absence.end_date)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{absence.days ?? '—'}</td>
+                      <td className="px-4 py-2 text-center">
+                        <span className={cn(
+                          'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border',
+                          badge.className,
+                        )}>
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-muted-foreground text-xs max-w-[200px] truncate">
+                        {absence.notes ?? absence.note ?? '—'}
+                      </td>
+                      {can('canManageAllocations') && (
+                        <td className="px-4 py-2 text-right">
+                          <div className="flex justify-end gap-1">
+                            {status === 'pending' && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                  onClick={() => handleApprove(absence)}
+                                  disabled={approving === absence.id}
+                                  title="Approve"
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => handleReject(absence)}
+                                  disabled={approving === absence.id}
+                                  title="Reject"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(absence)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteTarget(absence)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

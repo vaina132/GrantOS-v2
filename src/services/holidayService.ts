@@ -34,9 +34,9 @@ export const holidayService = {
     return (data ?? []) as Holiday[]
   },
 
-  async create(orgId: string, date: string, name: string): Promise<Holiday> {
+  async create(orgId: string, date: string, name: string, countryCode?: string): Promise<Holiday> {
     const { data, error } = await holidays()
-      .insert({ org_id: orgId, date, name })
+      .insert({ org_id: orgId, date, name, country_code: countryCode ?? null })
       .select()
       .single()
 
@@ -51,12 +51,26 @@ export const holidayService = {
     if (error) throw error
   },
 
-  async bulkCreate(orgId: string, items: { date: string; name: string }[]): Promise<number> {
+  async bulkCreate(orgId: string, items: { date: string; name: string }[], countryCode?: string): Promise<number> {
     if (items.length === 0) return 0
-    const rows = items.map(h => ({ org_id: orgId, date: h.date, name: h.name }))
+    const rows = items.map(h => ({ org_id: orgId, date: h.date, name: h.name, country_code: countryCode ?? null }))
     const { error } = await holidays()
       .upsert(rows, { onConflict: 'org_id,date' })
     if (error) throw error
     return rows.length
+  },
+
+  /** List holidays for a given country code (used for per-person filtering) */
+  async listByCountry(orgId: string, year: number, countryCode: string): Promise<Holiday[]> {
+    const { data, error } = await holidays()
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('country_code', countryCode)
+      .gte('date', `${year}-01-01`)
+      .lte('date', `${year}-12-31`)
+      .order('date')
+
+    if (error) throw error
+    return (data ?? []) as Holiday[]
   },
 }
