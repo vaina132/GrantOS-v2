@@ -1,6 +1,11 @@
 import { supabase } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
-import jsPDF from 'jspdf'
+import {
+  generateProjectSummaryPDF,
+  generateFinancialReportPDF,
+  generateTimesheetReportPDF,
+} from './reportGenerator'
+import type { Project, Person, TimesheetEntry } from '@/types'
 
 export type ReportType =
   | 'project_summary'
@@ -132,36 +137,119 @@ export const reportService = {
   },
 
   async generatePdf(orgId: string, year: number, type: ReportType): Promise<void> {
-    const { headers, rows } = await fetchReportData(orgId, year, type)
-    const doc = new jsPDF({ orientation: 'landscape' })
+    // Fetch org name for report header
+    const { data: org } = await supabase
+      .from('organisations')
+      .select('name')
+      .eq('id', orgId)
+      .single()
+    const orgName = (org as any)?.name ?? ''
 
-    doc.setFontSize(16)
-    doc.text(`${REPORT_TYPES[type].label} — ${year}`, 14, 20)
-    doc.setFontSize(10)
+    switch (type) {
+      case 'project_summary': {
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('*, funding_schemes(*)')
+          .eq('org_id', orgId)
+          .order('acronym')
+        const { data: staff } = await supabase
+          .from('persons')
+          .select('*')
+          .eq('org_id', orgId)
+        const { data: assignments } = await supabase
+          .from('assignments')
+          .select('person_id, pms')
+          .eq('org_id', orgId)
+          .eq('year', year)
+          .eq('type', 'actual')
 
-    let y = 35
-    const colWidth = (doc.internal.pageSize.getWidth() - 28) / headers.length
-
-    // Headers
-    doc.setFont('helvetica', 'bold')
-    headers.forEach((h, i) => {
-      doc.text(String(h), 14 + i * colWidth, y)
-    })
-    doc.setFont('helvetica', 'normal')
-    y += 8
-
-    // Rows
-    for (const row of rows) {
-      if (y > doc.internal.pageSize.getHeight() - 20) {
-        doc.addPage()
-        y = 20
+        const proj = (projects ?? [])[0] as Project | undefined
+        if (proj) {
+          generateProjectSummaryPDF(
+            proj,
+            (staff ?? []) as Person[],
+            (assignments ?? []) as { person_id: string; pms: number }[],
+            orgName,
+          )
+        }
+        break
       }
-      row.forEach((cell, i) => {
-        doc.text(String(cell ?? ''), 14 + i * colWidth, y)
-      })
-      y += 6
-    }
+      case 'budget_overview': {
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('org_id', orgId)
+          .order('acronym')
+        const { data: expenses } = await supabase
+          .from('project_expenses')
+          .select('project_id, category, amount, description, expense_date')
+          .eq('org_id', orgId)
 
-    doc.save(`${type}_${year}.pdf`)
+        generateFinancialReportPDF(
+          (projects ?? []) as Project[],
+          (expenses ?? []).map((e: any) => ({ project_id: e.project_id, category: e.category, amount: e.amount, description: e.description ?? '', date: e.expense_date ?? '' })),
+          orgName,
+        )
+        break
+      }
+      case 'timesheet_summary': {
+        const { data: entries } = await supabase
+          .from('timesheet_entries')
+          .select('*')
+          .eq('org_id', orgId)
+          .eq('year', year)
+        const { data: staff } = await supabase
+          .from('persons')
+          .select('*')
+          .eq('org_id', orgId)
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('org_id', orgId)
+
+        generateTimesheetReportPDF(
+          (entries ?? []) as TimesheetEntry[],
+          (staff ?? []) as Person[],
+          (projects ?? []) as Project[],
+          year,
+          orgName,
+        )
+        break
+      }
+      default: {
+        // Fallback: use the generic table approach for staff_allocations and absence_summary
+        const { headers, rows } = await fetchReportData(orgId, year, type)
+        const jsPDF = (await import('jspdf')).default
+        const doc = new jsPDF({ orientation: 'landscape' })
+
+        doc.setFontSize(16)
+        doc.text(`${REPORT_TYPES[type].label} — ${year}`, 14, 20)
+        doc.setFontSize(10)
+
+        let y = 35
+        const colWidth = (doc.internal.pageSize.getWidth() - 28) / headers.length
+
+        doc.setFont('helvetica', 'bold')
+        headers.forEach((h, i) => {
+          doc.text(String(h), 14 + i * colWidth, y)
+        })
+        doc.setFont('helvetica', 'normal')
+        y += 8
+
+        for (const row of rows) {
+          if (y > doc.internal.pageSize.getHeight() - 20) {
+            doc.addPage()
+            y = 20
+          }
+          row.forEach((cell, i) => {
+            doc.text(String(cell ?? ''), 14 + i * colWidth, y)
+          })
+          y += 6
+        }
+
+        doc.save(`${type}_${year}.pdf`)
+        break
+      }
+    }
   },
 }

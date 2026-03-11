@@ -2,6 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   FolderKanban,
+  Lightbulb,
   Users,
   CalendarDays,
   ClipboardCheck,
@@ -41,6 +42,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { path: '/projects', label: 'Projects', icon: FolderKanban },
+      { path: '/proposals', label: 'Proposals', icon: Lightbulb, permission: 'canSeeProposals' },
       { path: '/staff', label: 'Staff', icon: Users },
     ],
   },

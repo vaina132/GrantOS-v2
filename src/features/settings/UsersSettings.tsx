@@ -18,6 +18,7 @@ import { ConfirmModal } from '@/components/common/ConfirmModal'
 import { toast } from '@/components/ui/use-toast'
 import { Plus, Trash2 } from 'lucide-react'
 import { emailService } from '@/services/emailService'
+import { notificationService } from '@/services/notificationService'
 import type { OrgRole } from '@/types'
 
 interface OrgMember {
@@ -134,6 +135,20 @@ export function UsersSettings() {
         signUpUrl: `${baseUrl}/signup`,
       }).catch(() => { /* non-blocking */ })
 
+      // In-app notification to admins about the new member
+      if (orgId) {
+        notificationService.getAdminUserIds(orgId).then((adminIds) => {
+          notificationService.notifyMany({
+            orgId,
+            userIds: adminIds.filter((id) => id !== user?.id),
+            type: 'invitation',
+            title: 'New member invited',
+            message: `${inviteEmail} has been invited as ${inviteRole}.`,
+            link: '/settings',
+          }).catch(() => {})
+        }).catch(() => {})
+      }
+
       setInviteOpen(false)
       setInviteEmail('')
       fetchMembers()
@@ -166,6 +181,18 @@ export function UsersSettings() {
           newRole: newRole,
           dashboardUrl: `${baseUrl}/dashboard`,
         }).catch(() => { /* non-blocking */ })
+      }
+
+      // In-app notification to the affected user
+      if (orgId) {
+        notificationService.notify({
+          orgId,
+          userId: member.user_id,
+          type: 'info',
+          title: 'Your role has changed',
+          message: `Your role was changed from ${member.role} to ${newRole}.`,
+          link: '/dashboard',
+        }).catch(() => {})
       }
 
       fetchMembers()

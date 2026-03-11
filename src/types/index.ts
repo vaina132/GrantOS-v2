@@ -57,6 +57,7 @@ export interface RolePermission {
   can_see_import: boolean
   can_see_audit: boolean
   can_see_guests: boolean
+  can_see_proposals: boolean
   // Data privacy
   can_see_salary_info: boolean
   can_see_financial_details: boolean
@@ -269,6 +270,43 @@ export interface UserPreferences {
   email_trial_expiring: boolean
   created_at: string
   updated_at: string
+}
+
+export type ProposalStatus = 'In Preparation' | 'Submitted' | 'Rejected' | 'Granted'
+
+export interface Proposal {
+  id: string
+  org_id: string
+  project_name: string
+  call_identifier: string
+  funding_scheme: string
+  submission_deadline: string | null
+  expected_decision: string | null
+  our_pms: number
+  personnel_budget: number
+  travel_budget: number
+  subcontracting_budget: number
+  other_budget: number
+  status: ProposalStatus
+  converted_project_id: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type NotificationType = 'info' | 'success' | 'warning' | 'assignment' | 'approval' | 'alert' | 'invitation' | 'system'
+
+export interface AppNotification {
+  id: string
+  org_id: string
+  user_id: string
+  type: NotificationType
+  title: string
+  message: string
+  link: string | null
+  is_read: boolean
+  created_at: string
 }
 
 export interface FundingScheme {

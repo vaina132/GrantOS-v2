@@ -14,6 +14,7 @@ export interface Permissions {
   canSeeImport: boolean
   canSeeAudit: boolean
   canSeeGuests: boolean
+  canSeeProposals: boolean
   // Data privacy
   canSeeSalary: boolean
   canSeeFinancialDetails: boolean
@@ -47,6 +48,7 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permissions> = {
     canSeeImport: true,
     canSeeAudit: true,
     canSeeGuests: true,
+    canSeeProposals: true,
     canSeeSalary: true,
     canSeeFinancialDetails: true,
     canSeePersonnelRates: true,
@@ -73,6 +75,7 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permissions> = {
     canSeeImport: false,
     canSeeAudit: false,
     canSeeGuests: false,
+    canSeeProposals: true,
     canSeeSalary: false,
     canSeeFinancialDetails: true,
     canSeePersonnelRates: false,
@@ -99,6 +102,7 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permissions> = {
     canSeeImport: false,
     canSeeAudit: true,
     canSeeGuests: false,
+    canSeeProposals: true,
     canSeeSalary: true,
     canSeeFinancialDetails: true,
     canSeePersonnelRates: true,
@@ -125,6 +129,7 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permissions> = {
     canSeeImport: false,
     canSeeAudit: false,
     canSeeGuests: false,
+    canSeeProposals: false,
     canSeeSalary: false,
     canSeeFinancialDetails: false,
     canSeePersonnelRates: false,
@@ -151,6 +156,7 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permissions> = {
     canSeeImport: false,
     canSeeAudit: false,
     canSeeGuests: false,
+    canSeeProposals: false,
     canSeeSalary: false,
     canSeeFinancialDetails: false,
     canSeePersonnelRates: false,
@@ -180,6 +186,7 @@ const GUEST_PERMISSIONS: Record<GuestAccessLevel, Permissions> = {
     canSeeImport: false,
     canSeeAudit: false,
     canSeeGuests: false,
+    canSeeProposals: false,
     canSeeSalary: false,
     canSeeFinancialDetails: false,
     canSeePersonnelRates: false,
@@ -206,6 +213,7 @@ const GUEST_PERMISSIONS: Record<GuestAccessLevel, Permissions> = {
     canSeeImport: false,
     canSeeAudit: false,
     canSeeGuests: false,
+    canSeeProposals: false,
     canSeeSalary: false,
     canSeeFinancialDetails: false,
     canSeePersonnelRates: false,
@@ -236,6 +244,7 @@ export function rolePermissionToPermissions(rp: RolePermission): Permissions {
     canSeeImport: rp.can_see_import,
     canSeeAudit: rp.can_see_audit,
     canSeeGuests: rp.can_see_guests,
+    canSeeProposals: rp.can_see_proposals ?? true,
     canSeeSalary: rp.can_see_salary_info,
     canSeeFinancialDetails: rp.can_see_financial_details,
     canSeePersonnelRates: rp.can_see_personnel_rates,
@@ -273,6 +282,7 @@ export const DEFAULT_PERMISSIONS: Permissions = {
   canSeeImport: false,
   canSeeAudit: false,
   canSeeGuests: false,
+  canSeeProposals: false,
   canSeeSalary: false,
   canSeeFinancialDetails: false,
   canSeePersonnelRates: false,
@@ -306,5 +316,6 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { path: '/import', minPermission: 'canSeeImport' },
   { path: '/audit', minPermission: 'canSeeAudit' },
   { path: '/guests', minPermission: 'canSeeGuests' },
+  { path: '/proposals', minPermission: 'canSeeProposals' },
   { path: '/settings', minPermission: 'canManageOrg' },
 ]

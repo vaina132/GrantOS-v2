@@ -23,6 +23,7 @@ import { ImportPage } from '@/features/import/ImportPage'
 import { AuditPage } from '@/features/audit/AuditPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { GuestAccessPage } from '@/features/guests/GuestAccessPage'
+import { ProposalsPage } from '@/features/proposals/ProposalsPage'
 import { ProfileSettingsPage } from '@/features/profile/ProfileSettingsPage'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -146,6 +147,14 @@ export default function App() {
                         element={
                           <ProtectedRoute permission="canSeeGuests">
                             <GuestAccessPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/proposals"
+                        element={
+                          <ProtectedRoute permission="canSeeProposals">
+                            <ProposalsPage />
                           </ProtectedRoute>
                         }
                       />

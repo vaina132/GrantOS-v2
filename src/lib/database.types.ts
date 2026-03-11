@@ -1142,6 +1142,121 @@ export type Database = {
           },
         ]
       }
+      proposals: {
+        Row: {
+          id: string
+          org_id: string
+          project_name: string
+          call_identifier: string
+          funding_scheme: string
+          submission_deadline: string | null
+          expected_decision: string | null
+          our_pms: number
+          personnel_budget: number
+          travel_budget: number
+          subcontracting_budget: number
+          other_budget: number
+          status: string
+          converted_project_id: string | null
+          notes: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          project_name: string
+          call_identifier?: string
+          funding_scheme?: string
+          submission_deadline?: string | null
+          expected_decision?: string | null
+          our_pms?: number
+          personnel_budget?: number
+          travel_budget?: number
+          subcontracting_budget?: number
+          other_budget?: number
+          status?: string
+          converted_project_id?: string | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          project_name?: string
+          call_identifier?: string
+          funding_scheme?: string
+          submission_deadline?: string | null
+          expected_decision?: string | null
+          our_pms?: number
+          personnel_budget?: number
+          travel_budget?: number
+          subcontracting_budget?: number
+          other_budget?: number
+          status?: string
+          converted_project_id?: string | null
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'proposals_org_id_fkey'
+            columns: ['org_id']
+            isOneToOne: false
+            referencedRelation: 'organisations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          id: string
+          org_id: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          link: string | null
+          is_read: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          link?: string | null
+          is_read?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          message?: string
+          link?: string | null
+          is_read?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_org_id_fkey'
+            columns: ['org_id']
+            isOneToOne: false
+            referencedRelation: 'organisations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       period_locks: {
         Row: {
           id: string

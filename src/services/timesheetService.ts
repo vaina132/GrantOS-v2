@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { emailService } from './emailService'
+import { notificationService } from './notificationService'
 import type { TimesheetEntry, TimesheetStatus, TimesheetDay } from '@/types'
 import { hoursToPm } from '@/lib/pmUtils'
 
@@ -194,6 +195,29 @@ export const timesheetService = {
               }
             }).catch(() => {})
         }
+      }).catch(() => {})
+    }).catch(() => {})
+
+    // Fire-and-forget: in-app notifications for admins/approvers
+    const MONTHS2 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    const period2 = `${MONTHS2[month - 1]} ${year}`
+    Promise.resolve(
+      supabase
+        .from('persons')
+        .select('full_name')
+        .eq('id', personId)
+        .single()
+    ).then(({ data: person2 }) => {
+      const name = (person2 as any)?.full_name ?? 'A team member'
+      notificationService.getAdminUserIds(orgId).then((adminIds) => {
+        notificationService.notifyMany({
+          orgId,
+          userIds: adminIds.filter((id) => id !== userId),
+          type: 'approval',
+          title: 'Timesheet submitted',
+          message: `${name} submitted their timesheet for ${period2}.`,
+          link: '/timesheets',
+        }).catch(() => {})
       }).catch(() => {})
     }).catch(() => {})
   },

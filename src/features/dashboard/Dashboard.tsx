@@ -1,9 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useProjects } from '@/hooks/useProjects'
 import { useStaff } from '@/hooks/useStaff'
 import { useAssignments } from '@/hooks/useAllocations'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
+import { proposalService } from '@/services/proposalService'
+import type { Proposal } from '@/types'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -16,6 +18,7 @@ import {
   CalendarDays,
   DollarSign,
   AlertTriangle,
+  Lightbulb,
 } from 'lucide-react'
 import {
   BarChart,
@@ -37,11 +40,19 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function Dashboard() {
   const navigate = useNavigate()
-  const { can } = useAuthStore()
+  const { can, orgId } = useAuthStore()
   const { globalYear } = useUiStore()
   const { projects, isLoading: loadingProjects } = useProjects()
   const { staff, isLoading: loadingStaff } = useStaff({})
   const { assignments, isLoading: loadingAssignments } = useAssignments('actual')
+
+  const [proposals, setProposals] = useState<Proposal[]>([])
+
+  useEffect(() => {
+    if (orgId) {
+      proposalService.list(orgId).then(setProposals).catch(() => {})
+    }
+  }, [orgId])
 
   const isLoading = loadingProjects || loadingStaff || loadingAssignments
 
@@ -130,6 +141,7 @@ export function Dashboard() {
           { label: 'Staff', value: kpis.totalStaff, sub: `${kpis.activeStaff} active`, icon: Users, color: 'text-emerald-600', href: '/staff' },
           ...(can('canSeeFinancialDetails') ? [{ label: 'Total Budget', value: formatCurrency(kpis.totalBudget), sub: 'across all projects', icon: DollarSign, color: 'text-amber-600', href: '/financials' }] : []),
           { label: 'Person-Months', value: kpis.totalPms, sub: `allocated in ${globalYear}`, icon: CalendarDays, color: 'text-purple-600', href: '/allocations' },
+          ...(can('canSeeProposals') ? [{ label: 'Proposals', value: proposals.length, sub: `${proposals.filter(p => p.status === 'Submitted').length} submitted`, icon: Lightbulb, color: 'text-orange-500', href: '/proposals' }] : []),
         ].map((kpi) => (
           <Card
             key={kpi.label}

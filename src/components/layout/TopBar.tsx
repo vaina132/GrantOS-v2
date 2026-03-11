@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { getYearOptions, cn } from '@/lib/utils'
 import { differenceInDays } from 'date-fns'
+import { NotificationBell } from '@/components/layout/NotificationBell'
 
 export function TopBar() {
   const navigate = useNavigate()
@@ -58,6 +59,7 @@ export function TopBar() {
         >
           {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
+        <NotificationBell />
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
