@@ -52,7 +52,28 @@ export function UsersSettings() {
         .order('created_at')
 
       if (error) throw error
-      setMembers((data ?? []) as OrgMember[])
+      const rows = (data ?? []) as OrgMember[]
+
+      // Resolve emails from user IDs via server-side API
+      if (rows.length > 0) {
+        try {
+          const res = await fetch('/api/resolve-emails', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userIds: rows.map((r) => r.user_id) }),
+          })
+          if (res.ok) {
+            const { emails } = await res.json()
+            for (const row of rows) {
+              row.user_email = emails[row.user_id] ?? undefined
+            }
+          }
+        } catch {
+          // Non-critical — emails just won't display
+        }
+      }
+
+      setMembers(rows)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load members'
       toast({ title: 'Error', description: message, variant: 'destructive' })
@@ -69,50 +90,54 @@ export function UsersSettings() {
     if (!orgId || !inviteEmail) return
     setSaving(true)
     try {
-      // Look up user by email
-      const { data: users } = await supabase
-        .from('auth.users' as any)
-        .select('id')
-        .eq('email', inviteEmail)
-        .maybeSingle()
+      // Call server-side API that can use the service role key to
+      // create/find the auth user and insert the org_members row.
+      const res = await fetch('/api/invite-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: inviteEmail,
+          orgId,
+          role: inviteRole,
+          invitedBy: user?.id,
+        }),
+      })
 
-      if (!users) {
+      const data = await res.json()
+
+      if (!res.ok) {
         toast({
-          title: 'User not found',
-          description: 'The user must sign up first before being added to the organisation.',
+          title: res.status === 409 ? 'Already a member' : 'Error',
+          description: data.error ?? 'Failed to invite member',
           variant: 'destructive',
         })
         setSaving(false)
         return
       }
 
-      const { error } = await supabase
-        .from('org_members')
-        .insert({
-          user_id: (users as any).id,
-          org_id: orgId,
-          role: inviteRole,
-          invited_by: user?.id,
-        })
+      const isNew = data.isNewUser
+      toast({
+        title: isNew ? 'Invitation sent' : 'Member added',
+        description: isNew
+          ? `An invitation email has been sent to ${inviteEmail}.`
+          : `${inviteEmail} added as ${inviteRole}.`,
+      })
 
-      if (error) throw error
-      toast({ title: 'Member added', description: `${inviteEmail} added as ${inviteRole}.` })
-
-      // Send invitation email (fire-and-forget)
+      // Send GrantOS-branded invitation email (fire-and-forget)
       const baseUrl = window.location.origin
       emailService.sendInvitation({
         invitedEmail: inviteEmail,
         orgName: orgName ?? 'your organisation',
         role: inviteRole,
         invitedByName: user?.email ?? 'An administrator',
-        signUpUrl: `${baseUrl}/login`,
+        signUpUrl: `${baseUrl}/signup`,
       }).catch(() => { /* non-blocking */ })
 
       setInviteOpen(false)
       setInviteEmail('')
       fetchMembers()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to add member'
+      const message = err instanceof Error ? err.message : 'Failed to invite member'
       toast({ title: 'Error', description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
@@ -189,7 +214,7 @@ export function UsersSettings() {
               <table className="w-full text-sm min-w-[640px]">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-2 text-left font-medium">User ID</th>
+                    <th className="px-4 py-2 text-left font-medium">Member</th>
                     <th className="px-4 py-2 text-left font-medium">Role</th>
                     <th className="px-4 py-2 text-left font-medium">Joined</th>
                     <th className="px-4 py-2 text-right font-medium">Actions</th>
@@ -198,12 +223,13 @@ export function UsersSettings() {
                 <tbody>
                   {members.map((m) => (
                     <tr key={m.id} className="border-b last:border-0">
-                      <td className="px-4 py-2 text-xs font-mono">
-                        {m.user_id === user?.id ? (
-                          <span>{m.user_id.slice(0, 8)}... <Badge variant="secondary" className="ml-1">You</Badge></span>
-                        ) : (
-                          `${m.user_id.slice(0, 8)}...`
-                        )}
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm">{m.user_email ?? `${m.user_id.slice(0, 8)}...`}</span>
+                          {m.user_id === user?.id && (
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">You</Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-2">
                         <select
