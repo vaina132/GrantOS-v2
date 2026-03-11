@@ -5,8 +5,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/use-toast'
 import { Eye, EyeOff, CheckCircle2, Shield, Zap, CreditCard } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
-import { setSignUpInProgress } from '@/stores/authStore'
+import { createClient } from '@supabase/supabase-js'
+
+// Dedicated Supabase client for signup only — no session persistence,
+// so it won't trigger auth listeners or interfere with the app's auth state.
+const signupClient = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY,
+  { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } }
+)
 
 export function SignUpPage() {
   const navigate = useNavigate()
@@ -44,7 +51,6 @@ export function SignUpPage() {
 
     // Honeypot check — if the hidden field is filled, it's a bot
     if (honeypotRef.current?.value) {
-      // Silently reject
       toast({ title: 'Account created', description: 'Check your email to confirm.' })
       return
     }
@@ -70,10 +76,11 @@ export function SignUpPage() {
     }
 
     setLoading(true)
-    setSignUpInProgress(true)
     try {
-      console.log('[SignUp] Calling supabase.auth.signUp for:', email)
-      const { data, error } = await supabase.auth.signUp({
+      // Use a separate Supabase client with NO session persistence.
+      // This ensures the signup call doesn't trigger auth state listeners
+      // which would cause App.tsx to redirect away from the signup page.
+      const { data, error } = await signupClient.auth.signUp({
         email,
         password,
         options: {
@@ -84,12 +91,6 @@ export function SignUpPage() {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       })
-      console.log('[SignUp] Response:', {
-        error: error?.message,
-        userId: data?.user?.id,
-        identities: data?.user?.identities?.length,
-        confirmed: data?.user?.email_confirmed_at,
-      })
 
       if (error) throw error
 
@@ -98,25 +99,18 @@ export function SignUpPage() {
         throw new Error('An account with this email already exists. Please sign in instead.')
       }
 
-      // Sign out immediately so the auth listener doesn't redirect away
-      // The user must confirm their email before they can log in
-      await supabase.auth.signOut()
-      console.log('[SignUp] Signed out after signup, showing success screen')
-
       setSuccess(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign up failed.'
-      console.error('[SignUp] Error:', message)
       toast({ title: 'Error', description: message, variant: 'destructive' })
     } finally {
-      setSignUpInProgress(false)
       setLoading(false)
     }
   }
 
   const handleResendEmail = async () => {
     try {
-      const { error } = await supabase.auth.resend({
+      const { error } = await signupClient.auth.resend({
         type: 'signup',
         email,
         options: { emailRedirectTo: `${window.location.origin}/auth/callback` },

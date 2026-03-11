@@ -33,9 +33,6 @@ interface AuthState {
 }
 
 let initialized = false
-// Flag to prevent auth listener from interfering during signup
-let signUpInProgress = false
-export function setSignUpInProgress(v: boolean) { signUpInProgress = v }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
@@ -80,12 +77,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        // Skip if signup is in progress — we don't want to set user state
-        // which would cause App.tsx to redirect away from the signup page
-        if (signUpInProgress) {
-          console.log('[Auth] Ignoring SIGNED_IN during signup flow')
-          return
-        }
         // Only reload context if user changed (avoid duplicate on init)
         const current = get().user
         if (current?.id !== session.user.id) {
