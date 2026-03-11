@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { staffService } from '@/services/staffService'
 import { settingsService } from '@/services/settingsService'
+import { avatarService } from '@/services/avatarService'
 import { useAuthStore } from '@/stores/authStore'
 import { useStaffMember } from '@/hooks/useStaff'
+import { PersonAvatar } from '@/components/common/PersonAvatar'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +16,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
-import { ArrowLeft, Save } from 'lucide-react'
+import { ArrowLeft, Save, Upload, X } from 'lucide-react'
 import { COUNTRIES } from '@/data/countries'
 
 const staffSchema = z.object({
@@ -28,7 +30,6 @@ const staffSchema = z.object({
   end_date: z.string().nullable().or(z.literal('')),
   annual_salary: z.coerce.number().min(0, 'Must be 0 or greater').nullable().optional(),
   country: z.string().max(2).nullable().or(z.literal('')),
-  avatar_url: z.string().url('Must be a valid URL').nullable().or(z.literal('')),
   is_active: z.boolean(),
 }).refine((data) => {
   if (data.start_date && data.end_date) {
@@ -47,6 +48,11 @@ export function StaffForm() {
   const { person, isLoading: loadingPerson } = useStaffMember(isEdit ? id : undefined)
   const [saving, setSaving] = useState(false)
   const [departments, setDepartments] = useState<string[]>([])
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [existingAvatarUrl, setExistingAvatarUrl] = useState<string | null>(null)
+  const [removeAvatar, setRemoveAvatar] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!orgId) return
@@ -73,7 +79,6 @@ export function StaffForm() {
       end_date: '',
       annual_salary: null,
       country: '',
-      avatar_url: '',
       is_active: true,
     },
   })
@@ -91,11 +96,34 @@ export function StaffForm() {
         end_date: person.end_date ?? '',
         annual_salary: person.annual_salary,
         country: person.country ?? '',
-        avatar_url: person.avatar_url ?? '',
         is_active: person.is_active,
       })
+      setExistingAvatarUrl(person.avatar_url ?? null)
     }
   }, [person, reset])
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file', description: 'Please select an image file (JPG, PNG, etc.)', variant: 'destructive' })
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: 'File too large', description: 'Maximum file size is 2 MB.', variant: 'destructive' })
+      return
+    }
+    setAvatarFile(file)
+    setAvatarPreview(URL.createObjectURL(file))
+    setRemoveAvatar(false)
+  }
+
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null)
+    setAvatarPreview(null)
+    setRemoveAvatar(true)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const onSubmit = async (data: StaffFormData) => {
     setSaving(true)
@@ -109,16 +137,27 @@ export function StaffForm() {
         end_date: data.end_date || null,
         annual_salary: data.annual_salary ?? null,
         country: data.country || null,
-        avatar_url: data.avatar_url || null,
         org_id: orgId ?? '',
       }
 
+      let savedPerson: { id: string }
       if (isEdit) {
         await staffService.update(id, payload)
+        savedPerson = { id }
         toast({ title: 'Updated', description: `${data.full_name} has been updated.` })
       } else {
-        await staffService.create(payload as Parameters<typeof staffService.create>[0])
+        const created = await staffService.create(payload as Parameters<typeof staffService.create>[0])
+        savedPerson = created
         toast({ title: 'Created', description: `${data.full_name} has been added.` })
+      }
+
+      // Handle avatar upload / removal
+      if (avatarFile && orgId) {
+        const url = await avatarService.upload(orgId, savedPerson.id, avatarFile)
+        await staffService.update(savedPerson.id, { avatar_url: url })
+      } else if (removeAvatar && orgId) {
+        await avatarService.remove(orgId, savedPerson.id)
+        await staffService.update(savedPerson.id, { avatar_url: null })
       }
       navigate('/staff')
     } catch (err) {
@@ -226,12 +265,49 @@ export function StaffForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="avatar_url">Photo URL <span className="text-muted-foreground font-normal">(optional)</span></Label>
-                <Input id="avatar_url" {...register('avatar_url')} placeholder="https://example.com/photo.jpg" />
-                {errors.avatar_url && (
-                  <p className="text-sm text-destructive">{errors.avatar_url.message}</p>
-                )}
-                <p className="text-[11px] text-muted-foreground">A direct link to a profile photo. Will be shown as a small circle next to the person's name.</p>
+                <Label>Photo <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <div className="flex items-center gap-4">
+                  {/* Preview */}
+                  {(avatarPreview || (existingAvatarUrl && !removeAvatar)) ? (
+                    <div className="relative">
+                      <img
+                        src={avatarPreview || existingAvatarUrl!}
+                        alt="Avatar preview"
+                        className="h-14 w-14 rounded-full object-cover border"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveAvatar}
+                        className="absolute -top-1 -right-1 rounded-full bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center hover:bg-destructive/80"
+                        title="Remove photo"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <PersonAvatar name={person?.full_name || 'New'} size="md" className="h-14 w-14 text-base" />
+                  )}
+                  <div className="space-y-1.5">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                      id="avatar-upload"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="mr-1.5 h-3.5 w-3.5" />
+                      {existingAvatarUrl && !removeAvatar ? 'Change photo' : 'Upload photo'}
+                    </Button>
+                    <p className="text-[11px] text-muted-foreground">JPG, PNG or GIF. Max 2 MB.</p>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
