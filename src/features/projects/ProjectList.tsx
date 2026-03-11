@@ -119,6 +119,7 @@ export function ProjectList() {
                   <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Acronym</th>
                   <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Title</th>
                   <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Scheme</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Lead</th>
                   <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Status</th>
                   <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Period</th>
                   {can('canSeeFinancialDetails') && <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Budget</th>}
@@ -141,6 +142,9 @@ export function ProjectList() {
                     <td className="px-4 py-3 max-w-xs truncate">{project.title}</td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {project.funding_schemes?.name ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
+                      {project.responsible_person?.full_name ?? '—'}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge status={project.status} />

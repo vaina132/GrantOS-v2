@@ -410,6 +410,10 @@ export function ProjectDetail() {
                     </Badge>
                   </dd>
                 </div>
+                <div className="flex justify-between">
+                  <dt className="text-sm text-muted-foreground">Responsible Person</dt>
+                  <dd className="text-sm font-medium">{project.responsible_person?.full_name ?? '—'}</dd>
+                </div>
               </dl>
             </CardContent>
           </Card>

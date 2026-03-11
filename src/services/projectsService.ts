@@ -12,7 +12,7 @@ export const projectsService = {
   async list(orgId: string | null, filters?: ProjectFilters): Promise<Project[]> {
     let query = supabase
       .from('projects')
-      .select('*, funding_schemes(id, name, type, overhead_rate)')
+      .select('*, funding_schemes(id, name, type, overhead_rate), responsible_person:persons!projects_responsible_person_id_fkey(id, full_name, avatar_url)')
       .order('acronym')
 
     if (orgId) {
@@ -40,7 +40,7 @@ export const projectsService = {
   async getById(id: string): Promise<Project | null> {
     const { data, error } = await supabase
       .from('projects')
-      .select('*, funding_schemes(id, name, type, overhead_rate)')
+      .select('*, funding_schemes(id, name, type, overhead_rate), responsible_person:persons!projects_responsible_person_id_fkey(id, full_name, avatar_url)')
       .eq('id', id)
       .single()
 
@@ -48,11 +48,11 @@ export const projectsService = {
     return data as Project
   },
 
-  async create(project: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'funding_schemes'>): Promise<Project> {
+  async create(project: Omit<Project, 'id' | 'created_at' | 'updated_at' | 'funding_schemes' | 'responsible_person'>): Promise<Project> {
     const { data, error } = await supabase
       .from('projects')
       .insert(project)
-      .select('*, funding_schemes(id, name, type, overhead_rate)')
+      .select('*, funding_schemes(id, name, type, overhead_rate), responsible_person:persons!projects_responsible_person_id_fkey(id, full_name, avatar_url)')
       .single()
 
     if (error) throw error
@@ -61,12 +61,12 @@ export const projectsService = {
   },
 
   async update(id: string, updates: Partial<Project>): Promise<Project> {
-    const { funding_schemes: _fs, ...rest } = updates
+    const { funding_schemes: _fs, responsible_person: _rp, ...rest } = updates
     const { data, error } = await supabase
       .from('projects')
       .update({ ...rest, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select('*, funding_schemes(id, name, type, overhead_rate)')
+      .select('*, funding_schemes(id, name, type, overhead_rate), responsible_person:persons!projects_responsible_person_id_fkey(id, full_name, avatar_url)')
       .single()
 
     if (error) throw error

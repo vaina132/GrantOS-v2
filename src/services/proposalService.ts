@@ -5,7 +5,7 @@ export const proposalService = {
   async list(orgId: string): Promise<Proposal[]> {
     const { data, error } = await supabase
       .from('proposals')
-      .select('*')
+      .select('*, responsible_person:persons!proposals_responsible_person_id_fkey(id, full_name, avatar_url)')
       .eq('org_id', orgId)
       .order('created_at', { ascending: false })
 
@@ -13,11 +13,11 @@ export const proposalService = {
     return (data ?? []) as Proposal[]
   },
 
-  async create(proposal: Omit<Proposal, 'id' | 'created_at' | 'updated_at' | 'converted_project_id'>): Promise<Proposal> {
+  async create(proposal: Omit<Proposal, 'id' | 'created_at' | 'updated_at' | 'converted_project_id' | 'responsible_person'>): Promise<Proposal> {
     const { data, error } = await supabase
       .from('proposals')
       .insert(proposal)
-      .select()
+      .select('*, responsible_person:persons!proposals_responsible_person_id_fkey(id, full_name, avatar_url)')
       .single()
 
     if (error) throw error
@@ -25,11 +25,12 @@ export const proposalService = {
   },
 
   async update(id: string, updates: Partial<Proposal>): Promise<Proposal> {
+    const { responsible_person: _rp, ...rest } = updates
     const { data, error } = await supabase
       .from('proposals')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...rest, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select()
+      .select('*, responsible_person:persons!proposals_responsible_person_id_fkey(id, full_name, avatar_url)')
       .single()
 
     if (error) throw error

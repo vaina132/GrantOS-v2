@@ -90,6 +90,7 @@ export interface Person {
   overhead_rate: number | null
   country: string | null
   is_active: boolean
+  avatar_url: string | null
   created_at: string
   updated_at: string
 }
@@ -113,9 +114,11 @@ export interface Project {
   budget_travel: number | null
   budget_subcontracting: number | null
   budget_other: number | null
+  responsible_person_id: string | null
   created_at: string
   updated_at: string
   funding_schemes?: FundingScheme | null
+  responsible_person?: Person | null
 }
 
 export interface WorkPackage {
@@ -289,10 +292,12 @@ export interface Proposal {
   other_budget: number
   status: ProposalStatus
   converted_project_id: string | null
+  responsible_person_id: string | null
   notes: string | null
   created_by: string | null
   created_at: string
   updated_at: string
+  responsible_person?: Person | null
 }
 
 export type NotificationType = 'info' | 'success' | 'warning' | 'assignment' | 'approval' | 'alert' | 'invitation' | 'system'

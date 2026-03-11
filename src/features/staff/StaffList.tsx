@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
 import { Plus, Search, Trash2, Pencil, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { PersonAvatar } from '@/components/common/PersonAvatar'
 import type { Person } from '@/types'
 
 export function StaffList() {
@@ -133,11 +134,14 @@ export function StaffList() {
                     onClick={() => navigate(`/staff/${person.id}`)}
                   >
                     <td className="px-4 py-3">
-                      <div>
-                        <div className="font-medium">{person.full_name}</div>
-                        {person.email && (
-                          <div className="text-xs text-muted-foreground">{person.email}</div>
-                        )}
+                      <div className="flex items-center gap-2.5">
+                        <PersonAvatar name={person.full_name} avatarUrl={person.avatar_url} size="sm" />
+                        <div>
+                          <div className="font-medium">{person.full_name}</div>
+                          {person.email && (
+                            <div className="text-xs text-muted-foreground">{person.email}</div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{person.department ?? '—'}</td>

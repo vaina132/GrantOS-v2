@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { proposalService } from '@/services/proposalService'
 import { generateProposalsPipelinePDF } from '@/services/reportGenerator'
+import { staffService } from '@/services/staffService'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -33,7 +34,7 @@ import {
   Send,
   Download,
 } from 'lucide-react'
-import type { Proposal, ProposalStatus } from '@/types'
+import type { Proposal, ProposalStatus, Person } from '@/types'
 import { ComboInput, type ComboOption } from '@/components/common/ComboInput'
 import { supabase } from '@/lib/supabase'
 
@@ -58,6 +59,7 @@ const EMPTY_FORM = {
   subcontracting_budget: 0,
   other_budget: 0,
   status: 'In Preparation' as ProposalStatus,
+  responsible_person_id: '',
   notes: '',
 }
 
@@ -75,6 +77,13 @@ export function ProposalsPage() {
   const [filterStatus, setFilterStatus] = useState<ProposalStatus | 'All'>('All')
   const [form, setForm] = useState(EMPTY_FORM)
   const [fundingSchemeOptions, setFundingSchemeOptions] = useState<ComboOption[]>([])
+  const [staffList, setStaffList] = useState<Person[]>([])
+
+  // Load staff for responsible person selector
+  useEffect(() => {
+    if (!orgId) return
+    staffService.list(orgId, { is_active: true }).then(setStaffList).catch(() => {})
+  }, [orgId])
 
   // Load funding schemes from the org's existing data
   useEffect(() => {
@@ -169,6 +178,7 @@ export function ProposalsPage() {
       subcontracting_budget: p.subcontracting_budget,
       other_budget: p.other_budget,
       status: p.status,
+      responsible_person_id: p.responsible_person_id ?? '',
       notes: p.notes ?? '',
     })
     setDialogOpen(true)
@@ -194,6 +204,7 @@ export function ProposalsPage() {
         subcontracting_budget: Number(form.subcontracting_budget) || 0,
         other_budget: Number(form.other_budget) || 0,
         status: form.status,
+        responsible_person_id: form.responsible_person_id || null,
         notes: form.notes.trim() || null,
         created_by: user?.id ?? null,
       }
@@ -327,6 +338,7 @@ export function ProposalsPage() {
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="px-3 py-2 text-left font-medium">Project Name</th>
+                    <th className="px-3 py-2 text-left font-medium">Lead</th>
                     <th className="px-3 py-2 text-left font-medium">Call</th>
                     <th className="px-3 py-2 text-left font-medium">Scheme</th>
                     <th className="px-3 py-2 text-left font-medium">Deadline</th>
@@ -346,6 +358,9 @@ export function ProposalsPage() {
                       <tr key={p.id} className="border-b last:border-0 hover:bg-muted/20">
                         <td className="px-3 py-2 font-medium max-w-[200px]">
                           <div className="truncate" title={p.project_name}>{p.project_name}</div>
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground text-xs max-w-[120px]">
+                          <div className="truncate">{p.responsible_person?.full_name || '—'}</div>
                         </td>
                         <td className="px-3 py-2 text-muted-foreground max-w-[180px]">
                           <div className="truncate" title={p.call_identifier}>{p.call_identifier || '—'}</div>
@@ -465,6 +480,19 @@ export function ProposalsPage() {
                 >
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>Responsible Person</Label>
+                <select
+                  value={form.responsible_person_id}
+                  onChange={(e) => setField('responsible_person_id', e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">None</option>
+                  {staffList.map((s) => (
+                    <option key={s.id} value={s.id}>{s.full_name}</option>
                   ))}
                 </select>
               </div>

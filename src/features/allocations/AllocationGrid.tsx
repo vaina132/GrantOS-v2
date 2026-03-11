@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
 import { Undo2, Redo2, Save, Grid3x3, Plus, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { PersonAvatar } from '@/components/common/PersonAvatar'
 import { getWorkingDaysInMonth, pmToHours, hoursToPm } from '@/lib/pmUtils'
 import { settingsService } from '@/services/settingsService'
 import { timesheetService } from '@/services/timesheetService'
@@ -599,8 +600,11 @@ export function AllocationGrid() {
               let rowTotal = 0
               return (
                 <tr key={`${row.person.id}:${row.project.id}:${row.wpId}`} className="border-b last:border-0 hover:bg-muted/20">
-                  <td className="px-3 py-1 sticky left-0 bg-background font-medium text-xs truncate max-w-[140px]">
-                    {row.person.full_name}
+                  <td className="px-3 py-1 sticky left-0 bg-background font-medium text-xs max-w-[160px]">
+                    <div className="flex items-center gap-1.5">
+                      <PersonAvatar name={row.person.full_name} avatarUrl={row.person.avatar_url} size="xs" />
+                      <span className="truncate">{row.person.full_name}</span>
+                    </div>
                   </td>
                   <td className="px-3 py-1 text-xs">
                     <span className="font-semibold text-primary">{row.project.acronym}</span>

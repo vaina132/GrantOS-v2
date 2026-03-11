@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
 import { ClipboardCheck, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { PersonAvatar } from '@/components/common/PersonAvatar'
 import { hoursToPm, formatPm } from '@/lib/pmUtils'
 import type { TimesheetEntry, Person } from '@/types'
 
@@ -146,7 +147,6 @@ export function AllTimesheets() {
       ) : (
         <div className="space-y-2">
           {personSummaries.map((pe) => {
-            const initials = pe.person.full_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
             const pct = maxCapacity > 0 ? Math.round((pe.totalHours / maxCapacity) * 100) : 0
             const hasHours = pe.totalHours > 0
 
@@ -160,12 +160,7 @@ export function AllTimesheets() {
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {/* Avatar */}
-                  <div className={cn(
-                    'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold',
-                    hasHours ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
-                  )}>
-                    {initials}
-                  </div>
+                  <PersonAvatar name={pe.person.full_name} avatarUrl={pe.person.avatar_url} size="md" />
 
                   {/* Info */}
                   <div className="min-w-0">

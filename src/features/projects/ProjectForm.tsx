@@ -16,7 +16,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
 import { ArrowLeft, Save, DollarSign, Users, Plane, Handshake, Package } from 'lucide-react'
 import { computeProjectStatus } from '@/lib/utils'
-import type { FundingScheme } from '@/types'
+import { staffService } from '@/services/staffService'
+import type { FundingScheme, Person } from '@/types'
 
 const positiveOrNull = z.coerce.number().min(0, 'Must be 0 or greater').nullable().optional()
 
@@ -37,6 +38,7 @@ const projectSchema = z.object({
   budget_travel: positiveOrNull,
   budget_subcontracting: positiveOrNull,
   budget_other: positiveOrNull,
+  responsible_person_id: z.string().nullable().or(z.literal('')),
 }).refine((data) => {
   if (data.start_date && data.end_date) {
     return new Date(data.end_date) > new Date(data.start_date)
@@ -54,9 +56,11 @@ export function ProjectForm() {
   const { project, isLoading: loadingProject } = useProject(isEdit ? id : undefined)
   const [saving, setSaving] = useState(false)
   const [schemes, setSchemes] = useState<FundingScheme[]>([])
+  const [staff, setStaff] = useState<Person[]>([])
 
   useEffect(() => {
     settingsService.listFundingSchemes(orgId).then(setSchemes).catch(() => {})
+    if (orgId) staffService.list(orgId, { is_active: true }).then(setStaff).catch(() => {})
   }, [orgId])
 
   const {
@@ -85,6 +89,7 @@ export function ProjectForm() {
       budget_travel: null,
       budget_subcontracting: null,
       budget_other: null,
+      responsible_person_id: '',
     },
   })
 
@@ -131,6 +136,7 @@ export function ProjectForm() {
         budget_travel: project.budget_travel,
         budget_subcontracting: project.budget_subcontracting,
         budget_other: project.budget_other,
+        responsible_person_id: project.responsible_person_id ?? '',
       })
     }
   }, [project, reset])
@@ -149,6 +155,7 @@ export function ProjectForm() {
         budget_travel: data.budget_travel ?? null,
         budget_subcontracting: data.budget_subcontracting ?? null,
         budget_other: data.budget_other ?? null,
+        responsible_person_id: data.responsible_person_id || null,
         org_id: orgId ?? '',
       }
 
@@ -261,6 +268,21 @@ export function ProjectForm() {
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 <Label htmlFor="has_wps">Uses Work Packages</Label>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="responsible_person_id">Responsible Person</Label>
+                <select
+                  id="responsible_person_id"
+                  {...register('responsible_person_id')}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">None</option>
+                  {staff.map((s) => (
+                    <option key={s.id} value={s.id}>{s.full_name}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-muted-foreground">The person leading this project on our behalf</p>
               </div>
 
               <div className="flex items-center gap-2">

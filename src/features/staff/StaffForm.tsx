@@ -28,6 +28,7 @@ const staffSchema = z.object({
   end_date: z.string().nullable().or(z.literal('')),
   annual_salary: z.coerce.number().min(0, 'Must be 0 or greater').nullable().optional(),
   country: z.string().max(2).nullable().or(z.literal('')),
+  avatar_url: z.string().url('Must be a valid URL').nullable().or(z.literal('')),
   is_active: z.boolean(),
 }).refine((data) => {
   if (data.start_date && data.end_date) {
@@ -72,6 +73,7 @@ export function StaffForm() {
       end_date: '',
       annual_salary: null,
       country: '',
+      avatar_url: '',
       is_active: true,
     },
   })
@@ -89,6 +91,7 @@ export function StaffForm() {
         end_date: person.end_date ?? '',
         annual_salary: person.annual_salary,
         country: person.country ?? '',
+        avatar_url: person.avatar_url ?? '',
         is_active: person.is_active,
       })
     }
@@ -106,6 +109,7 @@ export function StaffForm() {
         end_date: data.end_date || null,
         annual_salary: data.annual_salary ?? null,
         country: data.country || null,
+        avatar_url: data.avatar_url || null,
         org_id: orgId ?? '',
       }
 
@@ -219,6 +223,15 @@ export function StaffForm() {
                     <p className="text-sm text-destructive">{errors.fte.message}</p>
                   )}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="avatar_url">Photo URL <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Input id="avatar_url" {...register('avatar_url')} placeholder="https://example.com/photo.jpg" />
+                {errors.avatar_url && (
+                  <p className="text-sm text-destructive">{errors.avatar_url.message}</p>
+                )}
+                <p className="text-[11px] text-muted-foreground">A direct link to a profile photo. Will be shown as a small circle next to the person's name.</p>
               </div>
 
               <div className="flex items-center gap-2">
