@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
 import { Switch } from '@/components/ui/switch'
-import { User, Bell, Lock, Save } from 'lucide-react'
+import { User, Bell, Lock, Save, Info } from 'lucide-react'
 import type { UserPreferences } from '@/types'
 
 export function ProfileSettingsPage() {
@@ -27,6 +27,9 @@ export function ProfileSettingsPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
+  // Whether preferences are actually persisted in DB (id is non-empty)
+  const isPersisted = Boolean(prefs?.id)
+
   useEffect(() => {
     if (!user?.id || !orgId) return
     setLoading(true)
@@ -35,10 +38,6 @@ export function ProfileSettingsPage() {
         setPrefs(p)
         setDisplayName(p.display_name ?? user.email?.split('@')[0] ?? '')
       })
-      .catch((err) => {
-        const message = err instanceof Error ? err.message : 'Failed to load preferences'
-        toast({ title: 'Error', description: message, variant: 'destructive' })
-      })
       .finally(() => setLoading(false))
   }, [user?.id, orgId])
 
@@ -46,11 +45,19 @@ export function ProfileSettingsPage() {
     if (!prefs) return
     setSaving(true)
     try {
+      if (!isPersisted) {
+        toast({ title: 'Note', description: 'Preferences table not yet available. Run the SQL migration first.', variant: 'destructive' })
+        return
+      }
       const updated = await preferencesService.update(prefs.id, {
         display_name: displayName.trim() || null,
       })
-      setPrefs(updated)
-      toast({ title: 'Profile saved' })
+      if (updated) {
+        setPrefs(updated)
+        toast({ title: 'Profile saved' })
+      } else {
+        toast({ title: 'Note', description: 'Could not save — preferences table may not be set up yet.' })
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save'
       toast({ title: 'Error', description: message, variant: 'destructive' })
@@ -61,16 +68,18 @@ export function ProfileSettingsPage() {
 
   const handleToggleEmail = async (key: keyof UserPreferences, value: boolean) => {
     if (!prefs) return
+    if (!isPersisted) {
+      toast({ title: 'Note', description: 'Preferences table not yet available. Run the SQL migration first.' })
+      return
+    }
     const prev = prefs[key]
     // Optimistic update
     setPrefs({ ...prefs, [key]: value })
-    try {
-      await preferencesService.update(prefs.id, { [key]: value } as Partial<UserPreferences>)
-    } catch (err) {
+    const result = await preferencesService.update(prefs.id, { [key]: value } as Partial<UserPreferences>)
+    if (!result) {
       // Revert
       setPrefs({ ...prefs, [key]: prev })
-      const message = err instanceof Error ? err.message : 'Failed to update'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      toast({ title: 'Note', description: 'Could not save preference — table may not be set up yet.' })
     }
   }
 
@@ -116,6 +125,16 @@ export function ProfileSettingsPage() {
       />
 
       <div className="space-y-6 pt-5 max-w-2xl">
+        {!isPersisted && (
+          <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 p-3">
+            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+            <div className="text-sm text-blue-800 dark:text-blue-300">
+              <strong>Note:</strong> Email notification preferences require a database migration.
+              Run <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs">supabase/add_user_preferences.sql</code> in your Supabase SQL Editor to enable saving preferences.
+              Until then, all notifications are enabled by default.
+            </div>
+          </div>
+        )}
         {/* ── Profile ── */}
         <Card>
           <CardHeader className="pb-4">
