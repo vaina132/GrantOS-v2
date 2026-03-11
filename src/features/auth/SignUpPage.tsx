@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,9 +34,6 @@ export function SignUpPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
-  // Honeypot anti-bot field (hidden from real users)
-  const honeypotRef = useRef<HTMLInputElement>(null)
-
   const passwordStrength = (pw: string): { score: number; label: string; color: string } => {
     let score = 0
     if (pw.length >= 8) score++
@@ -55,12 +52,6 @@ export function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    // Honeypot check — if the hidden field is filled, it's a bot
-    if (honeypotRef.current?.value) {
-      toast({ title: 'Account created', description: 'Check your email to confirm.' })
-      return
-    }
 
     if (!firstName.trim() || !lastName.trim()) {
       toast({ title: 'Name required', description: 'Please enter your first and last name.', variant: 'destructive' })
@@ -225,17 +216,6 @@ export function SignUpPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Honeypot — hidden from real users, bots will fill it */}
-            <div className="absolute -left-[9999px]" aria-hidden="true">
-              <input
-                ref={honeypotRef}
-                type="text"
-                name="website"
-                tabIndex={-1}
-                autoComplete="off"
-              />
-            </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name *</Label>
