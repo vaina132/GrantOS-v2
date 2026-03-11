@@ -27,6 +27,7 @@ import { ProposalsPage } from '@/features/proposals/ProposalsPage'
 import { ProfileSettingsPage } from '@/features/profile/ProfileSettingsPage'
 import { TermsPage } from '@/features/legal/TermsPage'
 import { PrivacyPage } from '@/features/legal/PrivacyPage'
+import { LandingPage } from '@/features/landing/LandingPage'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -61,6 +62,7 @@ export default function App() {
   return (
     <>
       <Routes>
+        <Route path="/home" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
         <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <SignUpPage />} />
         <Route path="/forgot-password" element={user ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />} />

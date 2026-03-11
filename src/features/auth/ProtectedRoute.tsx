@@ -43,7 +43,7 @@ export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/home" replace />
   }
 
   if (permission && !can(permission)) {
