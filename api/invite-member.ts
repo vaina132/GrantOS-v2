@@ -1,17 +1,19 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import crypto from 'crypto'
 
 /**
  * POST /api/invite-member
  * Body: { email, orgId, role, invitedBy }
  *
  * Uses the Supabase service role key to:
- * 1. Find or create the auth user by email (inviteUserByEmail creates a
- *    pending user and sends a magic-link / confirmation email via Supabase).
- * 2. Insert an org_members row so the user is already part of the org
- *    when they complete sign-up.
+ * 1. Find existing auth user by email, or create a new one via admin.createUser.
+ * 2. Insert an org_members row so the user is part of the org.
  *
- * Returns { success, userId } on success.
+ * New users get a temporary random password — they use "Forgot Password" or
+ * the invitation email link to set their real password on first login.
+ *
+ * Returns { success, userId, isNewUser } on success.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS
@@ -23,8 +25,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
   if (!supabaseUrl || !serviceKey) {
-    return res.status(500).json({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars' })
+    return res.status(500).json({
+      error: 'Server configuration error: missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY',
+      debug: { hasUrl: !!supabaseUrl, hasKey: !!serviceKey },
+    })
   }
 
   const { email, orgId, role, invitedBy } = req.body ?? {}
@@ -37,26 +43,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // ── Step 1: Find existing user or create a new one ──
     let userId: string | null = null
+    let isNewUser = false
 
-    // Check if user already exists in auth.users
-    const { data: listData } = await sb.auth.admin.listUsers({ perPage: 1000 })
+    // Try to find existing user by listing all users and matching email
+    const { data: listData, error: listErr } = await sb.auth.admin.listUsers({ perPage: 1000 })
+
+    if (listErr) {
+      return res.status(500).json({
+        error: 'Failed to list users. Check that SUPABASE_SERVICE_ROLE_KEY is correct.',
+        detail: listErr.message,
+      })
+    }
+
     const existing = listData?.users?.find(
-      (u: any) => u.email?.toLowerCase() === email.toLowerCase(),
+      (u) => u.email?.toLowerCase() === email.toLowerCase(),
     )
 
     if (existing) {
       userId = existing.id
     } else {
-      // Create a new user via inviteUserByEmail — Supabase sends them a
-      // magic-link email so they can set their password and activate.
-      const { data: invited, error: inviteErr } = await sb.auth.admin.inviteUserByEmail(email)
+      // Create a new auth user with a random temporary password.
+      // The invited user will use the "Forgot Password" flow or the
+      // password-reset link in the invitation email to set their real password.
+      const tempPassword = crypto.randomBytes(24).toString('base64url')
 
-      if (inviteErr) {
-        console.error('[GrantOS] inviteUserByEmail error:', inviteErr)
-        return res.status(500).json({ error: inviteErr.message })
+      const { data: created, error: createErr } = await sb.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true, // Auto-confirm so they can use password reset
+      })
+
+      if (createErr) {
+        return res.status(500).json({
+          error: 'Failed to create user account',
+          detail: createErr.message,
+        })
       }
 
-      userId = invited?.user?.id ?? null
+      userId = created?.user?.id ?? null
+      isNewUser = true
     }
 
     if (!userId) {
@@ -84,11 +109,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
 
     if (insertErr) {
-      console.error('[GrantOS] org_members insert error:', insertErr)
-      return res.status(500).json({ error: insertErr.message })
+      return res.status(500).json({
+        error: 'Failed to add member to organisation',
+        detail: insertErr.message,
+      })
     }
 
-    return res.status(200).json({ success: true, userId, isNewUser: !existing })
+    return res.status(200).json({ success: true, userId, isNewUser })
   } catch (err: any) {
     console.error('[GrantOS] invite-member failed:', err)
     return res.status(500).json({ error: err.message || 'Internal error' })

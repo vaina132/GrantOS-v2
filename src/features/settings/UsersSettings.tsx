@@ -106,9 +106,10 @@ export function UsersSettings() {
       const data = await res.json()
 
       if (!res.ok) {
+        const detail = data.detail ? ` (${data.detail})` : ''
         toast({
           title: res.status === 409 ? 'Already a member' : 'Error',
-          description: data.error ?? 'Failed to invite member',
+          description: (data.error ?? 'Failed to invite member') + detail,
           variant: 'destructive',
         })
         setSaving(false)
