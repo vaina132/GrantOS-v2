@@ -1,16 +1,15 @@
 import { useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/use-toast'
 import { Eye, EyeOff, CheckCircle2, Shield, Zap, CreditCard } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { setSignUpInProgress } from '@/stores/authStore'
 
 export function SignUpPage() {
   const navigate = useNavigate()
-  const { signUp } = useAuthStore()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -71,13 +70,46 @@ export function SignUpPage() {
     }
 
     setLoading(true)
+    setSignUpInProgress(true)
     try {
-      await signUp(email, password, { firstName: firstName.trim(), lastName: lastName.trim() })
+      console.log('[SignUp] Calling supabase.auth.signUp for:', email)
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      console.log('[SignUp] Response:', {
+        error: error?.message,
+        userId: data?.user?.id,
+        identities: data?.user?.identities?.length,
+        confirmed: data?.user?.email_confirmed_at,
+      })
+
+      if (error) throw error
+
+      // Supabase returns a user with empty identities when the email already exists
+      if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+        throw new Error('An account with this email already exists. Please sign in instead.')
+      }
+
+      // Sign out immediately so the auth listener doesn't redirect away
+      // The user must confirm their email before they can log in
+      await supabase.auth.signOut()
+      console.log('[SignUp] Signed out after signup, showing success screen')
+
       setSuccess(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign up failed.'
+      console.error('[SignUp] Error:', message)
       toast({ title: 'Error', description: message, variant: 'destructive' })
     } finally {
+      setSignUpInProgress(false)
       setLoading(false)
     }
   }
