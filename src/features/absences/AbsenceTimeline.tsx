@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { absenceService } from '@/services/absenceService'
+import { holidayService } from '@/services/holidayService'
 import { useAuthStore } from '@/stores/authStore'
 import { useAbsences } from '@/hooks/useAbsences'
 import { useStaff } from '@/hooks/useStaff'
@@ -78,7 +79,7 @@ interface Selection {
   endHalf: HalfDay
 }
 
-function computeDays(sel: Selection): number {
+function computeDays(sel: Selection, holidayDates?: Set<string>): number {
   const start = new Date(sel.startDate)
   const end = new Date(sel.endDate)
   if (start > end) return 0
@@ -89,8 +90,9 @@ function computeDays(sel: Selection): number {
     const dow = cursor.getDay()
     const isWeekend = dow === 0 || dow === 6
     const curStr = cursor.toISOString().slice(0, 10)
+    const isHoliday = holidayDates?.has(curStr) ?? false
 
-    if (!isWeekend) {
+    if (!isWeekend && !isHoliday) {
       if (curStr === sel.startDate && curStr === sel.endDate) {
         // Same day
         if (sel.startHalf === 'am' && sel.endHalf === 'pm') days += 1
@@ -172,6 +174,16 @@ export function AbsenceTimeline() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [absenceType, setAbsenceType] = useState<AbsenceType>('Annual Leave')
+  const [holidays, setHolidays] = useState<{ date: string; name: string }[]>([])
+
+  // Load holidays for the current month
+  useEffect(() => {
+    if (!orgId) return
+    holidayService.listForMonth(orgId, globalYear, month + 1).then(setHolidays).catch(() => setHolidays([]))
+  }, [orgId, globalYear, month])
+
+  const holidaySet = useMemo(() => new Set(holidays.map(h => h.date)), [holidays])
+  const holidayNames = useMemo(() => new Map(holidays.map(h => [h.date, h.name])), [holidays])
 
   // Selection state for drag
   const [selection, setSelection] = useState<Selection | null>(null)
@@ -329,6 +341,10 @@ export function AbsenceTimeline() {
           <span className="inline-block w-3 h-3 rounded-sm bg-muted border" />
           <span>Weekend</span>
         </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-300" />
+          <span>National Holiday</span>
+        </div>
       </div>
 
       {/* Timeline grid */}
@@ -347,12 +363,14 @@ export function AbsenceTimeline() {
                   key={day.dateStr}
                   className={cn(
                     'text-center text-[10px] border-r last:border-r-0 py-1 flex flex-col items-center justify-end leading-tight',
-                    day.isWeekend && 'bg-muted/80'
+                    day.isWeekend && 'bg-muted/80',
+                    !day.isWeekend && holidaySet.has(day.dateStr) && 'bg-amber-100 dark:bg-amber-900/30',
                   )}
                   style={{ width: CELL_W }}
+                  title={holidayNames.get(day.dateStr) ?? undefined}
                 >
                   <span className="text-muted-foreground">{DAY_LABELS[day.dayOfWeek]}</span>
-                  <span className="font-medium">{day.dayNum}</span>
+                  <span className={cn('font-medium', !day.isWeekend && holidaySet.has(day.dateStr) && 'text-amber-700 dark:text-amber-400')}>{day.dayNum}</span>
                 </div>
               ))}
             </div>
@@ -380,9 +398,11 @@ export function AbsenceTimeline() {
                         key={day.dateStr}
                         className={cn(
                           'border-r last:border-r-0 flex flex-col cursor-crosshair',
-                          day.isWeekend && 'bg-muted/40'
+                          day.isWeekend && 'bg-muted/40',
+                          !day.isWeekend && holidaySet.has(day.dateStr) && !amAbs && !pmAbs && 'bg-amber-50 dark:bg-amber-900/20',
                         )}
                         style={{ width: CELL_W, height: CELL_H * 2 }}
+                        title={holidayNames.get(day.dateStr) ?? undefined}
                       >
                         {/* AM half */}
                         <div
@@ -441,7 +461,7 @@ export function AbsenceTimeline() {
               </div>
               <div className="text-sm">
                 <span className="text-muted-foreground">Working days:</span>{' '}
-                <span className="font-semibold">{computeDays(selection)}</span>
+                <span className="font-semibold">{computeDays(selection, holidaySet)}</span>
               </div>
               <div className="space-y-2">
                 <Label>Absence Type</Label>
