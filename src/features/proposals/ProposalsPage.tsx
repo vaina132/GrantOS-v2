@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { proposalService } from '@/services/proposalService'
@@ -34,6 +34,8 @@ import {
   Download,
 } from 'lucide-react'
 import type { Proposal, ProposalStatus } from '@/types'
+import { ComboInput, type ComboOption } from '@/components/common/ComboInput'
+import { supabase } from '@/lib/supabase'
 
 const STATUS_OPTIONS: ProposalStatus[] = ['In Preparation', 'Submitted', 'Rejected', 'Granted']
 
@@ -72,6 +74,46 @@ export function ProposalsPage() {
   const [converting, setConverting] = useState(false)
   const [filterStatus, setFilterStatus] = useState<ProposalStatus | 'All'>('All')
   const [form, setForm] = useState(EMPTY_FORM)
+  const [fundingSchemeOptions, setFundingSchemeOptions] = useState<ComboOption[]>([])
+
+  // Load funding schemes from the org's existing data
+  useEffect(() => {
+    if (!orgId) return
+    supabase
+      .from('funding_schemes')
+      .select('id, name, type')
+      .eq('org_id', orgId)
+      .order('name')
+      .then(({ data }) => {
+        if (data) {
+          setFundingSchemeOptions(
+            data.map((fs: any) => ({
+              value: fs.name,
+              label: fs.name,
+              description: fs.type || undefined,
+            })),
+          )
+        }
+      })
+  }, [orgId])
+
+  // Search EU Funding & Tenders Portal for call identifiers
+  const searchEuCalls = useCallback(async (query: string): Promise<ComboOption[]> => {
+    try {
+      const res = await fetch(`/api/eu-calls?q=${encodeURIComponent(query)}&pageSize=15`)
+      if (!res.ok) return []
+      const { topics } = await res.json()
+      return (topics ?? []).map((t: any) => ({
+        value: t.identifier,
+        label: t.identifier,
+        description: t.title
+          ? `${t.title}${t.deadlineDate ? ` — Deadline: ${t.deadlineDate}` : ''}`
+          : undefined,
+      }))
+    } catch {
+      return []
+    }
+  }, [])
 
   const fetchProposals = async () => {
     if (!orgId) return
@@ -394,11 +436,25 @@ export function ProposalsPage() {
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Call Identifier</Label>
-                <Input value={form.call_identifier} onChange={(e) => setField('call_identifier', e.target.value)} placeholder="e.g. HORIZON-CL4-2025-DATA-01-06" />
+                <ComboInput
+                  value={form.call_identifier}
+                  onChange={(v) => setField('call_identifier', v)}
+                  onSearch={searchEuCalls}
+                  placeholder="Search EU calls or type custom identifier..."
+                  emptyMessage="Type at least 2 characters to search EU calls, or enter your own"
+                  debounceMs={400}
+                />
+                <p className="text-[11px] text-muted-foreground">Start typing to search open EU Funding &amp; Tenders calls, or enter any identifier</p>
               </div>
               <div className="space-y-2">
                 <Label>Funding Scheme</Label>
-                <Input value={form.funding_scheme} onChange={(e) => setField('funding_scheme', e.target.value)} placeholder="e.g. Research and Innovation Action" />
+                <ComboInput
+                  value={form.funding_scheme}
+                  onChange={(v) => setField('funding_scheme', v)}
+                  options={fundingSchemeOptions}
+                  placeholder="Select or type a funding scheme..."
+                  emptyMessage="No matching schemes — type to enter custom"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
