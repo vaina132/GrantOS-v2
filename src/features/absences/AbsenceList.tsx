@@ -241,10 +241,33 @@ export function AbsenceList() {
     if (!deleteTarget) return
     setDeleting(true)
     try {
+      const absence = deleteTarget
+      const absStatus = (absence as any).status as AbsenceStatus | undefined
       await absenceService.remove(deleteTarget.id)
       toast({ title: 'Deleted', description: 'Absence removed.' })
       setDeleteTarget(null)
       refetch()
+
+      // Fire-and-forget: notify approvers if the absence was pending or approved
+      if (orgId && hasApprovers && (absStatus === 'pending' || absStatus === 'approved')) {
+        const personName = getPersonName(absence.person_id)
+        absenceApproverService.getApproverEmails(orgId).then(approvers => {
+          if (approvers.length === 0) return
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.grantlume.com'
+          for (const approver of approvers) {
+            emailService.sendAbsenceCancelled({
+              to: approver.email,
+              approverName: approver.name || approver.email.split('@')[0],
+              employeeName: personName,
+              absenceType: absence.type,
+              startDate: absence.start_date ?? '',
+              endDate: absence.end_date ?? '',
+              days: String(absence.days),
+              absencesUrl: `${origin}/absences`,
+            }).catch(() => {})
+          }
+        }).catch(() => {})
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete'
       toast({ title: 'Error', description: message, variant: 'destructive' })

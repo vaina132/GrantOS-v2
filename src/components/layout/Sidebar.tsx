@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { Button } from '@/components/ui/button'
+import { GrantLumeLogo } from '@/components/common/GrantLumeLogo'
 import type { PermissionKey } from '@/lib/permissions'
 import type { LucideIcon } from 'lucide-react'
 
@@ -104,11 +105,9 @@ export function Sidebar() {
       >
         <div className="flex h-16 items-center justify-between border-b px-6">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-              G
-            </div>
+            <GrantLumeLogo size={30} variant="color" className="shrink-0" />
             <div className="min-w-0">
-              <span className="text-lg font-semibold leading-tight block">GrantLume</span>
+              <span className="text-lg font-semibold leading-tight block"><span className="text-[#1a2744] dark:text-white">Grant</span><span className="text-emerald-600">Lume</span></span>
               {orgName && (
                 <span className="text-xs text-muted-foreground truncate block">{orgName}</span>
               )}

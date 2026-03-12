@@ -680,6 +680,49 @@ export const timesheetService = {
       .in('id', ids)
 
     if (error) throw error
+
+    // Fire-and-forget: notify employees when their timesheet is approved/rejected
+    if (status === 'Approved' || status === 'Rejected') {
+      Promise.resolve(
+        supabase.from('timesheet_entries').select('person_id, year, month').in('id', ids)
+      ).then(({ data: entries }) => {
+        if (!entries || entries.length === 0) return
+        const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+        // Get approver name
+        supabase.auth.getUser().then(({ data: authData }) => {
+          const approverName = authData?.user?.user_metadata?.first_name
+            ? `${authData.user.user_metadata.first_name} ${authData.user.user_metadata.last_name || ''}`.trim()
+            : authData?.user?.email?.split('@')[0] ?? 'An admin'
+
+          // Deduplicate by person
+          const seen = new Set<string>()
+          for (const e of entries as any[]) {
+            const key = `${e.person_id}:${e.year}:${e.month}`
+            if (seen.has(key)) continue
+            seen.add(key)
+            const period = `${MONTHS[(e.month as number) - 1]} ${e.year}`
+            // Get person email
+            Promise.resolve(
+              supabase.from('persons').select('full_name, email').eq('id', e.person_id).single()
+            ).then(({ data: person }) => {
+              if (!person?.email) return
+              const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.grantlume.com'
+              const params = {
+                employeeName: (person as any).full_name ?? person.email.split('@')[0],
+                period,
+                approverName,
+                timesheetUrl: `${origin}/timesheets`,
+              }
+              if (status === 'Approved') {
+                emailService.sendTimesheetApproved({ to: person.email, ...params })
+              } else {
+                emailService.sendTimesheetRejected({ to: person.email, ...params })
+              }
+            }).catch(() => {})
+          }
+        }).catch(() => {})
+      }).catch(() => {})
+    }
   },
 
   async remove(id: string): Promise<void> {

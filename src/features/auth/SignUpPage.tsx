@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/use-toast'
 import { Eye, EyeOff, CheckCircle2, Shield, Zap, CreditCard } from 'lucide-react'
+import { GrantLumeLogo, GrantLumeWordmark } from '@/components/common/GrantLumeLogo'
 import { createClient } from '@supabase/supabase-js'
 
 // Dedicated Supabase client for signup only — no session persistence,
@@ -161,9 +162,7 @@ export function SignUpPage() {
         </div>
         <div className="relative z-10 max-w-md text-white space-y-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm font-bold text-2xl">
-              G
-            </div>
+            <GrantLumeLogo size={44} variant="dark" />
             <span className="text-2xl font-bold tracking-tight">GrantLume</span>
           </div>
           <h1 className="text-4xl font-bold leading-tight">Register for free</h1>
@@ -203,11 +202,8 @@ export function SignUpPage() {
       <div className="flex flex-1 items-center justify-center p-6 sm:p-12 bg-background overflow-y-auto">
         <div className="w-full max-w-[440px] space-y-6 animate-fade-in">
           {/* Mobile logo */}
-          <div className="lg:hidden flex items-center justify-center gap-2 mb-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg">
-              G
-            </div>
-            <span className="text-xl font-bold tracking-tight">GrantLume</span>
+          <div className="lg:hidden flex items-center justify-center mb-2">
+            <GrantLumeWordmark size={36} variant="color" textClassName="text-xl font-bold tracking-tight" />
           </div>
 
           <div className="space-y-1">

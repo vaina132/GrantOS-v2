@@ -159,9 +159,22 @@ export function StaffForm() {
 
       let savedPerson: { id: string }
       if (isEdit) {
+        // Detect deactivation: was active before, now inactive
+        const wasActive = person?.is_active === true
+        const nowInactive = data.is_active === false
         await staffService.update(id, payload)
         savedPerson = { id }
         toast({ title: 'Updated', description: `${data.full_name} has been updated.` })
+
+        // Fire-and-forget: notify person if their account was just deactivated
+        if (wasActive && nowInactive && data.email && orgId) {
+          const orgLabel = orgName ?? 'your organisation'
+          emailService.sendStaffDeactivated({
+            to: data.email,
+            employeeName: data.full_name,
+            orgName: orgLabel,
+          }).catch(() => {})
+        }
       } else {
         const created = await staffService.create(payload as Parameters<typeof staffService.create>[0])
         savedPerson = created

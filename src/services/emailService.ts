@@ -22,6 +22,14 @@ type EmailTemplate =
   | 'absenceRequested'
   | 'absenceApproved'
   | 'absenceRejected'
+  | 'timesheetApproved'
+  | 'timesheetRejected'
+  | 'absenceCancelled'
+  | 'projectCreated'
+  | 'staffDeactivated'
+  | 'allocationChanged'
+  | 'proposalStatusChanged'
+  | 'memberRemoved'
 
 interface SendEmailOptions {
   template: EmailTemplate
@@ -244,5 +252,101 @@ export const emailService = {
     absencesUrl: string
   }) {
     return sendEmail({ template: 'absenceRejected', to: params.to, params })
+  },
+
+  /** #18 — Notify employee their timesheet was approved */
+  async sendTimesheetApproved(params: {
+    to: string
+    employeeName: string
+    period: string
+    approverName: string
+    timesheetUrl: string
+  }) {
+    return sendEmail({ template: 'timesheetApproved', to: params.to, params })
+  },
+
+  /** #19 — Notify employee their timesheet was rejected */
+  async sendTimesheetRejected(params: {
+    to: string
+    employeeName: string
+    period: string
+    approverName: string
+    reason?: string
+    timesheetUrl: string
+  }) {
+    return sendEmail({ template: 'timesheetRejected', to: params.to, params })
+  },
+
+  /** #20 — Notify approvers that an employee cancelled their absence */
+  async sendAbsenceCancelled(params: {
+    to: string | string[]
+    approverName: string
+    employeeName: string
+    absenceType: string
+    startDate: string
+    endDate: string
+    days: string
+    absencesUrl: string
+  }) {
+    return sendEmail({ template: 'absenceCancelled', to: params.to, params })
+  },
+
+  /** #21 — Notify org admins that a new project was created */
+  async sendProjectCreated(params: {
+    to: string | string[]
+    recipientName: string
+    orgName: string
+    projectAcronym: string
+    projectTitle: string
+    createdBy: string
+    projectUrl: string
+  }) {
+    return sendEmail({ template: 'projectCreated', to: params.to, params })
+  },
+
+  /** #22 — Notify a person that their staff record has been deactivated */
+  async sendStaffDeactivated(params: {
+    to: string
+    employeeName: string
+    orgName: string
+  }) {
+    return sendEmail({ template: 'staffDeactivated', to: params.to, params })
+  },
+
+  /** #23 — Notify a staff member that their PM allocation was changed */
+  async sendAllocationChanged(params: {
+    to: string
+    employeeName: string
+    orgName: string
+    projectAcronym: string
+    year: number
+    oldPms: string
+    newPms: string
+    allocationsUrl: string
+  }) {
+    return sendEmail({ template: 'allocationChanged', to: params.to, params })
+  },
+
+  /** #25 — Notify proposal team that the status changed */
+  async sendProposalStatusChanged(params: {
+    to: string | string[]
+    recipientName: string
+    orgName: string
+    proposalTitle: string
+    oldStatus: string
+    newStatus: string
+    changedBy: string
+    proposalsUrl: string
+  }) {
+    return sendEmail({ template: 'proposalStatusChanged', to: params.to, params })
+  },
+
+  /** #26 — Notify a user that they have been removed from an organisation */
+  async sendMemberRemoved(params: {
+    to: string
+    userName: string
+    orgName: string
+  }) {
+    return sendEmail({ template: 'memberRemoved', to: params.to, params })
   },
 }

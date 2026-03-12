@@ -19,6 +19,7 @@ import { PersonAvatar } from '@/components/common/PersonAvatar'
 import { getWorkingDaysInMonth, pmToHours, hoursToPm } from '@/lib/pmUtils'
 import { settingsService } from '@/services/settingsService'
 import { timesheetService } from '@/services/timesheetService'
+import { emailService } from '@/services/emailService'
 import { BulkFillDialog } from './BulkFillDialog'
 import { projectsService } from '@/services/projectsService'
 import type { AssignmentType, Person, Project, WorkPackage } from '@/types'
@@ -331,10 +332,49 @@ export function AllocationGrid() {
           type: mode,
         })
       }
+      // Snapshot old values before save (for change detection)
+      const oldMap = new Map<string, number>()
+      for (const a of assignments) {
+        oldMap.set(makeCellKey(a.person_id, a.project_id, a.work_package_id, a.month), a.pms)
+      }
+
       await allocationsService.bulkUpsertAssignments(upserts)
       toast({ title: 'Saved', description: 'Allocations have been saved.' })
       setDirty(false)
       refetchActual()
+
+      // Fire-and-forget: notify persons whose annual PMs changed
+      try {
+        // Group changes by person+project → sum old/new annual PMs
+        const changedPersonProjects = new Map<string, { personId: string; projectId: string; oldTotal: number; newTotal: number }>()
+        for (const u of upserts) {
+          const ppKey = `${u.person_id}:${u.project_id}`
+          if (!changedPersonProjects.has(ppKey)) {
+            changedPersonProjects.set(ppKey, { personId: u.person_id, projectId: u.project_id, oldTotal: 0, newTotal: 0 })
+          }
+          const entry = changedPersonProjects.get(ppKey)!
+          const cellKey = makeCellKey(u.person_id, u.project_id, u.work_package_id, u.month)
+          entry.newTotal += u.pms
+          entry.oldTotal += oldMap.get(cellKey) ?? 0
+        }
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.grantlume.com'
+        for (const [, { personId, projectId, oldTotal, newTotal }] of changedPersonProjects) {
+          if (Math.abs(oldTotal - newTotal) < 0.01) continue // no meaningful change
+          const person = staff.find(s => s.id === personId)
+          const project = projects.find(p => p.id === projectId)
+          if (!person?.email || !project) continue
+          emailService.sendAllocationChanged({
+            to: person.email,
+            employeeName: person.full_name,
+            orgName: '',
+            projectAcronym: project.acronym,
+            year: globalYear,
+            oldPms: oldTotal.toFixed(2),
+            newPms: newTotal.toFixed(2),
+            allocationsUrl: `${origin}/allocations`,
+          }).catch(() => {})
+        }
+      } catch { /* ignore email errors */ }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save'
       toast({ title: 'Error', description: message, variant: 'destructive' })

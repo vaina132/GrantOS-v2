@@ -46,11 +46,31 @@ function LoadingScreen() {
 }
 
 export default function App() {
-  const { initialize, isLoading, user, orgId } = useAuthStore()
+  const { initialize, isLoading, user, orgId, signOut } = useAuthStore()
 
   useEffect(() => {
     initialize()
   }, [initialize])
+
+  // Ephemeral session: sign out when browser/tab closes if "Stay logged in" was unchecked
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (sessionStorage.getItem('gl_session_ephemeral') === '1') {
+        // Use synchronous localStorage flag so next load knows to sign out
+        localStorage.setItem('gl_signout_pending', '1')
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
+
+  // On mount, check if a signout was pending (from a previous ephemeral session)
+  useEffect(() => {
+    if (localStorage.getItem('gl_signout_pending') === '1') {
+      localStorage.removeItem('gl_signout_pending')
+      signOut()
+    }
+  }, [signOut])
 
   if (isLoading) {
     return <LoadingScreen />

@@ -19,6 +19,14 @@ import {
   absenceRequestedEmail,
   absenceApprovedEmail,
   absenceRejectedEmail,
+  timesheetApprovedEmail,
+  timesheetRejectedEmail,
+  absenceCancelledEmail,
+  projectCreatedEmail,
+  staffDeactivatedEmail,
+  allocationChangedEmail,
+  proposalStatusChangedEmail,
+  memberRemovedEmail,
 } from './emails/templates.js'
 import type { EmailTemplate } from './emails/templates.js'
 
@@ -40,6 +48,14 @@ const TEMPLATE_MAP: Record<string, (params: any) => EmailTemplate> = {
   absenceRequested: absenceRequestedEmail,
   absenceApproved: absenceApprovedEmail,
   absenceRejected: absenceRejectedEmail,
+  timesheetApproved: timesheetApprovedEmail,
+  timesheetRejected: timesheetRejectedEmail,
+  absenceCancelled: absenceCancelledEmail,
+  projectCreated: projectCreatedEmail,
+  staffDeactivated: staffDeactivatedEmail,
+  allocationChanged: allocationChangedEmail,
+  proposalStatusChanged: proposalStatusChangedEmail,
+  memberRemoved: memberRemovedEmail,
 }
 
 /** Maps template name → user_preferences column that controls it */
@@ -54,6 +70,14 @@ const PREF_COLUMN_MAP: Record<string, string> = {
   welcome: 'email_welcome',
   trialExpiring: 'email_trial_expiring',
   // guestInvitation — always sent (access grant, no opt-out)
+  // absenceCancelled — always sent (approver needs to know)
+  // staffDeactivated — always sent (courtesy notice)
+  // memberRemoved — always sent (access revocation notice)
+  timesheetApproved: 'email_timesheet_submitted',
+  timesheetRejected: 'email_timesheet_submitted',
+  allocationChanged: 'email_project_alerts',
+  projectCreated: 'email_project_alerts',
+  proposalStatusChanged: 'email_project_alerts',
 }
 
 const FROM_ADDRESS = 'GrantLume <notifications@grantlume.com>'

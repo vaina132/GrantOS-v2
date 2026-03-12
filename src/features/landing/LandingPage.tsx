@@ -22,6 +22,7 @@ import {
   BarChart3,
   Clock,
 } from 'lucide-react'
+import { GrantLumeLogo } from '@/components/common/GrantLumeLogo'
 
 type Lang = 'en' | 'de'
 
@@ -385,10 +386,8 @@ export function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-lg">
-                G
-              </div>
-              <span className="text-xl font-bold tracking-tight text-gray-900">GrantLume</span>
+              <GrantLumeLogo size={34} variant="color" />
+              <span className="text-xl font-bold tracking-tight"><span className="text-[#1a2744]">Grant</span><span className="text-emerald-600">Lume</span></span>
             </div>
 
             {/* Desktop nav */}
@@ -697,10 +696,8 @@ export function LandingPage() {
           <div className="grid sm:grid-cols-3 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white font-bold text-sm">
-                  G
-                </div>
-                <span className="text-lg font-bold tracking-tight">GrantLume</span>
+                <GrantLumeLogo size={28} variant="color" />
+                <span className="text-lg font-bold tracking-tight"><span className="text-[#1a2744]">Grant</span><span className="text-emerald-600">Lume</span></span>
               </div>
               <p className="text-sm text-gray-500 leading-relaxed">{c.footer.tagline}</p>
             </div>

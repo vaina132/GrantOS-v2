@@ -228,6 +228,9 @@ export function UsersSettings() {
     if (!deleteTarget) return
     setDeleting(true)
     try {
+      const memberEmail = deleteTarget.user_email
+      const memberName = deleteTarget.person_name || memberEmail?.split('@')[0] || 'User'
+
       const { error } = await supabase
         .from('org_members')
         .delete()
@@ -237,6 +240,15 @@ export function UsersSettings() {
       toast({ title: 'Member removed' })
       setDeleteTarget(null)
       fetchMembers()
+
+      // Fire-and-forget: notify the removed member via email
+      if (memberEmail) {
+        emailService.sendMemberRemoved({
+          to: memberEmail,
+          userName: memberName,
+          orgName: orgName ?? 'the organisation',
+        }).catch(() => {})
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to remove member'
       toast({ title: 'Error', description: message, variant: 'destructive' })

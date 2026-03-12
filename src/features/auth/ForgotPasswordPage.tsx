@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/use-toast'
 import { ArrowLeft, Mail, ShieldCheck } from 'lucide-react'
+import { GrantLumeLogo, GrantLumeWordmark } from '@/components/common/GrantLumeLogo'
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -45,9 +46,7 @@ export function ForgotPasswordPage() {
         </div>
         <div className="relative z-10 max-w-md text-white space-y-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm font-bold text-2xl">
-              G
-            </div>
+            <GrantLumeLogo size={42} variant="dark" />
             <span className="text-2xl font-bold tracking-tight">GrantLume</span>
           </div>
           <div className="flex items-center gap-4">
@@ -67,10 +66,7 @@ export function ForgotPasswordPage() {
         <div className="w-full max-w-[420px] space-y-8 animate-fade-in">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center justify-center gap-2 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg">
-              G
-            </div>
-            <span className="text-xl font-bold tracking-tight">GrantLume</span>
+            <GrantLumeWordmark size={28} variant="color" />
           </div>
 
           {sent ? (

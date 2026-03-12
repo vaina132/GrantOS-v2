@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { writeAudit } from './auditWriter'
+import { emailService } from './emailService'
+import { notificationService } from './notificationService'
 import type { Project, WorkPackage } from '@/types'
 
 export interface ProjectFilters {
@@ -57,6 +59,44 @@ export const projectsService = {
 
     if (error) throw error
     writeAudit({ orgId: project.org_id, entityType: 'project', action: 'create', entityId: (data as Project).id, details: `Created project ${project.acronym}` })
+
+    // Fire-and-forget: notify org admins about the new project
+    const created = data as Project
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.grantlume.com'
+    Promise.resolve(supabase.auth.getUser()).then(({ data: authData }) => {
+      const creatorEmail = authData?.user?.email
+      const creatorName = authData?.user?.user_metadata?.first_name
+        ? `${authData.user.user_metadata.first_name} ${authData.user.user_metadata.last_name || ''}`.trim()
+        : creatorEmail?.split('@')[0] ?? 'Someone'
+      Promise.resolve(
+        supabase.from('organisations').select('name').eq('id', project.org_id).single()
+      ).then(({ data: org }) => {
+        const orgName = (org as any)?.name ?? ''
+        // Get admin members with their linked persons (for email)
+        notificationService.getAdminUserIds(project.org_id).then(adminIds => {
+          const otherAdmins = adminIds.filter(id => id !== authData?.user?.id)
+          if (otherAdmins.length === 0) return
+          // Look up emails from persons table (linked via user_id)
+          Promise.resolve(
+            supabase.from('persons').select('email, full_name, user_id').eq('org_id', project.org_id).in('user_id', otherAdmins)
+          ).then(({ data: persons }) => {
+            for (const p of (persons ?? []) as any[]) {
+              if (!p.email) continue
+              emailService.sendProjectCreated({
+                to: p.email,
+                recipientName: p.full_name || p.email.split('@')[0],
+                orgName,
+                projectAcronym: created.acronym,
+                projectTitle: created.title,
+                createdBy: creatorName,
+                projectUrl: `${origin}/projects/${created.id}`,
+              }).catch(() => {})
+            }
+          }).catch(() => {})
+        }).catch(() => {})
+      }).catch(() => {})
+    }).catch(() => {})
+
     return data as Project
   },
 

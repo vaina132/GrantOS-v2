@@ -1,29 +1,119 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/use-toast'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import { GrantLumeLogo, GrantLumeWordmark } from '@/components/common/GrantLumeLogo'
+
+// ── Rate-limit helpers ──────────────────────────────────
+const LOCKOUT_KEY = 'gl_login_attempts'
+const MAX_ATTEMPTS_BEFORE_CHALLENGE = 3
+const MAX_ATTEMPTS_BEFORE_LOCKOUT = 6
+const LOCKOUT_SECONDS = 60
+
+function getAttemptState(): { count: number; lockedUntil: number | null } {
+  try {
+    const raw = sessionStorage.getItem(LOCKOUT_KEY)
+    if (!raw) return { count: 0, lockedUntil: null }
+    return JSON.parse(raw)
+  } catch { return { count: 0, lockedUntil: null } }
+}
+
+function setAttemptState(count: number, lockedUntil: number | null) {
+  sessionStorage.setItem(LOCKOUT_KEY, JSON.stringify({ count, lockedUntil }))
+}
+
+function clearAttemptState() {
+  sessionStorage.removeItem(LOCKOUT_KEY)
+}
+
+function generateChallenge(): { a: number; b: number; answer: number } {
+  const a = Math.floor(Math.random() * 20) + 1
+  const b = Math.floor(Math.random() * 20) + 1
+  return { a, b, answer: a + b }
+}
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(true)
   const [loading, setLoading] = useState(false)
   const { signIn } = useAuthStore()
   const navigate = useNavigate()
 
+  // Rate limiting state
+  const [failCount, setFailCount] = useState(() => getAttemptState().count)
+  const [lockedUntil, setLockedUntil] = useState<number | null>(() => getAttemptState().lockedUntil)
+  const [lockCountdown, setLockCountdown] = useState(0)
+  const [challenge, setChallenge] = useState(() => generateChallenge())
+  const [challengeAnswer, setChallengeAnswer] = useState('')
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const showChallenge = failCount >= MAX_ATTEMPTS_BEFORE_CHALLENGE
+  const isLockedOut = lockedUntil !== null && Date.now() < lockedUntil
+
+  // Countdown timer for lockout
+  useEffect(() => {
+    if (!lockedUntil) { setLockCountdown(0); return }
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000))
+      setLockCountdown(remaining)
+      if (remaining <= 0) {
+        setLockedUntil(null)
+        setAttemptState(failCount, null)
+        if (timerRef.current) clearInterval(timerRef.current)
+      }
+    }
+    tick()
+    timerRef.current = setInterval(tick, 1000)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+  }, [lockedUntil, failCount])
+
+  const recordFailure = useCallback(() => {
+    const newCount = failCount + 1
+    setFailCount(newCount)
+    setChallenge(generateChallenge())
+    setChallengeAnswer('')
+
+    if (newCount >= MAX_ATTEMPTS_BEFORE_LOCKOUT) {
+      const until = Date.now() + LOCKOUT_SECONDS * 1000
+      setLockedUntil(until)
+      setAttemptState(newCount, until)
+    } else {
+      setAttemptState(newCount, null)
+    }
+  }, [failCount])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email || !password) return
+    if (isLockedOut) return
+
+    // Verify challenge if shown
+    if (showChallenge && Number(challengeAnswer) !== challenge.answer) {
+      toast({ title: 'Incorrect answer', description: 'Please solve the security challenge to continue.', variant: 'destructive' })
+      return
+    }
 
     setLoading(true)
     try {
       await signIn(email, password)
+      clearAttemptState()
+
+      // If "Remember me" is unchecked, mark session for cleanup on tab close
+      if (!rememberMe) {
+        sessionStorage.setItem('gl_session_ephemeral', '1')
+      } else {
+        sessionStorage.removeItem('gl_session_ephemeral')
+      }
+
       navigate('/dashboard')
     } catch (err) {
+      recordFailure()
       const message = err instanceof Error ? err.message : 'Sign in failed. Please try again.'
       toast({ title: 'Sign in failed', description: message, variant: 'destructive' })
     } finally {
@@ -41,9 +131,7 @@ export function LoginPage() {
         </div>
         <div className="relative z-10 max-w-md text-white space-y-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm font-bold text-2xl">
-              G
-            </div>
+            <GrantLumeLogo size={44} variant="dark" />
             <span className="text-2xl font-bold tracking-tight">GrantLume</span>
           </div>
           <h1 className="text-4xl font-bold leading-tight">
@@ -73,11 +161,8 @@ export function LoginPage() {
       <div className="flex flex-1 items-center justify-center p-6 sm:p-12 bg-background">
         <div className="w-full max-w-[420px] space-y-8 animate-fade-in">
           {/* Mobile logo */}
-          <div className="lg:hidden flex items-center justify-center gap-2 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-lg">
-              G
-            </div>
-            <span className="text-xl font-bold tracking-tight">GrantLume</span>
+          <div className="lg:hidden flex items-center justify-center mb-4">
+            <GrantLumeWordmark size={36} variant="color" textClassName="text-xl font-bold tracking-tight" />
           </div>
 
           <div className="space-y-2">
@@ -131,8 +216,61 @@ export function LoginPage() {
                 </button>
               </div>
             </div>
-            <Button type="submit" className="w-full h-11 font-semibold text-base" disabled={loading}>
-              {loading ? 'Signing in...' : 'Login'}
+
+            {/* Remember me */}
+            <div className="flex items-center gap-2">
+              <input
+                id="rememberMe"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <Label htmlFor="rememberMe" className="text-sm font-normal text-muted-foreground cursor-pointer select-none">
+                Stay logged in
+              </Label>
+            </div>
+
+            {/* Security challenge after repeated failures */}
+            {showChallenge && !isLockedOut && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-300">
+                  <ShieldCheck className="h-4 w-4" />
+                  Security Check
+                </div>
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  Too many failed attempts. Please solve this to continue:
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-mono font-bold text-amber-900 dark:text-amber-200">
+                    {challenge.a} + {challenge.b} =
+                  </span>
+                  <Input
+                    type="number"
+                    value={challengeAnswer}
+                    onChange={(e) => setChallengeAnswer(e.target.value)}
+                    className="w-20 h-9 text-center"
+                    placeholder="?"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Lockout warning */}
+            {isLockedOut && (
+              <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-700 p-3 space-y-1">
+                <div className="text-sm font-medium text-red-800 dark:text-red-300">
+                  Account temporarily locked
+                </div>
+                <p className="text-xs text-red-700 dark:text-red-400">
+                  Too many failed login attempts. Please try again in{' '}
+                  <span className="font-bold tabular-nums">{lockCountdown}s</span>.
+                </p>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full h-11 font-semibold text-base" disabled={loading || isLockedOut}>
+              {loading ? 'Signing in...' : isLockedOut ? `Locked (${lockCountdown}s)` : 'Login'}
             </Button>
           </form>
 

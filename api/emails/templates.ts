@@ -1,72 +1,113 @@
 /**
  * Email HTML templates for GrantLume
  * Each function returns { subject, html } for use with Resend
+ *
+ * Redesigned March 2026 — modern layout with GrantLume logo SVG,
+ * improved typography, refined color palette, and all new templates.
  */
 
-const BRAND_COLOR = '#2563eb'
-const MUTED_COLOR = '#6b7280'
-const BG_COLOR = '#f9fafb'
-const CARD_BG = '#ffffff'
+// ── Brand palette ──────────────────────────────────────
+const BRAND     = '#0d9488'   // teal-600 — primary brand
+const BRAND_DK  = '#0f766e'   // teal-700 — darker hover
+const NAVY      = '#1a2744'   // dark navy — headings, icon bg
+const GOLD      = '#f59e0b'   // amber-500 — star accent
+const MUTED     = '#6b7280'   // gray-500
+const TEXT      = '#1f2937'   // gray-800
+const TEXT_SEC  = '#4b5563'   // gray-600
+const BG        = '#f8fafc'   // slate-50
+const CARD_BG   = '#ffffff'
+const BORDER    = '#e2e8f0'   // slate-200
+const SUCCESS   = '#059669'   // emerald-600
+const DANGER    = '#dc2626'   // red-600
+const WARNING   = '#d97706'   // amber-600
+
+// ── Inline SVG logo for emails (checkmark + star) ──────
+const LOGO_SVG = `<svg width="36" height="36" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8 26 L14 20 L22 32 L40 8" stroke="white" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+<path d="M38 6 L39.2 2 L40.4 6 L44 7.2 L40.4 8.4 L39.2 12 L38 8.4 L34 7.2 Z" fill="${GOLD}"/>
+</svg>`
+
+const WORDMARK = `<span style="font-size:20px;font-weight:700;letter-spacing:-0.3px;">
+<span style="color:white;">Grant</span><span style="color:#6ee7b7;">Lume</span>
+</span>`
+
+// ── Shared helpers ─────────────────────────────────────
 
 function layout(title: string, body: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>${title}</title></head>
-<body style="margin:0;padding:0;background:${BG_COLOR};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:${BG_COLOR};padding:40px 20px;">
+<body style="margin:0;padding:0;background:${BG};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:${BG};padding:40px 16px;">
 <tr><td align="center">
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:${CARD_BG};border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;background:${CARD_BG};border-radius:16px;border:1px solid ${BORDER};overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
 <!-- Header -->
-<tr><td style="background:${BRAND_COLOR};padding:24px 32px;">
+<tr><td style="background:linear-gradient(135deg,${NAVY} 0%,#243456 100%);padding:28px 36px;">
   <table cellpadding="0" cellspacing="0"><tr>
-    <td style="background:white;border-radius:8px;width:36px;height:36px;text-align:center;vertical-align:middle;">
-      <span style="font-size:18px;font-weight:700;color:${BRAND_COLOR};line-height:36px;">G</span>
-    </td>
-    <td style="padding-left:12px;color:white;font-size:18px;font-weight:600;">GrantLume</td>
+    <td style="vertical-align:middle;">${LOGO_SVG}</td>
+    <td style="padding-left:14px;vertical-align:middle;">${WORDMARK}</td>
   </tr></table>
 </td></tr>
 <!-- Body -->
-<tr><td style="padding:32px;">${body}</td></tr>
+<tr><td style="padding:36px 36px 28px;">${body}</td></tr>
 <!-- Footer -->
-<tr><td style="padding:20px 32px;border-top:1px solid #e5e7eb;">
-  <p style="margin:0 0 8px;font-size:12px;color:${MUTED_COLOR};text-align:center;">
-    This is an automated message from GrantLume. Please do not reply directly to this email.
+<tr><td style="padding:20px 36px 24px;border-top:1px solid ${BORDER};background:#f8fafc;">
+  <p style="margin:0 0 6px;font-size:12px;color:${MUTED};text-align:center;line-height:1.5;">
+    This is an automated message from GrantLume. Please do not reply directly.
   </p>
-  <p style="margin:0;font-size:11px;color:${MUTED_COLOR};text-align:center;">
-    <a href="https://app.grantlume.com/profile" style="color:${BRAND_COLOR};text-decoration:underline;">Manage your notification preferences</a>
+  <p style="margin:0;font-size:11px;color:${MUTED};text-align:center;">
+    <a href="https://app.grantlume.com/profile" style="color:${BRAND};text-decoration:underline;">Manage notification preferences</a>
+    &nbsp;&middot;&nbsp;
+    <a href="https://grantlume.com" style="color:${BRAND};text-decoration:underline;">grantlume.com</a>
   </p>
+</td></tr>
+</table>
+<!-- Sub-footer -->
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:580px;margin-top:16px;">
+<tr><td style="text-align:center;font-size:11px;color:#94a3b8;">
+  &copy; ${new Date().getFullYear()} GrantLume. All rights reserved.
 </td></tr>
 </table>
 </td></tr></table>
 </body></html>`
 }
 
-function button(text: string, href: string): string {
-  return `<table cellpadding="0" cellspacing="0" style="margin:24px 0;"><tr><td>
-<a href="${href}" style="display:inline-block;background:${BRAND_COLOR};color:white;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;">${text}</a>
+function button(text: string, href: string, color: string = BRAND): string {
+  return `<table cellpadding="0" cellspacing="0" style="margin:28px 0 8px;"><tr><td>
+<a href="${href}" style="display:inline-block;background:${color};color:white;text-decoration:none;padding:14px 32px;border-radius:10px;font-size:14px;font-weight:600;letter-spacing:0.2px;">${text}</a>
 </td></tr></table>`
 }
 
 function heading(text: string): string {
-  return `<h1 style="margin:0 0 16px;font-size:22px;font-weight:700;color:#111827;">${text}</h1>`
+  return `<h1 style="margin:0 0 18px;font-size:24px;font-weight:700;color:${NAVY};letter-spacing:-0.3px;">${text}</h1>`
 }
 
 function paragraph(text: string): string {
-  return `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;color:#374151;">${text}</p>`
+  return `<p style="margin:0 0 16px;font-size:15px;line-height:1.7;color:${TEXT_SEC};">${text}</p>`
 }
 
 function detailRow(label: string, value: string): string {
   return `<tr>
-    <td style="padding:8px 12px;font-size:13px;color:${MUTED_COLOR};border-bottom:1px solid #f3f4f6;">${label}</td>
-    <td style="padding:8px 12px;font-size:13px;font-weight:500;color:#111827;border-bottom:1px solid #f3f4f6;">${value}</td>
+    <td style="padding:10px 14px;font-size:13px;color:${MUTED};font-weight:500;border-bottom:1px solid #f1f5f9;white-space:nowrap;">${label}</td>
+    <td style="padding:10px 14px;font-size:13px;font-weight:600;color:${TEXT};border-bottom:1px solid #f1f5f9;">${value}</td>
   </tr>`
 }
 
 function detailTable(rows: string): string {
-  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;border:1px solid ${BORDER};border-radius:10px;overflow:hidden;background:#fafbfc;">
 ${rows}
 </table>`
+}
+
+function statusBadge(label: string, color: string, bgColor: string): string {
+  return `<span style="display:inline-block;background:${bgColor};color:${color};font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:0.3px;text-transform:uppercase;">${label}</span>`
+}
+
+function infoBox(content: string, borderColor: string = BRAND, bgColor: string = '#f0fdfa'): string {
+  return `<div style="margin:20px 0;padding:18px 20px;background:${bgColor};border-radius:10px;border-left:4px solid ${borderColor};font-size:14px;line-height:1.6;color:${TEXT_SEC};">
+${content}
+</div>`
 }
 
 // ─── Templates ───────────────────────────────────────────
@@ -76,61 +117,52 @@ export interface EmailTemplate {
   html: string
 }
 
-/** User invited to join an organisation */
+// ── Existing templates (redesigned) ─────────────────────
+
 export function invitationEmail(params: {
-  invitedEmail: string
-  orgName: string
-  role: string
-  invitedByName: string
-  signUpUrl: string
+  invitedEmail: string; orgName: string; role: string; invitedByName: string; signUpUrl: string
 }): EmailTemplate {
   return {
     subject: `You've been invited to join ${params.orgName} on GrantLume`,
     html: layout('Invitation', [
-      heading('You\'re invited!'),
+      heading('You\'re Invited!'),
       paragraph(`<strong>${params.invitedByName}</strong> has invited you to join <strong>${params.orgName}</strong> on GrantLume as a <strong>${params.role}</strong>.`),
-      paragraph('GrantLume helps research teams manage grant projects, allocations, timesheets, and budgets in one place.'),
+      paragraph('GrantLume helps research teams manage grant projects, allocations, timesheets, and budgets — all in one beautifully designed platform.'),
       detailTable(
         detailRow('Organisation', params.orgName) +
         detailRow('Your Role', params.role) +
         detailRow('Invited By', params.invitedByName)
       ),
       button('Accept Invitation', params.signUpUrl),
-      paragraph(`If you weren't expecting this invitation, you can safely ignore this email.`),
+      paragraph(`<span style="font-size:13px;color:${MUTED};">If you weren't expecting this invitation, you can safely ignore this email.</span>`),
     ].join('')),
   }
 }
 
-/** Welcome email after signup */
 export function welcomeEmail(params: {
-  userName: string
-  orgName: string
-  dashboardUrl: string
+  userName: string; orgName: string; dashboardUrl: string
 }): EmailTemplate {
   return {
     subject: `Welcome to GrantLume — ${params.orgName}`,
     html: layout('Welcome', [
       heading(`Welcome, ${params.userName}!`),
-      paragraph(`Your account for <strong>${params.orgName}</strong> is all set up. You can now start managing your grant projects, allocations, and timesheets.`),
-      paragraph('Here are a few things you can do to get started:'),
-      `<ul style="margin:0 0 16px;padding-left:20px;font-size:14px;line-height:1.8;color:#374151;">
-        <li>Add your first project</li>
-        <li>Invite team members</li>
-        <li>Set up funding schemes</li>
-        <li>Configure person-month allocations</li>
-      </ul>`,
+      paragraph(`Your account for <strong>${params.orgName}</strong> is ready. Start managing your grant projects, allocations, and timesheets today.`),
+      infoBox(`
+        <p style="margin:0 0 10px;font-size:14px;font-weight:600;color:${NAVY};">Getting started</p>
+        <ol style="margin:0;padding-left:18px;font-size:13px;line-height:2;color:${TEXT_SEC};">
+          <li>Add your first project</li>
+          <li>Invite team members</li>
+          <li>Configure person-month allocations</li>
+          <li>Set up timesheets</li>
+        </ol>
+      `),
       button('Go to Dashboard', params.dashboardUrl),
     ].join('')),
   }
 }
 
-/** Role changed notification */
 export function roleChangedEmail(params: {
-  userName: string
-  orgName: string
-  oldRole: string
-  newRole: string
-  dashboardUrl: string
+  userName: string; orgName: string; oldRole: string; newRole: string; dashboardUrl: string
 }): EmailTemplate {
   return {
     subject: `Your role in ${params.orgName} has been updated`,
@@ -139,20 +171,16 @@ export function roleChangedEmail(params: {
       paragraph(`Hi ${params.userName}, your role in <strong>${params.orgName}</strong> has been changed.`),
       detailTable(
         detailRow('Previous Role', params.oldRole) +
-        detailRow('New Role', `<strong>${params.newRole}</strong>`)
+        detailRow('New Role', `<strong style="color:${BRAND};">${params.newRole}</strong>`)
       ),
-      paragraph('Your accessible modules and permissions may have changed. If you have questions, please contact your administrator.'),
+      paragraph('Your accessible modules and permissions may have changed. Contact your administrator if you have questions.'),
       button('Go to Dashboard', params.dashboardUrl),
     ].join('')),
   }
 }
 
-/** Timesheet submission reminder */
 export function timesheetReminderEmail(params: {
-  userName: string
-  orgName: string
-  period: string
-  timesheetUrl: string
+  userName: string; orgName: string; period: string; timesheetUrl: string
 }): EmailTemplate {
   return {
     subject: `Timesheet reminder — ${params.period}`,
@@ -165,44 +193,37 @@ export function timesheetReminderEmail(params: {
   }
 }
 
-/** Timesheet submitted — notify approver */
 export function timesheetSubmittedEmail(params: {
-  approverName: string
-  submitterName: string
-  orgName: string
-  period: string
-  timesheetUrl: string
+  approverName: string; submitterName: string; orgName: string; period: string; timesheetUrl: string
 }): EmailTemplate {
   return {
     subject: `Timesheet submitted by ${params.submitterName} — ${params.period}`,
     html: layout('Timesheet Submitted', [
       heading('Timesheet Submitted'),
       paragraph(`Hi ${params.approverName}, <strong>${params.submitterName}</strong> has submitted their timesheet for <strong>${params.period}</strong>.`),
-      paragraph('Please review and approve or request changes.'),
+      detailTable(
+        detailRow('Submitted By', params.submitterName) +
+        detailRow('Period', params.period) +
+        detailRow('Status', statusBadge('Pending Review', WARNING, '#fef3c7'))
+      ),
       button('Review Timesheet', params.timesheetUrl),
     ].join('')),
   }
 }
 
-/** Project ending soon */
 export function projectEndingSoonEmail(params: {
-  recipientName: string
-  orgName: string
-  projectAcronym: string
-  projectTitle: string
-  endDate: string
-  daysRemaining: number
-  projectUrl: string
+  recipientName: string; orgName: string; projectAcronym: string; projectTitle: string; endDate: string; daysRemaining: number; projectUrl: string
 }): EmailTemplate {
+  const urgency = params.daysRemaining <= 7 ? DANGER : params.daysRemaining <= 14 ? WARNING : BRAND
   return {
     subject: `Project "${params.projectAcronym}" ending in ${params.daysRemaining} days`,
     html: layout('Project Alert', [
       heading('Project Ending Soon'),
       paragraph(`Hi ${params.recipientName}, the following project in <strong>${params.orgName}</strong> is ending soon.`),
       detailTable(
-        detailRow('Project', `${params.projectAcronym} — ${params.projectTitle}`) +
+        detailRow('Project', `<strong>${params.projectAcronym}</strong> — ${params.projectTitle}`) +
         detailRow('End Date', params.endDate) +
-        detailRow('Days Remaining', `<strong>${params.daysRemaining}</strong>`)
+        detailRow('Days Remaining', `<strong style="color:${urgency};">${params.daysRemaining}</strong>`)
       ),
       paragraph('Please ensure all deliverables and reports are in order.'),
       button('View Project', params.projectUrl),
@@ -210,16 +231,11 @@ export function projectEndingSoonEmail(params: {
   }
 }
 
-/** Budget threshold exceeded */
 export function budgetAlertEmail(params: {
-  recipientName: string
-  orgName: string
-  projectAcronym: string
-  budgetCategory: string
-  percentUsed: number
-  projectUrl: string
+  recipientName: string; orgName: string; projectAcronym: string; budgetCategory: string; percentUsed: number; projectUrl: string
 }): EmailTemplate {
-  const severity = params.percentUsed >= 100 ? 'exceeded' : `reached ${params.percentUsed}%`
+  const exceeded = params.percentUsed >= 100
+  const severity = exceeded ? 'exceeded' : `reached ${params.percentUsed}%`
   return {
     subject: `Budget alert: ${params.projectAcronym} ${params.budgetCategory} ${severity}`,
     html: layout('Budget Alert', [
@@ -228,22 +244,18 @@ export function budgetAlertEmail(params: {
       detailTable(
         detailRow('Project', params.projectAcronym) +
         detailRow('Category', params.budgetCategory) +
-        detailRow('Usage', `<strong style="color:${params.percentUsed >= 100 ? '#dc2626' : '#d97706'}">${params.percentUsed}%</strong>`)
+        detailRow('Usage', `<strong style="color:${exceeded ? DANGER : WARNING};">${params.percentUsed}%</strong>`)
       ),
-      paragraph('Please review the budget and take appropriate action.'),
+      exceeded
+        ? infoBox('This budget category has exceeded its limit. Immediate attention is required.', DANGER, '#fef2f2')
+        : '',
       button('View Project', params.projectUrl),
     ].join('')),
   }
 }
 
-/** Guest invitation */
 export function guestInvitationEmail(params: {
-  guestEmail: string
-  orgName: string
-  projectAcronym: string
-  invitedByName: string
-  accessLevel: string
-  loginUrl: string
+  guestEmail: string; orgName: string; projectAcronym: string; invitedByName: string; accessLevel: string; loginUrl: string
 }): EmailTemplate {
   return {
     subject: `You've been given guest access to ${params.projectAcronym} on GrantLume`,
@@ -256,51 +268,44 @@ export function guestInvitationEmail(params: {
         detailRow('Organisation', params.orgName)
       ),
       button('Access Project', params.loginUrl),
-      paragraph('If you weren\'t expecting this, you can safely ignore this email.'),
+      paragraph(`<span style="font-size:13px;color:${MUTED};">If you weren't expecting this, you can safely ignore this email.</span>`),
     ].join('')),
   }
 }
 
-/** Trial expiring */
 export function trialExpiringEmail(params: {
-  userName: string
-  orgName: string
-  daysRemaining: number
-  upgradeUrl: string
+  userName: string; orgName: string; daysRemaining: number; upgradeUrl: string
 }): EmailTemplate {
+  const urgent = params.daysRemaining <= 3
   return {
     subject: `Your GrantLume trial expires in ${params.daysRemaining} day${params.daysRemaining === 1 ? '' : 's'}`,
     html: layout('Trial Expiring', [
-      heading('Trial Expiring Soon'),
+      heading(urgent ? 'Trial Expiring Tomorrow!' : 'Trial Expiring Soon'),
       paragraph(`Hi ${params.userName}, your free trial for <strong>${params.orgName}</strong> on GrantLume expires in <strong>${params.daysRemaining} day${params.daysRemaining === 1 ? '' : 's'}</strong>.`),
-      paragraph('Upgrade now to keep your data and continue using all features without interruption.'),
-      button('Upgrade Now', params.upgradeUrl),
-      paragraph('If you have questions about pricing or features, don\'t hesitate to reach out to our support team.'),
+      urgent
+        ? infoBox('Upgrade now to avoid any interruption. Your data will be preserved.', WARNING, '#fffbeb')
+        : paragraph('Upgrade now to keep your data and continue using all features without interruption.'),
+      button('Upgrade Now', params.upgradeUrl, urgent ? WARNING : BRAND),
+      paragraph(`<span style="font-size:13px;color:${MUTED};">Questions about pricing? Contact us at support@grantlume.com.</span>`),
     ].join('')),
   }
 }
 
-/** Period locked notification */
 export function periodLockedEmail(params: {
-  recipientName: string
-  orgName: string
-  period: string
-  lockedBy: string
+  recipientName: string; orgName: string; period: string; lockedBy: string
 }): EmailTemplate {
   return {
     subject: `Period "${params.period}" has been locked — ${params.orgName}`,
     html: layout('Period Locked', [
       heading('Period Locked'),
       paragraph(`Hi ${params.recipientName}, the period <strong>${params.period}</strong> in <strong>${params.orgName}</strong> has been locked by <strong>${params.lockedBy}</strong>.`),
-      paragraph('No further edits can be made to timesheets or allocations for this period. Contact your administrator if you need changes.'),
+      infoBox('No further edits can be made to timesheets or allocations for this period. Contact your administrator if you need changes.', NAVY, '#f1f5f9'),
     ].join('')),
   }
 }
 
-/** Signup confirmation — sent immediately after a new user registers */
 export function signupConfirmationEmail(params: {
-  firstName: string
-  confirmUrl: string
+  firstName: string; confirmUrl: string
 }): EmailTemplate {
   return {
     subject: 'Confirm your GrantLume account',
@@ -308,25 +313,21 @@ export function signupConfirmationEmail(params: {
       heading(`Welcome, ${params.firstName}!`),
       paragraph('Thank you for signing up for GrantLume. Please confirm your email address to activate your account and start your <strong>14-day free trial</strong>.'),
       button('Confirm Email Address', params.confirmUrl),
-      paragraph('This link will expire in 24 hours. If you didn\'t create a GrantLume account, you can safely ignore this email.'),
-      `<div style="margin:24px 0;padding:16px;background:#f0f9ff;border-radius:8px;border-left:4px solid ${BRAND_COLOR};">
-        <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#1e40af;">What happens next?</p>
-        <ol style="margin:0;padding-left:18px;font-size:13px;line-height:1.8;color:#374151;">
+      infoBox(`
+        <p style="margin:0 0 10px;font-size:14px;font-weight:600;color:${NAVY};">What happens next?</p>
+        <ol style="margin:0;padding-left:18px;font-size:13px;line-height:2;color:${TEXT_SEC};">
           <li>Confirm your email (click the button above)</li>
           <li>Set up your organisation</li>
           <li>Invite your team and start managing projects</li>
         </ol>
-      </div>`,
-      paragraph('Your trial includes all features — no credit card required, and it ends automatically after 14 days.'),
+      `),
+      paragraph(`<span style="font-size:13px;color:${MUTED};">This link will expire in 24 hours. If you didn't create a GrantLume account, you can safely ignore this email.</span>`),
     ].join('')),
   }
 }
 
-/** Welcome email for users who signed up via social auth (Google/Microsoft/Slack) */
 export function socialWelcomeEmail(params: {
-  firstName: string
-  provider: string
-  dashboardUrl: string
+  firstName: string; provider: string; dashboardUrl: string
 }): EmailTemplate {
   return {
     subject: 'Welcome to GrantLume — Your account is ready',
@@ -334,36 +335,33 @@ export function socialWelcomeEmail(params: {
       heading(`Welcome, ${params.firstName}!`),
       paragraph(`You've successfully signed up for GrantLume using your <strong>${params.provider}</strong> account. Your account is already verified and ready to use.`),
       paragraph('Start your <strong>14-day free trial</strong> now — no credit card required.'),
-      button('Go to Dashboard', params.dashboardUrl),
-      `<div style="margin:24px 0;padding:16px;background:#f0f9ff;border-radius:8px;border-left:4px solid ${BRAND_COLOR};">
-        <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#1e40af;">Quick start guide</p>
-        <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.8;color:#374151;">
+      infoBox(`
+        <p style="margin:0 0 10px;font-size:14px;font-weight:600;color:${NAVY};">Quick start guide</p>
+        <ul style="margin:0;padding-left:18px;font-size:13px;line-height:2;color:${TEXT_SEC};">
           <li>Create your organisation</li>
           <li>Add your first project</li>
           <li>Invite team members</li>
           <li>Configure allocations and timesheets</li>
         </ul>
-      </div>`,
+      `),
+      button('Go to Dashboard', params.dashboardUrl),
     ].join('')),
   }
 }
 
-/** Account email changed confirmation */
 export function emailChangedEmail(params: {
-  firstName: string
-  newEmail: string
+  firstName: string; newEmail: string
 }): EmailTemplate {
   return {
     subject: 'Your GrantLume email address has been changed',
     html: layout('Email Changed', [
       heading('Email Address Changed'),
       paragraph(`Hi ${params.firstName}, your GrantLume account email has been updated to <strong>${params.newEmail}</strong>.`),
-      paragraph('If you did not make this change, please contact us immediately at <strong>support@grantlume.com</strong> to secure your account.'),
+      infoBox(`If you did not make this change, please contact us immediately at <strong>support@grantlume.com</strong> to secure your account.`, DANGER, '#fef2f2'),
     ].join('')),
   }
 }
 
-/** Password changed confirmation */
 export function passwordChangedEmail(params: {
   firstName: string
 }): EmailTemplate {
@@ -372,21 +370,14 @@ export function passwordChangedEmail(params: {
     html: layout('Password Changed', [
       heading('Password Changed'),
       paragraph(`Hi ${params.firstName}, your GrantLume account password was successfully changed.`),
-      paragraph('If you did not make this change, please reset your password immediately or contact us at <strong>support@grantlume.com</strong>.'),
-      button('Reset Password', 'https://app.grantlume.com/forgot-password'),
+      infoBox(`If you did not make this change, please reset your password immediately or contact us at <strong>support@grantlume.com</strong>.`, DANGER, '#fef2f2'),
+      button('Reset Password', 'https://app.grantlume.com/forgot-password', DANGER),
     ].join('')),
   }
 }
 
-/** Notify approver about a new absence request */
 export function absenceRequestedEmail(params: {
-  approverName: string
-  requesterName: string
-  absenceType: string
-  startDate: string
-  endDate: string
-  days: string
-  absencesUrl: string
+  approverName: string; requesterName: string; absenceType: string; startDate: string; endDate: string; days: string; absencesUrl: string
 }): EmailTemplate {
   return {
     subject: `Absence Request: ${params.requesterName} — ${params.absenceType}`,
@@ -394,70 +385,212 @@ export function absenceRequestedEmail(params: {
       heading('New Absence Request'),
       paragraph(`Hi ${params.approverName},`),
       paragraph(`<strong>${params.requesterName}</strong> has submitted an absence request that requires your approval:`),
-      `<div style="margin:16px 0;padding:16px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
-        <table cellpadding="0" cellspacing="0" style="font-size:14px;color:#374151;">
-          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Type</td><td style="padding:4px 0;">${params.absenceType}</td></tr>
-          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Period</td><td style="padding:4px 0;">${params.startDate} — ${params.endDate}</td></tr>
-          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Days</td><td style="padding:4px 0;">${params.days}</td></tr>
-        </table>
-      </div>`,
-      paragraph('Please review and approve or reject this request.'),
+      detailTable(
+        detailRow('Employee', params.requesterName) +
+        detailRow('Type', params.absenceType) +
+        detailRow('Period', `${params.startDate} — ${params.endDate}`) +
+        detailRow('Days', params.days) +
+        detailRow('Status', statusBadge('Pending', WARNING, '#fef3c7'))
+      ),
       button('Review Request', params.absencesUrl),
     ].join('')),
   }
 }
 
-/** Notify employee their absence was approved */
 export function absenceApprovedEmail(params: {
-  employeeName: string
-  absenceType: string
-  startDate: string
-  endDate: string
-  days: string
-  absencesUrl: string
+  employeeName: string; absenceType: string; startDate: string; endDate: string; days: string; absencesUrl: string
 }): EmailTemplate {
   return {
     subject: `Absence Approved: ${params.absenceType} (${params.startDate} — ${params.endDate})`,
     html: layout('Absence Approved', [
-      heading('Absence Approved ✓'),
+      heading('Absence Approved'),
       paragraph(`Hi ${params.employeeName},`),
-      paragraph('Your absence request has been <strong style="color:#059669;">approved</strong>:'),
-      `<div style="margin:16px 0;padding:16px;background:#ecfdf5;border-radius:8px;border:1px solid #a7f3d0;">
-        <table cellpadding="0" cellspacing="0" style="font-size:14px;color:#374151;">
-          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Type</td><td style="padding:4px 0;">${params.absenceType}</td></tr>
-          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Period</td><td style="padding:4px 0;">${params.startDate} — ${params.endDate}</td></tr>
-          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Days</td><td style="padding:4px 0;">${params.days}</td></tr>
-        </table>
-      </div>`,
+      paragraph(`Your absence request has been ${statusBadge('Approved', SUCCESS, '#ecfdf5')}:`),
+      detailTable(
+        detailRow('Type', params.absenceType) +
+        detailRow('Period', `${params.startDate} — ${params.endDate}`) +
+        detailRow('Days', params.days)
+      ),
       button('View Absences', params.absencesUrl),
     ].join('')),
   }
 }
 
-/** Notify employee their absence was rejected */
 export function absenceRejectedEmail(params: {
-  employeeName: string
-  absenceType: string
-  startDate: string
-  endDate: string
-  days: string
-  absencesUrl: string
+  employeeName: string; absenceType: string; startDate: string; endDate: string; days: string; absencesUrl: string
 }): EmailTemplate {
   return {
     subject: `Absence Rejected: ${params.absenceType} (${params.startDate} — ${params.endDate})`,
     html: layout('Absence Rejected', [
       heading('Absence Rejected'),
       paragraph(`Hi ${params.employeeName},`),
-      paragraph('Unfortunately, your absence request has been <strong style="color:#dc2626;">rejected</strong>:'),
-      `<div style="margin:16px 0;padding:16px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;">
-        <table cellpadding="0" cellspacing="0" style="font-size:14px;color:#374151;">
-          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Type</td><td style="padding:4px 0;">${params.absenceType}</td></tr>
-          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Period</td><td style="padding:4px 0;">${params.startDate} — ${params.endDate}</td></tr>
-          <tr><td style="padding:4px 16px 4px 0;color:${MUTED_COLOR};font-weight:500;">Days</td><td style="padding:4px 0;">${params.days}</td></tr>
-        </table>
-      </div>`,
+      paragraph(`Unfortunately, your absence request has been ${statusBadge('Rejected', DANGER, '#fef2f2')}:`),
+      detailTable(
+        detailRow('Type', params.absenceType) +
+        detailRow('Period', `${params.startDate} — ${params.endDate}`) +
+        detailRow('Days', params.days)
+      ),
       paragraph('Please contact your manager for further details or to discuss alternative dates.'),
       button('View Absences', params.absencesUrl),
+    ].join('')),
+  }
+}
+
+// ── NEW templates ───────────────────────────────────────
+
+/** #18 — Notify employee their timesheet was approved */
+export function timesheetApprovedEmail(params: {
+  employeeName: string; period: string; approverName: string; timesheetUrl: string
+}): EmailTemplate {
+  return {
+    subject: `Timesheet Approved — ${params.period}`,
+    html: layout('Timesheet Approved', [
+      heading('Timesheet Approved'),
+      paragraph(`Hi ${params.employeeName},`),
+      paragraph(`Your timesheet for <strong>${params.period}</strong> has been ${statusBadge('Approved', SUCCESS, '#ecfdf5')} by <strong>${params.approverName}</strong>.`),
+      detailTable(
+        detailRow('Period', params.period) +
+        detailRow('Reviewed By', params.approverName)
+      ),
+      button('View Timesheet', params.timesheetUrl),
+    ].join('')),
+  }
+}
+
+/** #19 — Notify employee their timesheet was rejected */
+export function timesheetRejectedEmail(params: {
+  employeeName: string; period: string; approverName: string; reason?: string; timesheetUrl: string
+}): EmailTemplate {
+  return {
+    subject: `Timesheet Rejected — ${params.period}`,
+    html: layout('Timesheet Rejected', [
+      heading('Timesheet Rejected'),
+      paragraph(`Hi ${params.employeeName},`),
+      paragraph(`Your timesheet for <strong>${params.period}</strong> has been ${statusBadge('Rejected', DANGER, '#fef2f2')} by <strong>${params.approverName}</strong>.`),
+      detailTable(
+        detailRow('Period', params.period) +
+        detailRow('Reviewed By', params.approverName) +
+        (params.reason ? detailRow('Reason', params.reason) : '')
+      ),
+      paragraph('Please review and correct your timesheet, then resubmit.'),
+      button('Edit Timesheet', params.timesheetUrl),
+    ].join('')),
+  }
+}
+
+/** #20 — Notify approvers that an employee cancelled their absence */
+export function absenceCancelledEmail(params: {
+  approverName: string; employeeName: string; absenceType: string; startDate: string; endDate: string; days: string; absencesUrl: string
+}): EmailTemplate {
+  return {
+    subject: `Absence Cancelled: ${params.employeeName} — ${params.absenceType}`,
+    html: layout('Absence Cancelled', [
+      heading('Absence Cancelled'),
+      paragraph(`Hi ${params.approverName},`),
+      paragraph(`<strong>${params.employeeName}</strong> has cancelled their absence request:`),
+      detailTable(
+        detailRow('Employee', params.employeeName) +
+        detailRow('Type', params.absenceType) +
+        detailRow('Period', `${params.startDate} — ${params.endDate}`) +
+        detailRow('Days', params.days) +
+        detailRow('Status', statusBadge('Cancelled', MUTED, '#f1f5f9'))
+      ),
+      paragraph(`<span style="font-size:13px;color:${MUTED};">No action is required on your part.</span>`),
+    ].join('')),
+  }
+}
+
+/** #21 — Notify org admins that a new project was created */
+export function projectCreatedEmail(params: {
+  recipientName: string; orgName: string; projectAcronym: string; projectTitle: string; createdBy: string; projectUrl: string
+}): EmailTemplate {
+  return {
+    subject: `New Project: ${params.projectAcronym} — ${params.projectTitle}`,
+    html: layout('New Project', [
+      heading('New Project Created'),
+      paragraph(`Hi ${params.recipientName},`),
+      paragraph(`A new project has been added to <strong>${params.orgName}</strong>:`),
+      detailTable(
+        detailRow('Acronym', `<strong>${params.projectAcronym}</strong>`) +
+        detailRow('Title', params.projectTitle) +
+        detailRow('Created By', params.createdBy)
+      ),
+      button('View Project', params.projectUrl),
+    ].join('')),
+  }
+}
+
+/** #22 — Notify a person that their staff record has been deactivated */
+export function staffDeactivatedEmail(params: {
+  employeeName: string; orgName: string
+}): EmailTemplate {
+  return {
+    subject: `Your account in ${params.orgName} has been deactivated`,
+    html: layout('Account Deactivated', [
+      heading('Account Deactivated'),
+      paragraph(`Hi ${params.employeeName},`),
+      paragraph(`Your staff account in <strong>${params.orgName}</strong> has been deactivated. You may no longer have access to certain modules.`),
+      paragraph('If you believe this was done in error, please contact your organisation administrator.'),
+    ].join('')),
+  }
+}
+
+/** #23 — Notify a staff member that their PM allocation was changed */
+export function allocationChangedEmail(params: {
+  employeeName: string; orgName: string; projectAcronym: string; year: number; oldPms: string; newPms: string; allocationsUrl: string
+}): EmailTemplate {
+  return {
+    subject: `Allocation Updated: ${params.projectAcronym} (${params.year})`,
+    html: layout('Allocation Updated', [
+      heading('Allocation Updated'),
+      paragraph(`Hi ${params.employeeName},`),
+      paragraph(`Your person-month allocation on <strong>${params.projectAcronym}</strong> in <strong>${params.orgName}</strong> has been updated:`),
+      detailTable(
+        detailRow('Project', params.projectAcronym) +
+        detailRow('Year', String(params.year)) +
+        detailRow('Previous PMs', params.oldPms) +
+        detailRow('New PMs', `<strong style="color:${BRAND};">${params.newPms}</strong>`)
+      ),
+      button('View Allocations', params.allocationsUrl),
+    ].join('')),
+  }
+}
+
+/** #25 — Notify proposal team that the status changed */
+export function proposalStatusChangedEmail(params: {
+  recipientName: string; orgName: string; proposalTitle: string; oldStatus: string; newStatus: string; changedBy: string; proposalsUrl: string
+}): EmailTemplate {
+  const color = params.newStatus === 'Approved' ? SUCCESS : params.newStatus === 'Rejected' ? DANGER : BRAND
+  const bg = params.newStatus === 'Approved' ? '#ecfdf5' : params.newStatus === 'Rejected' ? '#fef2f2' : '#f0fdfa'
+  return {
+    subject: `Proposal "${params.proposalTitle}" — ${params.newStatus}`,
+    html: layout('Proposal Update', [
+      heading('Proposal Status Updated'),
+      paragraph(`Hi ${params.recipientName},`),
+      paragraph(`A proposal in <strong>${params.orgName}</strong> has been updated:`),
+      detailTable(
+        detailRow('Proposal', params.proposalTitle) +
+        detailRow('Previous Status', params.oldStatus) +
+        detailRow('New Status', statusBadge(params.newStatus, color, bg)) +
+        detailRow('Updated By', params.changedBy)
+      ),
+      button('View Proposals', params.proposalsUrl),
+    ].join('')),
+  }
+}
+
+/** #26 — Notify a user that they have been removed from an organisation */
+export function memberRemovedEmail(params: {
+  userName: string; orgName: string
+}): EmailTemplate {
+  return {
+    subject: `You've been removed from ${params.orgName} on GrantLume`,
+    html: layout('Membership Removed', [
+      heading('Organisation Access Removed'),
+      paragraph(`Hi ${params.userName},`),
+      paragraph(`Your membership in <strong>${params.orgName}</strong> on GrantLume has been removed. You will no longer have access to this organisation's data.`),
+      paragraph('If you believe this was done in error, please contact the organisation administrator.'),
+      paragraph(`<span style="font-size:13px;color:${MUTED};">You can still access GrantLume with any other organisations you belong to.</span>`),
     ].join('')),
   }
 }
