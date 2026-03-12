@@ -4,15 +4,18 @@ import { useStaffMember } from '@/hooks/useStaff'
 import { useAuthStore } from '@/stores/authStore'
 import { supabase } from '@/lib/supabase'
 import { absenceService } from '@/services/absenceService'
+import { emailService } from '@/services/emailService'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, Pencil, Mail, Briefcase, Calendar, DollarSign, MapPin, FolderKanban, CalendarOff } from 'lucide-react'
+import { toast } from '@/components/ui/use-toast'
+import { ArrowLeft, Pencil, Mail, Briefcase, Calendar, DollarSign, MapPin, FolderKanban, CalendarOff, Send } from 'lucide-react'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { COUNTRIES } from '@/data/countries'
+import type { OrgRole } from '@/types'
 
 interface PersonProject {
   project: { id: string; acronym: string; title: string; status: string; start_date: string; end_date: string }
@@ -23,11 +26,12 @@ interface PersonProject {
 export function StaffDetail() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const { person, isLoading } = useStaffMember(id)
-  const { orgId, can } = useAuthStore()
+  const { person, isLoading, refetch } = useStaffMember(id)
+  const { orgId, orgName, user, can } = useAuthStore()
   const [projects, setProjects] = useState<PersonProject[]>([])
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [absenceDaysUsed, setAbsenceDaysUsed] = useState<number>(0)
+  const [inviting, setInviting] = useState(false)
   const currentYear = new Date().getFullYear()
 
   // Fetch absence days used this year
@@ -150,11 +154,63 @@ export function StaffDetail() {
         <Button variant="outline" size="sm" onClick={() => navigate('/staff')}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Staff
         </Button>
-        {can('canWrite') && (
-          <Button size="sm" onClick={() => navigate(`/staff/${person.id}/edit`)}>
-            <Pencil className="mr-2 h-4 w-4" /> Edit
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {/* Invite / Re-invite button */}
+          {can('canWrite') && person.email && !person.user_id && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={inviting}
+              onClick={async () => {
+                if (!orgId || !person.email) return
+                setInviting(true)
+                try {
+                  const role: OrgRole = (person.invite_role as OrgRole) ?? 'Viewer'
+                  const res = await fetch('/api/invite-member', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      email: person.email,
+                      orgId,
+                      role,
+                      invitedBy: user?.id,
+                      personId: person.id,
+                    }),
+                  })
+                  const data = await res.json()
+                  if (res.ok) {
+                    toast({ title: 'Invitation sent', description: `${person.email} will receive an invitation email.` })
+                    emailService.sendInvitation({
+                      invitedEmail: person.email,
+                      orgName: orgName ?? 'your organisation',
+                      role,
+                      invitedByName: user?.email ?? 'An administrator',
+                      signUpUrl: `${window.location.origin}/signup`,
+                    }).catch(() => {})
+                    refetch()
+                  } else if (res.status === 409) {
+                    toast({ title: 'Already a member', description: data.error })
+                    refetch()
+                  } else {
+                    toast({ title: 'Invitation failed', description: data.error ?? 'Could not send invitation', variant: 'destructive' })
+                  }
+                } catch {
+                  toast({ title: 'Invitation failed', description: 'Could not reach the invitation service.', variant: 'destructive' })
+                } finally {
+                  setInviting(false)
+                }
+              }}
+            >
+              <Send className="mr-2 h-4 w-4" />
+              {inviting ? 'Sending...' : person.invite_status === 'pending' ? 'Resend Invitation' : 'Invite to GrantLume'}
+            </Button>
+          )}
+          {can('canWrite') && (
+            <Button size="sm" onClick={() => navigate(`/staff/${person.id}/edit`)}>
+              <Pencil className="mr-2 h-4 w-4" /> Edit
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Hero card with avatar */}
@@ -172,6 +228,11 @@ export function StaffDetail() {
                 <Badge variant={person.is_active ? 'default' : 'outline'} className="w-fit">
                   {person.is_active ? 'Active' : 'Inactive'}
                 </Badge>
+                {person.user_id ? (
+                  <Badge className="w-fit bg-green-600 hover:bg-green-700 text-[10px]">Account Active</Badge>
+                ) : person.invite_status === 'pending' ? (
+                  <Badge variant="secondary" className="w-fit bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px]">Invitation Pending</Badge>
+                ) : null}
               </div>
               {(person.role || person.department) && (
                 <p className="text-muted-foreground mt-1">

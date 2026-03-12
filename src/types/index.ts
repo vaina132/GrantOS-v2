@@ -76,6 +76,8 @@ export interface RolePermission {
   updated_at: string
 }
 
+export type InviteStatus = 'pending' | 'accepted' | null
+
 export interface Person {
   id: string
   org_id: string
@@ -93,6 +95,9 @@ export interface Person {
   is_active: boolean
   avatar_url: string | null
   vacation_days_per_year: number | null
+  user_id: string | null
+  invite_status: InviteStatus
+  invite_role: string | null
   created_at: string
   updated_at: string
 }

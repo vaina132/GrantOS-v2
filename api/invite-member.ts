@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   }
 
-  const { email, orgId, role, invitedBy } = req.body ?? {}
+  const { email, orgId, role, invitedBy, personId } = req.body ?? {}
   if (!email || !orgId || !role) {
     return res.status(400).json({ error: 'Missing required fields: email, orgId, role' })
   }
@@ -113,6 +113,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         error: 'Failed to add member to organisation',
         detail: insertErr.message,
       })
+    }
+
+    // ── Step 4: Link person record if personId provided ──
+    if (personId) {
+      await sb.from('persons').update({
+        user_id: userId,
+        invite_status: 'pending',
+        invite_role: role,
+        updated_at: new Date().toISOString(),
+      }).eq('id', personId)
     }
 
     return res.status(200).json({ success: true, userId, isNewUser })

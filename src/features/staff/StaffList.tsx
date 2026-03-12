@@ -140,6 +140,7 @@ export function StaffList() {
                   <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Type</th>
                   <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">FTE</th>
                   <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Leave Balance</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Account</th>
                   <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Status</th>
                   {can('canWrite') && <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Actions</th>}
                 </tr>
@@ -188,6 +189,15 @@ export function StaffList() {
                           </div>
                         )
                       })() : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {person.user_id ? (
+                        <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-[10px]">Active</Badge>
+                      ) : person.invite_status === 'pending' ? (
+                        <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px]">Invited</Badge>
+                      ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </td>

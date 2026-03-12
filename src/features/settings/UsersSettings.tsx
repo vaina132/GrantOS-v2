@@ -27,6 +27,7 @@ interface OrgMember {
   role: OrgRole
   created_at: string
   user_email?: string
+  person_name?: string
 }
 
 const ROLES: OrgRole[] = ['Admin', 'Project Manager', 'Finance Officer', 'Viewer', 'External Participant']
@@ -71,6 +72,27 @@ export function UsersSettings() {
           }
         } catch {
           // Non-critical — emails just won't display
+        }
+      }
+
+      // Resolve linked person names from persons table
+      if (orgId && rows.length > 0) {
+        try {
+          const { data: persons } = await supabase
+            .from('persons')
+            .select('*')
+            .eq('org_id', orgId)
+          if (persons) {
+            const personMap: Record<string, string> = {}
+            for (const p of persons as any[]) {
+              if (p.user_id) personMap[p.user_id] = p.full_name
+            }
+            for (const row of rows) {
+              row.person_name = personMap[row.user_id] ?? undefined
+            }
+          }
+        } catch {
+          // Non-critical
         }
       }
 
@@ -253,7 +275,14 @@ export function UsersSettings() {
                     <tr key={m.id} className="border-b last:border-0">
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm">{m.user_email ?? `${m.user_id.slice(0, 8)}...`}</span>
+                          <div>
+                            {m.person_name && (
+                              <div className="text-sm font-medium">{m.person_name}</div>
+                            )}
+                            <span className={m.person_name ? 'text-xs text-muted-foreground' : 'text-sm'}>
+                              {m.user_email ?? `${m.user_id.slice(0, 8)}...`}
+                            </span>
+                          </div>
                           {m.user_id === user?.id && (
                             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">You</Badge>
                           )}

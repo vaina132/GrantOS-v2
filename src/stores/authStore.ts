@@ -215,6 +215,14 @@ async function loadUserContext(
   if (member) {
     const role = member.role as OrgRole
 
+    // Auto-link person record to this auth user by email (fire-and-forget)
+    if (user.email) {
+      supabase.rpc('link_person_on_login', {
+        p_user_id: user.id,
+        p_email: user.email,
+      }).catch(() => { /* non-critical */ })
+    }
+
     // Fetch org details
     const { data: org } = await supabase
       .from('organisations')

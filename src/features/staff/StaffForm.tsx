@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { staffService } from '@/services/staffService'
 import { settingsService } from '@/services/settingsService'
 import { avatarService } from '@/services/avatarService'
+import { emailService } from '@/services/emailService'
+import { notificationService } from '@/services/notificationService'
 import { useAuthStore } from '@/stores/authStore'
 import { useStaffMember } from '@/hooks/useStaff'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
@@ -16,8 +18,11 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
-import { ArrowLeft, Save, Upload, X } from 'lucide-react'
+import { ArrowLeft, Save, Upload, X, Mail, UserPlus } from 'lucide-react'
 import { COUNTRIES } from '@/data/countries'
+import type { OrgRole } from '@/types'
+
+const ORG_ROLES: OrgRole[] = ['Admin', 'Project Manager', 'Finance Officer', 'Viewer', 'External Participant']
 
 const staffSchema = z.object({
   full_name: z.string().min(1, 'Name is required').max(100, 'Max 100 characters'),
@@ -45,7 +50,7 @@ export function StaffForm() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const isEdit = !!id && id !== 'new'
-  const { orgId, can } = useAuthStore()
+  const { orgId, orgName, user, can } = useAuthStore()
   const { person, isLoading: loadingPerson } = useStaffMember(isEdit ? id : undefined)
   const [saving, setSaving] = useState(false)
   const [departments, setDepartments] = useState<string[]>([])
@@ -54,6 +59,8 @@ export function StaffForm() {
   const [existingAvatarUrl, setExistingAvatarUrl] = useState<string | null>(null)
   const [removeAvatar, setRemoveAvatar] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [inviteToSystem, setInviteToSystem] = useState(false)
+  const [inviteRole, setInviteRole] = useState<OrgRole>('Viewer')
 
   useEffect(() => {
     if (!orgId) return
@@ -66,6 +73,7 @@ export function StaffForm() {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<StaffFormData>({
     resolver: zodResolver(staffSchema),
@@ -84,6 +92,10 @@ export function StaffForm() {
       is_active: true,
     },
   })
+
+  // Watch email field to conditionally show invite toggle
+  const watchedEmail = useWatch({ control, name: 'email' })
+  const hasEmail = !!watchedEmail && watchedEmail.includes('@')
 
   useEffect(() => {
     if (person) {
@@ -153,6 +165,52 @@ export function StaffForm() {
         const created = await staffService.create(payload as Parameters<typeof staffService.create>[0])
         savedPerson = created
         toast({ title: 'Created', description: `${data.full_name} has been added.` })
+
+        // Send invitation if requested
+        if (inviteToSystem && data.email && orgId) {
+          try {
+            const res = await fetch('/api/invite-member', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: data.email,
+                orgId,
+                role: inviteRole,
+                invitedBy: user?.id,
+                personId: created.id,
+              }),
+            })
+            const inviteData = await res.json()
+            if (res.ok) {
+              toast({ title: 'Invitation sent', description: `${data.email} will receive an invitation email.` })
+              // Send branded invitation email
+              emailService.sendInvitation({
+                invitedEmail: data.email,
+                orgName: orgName ?? 'your organisation',
+                role: inviteRole,
+                invitedByName: user?.email ?? 'An administrator',
+                signUpUrl: `${window.location.origin}/signup`,
+              }).catch(() => {})
+              // Notify admins
+              notificationService.getAdminUserIds(orgId).then((adminIds) => {
+                notificationService.notifyMany({
+                  orgId,
+                  userIds: adminIds.filter((uid) => uid !== user?.id),
+                  type: 'invitation',
+                  title: 'Staff member invited',
+                  message: `${data.full_name} (${data.email}) was invited as ${inviteRole}.`,
+                  link: '/staff',
+                }).catch(() => {})
+              }).catch(() => {})
+            } else if (res.status === 409) {
+              toast({ title: 'Already a member', description: inviteData.error, variant: 'destructive' })
+            } else {
+              toast({ title: 'Invitation failed', description: inviteData.error ?? 'Could not send invitation', variant: 'destructive' })
+            }
+          } catch {
+            toast({ title: 'Invitation failed', description: 'Could not reach the invitation service.', variant: 'destructive' })
+          }
+        }
       }
 
       // Handle avatar upload / removal
@@ -368,6 +426,100 @@ export function StaffForm() {
               )}
             </CardContent>
           </Card>
+
+          {/* System Access — only on create, when email is provided */}
+          {!isEdit && hasEmail && (
+            <Card className="lg:col-span-2 border-blue-200 dark:border-blue-900">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 text-blue-600" />
+                  System Access
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="invite_to_system"
+                    checked={inviteToSystem}
+                    onChange={(e) => setInviteToSystem(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 mt-0.5"
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="invite_to_system" className="font-medium">
+                      Invite to GrantLume
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Send an invitation email so this person can create an account and access the system.
+                    </p>
+                  </div>
+                </div>
+
+                {inviteToSystem && (
+                  <div className="ml-7 space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="invite_role">System Role</Label>
+                      <select
+                        id="invite_role"
+                        value={inviteRole}
+                        onChange={(e) => setInviteRole(e.target.value as OrgRole)}
+                        className="flex h-10 w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {ORG_ROLES.map((r) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-muted-foreground">
+                        This determines what they can see and do in the system. You can change it later in Settings &gt; Users.
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 px-3 py-2">
+                      <p className="text-xs text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5 shrink-0" />
+                        An invitation email will be sent to <strong>{watchedEmail}</strong> after saving.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Edit mode: show current account status */}
+          {isEdit && person && (
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  System Access
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {person.user_id ? (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
+                      Active Account
+                    </span>
+                    <span className="text-sm text-muted-foreground">This person has a linked GrantLume account.</span>
+                  </div>
+                ) : person.invite_status === 'pending' ? (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                      Invitation Pending
+                    </span>
+                    <span className="text-sm text-muted-foreground">Invited as {person.invite_role ?? 'Viewer'} — waiting for them to sign up.</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
+                      No Account
+                    </span>
+                    <span className="text-sm text-muted-foreground">This person does not have system access.</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         <div className="mt-6 flex justify-end gap-4">
