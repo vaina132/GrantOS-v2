@@ -217,10 +217,12 @@ async function loadUserContext(
 
     // Auto-link person record to this auth user by email (fire-and-forget)
     if (user.email) {
-      (supabase.rpc as any)('link_person_on_login', {
-        p_user_id: user.id,
-        p_email: user.email,
-      }).catch(() => { /* non-critical */ })
+      try {
+        supabase.from('persons').update({
+          user_id: user.id,
+          invite_status: 'accepted',
+        } as any).eq('email', user.email.toLowerCase()).then(() => {})
+      } catch { /* non-critical */ }
     }
 
     // Fetch org details
