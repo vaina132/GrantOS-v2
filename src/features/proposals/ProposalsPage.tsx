@@ -6,6 +6,7 @@ import { generateProposalsPipelinePDF } from '@/services/reportGenerator'
 import { staffService } from '@/services/staffService'
 import { emailService } from '@/services/emailService'
 import { notificationService } from '@/services/notificationService'
+import { supabase } from '@/lib/supabase'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -227,23 +228,22 @@ export function ProposalsPage() {
           notificationService.getAdminUserIds(orgId).then(adminIds => {
             const others = adminIds.filter(id => id !== user?.id)
             if (others.length === 0) return
-            import('@/lib/supabase').then(({ supabase }) => {
+            Promise.resolve(
               supabase.from('persons').select('email, full_name, user_id').eq('org_id', orgId).in('user_id', others)
-                .then(({ data: persons }) => {
-                  for (const p of (persons ?? []) as any[]) {
-                    if (!p.email) continue
-                    emailService.sendProposalStatusChanged({
-                      to: p.email,
-                      recipientName: p.full_name || p.email.split('@')[0],
-                      orgName: '',
-                      proposalTitle: form.project_name,
-                      oldStatus: oldStatus,
-                      newStatus: form.status,
-                      changedBy: changerName,
-                      proposalsUrl: `${origin}/proposals`,
-                    }).catch(() => {})
-                  }
+            ).then(({ data: persons }) => {
+              for (const p of (persons ?? []) as any[]) {
+                if (!p.email) continue
+                emailService.sendProposalStatusChanged({
+                  to: p.email,
+                  recipientName: p.full_name || p.email.split('@')[0],
+                  orgName: '',
+                  proposalTitle: form.project_name,
+                  oldStatus: oldStatus,
+                  newStatus: form.status,
+                  changedBy: changerName,
+                  proposalsUrl: `${origin}/proposals`,
                 }).catch(() => {})
+              }
             }).catch(() => {})
           }).catch(() => {})
         }
