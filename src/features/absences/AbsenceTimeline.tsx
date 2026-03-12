@@ -202,9 +202,6 @@ export function AbsenceTimeline() {
     return { sets, names }
   }, [staff, allOrgHolidays])
 
-  // Union of all holiday dates (for the header row — show any holiday from any country)
-  const holidaySet = useMemo(() => new Set(allOrgHolidays.map(h => h.date)), [allOrgHolidays])
-  const holidayNames = useMemo(() => new Map(allOrgHolidays.map(h => [h.date, h.name])), [allOrgHolidays])
 
   // Absence days per person for leave balance display
   const [absenceDaysMap, setAbsenceDaysMap] = useState<Record<string, number>>({})
@@ -449,13 +446,11 @@ export function AbsenceTimeline() {
                   className={cn(
                     'text-center text-[10px] border-r last:border-r-0 py-1 flex flex-col items-center justify-end leading-tight',
                     day.isWeekend && 'bg-muted/80',
-                    !day.isWeekend && holidaySet.has(day.dateStr) && 'bg-amber-100 dark:bg-amber-900/30',
                   )}
                   style={{ width: CELL_W }}
-                  title={holidayNames.get(day.dateStr) ?? undefined}
                 >
                   <span className="text-muted-foreground">{DAY_LABELS[day.dayOfWeek]}</span>
-                  <span className={cn('font-medium', !day.isWeekend && holidaySet.has(day.dateStr) && 'text-amber-700 dark:text-amber-400')}>{day.dayNum}</span>
+                  <span className="font-medium">{day.dayNum}</span>
                 </div>
               ))}
             </div>
@@ -463,8 +458,8 @@ export function AbsenceTimeline() {
             {/* Staff rows */}
             {staff.map((person) => {
               const absMap = absenceMaps[person.id] || {}
-              const pHolSet = personHolidaySets.sets[person.id] ?? holidaySet
-              const pHolNames = personHolidaySets.names[person.id] ?? holidayNames
+              const pHolSet = personHolidaySets.sets[person.id] ?? new Set<string>()
+              const pHolNames = personHolidaySets.names[person.id] ?? new Map<string, string>()
               const used = absenceDaysMap[person.id] ?? 0
               const total = person.vacation_days_per_year ?? 0
               const remaining = total - used
@@ -577,7 +572,7 @@ export function AbsenceTimeline() {
               </div>
               <div className="text-sm">
                 <span className="text-muted-foreground">Working days:</span>{' '}
-                <span className="font-semibold">{computeDays(selection, holidaySet)}</span>
+                <span className="font-semibold">{computeDays(selection, personHolidaySets.sets[selection.personId] ?? new Set<string>())}</span>
               </div>
               <div className="space-y-2">
                 <Label>Absence Type</Label>
