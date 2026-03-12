@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
-import { ArrowLeft, Save, Upload, X, Mail, UserPlus } from 'lucide-react'
+import { ArrowLeft, Save, Upload, X, Mail, UserPlus, Send } from 'lucide-react'
 import { COUNTRIES } from '@/data/countries'
 import type { OrgRole } from '@/types'
 
@@ -51,8 +51,9 @@ export function StaffForm() {
   const { id } = useParams<{ id: string }>()
   const isEdit = !!id && id !== 'new'
   const { orgId, orgName, user, can } = useAuthStore()
-  const { person, isLoading: loadingPerson } = useStaffMember(isEdit ? id : undefined)
+  const { person, isLoading: loadingPerson, refetch: refetchPerson } = useStaffMember(isEdit ? id : undefined)
   const [saving, setSaving] = useState(false)
+  const [inviting, setInviting] = useState(false)
   const [departments, setDepartments] = useState<string[]>([])
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -503,18 +504,110 @@ export function StaffForm() {
                     <span className="text-sm text-muted-foreground">This person has a linked GrantLume account.</span>
                   </div>
                 ) : person.invite_status === 'pending' ? (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-                      Invitation Pending
-                    </span>
-                    <span className="text-sm text-muted-foreground">Invited as {person.invite_role ?? 'Viewer'} — waiting for them to sign up.</span>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                        Invitation Pending
+                      </span>
+                      <span className="text-sm text-muted-foreground">Invited as {person.invite_role ?? 'Viewer'} — waiting for them to sign up.</span>
+                    </div>
+                    {person.email && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={inviting}
+                        onClick={async () => {
+                          if (!orgId || !person.email) return
+                          setInviting(true)
+                          try {
+                            const role: OrgRole = (person.invite_role as OrgRole) ?? 'Viewer'
+                            const res = await fetch('/api/invite-member', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ email: person.email, orgId, role, invitedBy: user?.id, personId: person.id }),
+                            })
+                            const d = await res.json()
+                            if (res.ok || res.status === 409) {
+                              emailService.sendInvitation({ invitedEmail: person.email, orgName: orgName ?? 'your organisation', role, invitedByName: user?.email ?? 'An administrator', signUpUrl: `${window.location.origin}/signup` }).catch(() => {})
+                              toast({ title: 'Invitation resent', description: `${person.email} will receive a new invitation email.` })
+                            } else {
+                              toast({ title: 'Failed', description: d.error ?? 'Could not resend invitation', variant: 'destructive' })
+                            }
+                          } catch {
+                            toast({ title: 'Failed', description: 'Could not reach the invitation service.', variant: 'destructive' })
+                          } finally {
+                            setInviting(false)
+                          }
+                        }}
+                      >
+                        <Send className="mr-2 h-3.5 w-3.5" />
+                        {inviting ? 'Sending...' : 'Resend Invitation'}
+                      </Button>
+                    )}
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
-                      No Account
-                    </span>
-                    <span className="text-sm text-muted-foreground">This person does not have system access.</span>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
+                        No Account
+                      </span>
+                      <span className="text-sm text-muted-foreground">This person does not have system access.</span>
+                    </div>
+                    {person.email && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="space-y-2 flex-1 max-w-xs">
+                            <Label htmlFor="edit_invite_role">Role</Label>
+                            <select
+                              id="edit_invite_role"
+                              value={inviteRole}
+                              onChange={(e) => setInviteRole(e.target.value as OrgRole)}
+                              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              {ORG_ROLES.map((r) => (
+                                <option key={r} value={r}>{r}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={inviting}
+                          onClick={async () => {
+                            if (!orgId || !person.email) return
+                            setInviting(true)
+                            try {
+                              const res = await fetch('/api/invite-member', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ email: person.email, orgId, role: inviteRole, invitedBy: user?.id, personId: person.id }),
+                              })
+                              const d = await res.json()
+                              if (res.ok) {
+                                emailService.sendInvitation({ invitedEmail: person.email, orgName: orgName ?? 'your organisation', role: inviteRole, invitedByName: user?.email ?? 'An administrator', signUpUrl: `${window.location.origin}/signup` }).catch(() => {})
+                                toast({ title: 'Invitation sent', description: `${person.email} will receive an invitation email.` })
+                                refetchPerson()
+                              } else if (res.status === 409) {
+                                toast({ title: 'Already a member', description: d.error })
+                                refetchPerson()
+                              } else {
+                                toast({ title: 'Failed', description: d.error ?? 'Could not send invitation', variant: 'destructive' })
+                              }
+                            } catch {
+                              toast({ title: 'Failed', description: 'Could not reach the invitation service.', variant: 'destructive' })
+                            } finally {
+                              setInviting(false)
+                            }
+                          }}
+                        >
+                          <Send className="mr-2 h-3.5 w-3.5" />
+                          {inviting ? 'Sending...' : 'Invite to GrantLume'}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
