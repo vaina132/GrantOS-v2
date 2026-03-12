@@ -217,7 +217,7 @@ async function loadUserContext(
 
     // Auto-link person record to this auth user by email (fire-and-forget)
     if (user.email) {
-      supabase.rpc('link_person_on_login', {
+      (supabase.rpc as any)('link_person_on_login', {
         p_user_id: user.id,
         p_email: user.email,
       }).catch(() => { /* non-critical */ })
