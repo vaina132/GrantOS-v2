@@ -183,7 +183,7 @@ export function AbsenceTimeline() {
   useEffect(() => {
     if (!orgId) return
     holidayService.listForMonth(orgId, globalYear, month + 1)
-      .then((hols) => setAllOrgHolidays(hols.map(h => ({ date: h.date, name: h.name, country_code: (h as any).country_code ?? null }))))
+      .then((hols) => setAllOrgHolidays(hols.map(h => ({ date: h.date, name: h.name, country_code: h.country_code ?? null }))))
       .catch(() => setAllOrgHolidays([]))
   }, [orgId, globalYear, month])
 
