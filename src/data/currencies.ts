@@ -1,0 +1,122 @@
+export interface CurrencyInfo {
+  code: string
+  symbol: string
+  name: string
+}
+
+/** Comprehensive currency list — EUR first, then alphabetical */
+export const CURRENCIES: CurrencyInfo[] = [
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham' },
+  { code: 'ALL', symbol: 'L', name: 'Albanian Lek' },
+  { code: 'ARS', symbol: '$', name: 'Argentine Peso' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+  { code: 'BAM', symbol: 'KM', name: 'Bosnia Mark' },
+  { code: 'BDT', symbol: '৳', name: 'Bangladeshi Taka' },
+  { code: 'BGN', symbol: 'лв', name: 'Bulgarian Lev' },
+  { code: 'BHD', symbol: 'BD', name: 'Bahraini Dinar' },
+  { code: 'BRL', symbol: 'R$', name: 'Brazilian Real' },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+  { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc' },
+  { code: 'CLP', symbol: '$', name: 'Chilean Peso' },
+  { code: 'CNY', symbol: '¥', name: 'Chinese Yuan' },
+  { code: 'COP', symbol: '$', name: 'Colombian Peso' },
+  { code: 'CZK', symbol: 'Kč', name: 'Czech Koruna' },
+  { code: 'DKK', symbol: 'kr', name: 'Danish Krone' },
+  { code: 'EGP', symbol: 'E£', name: 'Egyptian Pound' },
+  { code: 'GEL', symbol: '₾', name: 'Georgian Lari' },
+  { code: 'HKD', symbol: 'HK$', name: 'Hong Kong Dollar' },
+  { code: 'HRK', symbol: 'kn', name: 'Croatian Kuna' },
+  { code: 'HUF', symbol: 'Ft', name: 'Hungarian Forint' },
+  { code: 'IDR', symbol: 'Rp', name: 'Indonesian Rupiah' },
+  { code: 'ILS', symbol: '₪', name: 'Israeli Shekel' },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+  { code: 'ISK', symbol: 'kr', name: 'Icelandic Krona' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+  { code: 'KES', symbol: 'KSh', name: 'Kenyan Shilling' },
+  { code: 'KRW', symbol: '₩', name: 'South Korean Won' },
+  { code: 'KWD', symbol: 'KD', name: 'Kuwaiti Dinar' },
+  { code: 'MAD', symbol: 'MAD', name: 'Moroccan Dirham' },
+  { code: 'MDL', symbol: 'L', name: 'Moldovan Leu' },
+  { code: 'MKD', symbol: 'ден', name: 'Macedonian Denar' },
+  { code: 'MXN', symbol: 'Mex$', name: 'Mexican Peso' },
+  { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit' },
+  { code: 'NGN', symbol: '₦', name: 'Nigerian Naira' },
+  { code: 'NOK', symbol: 'kr', name: 'Norwegian Krone' },
+  { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar' },
+  { code: 'PEN', symbol: 'S/', name: 'Peruvian Sol' },
+  { code: 'PHP', symbol: '₱', name: 'Philippine Peso' },
+  { code: 'PKR', symbol: '₨', name: 'Pakistani Rupee' },
+  { code: 'PLN', symbol: 'zł', name: 'Polish Zloty' },
+  { code: 'QAR', symbol: 'QR', name: 'Qatari Riyal' },
+  { code: 'RON', symbol: 'lei', name: 'Romanian Leu' },
+  { code: 'RSD', symbol: 'din', name: 'Serbian Dinar' },
+  { code: 'RUB', symbol: '₽', name: 'Russian Ruble' },
+  { code: 'SAR', symbol: 'SR', name: 'Saudi Riyal' },
+  { code: 'SEK', symbol: 'kr', name: 'Swedish Krona' },
+  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
+  { code: 'THB', symbol: '฿', name: 'Thai Baht' },
+  { code: 'TND', symbol: 'DT', name: 'Tunisian Dinar' },
+  { code: 'TRY', symbol: '₺', name: 'Turkish Lira' },
+  { code: 'TWD', symbol: 'NT$', name: 'Taiwan Dollar' },
+  { code: 'UAH', symbol: '₴', name: 'Ukrainian Hryvnia' },
+  { code: 'UYU', symbol: '$U', name: 'Uruguayan Peso' },
+  { code: 'VND', symbol: '₫', name: 'Vietnamese Dong' },
+  { code: 'ZAR', symbol: 'R', name: 'South African Rand' },
+]
+
+/** Map country code → default currency code */
+export const COUNTRY_CURRENCY_MAP: Record<string, string> = {
+  AF: 'USD', AL: 'ALL', DZ: 'USD', AD: 'EUR', AO: 'USD',
+  AG: 'USD', AR: 'ARS', AM: 'USD', AU: 'AUD', AT: 'EUR',
+  AZ: 'USD', BS: 'USD', BH: 'BHD', BD: 'BDT', BB: 'USD',
+  BY: 'USD', BE: 'EUR', BZ: 'USD', BJ: 'USD', BT: 'USD',
+  BO: 'USD', BA: 'BAM', BW: 'USD', BR: 'BRL', BN: 'USD',
+  BG: 'BGN', BF: 'USD', BI: 'USD', CV: 'EUR', KH: 'USD',
+  CM: 'USD', CA: 'CAD', CF: 'USD', TD: 'USD', CL: 'CLP',
+  CN: 'CNY', CO: 'COP', KM: 'EUR', CG: 'USD', CD: 'USD',
+  CR: 'USD', CI: 'USD', HR: 'EUR', CU: 'USD', CY: 'EUR',
+  CZ: 'CZK', DK: 'DKK', DJ: 'USD', DM: 'USD', DO: 'USD',
+  EC: 'USD', EG: 'EGP', SV: 'USD', GQ: 'USD', ER: 'USD',
+  EE: 'EUR', SZ: 'USD', ET: 'USD', FJ: 'USD', FI: 'EUR',
+  FR: 'EUR', GA: 'USD', GM: 'USD', GE: 'GEL', DE: 'EUR',
+  GH: 'USD', GR: 'EUR', GD: 'USD', GT: 'USD', GN: 'USD',
+  GW: 'USD', GY: 'USD', HT: 'USD', HN: 'USD', HU: 'HUF',
+  IS: 'ISK', IN: 'INR', ID: 'IDR', IR: 'USD', IQ: 'USD',
+  IE: 'EUR', IL: 'ILS', IT: 'EUR', JM: 'USD', JP: 'JPY',
+  JO: 'USD', KZ: 'USD', KE: 'KES', KI: 'USD', KP: 'USD',
+  KR: 'KRW', KW: 'KWD', KG: 'USD', LA: 'USD', LV: 'EUR',
+  LB: 'USD', LS: 'USD', LR: 'USD', LY: 'USD', LI: 'CHF',
+  LT: 'EUR', LU: 'EUR', MG: 'USD', MW: 'USD', MY: 'MYR',
+  MV: 'USD', ML: 'USD', MT: 'EUR', MH: 'USD', MR: 'USD',
+  MU: 'USD', MX: 'MXN', FM: 'USD', MD: 'MDL', MC: 'EUR',
+  MN: 'USD', ME: 'EUR', MA: 'MAD', MZ: 'USD', MM: 'USD',
+  NA: 'USD', NR: 'USD', NP: 'USD', NL: 'EUR', NZ: 'NZD',
+  NI: 'USD', NE: 'USD', NG: 'NGN', MK: 'MKD', NO: 'NOK',
+  OM: 'USD', PK: 'PKR', PW: 'USD', PS: 'ILS', PA: 'USD',
+  PG: 'USD', PY: 'USD', PE: 'PEN', PH: 'PHP', PL: 'PLN',
+  PT: 'EUR', QA: 'QAR', RO: 'RON', RU: 'RUB', RW: 'USD',
+  KN: 'USD', LC: 'USD', VC: 'USD', WS: 'USD', SM: 'EUR',
+  ST: 'USD', SA: 'SAR', SN: 'USD', RS: 'RSD', SC: 'USD',
+  SL: 'USD', SG: 'SGD', SK: 'EUR', SI: 'EUR', SB: 'USD',
+  SO: 'USD', ZA: 'ZAR', SS: 'USD', ES: 'EUR', LK: 'USD',
+  SD: 'USD', SR: 'USD', SE: 'SEK', CH: 'CHF', SY: 'USD',
+  TW: 'TWD', TJ: 'USD', TZ: 'USD', TH: 'THB', TL: 'USD',
+  TG: 'USD', TO: 'USD', TT: 'USD', TN: 'TND', TR: 'TRY',
+  TM: 'USD', TV: 'USD', UG: 'USD', UA: 'UAH', AE: 'AED',
+  GB: 'GBP', US: 'USD', UY: 'UYU', UZ: 'USD', VU: 'USD',
+  VA: 'EUR', VE: 'USD', VN: 'VND', YE: 'USD', ZM: 'USD',
+  ZW: 'USD',
+}
+
+/** Get currency label for dropdown display: "EUR (€) — Euro" */
+export function currencyLabel(c: CurrencyInfo): string {
+  return `${c.code} (${c.symbol}) — ${c.name}`
+}
+
+/** Lookup currency for a country code */
+export function currencyForCountry(countryCode: string): string {
+  return COUNTRY_CURRENCY_MAP[countryCode] ?? 'EUR'
+}

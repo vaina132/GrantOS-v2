@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from '@/components/ui/use-toast'
 import { emailService } from '@/services/emailService'
 import { Building2, ArrowRight, Check } from 'lucide-react'
+import { CURRENCIES } from '@/data/currencies'
 
 type Step = 'org' | 'project' | 'done'
 
@@ -140,13 +141,9 @@ export function OnboardingWizard() {
                   onChange={(e) => setCurrency(e.target.value)}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
-                  <option value="EUR">EUR (€)</option>
-                  <option value="USD">USD ($)</option>
-                  <option value="GBP">GBP (£)</option>
-                  <option value="CHF">CHF</option>
-                  <option value="SEK">SEK</option>
-                  <option value="NOK">NOK</option>
-                  <option value="DKK">DKK</option>
+                  {CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.code} ({c.symbol}) — {c.name}</option>
+                  ))}
                 </select>
               </div>
               <Button

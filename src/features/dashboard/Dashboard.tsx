@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useProjects } from '@/hooks/useProjects'
 import { useStaff } from '@/hooks/useStaff'
-import { useAssignments } from '@/hooks/useAllocations'
+import { useAssignments, usePmBudgets } from '@/hooks/useAllocations'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { proposalService } from '@/services/proposalService'
@@ -46,6 +46,7 @@ export function Dashboard() {
   const { projects, isLoading: loadingProjects } = useProjects()
   const { staff, isLoading: loadingStaff } = useStaff({})
   const { assignments, isLoading: loadingAssignments } = useAssignments('actual')
+  const { budgets: pmBudgets, isLoading: loadingBudgets } = usePmBudgets('actual')
 
   const [proposals, setProposals] = useState<Proposal[]>([])
 
@@ -55,7 +56,7 @@ export function Dashboard() {
     }
   }, [orgId])
 
-  const isLoading = loadingProjects || loadingStaff || loadingAssignments
+  const isLoading = loadingProjects || loadingStaff || loadingAssignments || loadingBudgets
 
   // KPI data
   const kpis = useMemo(() => {
@@ -63,6 +64,7 @@ export function Dashboard() {
     const totalBudget = projects.reduce((sum, p) => sum + (p.total_budget ?? 0), 0)
     const activeStaff = staff.filter((s) => s.is_active)
     const totalPms = assignments.reduce((sum, a) => sum + a.pms, 0)
+    const totalPlannedPms = pmBudgets.reduce((sum, b) => sum + b.target_pms, 0)
 
     return {
       totalProjects: projects.length,
@@ -70,9 +72,11 @@ export function Dashboard() {
       totalStaff: staff.length,
       activeStaff: activeStaff.length,
       totalBudget,
-      totalPms: totalPms.toFixed(1),
+      totalPms: totalPms > 0 ? totalPms.toFixed(1) : totalPlannedPms.toFixed(1),
+      totalPlannedPms: totalPlannedPms.toFixed(1),
+      hasActualPms: totalPms > 0,
     }
-  }, [projects, staff, assignments])
+  }, [projects, staff, assignments, pmBudgets])
 
   // Status distribution for pie chart
   const statusData = useMemo(() => {
@@ -141,7 +145,7 @@ export function Dashboard() {
           { label: 'Projects', value: kpis.totalProjects, sub: `${kpis.activeProjects} active`, icon: FolderKanban, color: 'text-blue-600', href: '/projects' },
           { label: 'Staff', value: kpis.totalStaff, sub: `${kpis.activeStaff} active`, icon: Users, color: 'text-emerald-600', href: '/staff' },
           ...(can('canSeeFinancialDetails') ? [{ label: 'Total Budget', value: formatCurrency(kpis.totalBudget), sub: 'across all projects', icon: DollarSign, color: 'text-amber-600', href: '/financials' }] : []),
-          { label: 'Person-Months', value: kpis.totalPms, sub: `allocated in ${globalYear}`, icon: CalendarDays, color: 'text-purple-600', href: '/allocations' },
+          { label: 'Person-Months', value: kpis.totalPms, sub: kpis.hasActualPms ? `actual in ${globalYear}` : `planned in ${globalYear}`, icon: CalendarDays, color: 'text-purple-600', href: '/allocations' },
           ...(can('canSeeProposals') ? [{ label: 'Proposals', value: proposals.length, sub: `${proposals.filter(p => p.status === 'Submitted').length} submitted`, icon: Lightbulb, color: 'text-orange-500', href: '/proposals' }] : []),
         ].map((kpi) => (
           <Card
@@ -267,9 +271,13 @@ export function Dashboard() {
                 </thead>
                 <tbody>
                   {projects.map((p) => {
-                    const projectPms = assignments
+                    const projectActualPms = assignments
                       .filter((a) => a.project_id === p.id)
                       .reduce((sum, a) => sum + a.pms, 0)
+                    const projectPlannedPms = pmBudgets
+                      .filter((b) => b.project_id === p.id)
+                      .reduce((sum, b) => sum + b.target_pms, 0)
+                    const projectPms = projectActualPms > 0 ? projectActualPms : projectPlannedPms
                     return (
                       <tr
                         key={p.id}

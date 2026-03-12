@@ -17,6 +17,7 @@ export type Granularity = 'monthly' | 'quarterly' | 'annual' | 'custom'
 export interface Organisation {
   id: string
   name: string
+  country: string | null
   currency: string
   working_hours_per_day: number
   working_days_per_year: number

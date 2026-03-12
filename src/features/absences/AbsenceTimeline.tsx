@@ -177,49 +177,34 @@ export function AbsenceTimeline() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [absenceType, setAbsenceType] = useState<AbsenceType>('Annual Leave')
-  const [holidays, setHolidays] = useState<{ date: string; name: string }[]>([])
-  const [countryHolidaysMap, setCountryHolidaysMap] = useState<Record<string, { date: string; name: string }[]>>({})
+  const [allOrgHolidays, setAllOrgHolidays] = useState<{ date: string; name: string; country_code: string | null }[]>([])
 
-  // Load org-wide holidays for the current month
+  // Load ALL org holidays for the current month (includes country_code)
   useEffect(() => {
     if (!orgId) return
-    holidayService.listForMonth(orgId, globalYear, month + 1).then(setHolidays).catch(() => setHolidays([]))
+    holidayService.listForMonth(orgId, globalYear, month + 1)
+      .then((hols) => setAllOrgHolidays(hols.map(h => ({ date: h.date, name: h.name, country_code: (h as any).country_code ?? null }))))
+      .catch(() => setAllOrgHolidays([]))
   }, [orgId, globalYear, month])
 
-  // Load per-country holidays for each unique country among staff
-  useEffect(() => {
-    const countries = [...new Set(staff.map(p => p.country).filter(Boolean))] as string[]
-    if (countries.length === 0) { setCountryHolidaysMap({}); return }
-    const fetchCountryHolidays = async () => {
-      const map: Record<string, { date: string; name: string }[]> = {}
-      await Promise.all(countries.map(async (cc) => {
-        try {
-          const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${globalYear}/${cc}`)
-          if (!res.ok) return
-          const data: { date: string; localName: string; name: string; global: boolean }[] = await res.json()
-          map[cc] = data.filter(h => h.global).map(h => ({ date: h.date, name: h.localName || h.name }))
-        } catch { /* ignore */ }
-      }))
-      setCountryHolidaysMap(map)
-    }
-    fetchCountryHolidays()
-  }, [staff, globalYear])
-
-  const holidaySet = useMemo(() => new Set(holidays.map(h => h.date)), [holidays])
-  const holidayNames = useMemo(() => new Map(holidays.map(h => [h.date, h.name])), [holidays])
-
-  // Per-person holiday sets based on their country
+  // Per-person holiday sets: only include holidays that match the person's country
+  // Holidays with no country_code (manually added) apply to everyone
   const personHolidaySets = useMemo(() => {
     const sets: Record<string, Set<string>> = {}
     const names: Record<string, Map<string, string>> = {}
     for (const p of staff) {
-      const countryHols = p.country ? (countryHolidaysMap[p.country] ?? []) : []
-      const merged = [...holidays, ...countryHols]
-      sets[p.id] = new Set(merged.map(h => h.date))
-      names[p.id] = new Map(merged.map(h => [h.date, h.name]))
+      const personHols = allOrgHolidays.filter(h =>
+        h.country_code === null || h.country_code === p.country
+      )
+      sets[p.id] = new Set(personHols.map(h => h.date))
+      names[p.id] = new Map(personHols.map(h => [h.date, h.name]))
     }
     return { sets, names }
-  }, [staff, holidays, countryHolidaysMap])
+  }, [staff, allOrgHolidays])
+
+  // Union of all holiday dates (for the header row — show any holiday from any country)
+  const holidaySet = useMemo(() => new Set(allOrgHolidays.map(h => h.date)), [allOrgHolidays])
+  const holidayNames = useMemo(() => new Map(allOrgHolidays.map(h => [h.date, h.name])), [allOrgHolidays])
 
   // Absence days per person for leave balance display
   const [absenceDaysMap, setAbsenceDaysMap] = useState<Record<string, number>>({})

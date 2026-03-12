@@ -71,7 +71,7 @@ export const settingsService = {
   async updateOrganisation(orgId: string, updates: Partial<Organisation>): Promise<Organisation> {
     const { data, error } = await supabase
       .from('organisations')
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...updates, updated_at: new Date().toISOString() } as any)
       .eq('id', orgId)
       .select()
       .single()

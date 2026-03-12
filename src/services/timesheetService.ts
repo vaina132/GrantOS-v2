@@ -538,9 +538,18 @@ export const timesheetService = {
       }
     }
 
-    // Clear current month first, then insert
+    // Clear current month first, then bulk insert (fast single query)
     await timesheetService.clearDays(orgId, personId, year, month)
-    await timesheetService.bulkUpsertDays(toInsert)
+
+    if (toInsert.length > 0) {
+      // Batch insert in chunks of 50 for reliability
+      const BATCH = 50
+      for (let i = 0; i < toInsert.length; i += BATCH) {
+        const batch = toInsert.slice(i, i + BATCH)
+        const { error } = await tsDays().insert(batch)
+        if (error) throw error
+      }
+    }
 
     await timesheetService.ensureEnvelope(orgId, personId, year, month)
     await timesheetService.refreshEnvelopeTotals(orgId, personId, year, month)
