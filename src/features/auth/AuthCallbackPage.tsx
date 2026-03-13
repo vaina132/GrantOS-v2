@@ -17,7 +17,6 @@ export function AuthCallbackPage() {
   const navigate = useNavigate()
   const [status, setStatus] = useState<'loading' | 'confirmed' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
-  const [flowType, setFlowType] = useState<string | null>(null)
   const handled = useRef(false)
   const { t } = useTranslation()
 
@@ -34,8 +33,6 @@ export function AuthCallbackPage() {
         const tokenHash = params.get('token_hash')
         const type = params.get('type')
         const accessToken = hashParams.get('access_token')
-
-        setFlowType(type)
 
         console.log('[AuthCallback] URL:', window.location.href)
         console.log('[AuthCallback] code:', !!code, 'token_hash:', !!tokenHash, 'type:', type, 'hash access_token:', !!accessToken)
