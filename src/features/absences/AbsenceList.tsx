@@ -21,8 +21,9 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/use-toast'
-import { Plus, CalendarOff, Trash2, Pencil, Check, X } from 'lucide-react'
+import { Plus, CalendarOff, Trash2, Pencil, Check, X, AlertTriangle } from 'lucide-react'
 import { formatDate, cn } from '@/lib/utils'
+import { AbsenceConflictPanel } from './AbsenceConflictPanel'
 import type { Absence, AbsenceType, AbsenceStatus } from '@/types'
 
 const ABSENCE_TYPES: AbsenceType[] = ['Annual Leave', 'Sick Leave', 'Training', 'Public Holiday', 'Other']
@@ -67,6 +68,8 @@ export function AbsenceList() {
   const [endDate, setEndDate] = useState('')
   const [days, setDays] = useState('')
   const [notes, setNotes] = useState('')
+  const [substitutePersonId, setSubstitutePersonId] = useState<string | null>(null)
+  const [substituteOverlap, setSubstituteOverlap] = useState(false)
 
   const openCreate = () => {
     setEditTarget(null)
@@ -76,6 +79,8 @@ export function AbsenceList() {
     setEndDate('')
     setDays('')
     setNotes('')
+    setSubstitutePersonId(null)
+    setSubstituteOverlap(false)
     setDialogOpen(true)
   }
 
@@ -87,8 +92,21 @@ export function AbsenceList() {
     setEndDate(absence.end_date ?? '')
     setDays(absence.days != null ? String(absence.days) : '')
     setNotes(absence.notes ?? absence.note ?? '')
+    setSubstitutePersonId(absence.substitute_person_id ?? null)
+    setSubstituteOverlap(false)
     setDialogOpen(true)
   }
+
+  // Check substitute overlap when substitute or dates change
+  useEffect(() => {
+    if (!substitutePersonId || !startDate || !endDate) {
+      setSubstituteOverlap(false)
+      return
+    }
+    absenceService.hasOverlap(substitutePersonId, startDate, endDate)
+      .then(setSubstituteOverlap)
+      .catch(() => setSubstituteOverlap(false))
+  }, [substitutePersonId, startDate, endDate])
 
   const handleSave = async () => {
     if (!personId || !orgId) return
@@ -107,6 +125,7 @@ export function AbsenceList() {
         note: notes || null,
         status: (hasApprovers ? 'pending' : 'approved') as AbsenceStatus,
         requested_by: user?.id ?? null,
+        substitute_person_id: substitutePersonId || null,
       }
       if (editTarget) {
         await absenceService.update(editTarget.id, payload)
@@ -187,6 +206,35 @@ export function AbsenceList() {
           days: String(absence.days ?? ''),
           absencesUrl: `${window.location.origin}/absences`,
         }).catch(() => {})
+      }
+
+      // Notify substitute if one was nominated
+      if (absence.substitute_person_id) {
+        const substitute = staff.find(p => p.id === absence.substitute_person_id)
+        const absenteeName = person?.full_name ?? (absence as any).persons?.full_name ?? 'A colleague'
+        if (substitute?.email) {
+          emailService.sendSubstituteNotification({
+            to: substitute.email,
+            substituteName: substitute.full_name,
+            absenteeName,
+            absenceType: absence.type,
+            startDate: absence.start_date || '',
+            endDate: absence.end_date || absence.start_date || '',
+            days: String(absence.days ?? ''),
+            absencesUrl: `${window.location.origin}/absences`,
+          }).catch(() => {})
+        }
+        // In-app notification to substitute
+        if (substitute?.user_id && orgId) {
+          notificationService.notify({
+            orgId,
+            userId: substitute.user_id,
+            type: 'info',
+            title: 'Substitute Coverage',
+            message: `You have been nominated as substitute for ${absenteeName} (${absence.type}: ${formatDate(absence.start_date)} – ${formatDate(absence.end_date)}).`,
+            link: '/absences',
+          }).catch(() => {})
+        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to approve'
@@ -361,6 +409,7 @@ export function AbsenceList() {
                   <th className="px-4 py-2 text-left font-medium">End</th>
                   <th className="px-4 py-2 text-right font-medium">Days</th>
                   <th className="px-4 py-2 text-center font-medium">Status</th>
+                  <th className="px-4 py-2 text-left font-medium">Substitute</th>
                   <th className="px-4 py-2 text-left font-medium">Notes</th>
                   {can('canManageAllocations') && (
                     <th className="px-4 py-2 text-right font-medium">Actions</th>
@@ -389,6 +438,13 @@ export function AbsenceList() {
                         )}>
                           {badge.label}
                         </span>
+                      </td>
+                      <td className="px-4 py-2 text-muted-foreground text-xs">
+                        {absence.substitute_person_id
+                          ? (absence.substitute_person?.full_name
+                              ?? staff.find(s => s.id === absence.substitute_person_id)?.full_name
+                              ?? '—')
+                          : '—'}
                       </td>
                       <td className="px-4 py-2 text-muted-foreground text-xs max-w-[200px] truncate">
                         {absence.notes ?? absence.note ?? '—'}
@@ -484,10 +540,41 @@ export function AbsenceList() {
               <Label>Days</Label>
               <Input type="number" step="0.5" min="0" value={days} onChange={(e) => setDays(e.target.value)} placeholder="e.g. 5" />
             </div>
+            {/* Substitute dropdown */}
+            <div className="space-y-2">
+              <Label>Substitute <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <select
+                value={substitutePersonId ?? ''}
+                onChange={(e) => setSubstitutePersonId(e.target.value || null)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">No substitute</option>
+                {staff
+                  .filter((p) => p.id !== personId)
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>{p.full_name}</option>
+                  ))}
+              </select>
+              {substituteOverlap && (
+                <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  This person has an approved or pending absence overlapping these dates.
+                </div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <Label>Notes</Label>
               <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes" />
             </div>
+
+            {/* Conflict panel — shows colleagues absent during same period */}
+            <AbsenceConflictPanel
+              startDate={startDate}
+              endDate={endDate}
+              excludePersonId={personId || undefined}
+              substitutePersonId={substitutePersonId}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>

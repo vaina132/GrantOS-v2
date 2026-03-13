@@ -12,6 +12,7 @@ export const EMAIL_PREF_MAP: Record<string, keyof UserPreferences> = {
   invitation: 'email_invitations',
   welcome: 'email_welcome',
   trialExpiring: 'email_trial_expiring',
+  substituteNotification: 'email_substitute_notifications',
   // guestInvitation — always sent, no opt-out (it's an access grant)
 }
 
@@ -25,6 +26,7 @@ export const EMAIL_PREF_LABELS: { key: keyof UserPreferences; label: string; des
   { key: 'email_invitations', label: 'Invitations', description: 'Organisation invitation emails' },
   { key: 'email_welcome', label: 'Welcome Email', description: 'Welcome message after signing up' },
   { key: 'email_trial_expiring', label: 'Trial Expiring', description: 'Reminders when your trial is about to end' },
+  { key: 'email_substitute_notifications', label: 'Substitute Notifications', description: 'Notifications when you are nominated as a substitute for a colleague on leave' },
 ]
 
 /** Build an in-memory default preferences object (all notifications ON) */
@@ -43,6 +45,7 @@ function makeDefaults(userId: string, orgId: string): UserPreferences {
     email_invitations: true,
     email_welcome: true,
     email_trial_expiring: true,
+    email_substitute_notifications: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }

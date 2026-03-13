@@ -594,3 +594,26 @@ export function memberRemovedEmail(params: {
     ].join('')),
   }
 }
+
+/** #27 — Notify a substitute that they are covering for a colleague's absence */
+export function substituteNotificationEmail(params: {
+  substituteName: string; absenteeName: string; absenceType: string;
+  startDate: string; endDate: string; days: string; absencesUrl: string
+}): EmailTemplate {
+  return {
+    subject: `You've been nominated as substitute for ${params.absenteeName}`,
+    html: layout('Substitute Coverage', [
+      heading('Substitute Nomination'),
+      paragraph(`Hi ${params.substituteName},`),
+      paragraph(`<strong>${params.absenteeName}</strong> has nominated you as their substitute during their upcoming absence. Their leave has been approved.`),
+      infoBox([
+        `<strong>Type:</strong> ${params.absenceType}`,
+        `<strong>Period:</strong> ${params.startDate} – ${params.endDate}`,
+        `<strong>Duration:</strong> ${params.days} day${params.days === '1' ? '' : 's'}`,
+      ].join('<br/>')),
+      paragraph('Please coordinate with your colleague before their leave begins to ensure a smooth handover of any ongoing tasks or responsibilities.'),
+      ctaButton('View Absences', params.absencesUrl),
+      paragraph(`<span style="font-size:13px;color:${MUTED};">You can manage your notification preferences in your GrantLume profile settings.</span>`),
+    ].join('')),
+  }
+}

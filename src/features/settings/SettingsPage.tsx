@@ -9,8 +9,9 @@ import { PeriodLocking } from '@/features/allocations/PeriodLocking'
 import { HolidaySettings } from './HolidaySettings'
 import { RolePermissions } from './RolePermissions'
 import { AbsenceApprovers } from './AbsenceApprovers'
+import { AbsenceTypeSettings } from './AbsenceTypeSettings'
 
-type SettingsTab = 'org' | 'users' | 'roles' | 'funding' | 'locks' | 'holidays' | 'approvers'
+type SettingsTab = 'org' | 'users' | 'roles' | 'funding' | 'locks' | 'holidays' | 'approvers' | 'absence-types'
 
 export function SettingsPage() {
   const { t } = useTranslation()
@@ -29,6 +30,7 @@ export function SettingsPage() {
           { key: 'locks', label: 'Period Locks' },
           { key: 'holidays', label: 'Holidays' },
           { key: 'approvers', label: 'Absence Approvers' },
+          { key: 'absence-types', label: 'Absence Types' },
         ] as { key: SettingsTab; label: string }[]).map((item) => (
           <Button
             key={item.key}
@@ -48,6 +50,7 @@ export function SettingsPage() {
       {tab === 'locks' && <PeriodLocking />}
       {tab === 'holidays' && <HolidaySettings />}
       {tab === 'approvers' && <AbsenceApprovers />}
+      {tab === 'absence-types' && <AbsenceTypeSettings />}
     </div>
   )
 }

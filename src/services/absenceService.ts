@@ -12,7 +12,7 @@ export const absenceService = {
   async list(orgId: string | null, filters?: AbsenceFilters): Promise<Absence[]> {
     let query = supabase
       .from('absences')
-      .select('*, persons(full_name)')
+      .select('*, persons(full_name), substitute_person:persons!absences_substitute_person_id_fkey(full_name)')
       .order('start_date', { ascending: false })
 
     if (orgId) query = query.eq('org_id', orgId)
@@ -31,11 +31,11 @@ export const absenceService = {
     return (data ?? []) as unknown as Absence[]
   },
 
-  async create(absence: Omit<Absence, 'id' | 'created_at' | 'updated_at' | 'persons'>): Promise<Absence> {
+  async create(absence: Omit<Absence, 'id' | 'created_at' | 'updated_at' | 'persons' | 'substitute_person'>): Promise<Absence> {
     const { data, error } = await supabase
       .from('absences')
       .insert(absence)
-      .select('*, persons(full_name)')
+      .select('*, persons(full_name), substitute_person:persons!absences_substitute_person_id_fkey(full_name)')
       .single()
 
     if (error) throw error
@@ -43,12 +43,12 @@ export const absenceService = {
   },
 
   async update(id: string, updates: Partial<Absence>): Promise<Absence> {
-    const { ...rest } = updates
+    const { persons: _p, substitute_person: _sp, ...rest } = updates
     const { data, error } = await supabase
       .from('absences')
       .update({ ...rest, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select('*, persons(full_name)')
+      .select('*, persons(full_name), substitute_person:persons!absences_substitute_person_id_fkey(full_name)')
       .single()
 
     if (error) throw error
@@ -95,7 +95,7 @@ export const absenceService = {
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .select('*, persons(full_name)')
+      .select('*, persons(full_name), substitute_person:persons!absences_substitute_person_id_fkey(full_name)')
       .single()
 
     if (error) throw error
@@ -112,10 +112,60 @@ export const absenceService = {
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .select('*, persons(full_name)')
+      .select('*, persons(full_name), substitute_person:persons!absences_substitute_person_id_fkey(full_name)')
       .single()
 
     if (error) throw error
     return data as unknown as Absence
+  },
+
+  /**
+   * Get overlapping absences for a given org and date range.
+   * Returns approved or pending absences that overlap [startDate, endDate],
+   * optionally excluding a specific person (the requester).
+   */
+  async getConflicts(
+    orgId: string,
+    startDate: string,
+    endDate: string,
+    excludePersonId?: string,
+  ): Promise<Absence[]> {
+    let query = supabase
+      .from('absences')
+      .select('*, persons(full_name, department, avatar_url)')
+      .eq('org_id', orgId)
+      .in('status', ['pending', 'approved'])
+      .lte('start_date', endDate)
+      .gte('end_date', startDate)
+
+    if (excludePersonId) {
+      query = query.neq('person_id', excludePersonId)
+    }
+
+    const { data, error } = await query.order('start_date')
+    if (error) throw error
+    return (data ?? []) as unknown as Absence[]
+  },
+
+  /**
+   * Check if a specific person has any approved/pending absence overlapping [startDate, endDate].
+   * Used for substitute overlap warning.
+   */
+  async hasOverlap(
+    personId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<boolean> {
+    const { data, error } = await supabase
+      .from('absences')
+      .select('id')
+      .eq('person_id', personId)
+      .in('status', ['pending', 'approved'])
+      .lte('start_date', endDate)
+      .gte('end_date', startDate)
+      .limit(1)
+
+    if (error) throw error
+    return (data?.length ?? 0) > 0
   },
 }

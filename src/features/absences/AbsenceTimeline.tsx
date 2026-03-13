@@ -20,8 +20,9 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/use-toast'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AbsenceConflictPanel } from './AbsenceConflictPanel'
 import type { AbsenceType, Absence, AbsenceStatus } from '@/types'
 
 const ABSENCE_TYPES: AbsenceType[] = ['Annual Leave', 'Sick Leave', 'Training', 'Public Holiday', 'Other']
@@ -177,6 +178,8 @@ export function AbsenceTimeline() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [absenceType, setAbsenceType] = useState<AbsenceType>('Annual Leave')
+  const [substitutePersonId, setSubstitutePersonId] = useState<string | null>(null)
+  const [substituteOverlap, setSubstituteOverlap] = useState(false)
   const [allOrgHolidays, setAllOrgHolidays] = useState<{ date: string; name: string; country_code: string | null }[]>([])
 
   // Load ALL org holidays for the current month (includes country_code)
@@ -221,6 +224,17 @@ export function AbsenceTimeline() {
   const [selection, setSelection] = useState<Selection | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const dragStart = useRef<{ personId: string; dateStr: string; half: HalfDay } | null>(null)
+
+  // Check substitute overlap when substitute or selection dates change
+  useEffect(() => {
+    if (!substitutePersonId || !selection?.startDate || !selection?.endDate) {
+      setSubstituteOverlap(false)
+      return
+    }
+    absenceService.hasOverlap(substitutePersonId, selection.startDate, selection.endDate)
+      .then(setSubstituteOverlap)
+      .catch(() => setSubstituteOverlap(false))
+  }, [substitutePersonId, selection?.startDate, selection?.endDate])
 
   const days = useMemo(() => getDaysInMonth(globalYear, month), [globalYear, month])
 
@@ -317,6 +331,7 @@ export function AbsenceTimeline() {
         note: null,
         status: hasApprovers ? 'pending' : 'approved',
         requested_by: user?.id ?? null,
+        substitute_person_id: substitutePersonId || null,
       } as any)
       toast({
         title: hasApprovers ? 'Request submitted' : 'Absence recorded',
@@ -355,8 +370,39 @@ export function AbsenceTimeline() {
         }
       }
 
+      // If auto-approved and substitute nominated, notify substitute immediately
+      if (!hasApprovers && substitutePersonId) {
+        const person = staff.find(p => p.id === selection.personId)
+        const substitute = staff.find(p => p.id === substitutePersonId)
+        const absenteeName = person?.full_name ?? 'A colleague'
+        if (substitute?.email) {
+          emailService.sendSubstituteNotification({
+            to: substitute.email,
+            substituteName: substitute.full_name,
+            absenteeName,
+            absenceType,
+            startDate: selection.startDate,
+            endDate: selection.endDate,
+            days: String(dayCount),
+            absencesUrl: `${window.location.origin}/absences`,
+          }).catch(() => {})
+        }
+        if (substitute?.user_id) {
+          notificationService.notify({
+            orgId,
+            userId: substitute.user_id,
+            type: 'info',
+            title: 'Substitute Coverage',
+            message: `You have been nominated as substitute for ${absenteeName} (${absenceType}: ${selection.startDate} \u2013 ${selection.endDate}).`,
+            link: '/absences',
+          }).catch(() => {})
+        }
+      }
+
       setDialogOpen(false)
       setSelection(null)
+      setSubstitutePersonId(null)
+      setSubstituteOverlap(false)
       refetch()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save'
@@ -548,7 +594,7 @@ export function AbsenceTimeline() {
       )}
 
       {/* Absence creation dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); setSelection(null) } }}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); setSelection(null); setSubstitutePersonId(null); setSubstituteOverlap(false) } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Record Absence</DialogTitle>
@@ -591,10 +637,41 @@ export function AbsenceTimeline() {
                   ))}
                 </div>
               </div>
+
+              {/* Substitute dropdown */}
+              <div className="space-y-2">
+                <Label>Substitute <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <select
+                  value={substitutePersonId ?? ''}
+                  onChange={(e) => setSubstitutePersonId(e.target.value || null)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">No substitute</option>
+                  {staff
+                    .filter((p) => p.id !== selection?.personId)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>{p.full_name}</option>
+                    ))}
+                </select>
+                {substituteOverlap && (
+                  <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    This person has an approved or pending absence overlapping these dates.
+                  </div>
+                )}
+              </div>
+
+              {/* Conflict panel */}
+              <AbsenceConflictPanel
+                startDate={selection?.startDate ?? ''}
+                endDate={selection?.endDate ?? ''}
+                excludePersonId={selection?.personId}
+                substitutePersonId={substitutePersonId}
+              />
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setDialogOpen(false); setSelection(null) }} disabled={saving}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setDialogOpen(false); setSelection(null); setSubstitutePersonId(null); setSubstituteOverlap(false) }} disabled={saving}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? 'Saving...' : 'Save Absence'}
             </Button>

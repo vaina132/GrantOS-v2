@@ -30,6 +30,7 @@ type EmailTemplate =
   | 'allocationChanged'
   | 'proposalStatusChanged'
   | 'memberRemoved'
+  | 'substituteNotification'
 
 interface SendEmailOptions {
   template: EmailTemplate
@@ -348,5 +349,19 @@ export const emailService = {
     orgName: string
   }) {
     return sendEmail({ template: 'memberRemoved', to: params.to, params })
+  },
+
+  /** #27 — Notify a substitute that they are covering for a colleague's absence */
+  async sendSubstituteNotification(params: {
+    to: string
+    substituteName: string
+    absenteeName: string
+    absenceType: string
+    startDate: string
+    endDate: string
+    days: string
+    absencesUrl: string
+  }) {
+    return sendEmail({ template: 'substituteNotification', to: params.to, params })
   },
 }
