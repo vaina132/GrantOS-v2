@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard,
   FolderKanban,
@@ -26,61 +27,62 @@ import type { LucideIcon } from 'lucide-react'
 
 interface NavItem {
   path: string
-  label: string
+  labelKey: string
   icon: LucideIcon
   permission?: PermissionKey
   guestAllowed?: boolean
 }
 
 interface NavGroup {
-  label: string
+  labelKey: string
   items: NavItem[]
 }
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: 'Core',
+    labelKey: 'nav.core',
     items: [
-      { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { path: '/projects', label: 'Projects', icon: FolderKanban },
-      { path: '/proposals', label: 'Proposals', icon: Lightbulb, permission: 'canSeeProposals' },
-      { path: '/staff', label: 'Staff', icon: Users },
+      { path: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+      { path: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
+      { path: '/proposals', labelKey: 'nav.proposals', icon: Lightbulb, permission: 'canSeeProposals' },
+      { path: '/staff', labelKey: 'nav.staff', icon: Users },
     ],
   },
   {
-    label: 'Operations',
+    labelKey: 'nav.operations',
     items: [
-      { path: '/allocations', label: 'Allocations', icon: CalendarDays, permission: 'canSeeAllocations' },
-      { path: '/timesheets', label: 'Timesheets', icon: ClipboardCheck, permission: 'canSeeTimesheets', guestAllowed: true },
-      { path: '/absences', label: 'Absences', icon: CalendarOff, permission: 'canSeeAbsences' },
-      { path: '/financials', label: 'Financials', icon: DollarSign, permission: 'canSeeFinancials' },
-      { path: '/timeline', label: 'Timeline', icon: GanttChart, permission: 'canSeeTimeline' },
+      { path: '/allocations', labelKey: 'nav.allocations', icon: CalendarDays, permission: 'canSeeAllocations' },
+      { path: '/timesheets', labelKey: 'nav.timesheets', icon: ClipboardCheck, permission: 'canSeeTimesheets', guestAllowed: true },
+      { path: '/absences', labelKey: 'nav.absences', icon: CalendarOff, permission: 'canSeeAbsences' },
+      { path: '/financials', labelKey: 'nav.financials', icon: DollarSign, permission: 'canSeeFinancials' },
+      { path: '/timeline', labelKey: 'nav.timeline', icon: GanttChart, permission: 'canSeeTimeline' },
     ],
   },
   {
-    label: 'Administration',
+    labelKey: 'nav.administration',
     items: [
-      { path: '/reports', label: 'Reports', icon: FileText, permission: 'canSeeReports' },
-      { path: '/import', label: 'Import', icon: Upload, permission: 'canSeeImport' },
-      { path: '/audit', label: 'Audit Log', icon: Shield, permission: 'canSeeAudit' },
-      { path: '/guests', label: 'Guest Access', icon: UserCheck, permission: 'canSeeGuests' },
-      { path: '/settings', label: 'Settings', icon: Settings, permission: 'canManageOrg' },
+      { path: '/reports', labelKey: 'nav.reports', icon: FileText, permission: 'canSeeReports' },
+      { path: '/import', labelKey: 'nav.import', icon: Upload, permission: 'canSeeImport' },
+      { path: '/audit', labelKey: 'nav.auditLog', icon: Shield, permission: 'canSeeAudit' },
+      { path: '/guests', labelKey: 'nav.guestAccess', icon: UserCheck, permission: 'canSeeGuests' },
+      { path: '/settings', labelKey: 'nav.settings', icon: Settings, permission: 'canManageOrg' },
     ],
   },
 ]
 
 const GUEST_NAV_ITEMS: NavItem[] = [
-  { path: '/projects', label: 'Project Overview', icon: FolderKanban },
-  { path: '/timesheets', label: 'Timesheets', icon: ClipboardCheck, guestAllowed: true },
+  { path: '/projects', labelKey: 'nav.projectOverview', icon: FolderKanban },
+  { path: '/timesheets', labelKey: 'nav.timesheets', icon: ClipboardCheck, guestAllowed: true },
 ]
 
 export function Sidebar() {
   const { can, accessType, orgName } = useAuthStore()
   const { sidebarOpen, setSidebarOpen } = useUiStore()
   const location = useLocation()
+  const { t } = useTranslation()
 
   const visibleGroups = accessType === 'guest'
-    ? [{ label: '', items: GUEST_NAV_ITEMS }]
+    ? [{ labelKey: '', items: GUEST_NAV_ITEMS }]
     : NAV_GROUPS.map((group) => ({
         ...group,
         items: group.items.filter((item) => {
@@ -126,11 +128,11 @@ export function Sidebar() {
 
         <nav className="flex-1 overflow-y-auto px-3 py-2">
           {visibleGroups.map((group, gi) => (
-            <div key={group.label || gi} className={cn(gi > 0 && 'mt-5')}>
-              {group.label && (
+            <div key={group.labelKey || gi} className={cn(gi > 0 && 'mt-5')}>
+              {group.labelKey && (
                 <div className="mb-1 px-3 pt-1 pb-2">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-                    {group.label}
+                    {t(group.labelKey)}
                   </span>
                 </div>
               )}
@@ -154,7 +156,7 @@ export function Sidebar() {
                         <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-primary" />
                       )}
                       <Icon className={cn('h-4.5 w-4.5 shrink-0', isActive ? 'text-primary' : 'text-muted-foreground/70 group-hover:text-accent-foreground')} />
-                      {item.label}
+                      {t(item.labelKey)}
                     </NavLink>
                   )
                 })}

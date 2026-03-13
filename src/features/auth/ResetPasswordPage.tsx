@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +10,7 @@ import { CheckCircle2, Eye, EyeOff, KeyRound } from 'lucide-react'
 import { GrantLumeLogo, GrantLumeWordmark } from '@/components/common/GrantLumeLogo'
 
 export function ResetPasswordPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -80,8 +82,8 @@ export function ResetPasswordPage() {
               <KeyRound className="h-8 w-8" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold leading-tight">Set new password</h1>
-              <p className="text-blue-200 mt-1">Choose a strong, unique password</p>
+              <h1 className="text-3xl font-bold leading-tight">{t('auth.setNewPassword')}</h1>
+              <p className="text-blue-200 mt-1">{t('auth.chooseStrongPassword')}</p>
             </div>
           </div>
         </div>
@@ -100,10 +102,10 @@ export function ResetPasswordPage() {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
                 <CheckCircle2 className="h-8 w-8 text-green-600" />
               </div>
-              <h2 className="text-2xl font-bold tracking-tight">Password updated</h2>
-              <p className="text-sm text-muted-foreground">You can now sign in with your new password</p>
+              <h2 className="text-2xl font-bold tracking-tight">{t('auth.passwordUpdated')}</h2>
+              <p className="text-sm text-muted-foreground">{t('auth.canNowSignIn')}</p>
               <Button className="w-full h-11 font-semibold text-base" onClick={() => navigate('/login')}>
-                Go to login
+                {t('auth.goToLogin')}
               </Button>
             </div>
           ) : !hasSession ? (
@@ -119,13 +121,13 @@ export function ResetPasswordPage() {
           ) : (
             <>
               <div className="space-y-2">
-                <h2 className="text-2xl font-bold tracking-tight">Set new password</h2>
-                <p className="text-sm text-muted-foreground">Enter your new password below</p>
+                <h2 className="text-2xl font-bold tracking-tight">{t('auth.setNewPassword')}</h2>
+                <p className="text-sm text-muted-foreground">{t('auth.chooseStrongPassword')}</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="password">New password</Label>
+                  <Label htmlFor="password">{t('auth.newPassword')}</Label>
                   <div className="relative">
                     <Input
                       id="password"
@@ -149,7 +151,7 @@ export function ResetPasswordPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="confirm">Confirm new password</Label>
+                  <Label htmlFor="confirm">{t('auth.confirmPassword')}</Label>
                   <Input
                     id="confirm"
                     type="password"
@@ -161,11 +163,11 @@ export function ResetPasswordPage() {
                     className="h-11"
                   />
                   {confirmPassword.length > 0 && password !== confirmPassword && (
-                    <p className="text-[11px] text-destructive">Passwords do not match</p>
+                    <p className="text-[11px] text-destructive">{t('auth.passwordsDoNotMatch')}</p>
                   )}
                 </div>
                 <Button type="submit" className="w-full h-11 font-semibold text-base" disabled={loading}>
-                  {loading ? 'Updating...' : 'Update password'}
+                  {loading ? t('auth.updatingPassword') : t('auth.updatePassword')}
                 </Button>
               </form>
             </>

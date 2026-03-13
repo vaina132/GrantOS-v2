@@ -1,5 +1,6 @@
 import { Menu, LogOut, ChevronDown, Sun, Moon, Settings } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { Button } from '@/components/ui/button'
@@ -18,6 +19,7 @@ import { NotificationBell } from '@/components/layout/NotificationBell'
 
 export function TopBar() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { user, role, accessType, orgPlan, trialEndsAt, signOut } = useAuthStore()
   const { toggleSidebar, darkMode, toggleDarkMode } = useUiStore()
   const userEmail = user?.email ?? ''
@@ -96,11 +98,11 @@ export function TopBar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate('/profile')}>
               <Settings className="mr-2 h-4 w-4" />
-              My Settings
+              {t('topbar.mySettings')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => signOut()} className="text-destructive focus:text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
-              Sign out
+              {t('topbar.signOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { preferencesService, EMAIL_PREF_LABELS } from '@/services/preferencesService'
 import { supabase } from '@/lib/supabase'
@@ -10,10 +11,12 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
 import { Switch } from '@/components/ui/switch'
-import { User, Bell, Lock, Save, Info } from 'lucide-react'
+import { User, Bell, Lock, Save, Info, Globe, Check } from 'lucide-react'
+import { SUPPORTED_LANGUAGES } from '@/lib/i18n'
 import type { UserPreferences } from '@/types'
 
 export function ProfileSettingsPage() {
+  const { t, i18n } = useTranslation()
   const { user, orgId, orgName, role } = useAuthStore()
   const [prefs, setPrefs] = useState<UserPreferences | null>(null)
   const [loading, setLoading] = useState(true)
@@ -174,6 +177,43 @@ export function ProfileSettingsPage() {
                 <Save className="h-3.5 w-3.5" />
                 {saving ? 'Saving...' : 'Save Profile'}
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* ── Language ── */}
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-primary" />
+              <CardTitle className="text-base">{t('settings.language')}</CardTitle>
+            </div>
+            <CardDescription>{t('settings.languageDesc')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {SUPPORTED_LANGUAGES.map((lang) => {
+                const isActive = i18n.language === lang.code || i18n.language?.startsWith(lang.code + '-')
+                return (
+                  <button
+                    key={lang.code}
+                    onClick={() => {
+                      i18n.changeLanguage(lang.code)
+                      localStorage.setItem('gl_language', lang.code)
+                      toast({ title: lang.label, description: `Interface language changed to ${lang.label}` })
+                    }}
+                    className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm font-medium transition-all ${
+                      isActive
+                        ? 'border-primary bg-primary/5 text-primary ring-1 ring-primary/20'
+                        : 'border-border hover:border-muted-foreground/30 hover:bg-accent text-foreground'
+                    }`}
+                  >
+                    <span className="text-lg">{lang.flag}</span>
+                    <span className="flex-1">{lang.label}</span>
+                    {isActive && <Check className="h-4 w-4 text-primary" />}
+                  </button>
+                )
+              })}
             </div>
           </CardContent>
         </Card>

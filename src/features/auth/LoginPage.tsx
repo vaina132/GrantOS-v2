@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +38,7 @@ function generateChallenge(): { a: number; b: number; answer: number } {
 }
 
 export function LoginPage() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -166,13 +168,13 @@ export function LoginPage() {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold tracking-tight">Welcome back</h2>
-            <p className="text-sm text-muted-foreground">Sign in to your account to continue</p>
+            <h2 className="text-2xl font-bold tracking-tight">{t('dashboard.welcome')}</h2>
+            <p className="text-sm text-muted-foreground">{t('auth.signIn')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('auth.email')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -187,12 +189,12 @@ export function LoginPage() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t('auth.password')}</Label>
                 <Link
                   to="/forgot-password"
                   className="text-xs text-primary hover:text-primary/80 transition-colors font-medium"
                 >
-                  Trouble logging in?
+                  {t('auth.forgotPassword')}
                 </Link>
               </div>
               <div className="relative">
@@ -227,7 +229,7 @@ export function LoginPage() {
                 className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
               />
               <Label htmlFor="rememberMe" className="text-sm font-normal text-muted-foreground cursor-pointer select-none">
-                Stay logged in
+                {t('auth.rememberMe')}
               </Label>
             </div>
 
@@ -236,10 +238,10 @@ export function LoginPage() {
               <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-3 space-y-2">
                 <div className="flex items-center gap-2 text-sm font-medium text-amber-800 dark:text-amber-300">
                   <ShieldCheck className="h-4 w-4" />
-                  Security Check
+                  {t('auth.securityCheck')}
                 </div>
                 <p className="text-xs text-amber-700 dark:text-amber-400">
-                  Too many failed attempts. Please solve this to continue:
+                  {t('auth.solveToProve')}
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-mono font-bold text-amber-900 dark:text-amber-200">
@@ -270,21 +272,21 @@ export function LoginPage() {
             )}
 
             <Button type="submit" className="w-full h-11 font-semibold text-base" disabled={loading || isLockedOut}>
-              {loading ? 'Signing in...' : isLockedOut ? `Locked (${lockCountdown}s)` : 'Login'}
+              {loading ? t('common.loading') : isLockedOut ? `Locked (${lockCountdown}s)` : t('auth.login')}
             </Button>
           </form>
 
           <Link to="/signup" className="block">
             <Button variant="outline" className="w-full h-11 font-semibold text-base border-primary text-primary hover:bg-primary/5">
-              Test it 14 days for free
+              {t('auth.startTrial')}
             </Button>
           </Link>
 
           <p className="text-center text-xs text-muted-foreground pt-2">
-            By signing in, you agree to our{' '}
-            <Link to="/terms" className="text-primary hover:underline">Terms of Use</Link>
-            {' '}and{' '}
-            <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+            {t('auth.termsAgree')}{' '}
+            <Link to="/terms" className="text-primary hover:underline">{t('auth.termsOfUse')}</Link>
+            {' '}{t('common.and')}{' '}
+            <Link to="/privacy" className="text-primary hover:underline">{t('auth.privacyPolicy')}</Link>
           </p>
         </div>
       </div>

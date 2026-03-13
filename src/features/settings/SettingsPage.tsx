@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { OrgSettings } from './OrgSettings'
@@ -12,11 +13,12 @@ import { AbsenceApprovers } from './AbsenceApprovers'
 type SettingsTab = 'org' | 'users' | 'roles' | 'funding' | 'locks' | 'holidays' | 'approvers'
 
 export function SettingsPage() {
+  const { t } = useTranslation()
   const [tab, setTab] = useState<SettingsTab>('org')
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Settings" description="Organisation settings and configuration" />
+      <PageHeader title={t('settings.title')} description="Organisation settings and configuration" />
 
       <div className="flex gap-2 flex-wrap">
         {([
@@ -27,14 +29,14 @@ export function SettingsPage() {
           { key: 'locks', label: 'Period Locks' },
           { key: 'holidays', label: 'Holidays' },
           { key: 'approvers', label: 'Absence Approvers' },
-        ] as { key: SettingsTab; label: string }[]).map((t) => (
+        ] as { key: SettingsTab; label: string }[]).map((item) => (
           <Button
-            key={t.key}
-            variant={tab === t.key ? 'default' : 'outline'}
+            key={item.key}
+            variant={tab === item.key ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setTab(t.key)}
+            onClick={() => setTab(item.key)}
           >
-            {t.label}
+            {item.label}
           </Button>
         ))}
       </div>

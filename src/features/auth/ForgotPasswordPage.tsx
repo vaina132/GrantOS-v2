@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +10,7 @@ import { ArrowLeft, Mail, ShieldCheck } from 'lucide-react'
 import { GrantLumeLogo, GrantLumeWordmark } from '@/components/common/GrantLumeLogo'
 
 export function ForgotPasswordPage() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
@@ -54,8 +56,8 @@ export function ForgotPasswordPage() {
               <ShieldCheck className="h-8 w-8" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold leading-tight">Account recovery</h1>
-              <p className="text-blue-200 mt-1">We'll help you get back into your account</p>
+              <h1 className="text-3xl font-bold leading-tight">{t('auth.accountRecovery')}</h1>
+              <p className="text-blue-200 mt-1">{t('auth.wellHelpYouBack')}</p>
             </div>
           </div>
         </div>
@@ -74,10 +76,10 @@ export function ForgotPasswordPage() {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                 <Mail className="h-8 w-8 text-primary" />
               </div>
-              <h2 className="text-2xl font-bold tracking-tight">Check your email</h2>
+              <h2 className="text-2xl font-bold tracking-tight">{t('auth.resetLinkSent')}</h2>
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  We sent a password reset link to <strong className="text-foreground">{email}</strong>
+                  {t('auth.resetLinkSentDesc')}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Didn't receive it? Check your spam folder or{' '}
@@ -91,20 +93,20 @@ export function ForgotPasswordPage() {
               </div>
               <Link to="/login">
                 <Button variant="outline" className="w-full h-11">
-                  <ArrowLeft className="mr-2 h-4 w-4" /> Back to login
+                  <ArrowLeft className="mr-2 h-4 w-4" /> {t('auth.backToLogin')}
                 </Button>
               </Link>
             </div>
           ) : (
             <>
               <div className="space-y-2">
-                <h2 className="text-2xl font-bold tracking-tight">Reset your password</h2>
-                <p className="text-sm text-muted-foreground">Enter your email and we'll send you a reset link</p>
+                <h2 className="text-2xl font-bold tracking-tight">{t('auth.resetPassword')}</h2>
+                <p className="text-sm text-muted-foreground">{t('auth.wellHelpYouBack')}</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email address</Label>
+                  <Label htmlFor="email">{t('auth.email')}</Label>
                   <Input
                     id="email"
                     type="email"
@@ -118,13 +120,13 @@ export function ForgotPasswordPage() {
                   />
                 </div>
                 <Button type="submit" className="w-full h-11 font-semibold text-base" disabled={loading}>
-                  {loading ? 'Sending...' : 'Send reset link'}
+                  {loading ? t('auth.sendingResetLink') : t('auth.sendResetLink')}
                 </Button>
               </form>
               <p className="text-center text-sm text-muted-foreground">
                 <Link to="/login" className="font-medium text-primary hover:text-primary/80 transition-colors">
                   <ArrowLeft className="inline mr-1 h-3 w-3" />
-                  Back to login
+                  {t('auth.backToLogin')}
                 </Link>
               </p>
             </>

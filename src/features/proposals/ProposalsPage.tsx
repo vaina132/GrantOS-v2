@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { proposalService } from '@/services/proposalService'
 import { generateProposalsPipelinePDF } from '@/services/reportGenerator'
@@ -66,6 +67,7 @@ const EMPTY_FORM = {
 }
 
 export function ProposalsPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { orgId, user } = useAuthStore()
   const [proposals, setProposals] = useState<Proposal[]>([])
@@ -294,7 +296,7 @@ export function ProposalsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Proposals" />
+        <PageHeader title={t('proposals.title')} />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -304,7 +306,7 @@ export function ProposalsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Proposals"
+        title={t('proposals.title')}
         description="Track grant proposal applications and convert granted ones into projects"
         actions={
           <div className="flex gap-2">

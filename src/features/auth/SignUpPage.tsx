@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,6 +25,7 @@ const signupClient = createClient(
 )
 
 export function SignUpPage() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -43,10 +45,10 @@ export function SignUpPage() {
     if (/[0-9]/.test(pw)) score++
     if (/[^A-Za-z0-9]/.test(pw)) score++
 
-    if (score <= 1) return { score, label: 'Weak', color: 'bg-red-500' }
-    if (score <= 2) return { score, label: 'Fair', color: 'bg-orange-500' }
-    if (score <= 3) return { score, label: 'Good', color: 'bg-yellow-500' }
-    return { score, label: 'Strong', color: 'bg-green-500' }
+    if (score <= 1) return { score, label: t('auth.weak'), color: 'bg-red-500' }
+    if (score <= 2) return { score, label: t('auth.fair'), color: 'bg-orange-500' }
+    if (score <= 3) return { score, label: t('auth.good'), color: 'bg-yellow-500' }
+    return { score, label: t('auth.strong'), color: 'bg-green-500' }
   }
 
   const strength = passwordStrength(password)
@@ -130,22 +132,22 @@ export function SignUpPage() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
             <CheckCircle2 className="h-8 w-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold tracking-tight">Check your email</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{t('auth.checkYourEmail')}</h2>
           <p className="text-muted-foreground">
-            We sent a confirmation link to <strong className="text-foreground">{email}</strong>.
-            Click the link to activate your account and start your 14-day free trial.
+            {t('auth.confirmationSent')} <strong className="text-foreground">{email}</strong>.
+            {t('auth.clickToActivate')}
           </p>
           <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground space-y-2">
-            <p>Didn't receive the email? Check your spam folder or wait a few minutes.</p>
+            <p>{t('auth.didntReceive')}</p>
             <button
               onClick={handleResendEmail}
               className="text-primary hover:underline font-medium"
             >
-              Resend confirmation email
+              {t('auth.resendConfirmation')}
             </button>
           </div>
           <Button variant="outline" className="w-full" onClick={() => navigate('/login')}>
-            Go to login
+            {t('auth.goToLogin')}
           </Button>
         </div>
       </div>
@@ -165,15 +167,15 @@ export function SignUpPage() {
             <GrantLumeLogo size={44} variant="dark" />
             <span className="text-2xl font-bold tracking-tight">GrantLume</span>
           </div>
-          <h1 className="text-4xl font-bold leading-tight">Register for free</h1>
+          <h1 className="text-4xl font-bold leading-tight">{t('auth.registerFree')}</h1>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10">
                 <CreditCard className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-medium">No payment information required</p>
-                <p className="text-sm text-blue-200">Start using GrantLume immediately</p>
+                <p className="font-medium">{t('auth.noPaymentRequired')}</p>
+                <p className="text-sm text-blue-200">{t('auth.startUsingImmediately')}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -181,8 +183,8 @@ export function SignUpPage() {
                 <Zap className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-medium">No installation</p>
-                <p className="text-sm text-blue-200">Cloud-based — works in your browser</p>
+                <p className="font-medium">{t('auth.noInstallation')}</p>
+                <p className="text-sm text-blue-200">{t('auth.cloudBased')}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -190,8 +192,8 @@ export function SignUpPage() {
                 <Shield className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-medium">14-day trial period ends automatically</p>
-                <p className="text-sm text-blue-200">No obligations, cancel anytime</p>
+                <p className="font-medium">{t('auth.trialAutoEnds')}</p>
+                <p className="text-sm text-blue-200">{t('auth.noObligations')}</p>
               </div>
             </div>
           </div>
@@ -207,14 +209,14 @@ export function SignUpPage() {
           </div>
 
           <div className="space-y-1">
-            <h2 className="text-2xl font-bold tracking-tight">Create your account</h2>
-            <p className="text-sm text-muted-foreground">Start your 14-day free trial — no credit card needed</p>
+            <h2 className="text-2xl font-bold tracking-tight">{t('auth.createAccount')}</h2>
+            <p className="text-sm text-muted-foreground">{t('auth.startFreeTrial')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name *</Label>
+                <Label htmlFor="firstName">{t('auth.firstName')} *</Label>
                 <Input
                   id="firstName"
                   type="text"
@@ -228,7 +230,7 @@ export function SignUpPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name *</Label>
+                <Label htmlFor="lastName">{t('auth.lastName')} *</Label>
                 <Input
                   id="lastName"
                   type="text"
@@ -243,7 +245,7 @@ export function SignUpPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
+              <Label htmlFor="email">{t('auth.email')} *</Label>
               <Input
                 id="email"
                 type="email"
@@ -257,7 +259,7 @@ export function SignUpPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password *</Label>
+              <Label htmlFor="password">{t('auth.password')} *</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -291,14 +293,14 @@ export function SignUpPage() {
                     ))}
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Password strength: <span className="font-medium">{strength.label}</span>
+                    {t('auth.passwordStrength')}: <span className="font-medium">{strength.label}</span>
                   </p>
                 </div>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirm">Confirm Password *</Label>
+              <Label htmlFor="confirm">{t('auth.confirmPassword')} *</Label>
               <Input
                 id="confirm"
                 type="password"
@@ -310,7 +312,7 @@ export function SignUpPage() {
                 className="h-11"
               />
               {confirmPassword.length > 0 && password !== confirmPassword && (
-                <p className="text-[11px] text-destructive">Passwords do not match</p>
+                <p className="text-[11px] text-destructive">{t('auth.passwordsDoNotMatch')}</p>
               )}
             </div>
 
@@ -322,13 +324,13 @@ export function SignUpPage() {
                 className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
               />
               <span className="text-xs text-muted-foreground leading-relaxed">
-                By clicking you confirm that you have read and agree to the{' '}
+                {t('auth.termsAgree')}{' '}
                 <Link to="/terms" className="text-primary hover:underline font-medium" target="_blank">
-                  Terms of Use
+                  {t('auth.termsOfUse')}
                 </Link>{' '}
-                and{' '}
+                {t('common.and')}{' '}
                 <Link to="/privacy" className="text-primary hover:underline font-medium" target="_blank">
-                  Privacy Policy
+                  {t('auth.privacyPolicy')}
                 </Link>.
               </span>
             </label>
@@ -338,14 +340,14 @@ export function SignUpPage() {
               className="w-full h-11 font-semibold text-base"
               disabled={loading || !agreedTerms}
             >
-              {loading ? 'Creating account...' : 'Test it 14 days for free'}
+              {loading ? t('auth.creatingAccount') : t('auth.startTrial')}
             </Button>
           </form>
 
           <p className="text-center text-sm text-muted-foreground pt-4">
-            Already have an account?{' '}
+            {t('auth.alreadyHaveAccount')}{' '}
             <Link to="/login" className="font-semibold text-primary hover:text-primary/80 transition-colors">
-              Login
+              {t('auth.login')}
             </Link>
           </p>
         </div>

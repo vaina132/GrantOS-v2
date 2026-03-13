@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
@@ -189,6 +190,7 @@ interface ParsedData {
 }
 
 export function BulkImport() {
+  const { t } = useTranslation()
   const { orgId } = useAuthStore()
 
   // Wizard state
@@ -614,7 +616,7 @@ export function BulkImport() {
   if (processing) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Import Data" />
+        <PageHeader title={t('import.importData')} />
         <StepIndicator />
         <Card>
           <CardContent className="py-16">

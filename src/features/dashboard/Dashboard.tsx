@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
 import { useStaff } from '@/hooks/useStaff'
 import { useAssignments, usePmBudgets } from '@/hooks/useAllocations'
@@ -40,6 +41,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export function Dashboard() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { can, orgId } = useAuthStore()
   const { globalYear } = useUiStore()
@@ -137,7 +139,7 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Dashboard" description={`Portfolio overview — ${globalYear}`} actions={<YearSelector />} />
+      <PageHeader title={t('dashboard.title')} description={`Portfolio overview — ${globalYear}`} actions={<YearSelector />} />
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

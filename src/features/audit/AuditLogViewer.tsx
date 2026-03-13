@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { auditService, type AuditEntry, type AuditFilters } from '@/services/auditService'
 import { useAuthStore } from '@/stores/authStore'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -12,6 +13,7 @@ import { Shield, ChevronLeft, ChevronRight } from 'lucide-react'
 const PAGE_SIZE = 50
 
 export function AuditLogViewer() {
+  const { t } = useTranslation()
   const { orgId } = useAuthStore()
   const [entries, setEntries] = useState<AuditEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -53,7 +55,7 @@ export function AuditLogViewer() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Audit Log" description="Track all changes made in the system" />
+      <PageHeader title={t('audit.title')} description="Track all changes made in the system" />
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="flex gap-2 flex-wrap">
