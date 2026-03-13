@@ -416,13 +416,15 @@ export function AllocationGrid() {
   const addRowPanel = canAddRow ? (
     <>
       {!addRowOpen ? (
-        <button
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => setAddRowOpen(true)}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+          className="gap-2"
         >
-          <Plus className="h-4 w-4" />
-          Add person to project...
-        </button>
+          <UserPlus className="h-4 w-4" />
+          Add Person to Project
+        </Button>
       ) : (
         <div className="rounded-lg border bg-card">
           {/* Header */}

@@ -15,6 +15,7 @@ import {
   Shield,
   UserCheck,
   Settings,
+  HelpCircle,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -165,7 +166,20 @@ export function Sidebar() {
           ))}
         </nav>
 
-        <div className="border-t p-4">
+        <div className="border-t px-3 py-3 space-y-2">
+          <NavLink
+            to="/help"
+            onClick={() => setSidebarOpen(false)}
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all',
+              location.pathname === '/help'
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+            )}
+          >
+            <HelpCircle className={cn('h-4.5 w-4.5 shrink-0', location.pathname === '/help' ? 'text-primary' : 'text-muted-foreground/70')} />
+            {t('nav.help')}
+          </NavLink>
           <p className="text-xs text-muted-foreground text-center">GrantLume v2.0</p>
         </div>
       </aside>

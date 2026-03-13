@@ -17,7 +17,8 @@
     "auditLog": "Registro de auditoria",
     "guestAccess": "Acesso de convidados",
     "settings": "Configurações",
-    "projectOverview": "Visão geral do projeto"
+    "projectOverview": "Visão geral do projeto",
+    "help": "Ajuda & FAQ"
   },
   "common": {
     "save": "Salvar",

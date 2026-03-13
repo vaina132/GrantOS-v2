@@ -17,7 +17,8 @@
     "auditLog": "Journal d'audit",
     "guestAccess": "Accès invité",
     "settings": "Paramètres",
-    "projectOverview": "Aperçu du projet"
+    "projectOverview": "Aperçu du projet",
+    "help": "Aide & FAQ"
   },
   "common": {
     "save": "Enregistrer",

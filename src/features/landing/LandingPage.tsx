@@ -170,11 +170,13 @@ const t = {
     },
     trust: {
       title: 'Built for European research organisations',
+      subtitle: 'GDPR-compliant, EU-hosted, and designed with data protection at its core.',
       items: [
-        { icon: 'Lock', title: 'GDPR Compliant', desc: 'Your data stays in Europe. Full GDPR compliance built in.' },
-        { icon: 'Shield', title: 'Secure by Design', desc: 'Row-level security, encrypted connections, and full audit trails.' },
-        { icon: 'Zap', title: 'Always Available', desc: 'Cloud-hosted with 99.9% uptime. No installation, no maintenance.' },
+        { icon: 'Lock', title: 'GDPR Compliant', desc: 'Full compliance with the EU General Data Protection Regulation. Data minimisation, purpose limitation, right to erasure, and data portability — all built in from day one.' },
+        { icon: 'Shield', title: 'EU Data Residency', desc: 'All data stored exclusively in EU data centres (Frankfurt, Germany). Encrypted at rest (AES-256) and in transit (TLS 1.2+). No data ever leaves the European Economic Area.' },
+        { icon: 'Zap', title: 'Privacy by Design', desc: 'Role-based access control with 23 granular permissions. Row-level security ensures complete data isolation between organisations. No tracking cookies, no analytics, no third-party scripts.' },
       ],
+      badges: ['GDPR Art. 25 — Data Protection by Design', 'EU AI Act Compliant', 'ePrivacy Directive Compliant', 'Immutable Audit Trail (Art. 30)', 'EU-Only Data Storage', '72h Breach Notification'],
     },
     cta: {
       title: 'Ready to simplify your grant management?',
@@ -334,11 +336,13 @@ const t = {
     },
     trust: {
       title: 'Entwickelt für europäische Forschungsorganisationen',
+      subtitle: 'DSGVO-konform, in der EU gehostet und mit Datenschutz als Kernprinzip entwickelt.',
       items: [
-        { icon: 'Lock', title: 'DSGVO-konform', desc: 'Ihre Daten bleiben in Europa. Volle DSGVO-Konformität integriert.' },
-        { icon: 'Shield', title: 'Sicher konzipiert', desc: 'Zeilenbasierte Sicherheit, verschlüsselte Verbindungen und vollständige Audit-Trails.' },
-        { icon: 'Zap', title: 'Immer verfügbar', desc: 'Cloud-gehostet mit 99,9% Verfügbarkeit. Keine Installation, keine Wartung.' },
+        { icon: 'Lock', title: 'DSGVO-konform', desc: 'Volle Konformität mit der EU-Datenschutz-Grundverordnung. Datenminimierung, Zweckbindung, Recht auf Löschung und Datenportabilität — alles von Anfang an integriert.' },
+        { icon: 'Shield', title: 'EU-Datenstandort', desc: 'Alle Daten werden ausschließlich in EU-Rechenzentren gespeichert (Frankfurt, Deutschland). Verschlüsselt im Ruhezustand (AES-256) und bei der Übertragung (TLS 1.2+). Keine Daten verlassen den EWR.' },
+        { icon: 'Zap', title: 'Privacy by Design', desc: 'Rollenbasierte Zugriffskontrolle mit 23 granularen Berechtigungen. Row-Level-Security gewährleistet vollständige Datenisolierung. Keine Tracking-Cookies, keine Analyse-Tools, keine Drittanbieter-Skripte.' },
       ],
+      badges: ['DSGVO Art. 25 — Datenschutz durch Technikgestaltung', 'EU AI Act konform', 'ePrivacy-Richtlinie konform', 'Unveränderliches Audit-Protokoll (Art. 30)', 'Nur EU-Datenspeicherung', '72h Meldepflicht bei Datenpannen'],
     },
     cta: {
       title: 'Bereit, Ihre Fördermittelverwaltung zu vereinfachen?',
@@ -636,18 +640,21 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── Trust / Security ── */}
+      {/* ── Trust / Security / GDPR ── */}
       <section id="trust" className="py-20 sm:py-28 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-16">
+          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-4">
             {c.trust.title}
           </h2>
+          <p className="text-center text-lg text-gray-600 max-w-2xl mx-auto mb-16">
+            {c.trust.subtitle}
+          </p>
 
-          <div className="grid sm:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-3 gap-8 mb-12">
             {c.trust.items.map((item, i) => {
               const Icon = iconMap[item.icon] || Shield
               return (
-                <div key={i} className="text-center">
+                <div key={i} className="text-center bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 mb-4">
                     <Icon className="h-6 w-6" />
                   </div>
@@ -656,6 +663,19 @@ export function LandingPage() {
                 </div>
               )
             })}
+          </div>
+
+          {/* Compliance badges */}
+          <div className="flex flex-wrap justify-center gap-3">
+            {c.trust.badges.map((badge, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1.5 rounded-full bg-white border border-blue-200 px-4 py-2 text-xs font-medium text-blue-700 shadow-sm"
+              >
+                <Check className="h-3.5 w-3.5 text-blue-500" />
+                {badge}
+              </span>
+            ))}
           </div>
         </div>
       </section>

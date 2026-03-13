@@ -28,6 +28,7 @@ import { ProfileSettingsPage } from '@/features/profile/ProfileSettingsPage'
 import { TermsPage } from '@/features/legal/TermsPage'
 import { PrivacyPage } from '@/features/legal/PrivacyPage'
 import { LandingPage } from '@/features/landing/LandingPage'
+import { HelpPage } from '@/features/help/HelpPage'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -193,6 +194,7 @@ export default function App() {
                         }
                       />
                       <Route path="/profile" element={<ProfileSettingsPage />} />
+                      <Route path="/help" element={<HelpPage />} />
                       <Route path="/" element={<Navigate to="/dashboard" replace />} />
                       <Route path="*" element={<Navigate to="/dashboard" replace />} />
                     </Routes>

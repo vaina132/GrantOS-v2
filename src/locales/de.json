@@ -17,7 +17,8 @@
     "auditLog": "Protokoll",
     "guestAccess": "Gastzugang",
     "settings": "Einstellungen",
-    "projectOverview": "Projektübersicht"
+    "projectOverview": "Projektübersicht",
+    "help": "Hilfe & FAQ"
   },
   "common": {
     "save": "Speichern",

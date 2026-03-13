@@ -17,7 +17,8 @@
     "auditLog": "Audit Log",
     "guestAccess": "Guest Access",
     "settings": "Settings",
-    "projectOverview": "Project Overview"
+    "projectOverview": "Project Overview",
+    "help": "Help & FAQ"
   },
   "common": {
     "save": "Save",
