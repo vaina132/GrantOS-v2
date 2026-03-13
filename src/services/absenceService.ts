@@ -8,75 +8,90 @@ export interface AbsenceFilters {
   month?: number
 }
 
-// Select string with substitute join — used when the migration has been run
+// Select strings
 const SELECT_WITH_SUB = '*, persons(full_name), substitute_person:persons!absences_substitute_person_id_fkey(full_name)'
-// Fallback select without substitute join — used pre-migration
 const SELECT_BASIC = '*, persons(full_name)'
+
+// Cached capability flag — probed once per session
+let _hasSub: boolean | null = null
+
+/** Probe once whether the substitute_person_id column exists on the absences table */
+async function probeSubstitute(): Promise<boolean> {
+  if (_hasSub !== null) return _hasSub
+  try {
+    const { data, error } = await supabase
+      .from('absences')
+      .select('substitute_person_id')
+      .limit(0)
+    _hasSub = !error && data !== null
+  } catch {
+    _hasSub = false
+  }
+  return _hasSub
+}
+
+/** Return the correct select string after probing */
+async function getSel(): Promise<string> {
+  await probeSubstitute()
+  return _hasSub ? SELECT_WITH_SUB : SELECT_BASIC
+}
+
+/** Strip substitute fields from a payload when column is missing */
+function stripSub<T extends Record<string, any>>(obj: T): T {
+  if (_hasSub !== false) return obj
+  const { substitute_person_id: _, ...rest } = obj
+  return rest as T
+}
 
 export const absenceService = {
   async list(orgId: string | null, filters?: AbsenceFilters): Promise<Absence[]> {
-    const doQuery = (sel: string) => {
-      let query = supabase
-        .from('absences')
-        .select(sel)
-        .order('start_date', { ascending: false })
+    const sel = await getSel()
+    let query = supabase
+      .from('absences')
+      .select(sel)
+      .order('start_date', { ascending: false })
 
-      if (orgId) query = query.eq('org_id', orgId)
-      if (filters?.person_id) query = query.eq('person_id', filters.person_id)
-      if (filters?.type) query = query.eq('type', filters.type)
+    if (orgId) query = query.eq('org_id', orgId)
+    if (filters?.person_id) query = query.eq('person_id', filters.person_id)
+    if (filters?.type) query = query.eq('type', filters.type)
 
-      if (filters?.year) {
-        const start = `${filters.year}-01-01`
-        const end = `${filters.year}-12-31`
-        query = query.or(`start_date.gte.${start},date.gte.${start}`)
-        query = query.or(`end_date.lte.${end},date.lte.${end}`)
-      }
-      return query
+    if (filters?.year) {
+      const start = `${filters.year}-01-01`
+      const end = `${filters.year}-12-31`
+      query = query.or(`start_date.gte.${start},date.gte.${start}`)
+      query = query.or(`end_date.lte.${end},date.lte.${end}`)
     }
 
-    const { data, error } = await doQuery(SELECT_WITH_SUB)
-    if (error) {
-      // Fallback: substitute column may not exist yet (pre-migration)
-      const fallback = await doQuery(SELECT_BASIC)
-      if (fallback.error) throw fallback.error
-      return (fallback.data ?? []) as unknown as Absence[]
-    }
+    const { data, error } = await query
+    if (error) throw error
     return (data ?? []) as unknown as Absence[]
   },
 
   async create(absence: Omit<Absence, 'id' | 'created_at' | 'updated_at' | 'persons' | 'substitute_person'>): Promise<Absence> {
-    // Strip substitute_person_id if column doesn't exist yet
+    const sel = await getSel()
+    const payload = stripSub(absence as any)
     const { data, error } = await supabase
       .from('absences')
-      .insert(absence)
-      .select(SELECT_WITH_SUB)
+      .insert(payload as any)
+      .select(sel)
       .single()
 
-    if (error) {
-      // Retry without substitute fields if column missing
-      const { substitute_person_id: _sub, ...rest } = absence as any
-      const fb = await supabase.from('absences').insert(rest).select(SELECT_BASIC).single()
-      if (fb.error) throw fb.error
-      return fb.data as unknown as Absence
-    }
+    if (error) throw error
     return data as unknown as Absence
   },
 
   async update(id: string, updates: Partial<Absence>): Promise<Absence> {
+    const sel = await getSel()
     const { persons: _p, substitute_person: _sp, ...rest } = updates
+    const payload = stripSub(rest as any)
     const { data, error } = await supabase
       .from('absences')
-      .update({ ...rest, updated_at: new Date().toISOString() })
+      .update({ ...payload, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select(SELECT_WITH_SUB)
+      .select(sel)
       .single()
 
-    if (error) {
-      const { substitute_person_id: _sub, ...safeRest } = rest as any
-      const fb = await supabase.from('absences').update({ ...safeRest, updated_at: new Date().toISOString() }).eq('id', id).select(SELECT_BASIC).single()
-      if (fb.error) throw fb.error
-      return fb.data as unknown as Absence
-    }
+    if (error) throw error
     return data as unknown as Absence
   },
 
@@ -111,46 +126,38 @@ export const absenceService = {
   },
 
   async approve(id: string, userId: string): Promise<Absence> {
-    const payload = {
-      status: 'approved',
-      approved_by: userId,
-      approved_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
+    const sel = await getSel()
     const { data, error } = await supabase
       .from('absences')
-      .update(payload)
+      .update({
+        status: 'approved',
+        approved_by: userId,
+        approved_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', id)
-      .select(SELECT_WITH_SUB)
+      .select(sel)
       .single()
 
-    if (error) {
-      const fb = await supabase.from('absences').update(payload).eq('id', id).select(SELECT_BASIC).single()
-      if (fb.error) throw fb.error
-      return fb.data as unknown as Absence
-    }
+    if (error) throw error
     return data as unknown as Absence
   },
 
   async reject(id: string, userId: string): Promise<Absence> {
-    const payload = {
-      status: 'rejected',
-      approved_by: userId,
-      approved_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
+    const sel = await getSel()
     const { data, error } = await supabase
       .from('absences')
-      .update(payload)
+      .update({
+        status: 'rejected',
+        approved_by: userId,
+        approved_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', id)
-      .select(SELECT_WITH_SUB)
+      .select(sel)
       .single()
 
-    if (error) {
-      const fb = await supabase.from('absences').update(payload).eq('id', id).select(SELECT_BASIC).single()
-      if (fb.error) throw fb.error
-      return fb.data as unknown as Absence
-    }
+    if (error) throw error
     return data as unknown as Absence
   },
 
