@@ -9,7 +9,7 @@ import {
   collabProjectService, collabPartnerService, collabWpService,
   collabTaskService, collabDeliverableService, collabMilestoneService,
 } from '@/services/collabProjectService'
-import { collabAIService, type CollabAIExtraction } from '@/services/collabAIService'
+import { collabAIService } from '@/services/collabAIService'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
