@@ -107,6 +107,7 @@ export const collabPartnerService = {
     participant_number?: number
     contact_name?: string
     contact_email?: string
+    country?: string
     budget_personnel?: number
     budget_subcontracting?: number
     budget_travel?: number

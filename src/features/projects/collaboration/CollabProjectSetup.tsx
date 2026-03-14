@@ -160,6 +160,7 @@ export function CollabProjectSetup() {
           participant_number: parseInt(p.participant_number) || undefined,
           contact_name: p.contact_name || undefined,
           contact_email: p.contact_email || undefined,
+          country: p.country || undefined,
           budget_personnel: parseFloat(p.budget_personnel) || 0,
           budget_subcontracting: parseFloat(p.budget_subcontracting) || 0,
           budget_travel: parseFloat(p.budget_travel) || 0,
@@ -388,7 +389,11 @@ function StepPartners({ partners, updatePartner, addPartner, removePartner }: {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Country</Label>
+                <Input value={p.country} onChange={e => updatePartner(idx, 'country', e.target.value)} placeholder="e.g. DE" className="h-9 text-sm" />
+              </div>
               <div className="space-y-1">
                 <Label className="text-xs">Contact Name</Label>
                 <Input value={p.contact_name} onChange={e => updatePartner(idx, 'contact_name', e.target.value)} placeholder="Financial reporting contact" className="h-9 text-sm" />
@@ -590,7 +595,8 @@ function StepReview({ project, partners, wps }: {
               <div key={p._key} className="flex items-center gap-2">
                 <Badge variant="secondary">Partner #{p.participant_number}</Badge>
                 <span className="font-medium">{p.org_name}</span>
-                {p.contact_email && <span className="text-muted-foreground">({p.contact_email})</span>}
+                {p.country && <span className="text-muted-foreground">({p.country})</span>}
+                {p.contact_email && <span className="text-muted-foreground"> — {p.contact_email}</span>}
               </div>
             ))}
           </div>

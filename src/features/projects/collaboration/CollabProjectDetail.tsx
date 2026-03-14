@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign } from 'lucide-react'
+import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService, collabPartnerService, collabWpService, collabPeriodService, collabReportService } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
@@ -14,6 +14,7 @@ import { toast } from '@/components/ui/use-toast'
 import { EditPartnerDialog } from './EditPartnerDialog'
 import { EditWpDialog } from './EditWpDialog'
 import { EditProjectDialog } from './EditProjectDialog'
+import { EditAllocDialog } from './EditAllocDialog'
 import type { CollabProject, CollabPartner, CollabWorkPackage, CollabReportingPeriod, CollabReport } from '@/types'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -45,6 +46,7 @@ export function CollabProjectDetail() {
   const [showPartnerDialog, setShowPartnerDialog] = useState(false)
   const [showWpDialog, setShowWpDialog] = useState(false)
   const [showProjectDialog, setShowProjectDialog] = useState(false)
+  const [allocPartner, setAllocPartner] = useState<CollabPartner | null>(null)
 
   // Period reports
   const [periodReports, setPeriodReports] = useState<Record<string, CollabReport[]>>({})
@@ -53,6 +55,8 @@ export function CollabProjectDetail() {
   // Add period form
   const [showAddPeriod, setShowAddPeriod] = useState(false)
   const [newPeriod, setNewPeriod] = useState({ title: '', period_type: 'informal' as 'formal' | 'informal', start_month: '', end_month: '', due_date: '' })
+  const [editPeriodId, setEditPeriodId] = useState<string | null>(null)
+  const [editPeriod, setEditPeriod] = useState({ title: '', period_type: 'informal' as 'formal' | 'informal', start_month: '', end_month: '', due_date: '' })
 
   const load = async () => {
     if (!id) return
@@ -220,6 +224,35 @@ export function CollabProjectDetail() {
     }
   }
 
+  const startEditPeriod = (p: CollabReportingPeriod) => {
+    setEditPeriodId(p.id)
+    setEditPeriod({
+      title: p.title,
+      period_type: p.period_type,
+      start_month: String(p.start_month),
+      end_month: String(p.end_month),
+      due_date: p.due_date || '',
+    })
+  }
+
+  const handleUpdatePeriod = async () => {
+    if (!editPeriodId || !editPeriod.title || !editPeriod.start_month || !editPeriod.end_month) return
+    try {
+      await collabPeriodService.update(editPeriodId, {
+        title: editPeriod.title,
+        period_type: editPeriod.period_type,
+        start_month: parseInt(editPeriod.start_month),
+        end_month: parseInt(editPeriod.end_month),
+        due_date: editPeriod.due_date || null,
+      } as any)
+      toast({ title: 'Updated', description: 'Reporting period updated' })
+      setEditPeriodId(null)
+      load()
+    } catch {
+      toast({ title: 'Error', description: 'Failed to update period', variant: 'destructive' })
+    }
+  }
+
   const handleDeletePeriod = async (periodId: string, title: string) => {
     if (!confirm(`Delete reporting period "${title}"? This cannot be undone.`)) return
     try {
@@ -374,6 +407,7 @@ export function CollabProjectDetail() {
                           </Badge>
                         </div>
                         <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground mt-2">
+                          {p.country && <span>{p.country}</span>}
                           {p.contact_name && <span>{p.contact_name}</span>}
                           {p.contact_email && <span>{p.contact_email}</span>}
                           <span>{p.total_person_months} PMs</span>
@@ -386,6 +420,11 @@ export function CollabProjectDetail() {
                         <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setEditPartner(p); setShowPartnerDialog(true) }}>
                           <Pencil className="h-3.5 w-3.5" /> Edit
                         </Button>
+                        {wps.length > 0 && (
+                          <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setAllocPartner(p)}>
+                            <LayoutGrid className="h-3.5 w-3.5" /> WPs
+                          </Button>
+                        )}
                         {p.invite_status === 'pending' && p.contact_email && (
                           <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => handleSendInvite(p)}>
                             <Mail className="h-3.5 w-3.5" /> Email
@@ -543,6 +582,9 @@ export function CollabProjectDetail() {
                               <Button size="sm" variant="outline" onClick={() => handleGenerateReports(p.id)} className="gap-1.5 text-xs">
                                 <FileText className="h-3.5 w-3.5" /> Generate Reports
                               </Button>
+                              <Button size="sm" variant="ghost" onClick={() => startEditPeriod(p)} className="h-8 w-8 p-0">
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
                               <Button size="sm" variant="ghost" onClick={() => handleDeletePeriod(p.id, p.title)} className="h-8 w-8 p-0">
                                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
                               </Button>
@@ -550,6 +592,46 @@ export function CollabProjectDetail() {
                           )}
                         </div>
                       </div>
+
+                      {editPeriodId === p.id && (
+                        <div className="mt-3 pt-3 border-t space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Title *</Label>
+                              <Input value={editPeriod.title} onChange={e => setEditPeriod(ep => ({ ...ep, title: e.target.value }))} className="h-9 text-sm" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Type</Label>
+                              <select value={editPeriod.period_type} onChange={e => setEditPeriod(ep => ({ ...ep, period_type: e.target.value as any }))} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
+                                <option value="informal">Informal</option>
+                                <option value="formal">Formal</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Start Month</Label>
+                              <Input type="number" value={editPeriod.start_month} onChange={e => setEditPeriod(ep => ({ ...ep, start_month: e.target.value }))} className="h-9 text-sm" />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">End Month</Label>
+                              <Input type="number" value={editPeriod.end_month} onChange={e => setEditPeriod(ep => ({ ...ep, end_month: e.target.value }))} className="h-9 text-sm" />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Due Date</Label>
+                              <Input type="date" value={editPeriod.due_date} onChange={e => setEditPeriod(ep => ({ ...ep, due_date: e.target.value }))} className="h-9 text-sm" />
+                            </div>
+                            <div className="col-span-3 flex items-end gap-2">
+                              <Button size="sm" onClick={handleUpdatePeriod} disabled={!editPeriod.title || !editPeriod.start_month || !editPeriod.end_month}>
+                                Save Changes
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setEditPeriodId(null)}>
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {isExpanded && (
                         <div className="mt-3 pt-3 border-t space-y-1.5">
@@ -722,6 +804,15 @@ export function CollabProjectDetail() {
         onClose={() => setShowWpDialog(false)}
         onSaved={load}
       />
+      {allocPartner && (
+        <EditAllocDialog
+          partner={allocPartner}
+          wps={wps}
+          open={!!allocPartner}
+          onClose={() => setAllocPartner(null)}
+          onSaved={load}
+        />
+      )}
     </div>
   )
 }

@@ -94,6 +94,7 @@ export function EditPartnerDialog({ partner, projectId, open, onClose, onSaved }
           participant_number: form.participant_number ?? undefined,
           contact_name: form.contact_name || undefined,
           contact_email: form.contact_email || undefined,
+          country: form.country || undefined,
           budget_personnel: form.budget_personnel,
           budget_subcontracting: form.budget_subcontracting,
           budget_travel: form.budget_travel,
