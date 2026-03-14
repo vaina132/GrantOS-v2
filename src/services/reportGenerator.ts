@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 import { formatCurrency } from '@/lib/utils'
-import type { Project, Person, TimesheetEntry, Proposal } from '@/types'
+import type { Project, Person, TimesheetEntry, Proposal, CollabPartner } from '@/types'
 
 // Brand colors
 const PRIMARY = [37, 99, 235] as const   // blue-600
@@ -421,4 +421,179 @@ export function generateProposalsPipelinePDF(proposals: Proposal[], orgName: str
 
   addFooter(doc)
   doc.save('proposals_pipeline.pdf')
+}
+
+export function generateCollabBudgetPDF(
+  acronym: string,
+  partners: CollabPartner[],
+  orgName: string,
+) {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+
+  // Header band (landscape = 297mm wide)
+  doc.setFillColor(...PRIMARY)
+  doc.rect(0, 0, 297, 28, 'F')
+  doc.setTextColor(...WHITE)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(18)
+  doc.text('GrantLume', 14, 14)
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Collaboration Budget Overview — ${acronym}`, 14, 22)
+  doc.setFontSize(9)
+  doc.text(orgName, 297 - 14, 22, { align: 'right' })
+  doc.setTextColor(...MUTED)
+  doc.setFontSize(8)
+  doc.text(`Generated: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`, 297 - 14, 14, { align: 'right' })
+
+  let y = 38
+
+  // Summary
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
+  doc.setTextColor(...DARK)
+  doc.text('Budget Summary', 14, y)
+  doc.setDrawColor(...PRIMARY)
+  doc.setLineWidth(0.5)
+  doc.line(14, y + 2, 80, y + 2)
+  y += 10
+
+  const totalDirect = partners.reduce((s, p) => s + p.budget_personnel + p.budget_subcontracting + p.budget_travel + p.budget_equipment + p.budget_other_goods, 0)
+  y = addKeyValue(doc, y, 'Partners', String(partners.length))
+  y = addKeyValue(doc, y, 'Total Direct Costs', `€${totalDirect.toLocaleString()}`)
+  y = addKeyValue(doc, y, 'Total PMs', partners.reduce((s, p) => s + p.total_person_months, 0).toFixed(1))
+  y += 8
+
+  // Budget table
+  const cols = [
+    { label: 'Partner', x: 14, width: 42 },
+    { label: 'Country', x: 56, width: 18 },
+    { label: 'Personnel', x: 74, width: 24, align: 'right' as const },
+    { label: 'Subcontr.', x: 98, width: 24, align: 'right' as const },
+    { label: 'Travel', x: 122, width: 22, align: 'right' as const },
+    { label: 'Equipment', x: 144, width: 24, align: 'right' as const },
+    { label: 'Other', x: 168, width: 22, align: 'right' as const },
+    { label: 'Direct', x: 190, width: 24, align: 'right' as const },
+    { label: 'Indirect', x: 214, width: 22, align: 'right' as const },
+    { label: 'Grand Total', x: 236, width: 26, align: 'right' as const },
+    { label: 'Funding', x: 262, width: 22, align: 'right' as const },
+  ]
+
+  // Header background (landscape)
+  doc.setFillColor(...LIGHT_BG)
+  doc.rect(14, y - 4, 270, 8, 'F')
+  doc.setDrawColor(...BORDER)
+  doc.line(14, y + 4, 284, y + 4)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7)
+  doc.setTextColor(...MUTED)
+  for (const col of cols) {
+    if (col.align === 'right') {
+      doc.text(col.label, col.x + col.width, y, { align: 'right' })
+    } else {
+      doc.text(col.label, col.x, y)
+    }
+  }
+  y += 8
+
+  // Rows
+  const fmt = (n: number) => `€${Math.round(n).toLocaleString()}`
+
+  let totals = { personnel: 0, subcontracting: 0, travel: 0, equipment: 0, other: 0, direct: 0, indirect: 0, grand: 0, funding: 0 }
+
+  partners.forEach((p, i) => {
+    const direct = p.budget_personnel + p.budget_subcontracting + p.budget_travel + p.budget_equipment + p.budget_other_goods
+    const indirectBase = p.indirect_cost_base === 'personnel_only'
+      ? p.budget_personnel
+      : p.indirect_cost_base === 'all_except_subcontracting'
+        ? direct - p.budget_subcontracting
+        : direct
+    const indirect = indirectBase * (p.indirect_cost_rate / 100)
+    const grand = direct + indirect
+    const funding = grand * (p.funding_rate / 100)
+
+    totals.personnel += p.budget_personnel
+    totals.subcontracting += p.budget_subcontracting
+    totals.travel += p.budget_travel
+    totals.equipment += p.budget_equipment
+    totals.other += p.budget_other_goods
+    totals.direct += direct
+    totals.indirect += indirect
+    totals.grand += grand
+    totals.funding += funding
+
+    if (y > 190) { doc.addPage(); y = 20 }
+
+    if (i % 2 === 1) {
+      doc.setFillColor(252, 252, 253)
+      doc.rect(14, y - 3.5, 270, 7, 'F')
+    }
+
+    const label = p.role === 'coordinator' ? `[C] ${p.org_name}` : `#${p.participant_number} ${p.org_name}`
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(7)
+    doc.setTextColor(...DARK)
+    const truncLabel = label.length > 24 ? label.slice(0, 21) + '...' : label
+    doc.text(truncLabel, 14, y)
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.text(p.country || '—', 56, y)
+
+    const vals = [
+      { v: fmt(p.budget_personnel), x: 74, w: 24 },
+      { v: fmt(p.budget_subcontracting), x: 98, w: 24 },
+      { v: fmt(p.budget_travel), x: 122, w: 22 },
+      { v: fmt(p.budget_equipment), x: 144, w: 24 },
+      { v: fmt(p.budget_other_goods), x: 168, w: 22 },
+      { v: fmt(direct), x: 190, w: 24 },
+      { v: fmt(indirect), x: 214, w: 22 },
+      { v: fmt(grand), x: 236, w: 26 },
+      { v: fmt(funding), x: 262, w: 22 },
+    ]
+    for (const v of vals) {
+      doc.text(v.v, v.x + v.w, y, { align: 'right' })
+    }
+
+    y += 7
+  })
+
+  // Totals row
+  y += 2
+  doc.setDrawColor(...BORDER)
+  doc.line(14, y - 1, 284, y - 1)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7)
+  doc.setTextColor(...DARK)
+  doc.text('Total', 14, y)
+  doc.text('', 56, y)
+  const totalVals = [
+    { v: fmt(totals.personnel), x: 74, w: 24 },
+    { v: fmt(totals.subcontracting), x: 98, w: 24 },
+    { v: fmt(totals.travel), x: 122, w: 22 },
+    { v: fmt(totals.equipment), x: 144, w: 24 },
+    { v: fmt(totals.other), x: 168, w: 22 },
+    { v: fmt(totals.direct), x: 190, w: 24 },
+    { v: fmt(Math.round(totals.indirect)), x: 214, w: 22 },
+    { v: fmt(Math.round(totals.grand)), x: 236, w: 26 },
+    { v: fmt(Math.round(totals.funding)), x: 262, w: 22 },
+  ]
+  for (const v of totalVals) {
+    doc.text(v.v, v.x + v.w, y, { align: 'right' })
+  }
+
+  // Footer
+  const pageCount = doc.getNumberOfPages()
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i)
+    doc.setDrawColor(...BORDER)
+    doc.line(14, 200, 283, 200)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(...MUTED)
+    doc.text('GrantLume — Grant & Project Management', 14, 205)
+    doc.text(`Page ${i} of ${pageCount}`, 283, 205, { align: 'right' })
+  }
+
+  doc.save(`${acronym}_budget_overview.pdf`)
 }

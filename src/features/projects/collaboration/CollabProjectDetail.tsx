@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Contact } from 'lucide-react'
+import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Contact, Download } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
@@ -16,6 +16,7 @@ import { EditWpDialog } from './EditWpDialog'
 import { EditProjectDialog } from './EditProjectDialog'
 import { EditAllocDialog } from './EditAllocDialog'
 import { EditContactDialog } from './EditContactDialog'
+import { generateCollabBudgetPDF } from '@/services/reportGenerator'
 import type { CollabProject, CollabPartner, CollabWorkPackage, CollabPartnerWpAlloc, CollabReportingPeriod, CollabReport } from '@/types'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -782,7 +783,12 @@ export function CollabProjectDetail() {
         <TabsContent value="budget" className="mt-4 space-y-4">
           {partners.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Add partners to see budget overview</p>
-          ) : (
+          ) : (<>
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => generateCollabBudgetPDF(project.acronym, partners, orgName || '')} className="gap-2">
+                <Download className="h-4 w-4" /> Export PDF
+              </Button>
+            </div>
             <Card>
               <CardContent className="p-0 overflow-x-auto">
                 <table className="w-full text-sm">
@@ -884,7 +890,7 @@ export function CollabProjectDetail() {
                 </table>
               </CardContent>
             </Card>
-          )}
+          </>)}
         </TabsContent>
       </Tabs>
       <EditProjectDialog

@@ -6,7 +6,8 @@ import { useAssignments, usePmBudgets } from '@/hooks/useAllocations'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { proposalService } from '@/services/proposalService'
-import type { Proposal } from '@/types'
+import { collabProjectService } from '@/services/collabProjectService'
+import type { Proposal, CollabProject } from '@/types'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -20,6 +21,7 @@ import {
   DollarSign,
   AlertTriangle,
   Lightbulb,
+  Globe,
 } from 'lucide-react'
 import {
   BarChart,
@@ -51,10 +53,12 @@ export function Dashboard() {
   const { budgets: pmBudgets, isLoading: loadingBudgets } = usePmBudgets('actual')
 
   const [proposals, setProposals] = useState<Proposal[]>([])
+  const [collabProjects, setCollabProjects] = useState<CollabProject[]>([])
 
   useEffect(() => {
     if (orgId) {
       proposalService.list(orgId).then(setProposals).catch(() => {})
+      collabProjectService.list(orgId).then(setCollabProjects).catch(() => {})
     }
   }, [orgId])
 
@@ -149,6 +153,7 @@ export function Dashboard() {
           ...(can('canSeeFinancialDetails') ? [{ label: 'Total Budget', value: formatCurrency(kpis.totalBudget), sub: 'across all projects', icon: DollarSign, color: 'text-amber-600', href: '/financials' }] : []),
           { label: 'Person-Months', value: kpis.totalPms, sub: kpis.hasActualPms ? `actual in ${globalYear}` : `planned in ${globalYear}`, icon: CalendarDays, color: 'text-purple-600', href: '/allocations' },
           ...(can('canSeeProposals') ? [{ label: 'Proposals', value: proposals.length, sub: `${proposals.filter(p => p.status === 'Submitted').length} submitted`, icon: Lightbulb, color: 'text-orange-500', href: '/proposals' }] : []),
+          ...(collabProjects.length > 0 ? [{ label: 'Collaborations', value: collabProjects.length, sub: `${collabProjects.filter(p => p.status === 'active').length} active`, icon: Globe, color: 'text-sky-600', href: '/projects/collaboration' }] : []),
         ].map((kpi) => (
           <Card
             key={kpi.label}
