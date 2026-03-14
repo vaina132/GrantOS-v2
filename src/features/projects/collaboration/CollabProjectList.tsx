@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Users, Globe, FileText, MoreHorizontal, Trash2, Rocket, Search } from 'lucide-react'
+import { Plus, Users, Globe, FileText, MoreHorizontal, Trash2, Rocket, Search, Archive, ArchiveRestore } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService } from '@/services/collabProjectService'
 import { Button } from '@/components/ui/button'
@@ -63,6 +63,19 @@ export function CollabProjectList() {
       load()
     } catch {
       toast({ title: 'Error', description: 'Failed to launch project', variant: 'destructive' })
+    }
+  }
+
+  const handleArchive = async (id: string, current: string) => {
+    const newStatus = current === 'archived' ? 'active' : 'archived'
+    const label = newStatus === 'archived' ? 'Archive' : 'Unarchive'
+    if (!confirm(`${label} this project?`)) return
+    try {
+      await collabProjectService.update(id, { status: newStatus } as any)
+      toast({ title: `${label}d`, description: `Project ${newStatus === 'archived' ? 'archived' : 'restored to active'}` })
+      load()
+    } catch {
+      toast({ title: 'Error', description: `Failed to ${label.toLowerCase()} project`, variant: 'destructive' })
     }
   }
 
@@ -207,6 +220,18 @@ export function CollabProjectList() {
                         <DropdownMenuItem onClick={() => handleLaunch(p.id)}>
                           <Rocket className="mr-2 h-4 w-4" />
                           Launch Project
+                        </DropdownMenuItem>
+                      )}
+                      {p.status === 'active' && (
+                        <DropdownMenuItem onClick={() => handleArchive(p.id, p.status)}>
+                          <Archive className="mr-2 h-4 w-4" />
+                          Archive
+                        </DropdownMenuItem>
+                      )}
+                      {p.status === 'archived' && (
+                        <DropdownMenuItem onClick={() => handleArchive(p.id, p.status)}>
+                          <ArchiveRestore className="mr-2 h-4 w-4" />
+                          Unarchive
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem

@@ -414,7 +414,11 @@ export function CollabReportPage() {
                           return (
                             <tr key={line.id} className="border-b last:border-0">
                               <td className="p-3 text-muted-foreground">{idx + 1}</td>
-                              <td className="p-3 text-xs">{line.work_package?.title || '—'}</td>
+                              <td className="p-3 text-xs">
+                                {line.work_package
+                                  ? `WP${wps.find(w => w.id === line.wp_id)?.wp_number ?? '?'}: ${line.work_package.title}`
+                                  : '—'}
+                              </td>
                               <td className="p-3">
                                 {canEdit ? (
                                   <Input

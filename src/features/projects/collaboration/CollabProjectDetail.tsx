@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid } from 'lucide-react'
+import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
-import { collabProjectService, collabPartnerService, collabWpService, collabPeriodService, collabReportService } from '@/services/collabProjectService'
+import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,7 +15,7 @@ import { EditPartnerDialog } from './EditPartnerDialog'
 import { EditWpDialog } from './EditWpDialog'
 import { EditProjectDialog } from './EditProjectDialog'
 import { EditAllocDialog } from './EditAllocDialog'
-import type { CollabProject, CollabPartner, CollabWorkPackage, CollabReportingPeriod, CollabReport } from '@/types'
+import type { CollabProject, CollabPartner, CollabWorkPackage, CollabPartnerWpAlloc, CollabReportingPeriod, CollabReport } from '@/types'
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
@@ -36,6 +36,7 @@ export function CollabProjectDetail() {
   const [project, setProject] = useState<CollabProject | null>(null)
   const [partners, setPartners] = useState<CollabPartner[]>([])
   const [wps, setWps] = useState<CollabWorkPackage[]>([])
+  const [allocs, setAllocs] = useState<CollabPartnerWpAlloc[]>([])
   const [periods, setPeriods] = useState<CollabReportingPeriod[]>([])
   const [loading, setLoading] = useState(true)
   const [sendingInvites, setSendingInvites] = useState(false)
@@ -72,6 +73,15 @@ export function CollabProjectDetail() {
       setPartners(parts)
       setWps(workPackages)
       setPeriods(rPeriods)
+      // Load all allocations for each partner
+      const allAllocs: CollabPartnerWpAlloc[] = []
+      for (const p of parts) {
+        try {
+          const a = await collabAllocService.list(p.id)
+          allAllocs.push(...a)
+        } catch { /* ignore */ }
+      }
+      setAllocs(allAllocs)
     } catch {
       toast({ title: 'Error', description: 'Failed to load project', variant: 'destructive' })
     } finally {
@@ -89,6 +99,20 @@ export function CollabProjectDetail() {
       load()
     } catch {
       toast({ title: 'Error', description: 'Failed to launch', variant: 'destructive' })
+    }
+  }
+
+  const handleArchive = async () => {
+    if (!id || !project) return
+    const newStatus = project.status === 'archived' ? 'active' : 'archived'
+    const label = newStatus === 'archived' ? 'Archive' : 'Unarchive'
+    if (!confirm(`${label} this project?`)) return
+    try {
+      await collabProjectService.update(id, { status: newStatus } as any)
+      toast({ title: `${label}d`, description: `Project ${newStatus === 'archived' ? 'archived' : 'restored to active'}` })
+      load()
+    } catch {
+      toast({ title: 'Error', description: `Failed to ${label.toLowerCase()} project`, variant: 'destructive' })
     }
   }
 
@@ -329,6 +353,16 @@ export function CollabProjectDetail() {
               <Rocket className="h-4 w-4" /> Launch
             </Button>
           )}
+          {project.status === 'active' && (
+            <Button variant="outline" size="sm" onClick={handleArchive} className="gap-2">
+              <Archive className="h-4 w-4" /> Archive
+            </Button>
+          )}
+          {project.status === 'archived' && (
+            <Button variant="outline" size="sm" onClick={handleArchive} className="gap-2">
+              <ArchiveRestore className="h-4 w-4" /> Unarchive
+            </Button>
+          )}
           <Button variant="outline" size="icon" onClick={handleDelete}>
             <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
@@ -456,27 +490,63 @@ export function CollabProjectDetail() {
             <p className="text-sm text-muted-foreground py-8 text-center">No work packages defined</p>
           ) : (
             <Card>
-              <CardContent className="p-0">
+              <CardContent className="p-0 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left">
                       <th className="p-3 font-medium w-20">WP #</th>
                       <th className="p-3 font-medium">Title</th>
-                      <th className="p-3 font-medium text-right w-28">Person-Months</th>
+                      <th className="p-3 font-medium text-right w-28">Budgeted PMs</th>
+                      {partners.map(p => (
+                        <th key={p.id} className="p-3 font-medium text-right text-xs" title={p.org_name}>
+                          {p.role === 'coordinator' ? 'C' : `#${p.participant_number}`}
+                        </th>
+                      ))}
+                      <th className="p-3 font-medium text-right w-28">Allocated</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {wps.map(wp => (
-                      <tr key={wp.id} className="border-b last:border-0">
-                        <td className="p-3 font-mono">{wp.wp_number}</td>
-                        <td className="p-3">{wp.title}</td>
-                        <td className="p-3 text-right">{wp.total_person_months}</td>
-                      </tr>
-                    ))}
+                    {wps.map(wp => {
+                      const wpAllocs = allocs.filter(a => a.wp_id === wp.id)
+                      const totalAllocated = wpAllocs.reduce((s, a) => s + a.person_months, 0)
+                      return (
+                        <tr key={wp.id} className="border-b last:border-0">
+                          <td className="p-3 font-mono">{wp.wp_number}</td>
+                          <td className="p-3">{wp.title}</td>
+                          <td className="p-3 text-right">{wp.total_person_months}</td>
+                          {partners.map(p => {
+                            const a = wpAllocs.find(al => al.partner_id === p.id)
+                            return (
+                              <td key={p.id} className="p-3 text-right tabular-nums text-xs text-muted-foreground">
+                                {a ? a.person_months : '—'}
+                              </td>
+                            )
+                          })}
+                          <td className={`p-3 text-right tabular-nums font-medium ${
+                            Math.abs(totalAllocated - wp.total_person_months) > 0.1
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-emerald-600 dark:text-emerald-400'
+                          }`}>
+                            {totalAllocated.toFixed(1)}
+                          </td>
+                        </tr>
+                      )
+                    })}
                     <tr className="bg-muted/50 font-medium">
                       <td className="p-3" colSpan={2}>Total</td>
                       <td className="p-3 text-right">
                         {wps.reduce((sum, w) => sum + w.total_person_months, 0).toFixed(1)}
+                      </td>
+                      {partners.map(p => {
+                        const partnerTotal = allocs.filter(a => a.partner_id === p.id).reduce((s, a) => s + a.person_months, 0)
+                        return (
+                          <td key={p.id} className="p-3 text-right tabular-nums text-xs">
+                            {partnerTotal > 0 ? partnerTotal.toFixed(1) : '—'}
+                          </td>
+                        )
+                      })}
+                      <td className="p-3 text-right tabular-nums">
+                        {allocs.reduce((s, a) => s + a.person_months, 0).toFixed(1)}
                       </td>
                     </tr>
                   </tbody>
