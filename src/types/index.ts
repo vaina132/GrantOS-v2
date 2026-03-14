@@ -546,6 +546,7 @@ export interface CollabPartner {
   participant_number: number | null
   contact_name: string | null
   contact_email: string | null
+  country: string | null
   budget_personnel: number
   budget_subcontracting: number
   budget_travel: number

@@ -14,7 +14,25 @@ interface EditPartnerDialogProps {
   onSaved: () => void
 }
 
-const EMPTY: Omit<CollabPartner, 'id' | 'project_id' | 'created_at' | 'updated_at' | 'invite_token' | 'invite_status' | 'user_id' | 'contacts' | 'wp_allocations'> = {
+interface PartnerFormState {
+  org_name: string
+  role: CollabPartnerRole
+  participant_number: number
+  contact_name: string
+  contact_email: string
+  country: string
+  budget_personnel: number
+  budget_subcontracting: number
+  budget_travel: number
+  budget_equipment: number
+  budget_other_goods: number
+  total_person_months: number
+  funding_rate: number
+  indirect_cost_rate: number
+  indirect_cost_base: CollabIndirectCostBase
+}
+
+const EMPTY: PartnerFormState = {
   org_name: '',
   role: 'partner',
   participant_number: 2,
@@ -29,7 +47,7 @@ const EMPTY: Omit<CollabPartner, 'id' | 'project_id' | 'created_at' | 'updated_a
   total_person_months: 0,
   funding_rate: 100,
   indirect_cost_rate: 25,
-  indirect_cost_base: 'personnel_subcontracting',
+  indirect_cost_base: 'all_except_subcontracting',
 }
 
 export function EditPartnerDialog({ partner, projectId, open, onClose, onSaved }: EditPartnerDialogProps) {
@@ -42,7 +60,7 @@ export function EditPartnerDialog({ partner, projectId, open, onClose, onSaved }
       setForm({
         org_name: partner.org_name,
         role: partner.role,
-        participant_number: partner.participant_number,
+        participant_number: partner.participant_number ?? 2,
         contact_name: partner.contact_name || '',
         contact_email: partner.contact_email || '',
         country: partner.country || '',
@@ -73,7 +91,7 @@ export function EditPartnerDialog({ partner, projectId, open, onClose, onSaved }
           project_id: projectId,
           org_name: form.org_name.trim(),
           role: form.role as CollabPartnerRole,
-          participant_number: form.participant_number,
+          participant_number: form.participant_number ?? undefined,
           contact_name: form.contact_name || undefined,
           contact_email: form.contact_email || undefined,
           budget_personnel: form.budget_personnel,
@@ -152,19 +170,19 @@ export function EditPartnerDialog({ partner, projectId, open, onClose, onSaved }
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Participant #</Label>
-            <Input type="number" value={form.participant_number} onChange={e => setNum('participant_number', e.target.value)} className="h-9 text-sm" />
+            <Input type="number" value={form.participant_number ?? ''} onChange={e => setNum('participant_number', e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Country</Label>
-            <Input value={form.country || ''} onChange={e => set('country', e.target.value)} placeholder="e.g. DE" className="h-9 text-sm" />
+            <Input value={form.country} onChange={e => set('country', e.target.value)} placeholder="e.g. DE" className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Contact Name</Label>
-            <Input value={form.contact_name} onChange={e => set('contact_name', e.target.value)} className="h-9 text-sm" />
+            <Input value={form.contact_name || ''} onChange={e => set('contact_name', e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Contact Email</Label>
-            <Input type="email" value={form.contact_email} onChange={e => set('contact_email', e.target.value)} className="h-9 text-sm" />
+            <Input type="email" value={form.contact_email || ''} onChange={e => set('contact_email', e.target.value)} className="h-9 text-sm" />
           </div>
         </div>
 
@@ -218,9 +236,9 @@ export function EditPartnerDialog({ partner, projectId, open, onClose, onSaved }
           <div className="space-y-1.5">
             <Label className="text-xs">Indirect Base</Label>
             <select value={form.indirect_cost_base} onChange={e => set('indirect_cost_base', e.target.value)} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-              <option value="personnel_subcontracting">Personnel + Sub</option>
+              <option value="all_direct">All Direct Costs</option>
               <option value="personnel_only">Personnel Only</option>
-              <option value="total_direct">Total Direct</option>
+              <option value="all_except_subcontracting">All Except Subcontracting</option>
             </select>
           </div>
         </div>

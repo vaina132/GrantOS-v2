@@ -33,6 +33,7 @@ interface PartnerFormData {
   participant_number: string
   contact_name: string
   contact_email: string
+  country: string
   budget_personnel: string
   budget_subcontracting: string
   budget_travel: string
@@ -61,6 +62,7 @@ function emptyPartner(num: number): PartnerFormData {
     participant_number: String(num),
     contact_name: '',
     contact_email: '',
+    country: '',
     budget_personnel: '0',
     budget_subcontracting: '0',
     budget_travel: '0',

@@ -4,6 +4,8 @@ import { ChevronRight, Home } from 'lucide-react'
 const LABEL_MAP: Record<string, string> = {
   dashboard: 'Dashboard',
   projects: 'Projects',
+  proposals: 'Proposals',
+  collaboration: 'Collaboration',
   staff: 'Staff',
   allocations: 'Allocations',
   timesheets: 'Timesheets',
@@ -11,9 +13,12 @@ const LABEL_MAP: Record<string, string> = {
   financials: 'Financials',
   timeline: 'Timeline',
   reports: 'Reports',
+  report: 'Report',
   import: 'Import',
   audit: 'Audit Log',
   settings: 'Settings',
+  profile: 'Profile',
+  help: 'Help & FAQ',
   new: 'New',
   edit: 'Edit',
 }
