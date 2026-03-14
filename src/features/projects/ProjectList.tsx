@@ -1,20 +1,22 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProjects } from '@/hooks/useProjects'
 import type { ProjectFilters } from '@/services/projectsService'
 import { projectsService } from '@/services/projectsService'
+import { collabProjectService } from '@/services/collabProjectService'
 import { useAuthStore } from '@/stores/authStore'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ConfirmModal } from '@/components/common/ConfirmModal'
 import { StatusBadge } from '@/components/common/StatusBadge'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/use-toast'
 import { Plus, Search, Trash2, Pencil, FolderKanban, Sparkles, Globe } from 'lucide-react'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
-import type { Project, ProjectStatus } from '@/types'
+import type { Project, ProjectStatus, CollabProject } from '@/types'
 
 const STATUS_OPTIONS: (ProjectStatus | 'All')[] = ['All', 'Upcoming', 'Active', 'Completed', 'Suspended']
 
@@ -31,6 +33,28 @@ export function ProjectList() {
     status: statusFilter || undefined,
   }
   const { projects, isLoading, refetch } = useProjects(filters)
+
+  // Collaboration projects
+  const { orgId } = useAuthStore()
+  const [collabProjects, setCollabProjects] = useState<CollabProject[]>([])
+  const [collabLoading, setCollabLoading] = useState(true)
+
+  useEffect(() => {
+    if (!orgId) return
+    setCollabLoading(true)
+    collabProjectService.list(orgId)
+      .then(setCollabProjects)
+      .catch(() => setCollabProjects([]))
+      .finally(() => setCollabLoading(false))
+  }, [orgId])
+
+  const filteredCollab = collabProjects.filter(cp => {
+    if (search) {
+      const q = search.toLowerCase()
+      if (!cp.title.toLowerCase().includes(q) && !cp.acronym.toLowerCase().includes(q)) return false
+    }
+    return true
+  })
 
   const handleDelete = async () => {
     if (!deleteTarget) return
@@ -187,6 +211,65 @@ export function ProjectList() {
           </div>
         </div>
         </>
+      )}
+
+      {/* Collaboration Projects Section */}
+      {!collabLoading && filteredCollab.length > 0 && (
+        <div className="space-y-2 mt-4">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium">Collaboration Projects</h3>
+            <Badge variant="secondary" className="text-[10px]">{filteredCollab.length}</Badge>
+          </div>
+          <div className="rounded-lg border">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-4 py-2 text-left font-medium text-xs">Acronym</th>
+                    <th className="px-4 py-2 text-left font-medium text-xs">Title</th>
+                    <th className="px-4 py-2 text-left font-medium text-xs">Programme</th>
+                    <th className="px-4 py-2 text-left font-medium text-xs">Partners</th>
+                    <th className="px-4 py-2 text-left font-medium text-xs">Status</th>
+                    <th className="px-4 py-2 text-left font-medium text-xs">Period</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCollab.map((cp, idx) => (
+                    <tr
+                      key={cp.id}
+                      className={cn(
+                        'border-b last:border-0 hover:bg-muted/30 cursor-pointer transition-colors',
+                        idx % 2 === 1 && 'bg-muted/[0.03]',
+                      )}
+                      onClick={() => navigate(`/projects/collaboration/${cp.id}`)}
+                    >
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-1.5">
+                          <Globe className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="font-semibold text-primary">{cp.acronym}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2 max-w-xs truncate">{cp.title}</td>
+                      <td className="px-4 py-2 text-muted-foreground text-xs">{cp.funding_programme ?? '—'}</td>
+                      <td className="px-4 py-2 text-muted-foreground text-xs">
+                        {(cp as any).collab_partners?.length ?? '—'}
+                      </td>
+                      <td className="px-4 py-2">
+                        <Badge variant={cp.status === 'active' ? 'default' : 'secondary'} className="text-[10px] capitalize">
+                          {cp.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-2 text-muted-foreground text-xs whitespace-nowrap">
+                        {cp.start_date ? formatDate(cp.start_date) : '—'} – {cp.end_date ? formatDate(cp.end_date) : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
 
       <ConfirmModal

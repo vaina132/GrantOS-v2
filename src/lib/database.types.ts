@@ -1409,6 +1409,7 @@ export type Database = {
           contact_name: string | null
           contact_email: string | null
           country: string | null
+          org_type: string | null
           budget_personnel: number
           budget_subcontracting: number
           budget_travel: number
@@ -1434,6 +1435,7 @@ export type Database = {
           contact_name?: string | null
           contact_email?: string | null
           country?: string | null
+          org_type?: string | null
           budget_personnel?: number
           budget_subcontracting?: number
           budget_travel?: number
@@ -1459,6 +1461,7 @@ export type Database = {
           contact_name?: string | null
           contact_email?: string | null
           country?: string | null
+          org_type?: string | null
           budget_personnel?: number
           budget_subcontracting?: number
           budget_travel?: number
@@ -1484,6 +1487,9 @@ export type Database = {
           wp_number: number
           title: string
           total_person_months: number
+          start_month: number | null
+          end_month: number | null
+          leader_partner_id: string | null
           created_at: string
         }
         Insert: {
@@ -1492,6 +1498,9 @@ export type Database = {
           wp_number: number
           title: string
           total_person_months?: number
+          start_month?: number | null
+          end_month?: number | null
+          leader_partner_id?: string | null
           created_at?: string
         }
         Update: {
@@ -1500,6 +1509,9 @@ export type Database = {
           wp_number?: number
           title?: string
           total_person_months?: number
+          start_month?: number | null
+          end_month?: number | null
+          leader_partner_id?: string | null
           created_at?: string
         }
         Relationships: []
@@ -1681,6 +1693,126 @@ export type Database = {
           justification_required?: boolean
           created_at?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      collab_tasks: {
+        Row: {
+          id: string
+          wp_id: string
+          project_id: string
+          task_number: string
+          title: string
+          description: string | null
+          start_month: number | null
+          end_month: number | null
+          leader_partner_id: string | null
+          person_months: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          wp_id: string
+          project_id: string
+          task_number: string
+          title: string
+          description?: string | null
+          start_month?: number | null
+          end_month?: number | null
+          leader_partner_id?: string | null
+          person_months?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          wp_id?: string
+          project_id?: string
+          task_number?: string
+          title?: string
+          description?: string | null
+          start_month?: number | null
+          end_month?: number | null
+          leader_partner_id?: string | null
+          person_months?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      collab_deliverables: {
+        Row: {
+          id: string
+          project_id: string
+          wp_id: string | null
+          number: string
+          title: string
+          description: string | null
+          type: string | null
+          dissemination: string | null
+          due_month: number
+          leader_partner_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          wp_id?: string | null
+          number: string
+          title: string
+          description?: string | null
+          type?: string | null
+          dissemination?: string | null
+          due_month: number
+          leader_partner_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          wp_id?: string | null
+          number?: string
+          title?: string
+          description?: string | null
+          type?: string | null
+          dissemination?: string | null
+          due_month?: number
+          leader_partner_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      collab_milestones: {
+        Row: {
+          id: string
+          project_id: string
+          wp_id: string | null
+          number: string
+          title: string
+          description: string | null
+          due_month: number
+          verification_means: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          wp_id?: string | null
+          number: string
+          title: string
+          description?: string | null
+          due_month: number
+          verification_means?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          wp_id?: string | null
+          number?: string
+          title?: string
+          description?: string | null
+          due_month?: number
+          verification_means?: string | null
+          created_at?: string
         }
         Relationships: []
       }

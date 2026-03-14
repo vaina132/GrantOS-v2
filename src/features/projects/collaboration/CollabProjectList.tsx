@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Users, Globe, FileText, MoreHorizontal, Trash2, Rocket, Search, Archive, ArchiveRestore } from 'lucide-react'
+import { Plus, Users, Globe, FileText, MoreHorizontal, Trash2, Rocket, Search, Archive, ArchiveRestore, Sparkles } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService } from '@/services/collabProjectService'
 import { Button } from '@/components/ui/button'
@@ -126,6 +126,25 @@ export function CollabProjectList() {
           New Collaboration
         </Button>
       </div>
+
+      {/* AI Import quick-action */}
+      <Card className="border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-5 w-5 text-purple-500 shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-medium text-sm">Quick Import with AI</h3>
+              <p className="text-xs text-muted-foreground">
+                Upload a grant agreement PDF or budget table screenshot and let AI extract partners, work packages, deliverables, and milestones automatically.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" className="shrink-0 gap-1.5 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40" onClick={() => navigate('/projects/collaboration/new')}>
+              <Sparkles className="h-3.5 w-3.5" />
+              Import &amp; Create
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filter tabs + search */}
       {projects.length > 0 && (

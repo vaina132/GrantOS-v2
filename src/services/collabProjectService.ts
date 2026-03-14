@@ -11,6 +11,9 @@ import type {
   CollabReportEvent,
   CollabPartnerRole,
   CollabIndirectCostBase,
+  CollabTask,
+  CollabDeliverable,
+  CollabMilestone,
 } from '@/types'
 
 // ============================================================================
@@ -163,7 +166,14 @@ export const collabWpService = {
     return (data ?? []) as unknown as CollabWorkPackage[]
   },
 
-  async upsertMany(projectId: string, wps: { wp_number: number; title: string; total_person_months?: number }[]): Promise<CollabWorkPackage[]> {
+  async upsertMany(projectId: string, wps: {
+    wp_number: number
+    title: string
+    total_person_months?: number
+    start_month?: number | null
+    end_month?: number | null
+    leader_partner_id?: string | null
+  }[]): Promise<CollabWorkPackage[]> {
     // Delete existing and re-insert for simplicity during setup
     await supabase.from('collab_work_packages').delete().eq('project_id', projectId)
     if (wps.length === 0) return []
@@ -174,6 +184,126 @@ export const collabWpService = {
       .select()
     if (error) throw error
     return (data ?? []) as unknown as CollabWorkPackage[]
+  },
+}
+
+// ============================================================================
+// Tasks
+// ============================================================================
+
+export const collabTaskService = {
+  async list(wpId: string): Promise<CollabTask[]> {
+    const { data, error } = await supabase
+      .from('collab_tasks')
+      .select('*')
+      .eq('wp_id', wpId)
+      .order('task_number', { ascending: true })
+    if (error) throw error
+    return (data ?? []) as unknown as CollabTask[]
+  },
+
+  async createMany(projectId: string, wpId: string, tasks: {
+    task_number: string
+    title: string
+    description?: string | null
+    start_month?: number | null
+    end_month?: number | null
+    leader_partner_id?: string | null
+    person_months?: number
+  }[]): Promise<CollabTask[]> {
+    if (tasks.length === 0) return []
+    const rows = tasks.map(t => ({ project_id: projectId, wp_id: wpId, ...t }))
+    const { data, error } = await supabase
+      .from('collab_tasks')
+      .insert(rows as any)
+      .select()
+    if (error) throw error
+    return (data ?? []) as unknown as CollabTask[]
+  },
+
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from('collab_tasks').delete().eq('id', id)
+    if (error) throw error
+  },
+}
+
+// ============================================================================
+// Deliverables
+// ============================================================================
+
+export const collabDeliverableService = {
+  async list(projectId: string): Promise<CollabDeliverable[]> {
+    const { data, error } = await supabase
+      .from('collab_deliverables')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('number', { ascending: true })
+    if (error) throw error
+    return (data ?? []) as unknown as CollabDeliverable[]
+  },
+
+  async createMany(projectId: string, deliverables: {
+    wp_id?: string | null
+    number: string
+    title: string
+    description?: string | null
+    type?: string | null
+    dissemination?: string | null
+    due_month: number
+    leader_partner_id?: string | null
+  }[]): Promise<CollabDeliverable[]> {
+    if (deliverables.length === 0) return []
+    const rows = deliverables.map(d => ({ project_id: projectId, ...d }))
+    const { data, error } = await supabase
+      .from('collab_deliverables')
+      .insert(rows as any)
+      .select()
+    if (error) throw error
+    return (data ?? []) as unknown as CollabDeliverable[]
+  },
+
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from('collab_deliverables').delete().eq('id', id)
+    if (error) throw error
+  },
+}
+
+// ============================================================================
+// Milestones
+// ============================================================================
+
+export const collabMilestoneService = {
+  async list(projectId: string): Promise<CollabMilestone[]> {
+    const { data, error } = await supabase
+      .from('collab_milestones')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('number', { ascending: true })
+    if (error) throw error
+    return (data ?? []) as unknown as CollabMilestone[]
+  },
+
+  async createMany(projectId: string, milestones: {
+    wp_id?: string | null
+    number: string
+    title: string
+    description?: string | null
+    due_month: number
+    verification_means?: string | null
+  }[]): Promise<CollabMilestone[]> {
+    if (milestones.length === 0) return []
+    const rows = milestones.map(m => ({ project_id: projectId, ...m }))
+    const { data, error } = await supabase
+      .from('collab_milestones')
+      .insert(rows as any)
+      .select()
+    if (error) throw error
+    return (data ?? []) as unknown as CollabMilestone[]
+  },
+
+  async remove(id: string): Promise<void> {
+    const { error } = await supabase.from('collab_milestones').delete().eq('id', id)
+    if (error) throw error
   },
 }
 

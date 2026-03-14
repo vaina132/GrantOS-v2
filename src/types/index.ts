@@ -514,6 +514,9 @@ export type CollabReportStatus = 'draft' | 'submitted' | 'approved' | 'rejected'
 export type CollabIndirectCostBase = 'all_direct' | 'personnel_only' | 'all_except_subcontracting'
 export type CollabReportSection = 'personnel_effort' | 'personnel_costs' | 'subcontracting' | 'travel' | 'equipment' | 'other_goods'
 export type CollabEventType = 'generated' | 'saved' | 'submitted' | 'approved' | 'rejected' | 'resubmitted' | 'notified' | 'comment'
+export type CollabOrgType = 'HES' | 'REC' | 'PRC' | 'PUB' | 'OTH'
+export type CollabDeliverableType = 'report' | 'data' | 'software' | 'demonstrator' | 'other'
+export type CollabDisseminationLevel = 'public' | 'confidential' | 'classified'
 
 export interface CollabProject {
   id: string
@@ -547,6 +550,7 @@ export interface CollabPartner {
   contact_name: string | null
   contact_email: string | null
   country: string | null
+  org_type: string | null
   budget_personnel: number
   budget_subcontracting: number
   budget_travel: number
@@ -573,6 +577,51 @@ export interface CollabWorkPackage {
   wp_number: number
   title: string
   total_person_months: number
+  start_month: number | null
+  end_month: number | null
+  leader_partner_id: string | null
+  created_at: string
+  // Joined
+  tasks?: CollabTask[]
+}
+
+export interface CollabTask {
+  id: string
+  wp_id: string
+  project_id: string
+  task_number: string
+  title: string
+  description: string | null
+  start_month: number | null
+  end_month: number | null
+  leader_partner_id: string | null
+  person_months: number
+  created_at: string
+}
+
+export interface CollabDeliverable {
+  id: string
+  project_id: string
+  wp_id: string | null
+  number: string
+  title: string
+  description: string | null
+  type: CollabDeliverableType | null
+  dissemination: CollabDisseminationLevel | null
+  due_month: number
+  leader_partner_id: string | null
+  created_at: string
+}
+
+export interface CollabMilestone {
+  id: string
+  project_id: string
+  wp_id: string | null
+  number: string
+  title: string
+  description: string | null
+  due_month: number
+  verification_means: string | null
   created_at: string
 }
 
