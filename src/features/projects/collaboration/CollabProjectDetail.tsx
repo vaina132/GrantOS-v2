@@ -374,8 +374,8 @@ export function CollabProjectDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => setShowProjectDialog(true)} className="gap-2">
-            <Pencil className="h-4 w-4" /> Edit
+          <Button variant="outline" size="sm" onClick={() => navigate(`/projects/collaboration/${id}/edit`)} className="gap-2">
+            <Pencil className="h-4 w-4" /> Edit All
           </Button>
           {pendingCount > 0 && (
             <Button variant="outline" onClick={handleSendAllInvites} disabled={sendingInvites} className="gap-2">

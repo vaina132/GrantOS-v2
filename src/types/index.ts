@@ -564,6 +564,7 @@ export interface CollabPartner {
   linked_org_id: string | null
   invite_status: CollabPartnerInviteStatus
   invite_token: string | null
+  is_host: boolean
   created_at: string
   updated_at: string
   // Joined data
@@ -595,6 +596,16 @@ export interface CollabTask {
   start_month: number | null
   end_month: number | null
   leader_partner_id: string | null
+  person_months: number
+  created_at: string
+  // Joined
+  effort?: CollabPartnerTaskEffort[]
+}
+
+export interface CollabPartnerTaskEffort {
+  id: string
+  task_id: string
+  partner_id: string
   person_months: number
   created_at: string
 }

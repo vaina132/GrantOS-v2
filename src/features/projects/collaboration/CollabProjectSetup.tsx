@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft, ArrowRight, Check, Plus, Trash2, Upload, Sparkles, Loader2,
   FileText, X, AlertTriangle, Info,
@@ -8,7 +8,9 @@ import { useAuthStore } from '@/stores/authStore'
 import {
   collabProjectService, collabPartnerService, collabWpService,
   collabTaskService, collabDeliverableService, collabMilestoneService,
+  collabTaskEffortService,
 } from '@/services/collabProjectService'
+import { settingsService } from '@/services/settingsService'
 import { collabAIService } from '@/services/collabAIService'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -144,7 +146,8 @@ interface TaskFormData {
   start_month: string
   end_month: string
   leader_partner_idx: string
-  person_months: string
+  // Per-partner PM allocation: partnerIdx → person_months string
+  effort: Record<string, string>
 }
 
 interface WpFormData {
@@ -203,7 +206,9 @@ function emptyPartner(num: number): PartnerFormData {
   }
 }
 
-function emptyTask(wpNum: string, taskIdx: number): TaskFormData {
+function emptyTask(wpNum: string, taskIdx: number, partnerCount: number): TaskFormData {
+  const effort: Record<string, string> = {}
+  for (let i = 0; i < partnerCount; i++) effort[String(i)] = '0'
   return {
     _key: crypto.randomUUID(),
     task_number: `T${wpNum}.${taskIdx}`,
@@ -211,7 +216,7 @@ function emptyTask(wpNum: string, taskIdx: number): TaskFormData {
     start_month: '',
     end_month: '',
     leader_partner_idx: '',
-    person_months: '0',
+    effort,
   }
 }
 
@@ -285,10 +290,13 @@ function dateWarning(project: ProjectFormData): string | null {
 // ============================================================================
 
 export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-import' }) {
+  const { id: editId } = useParams<{ id: string }>()
+  const isEdit = !!editId
   const { orgId, user } = useAuthStore()
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [loadingEdit, setLoadingEdit] = useState(!!editId)
 
   // AI Import state
   const [aiFile, setAiFile] = useState<File | null>(null)
@@ -301,10 +309,173 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
     title: '', acronym: '', grant_number: '', funding_programme: 'Horizon Europe',
     funding_scheme: '', start_date: '', end_date: '', duration_months: '',
   })
-  const [partners, setPartners] = useState<PartnerFormData[]>([emptyPartner(1)])
+  const [partners, setPartners] = useState<PartnerFormData[]>([])
   const [wps, setWps] = useState<WpFormData[]>([emptyWp(1)])
   const [deliverables, setDeliverables] = useState<DeliverableFormData[]>([])
   const [milestones, setMilestones] = useState<MilestoneFormData[]>([])
+  // Map of existing DB IDs for edit mode: partnerIdx -> DB id, etc.
+  const [dbPartnerIds, setDbPartnerIds] = useState<Record<number, string>>({})
+  const [dbWpIds, setDbWpIds] = useState<Record<number, string>>({}) // eslint-disable-line
+  const [dbTaskIds, setDbTaskIds] = useState<Record<string, string>>({}) // eslint-disable-line
+
+  // Load host org as default first partner on mount (create mode only)
+  useEffect(() => {
+    if (isEdit) return // edit mode loads its own data
+    async function loadHostOrg() {
+      if (!orgId) return
+      try {
+        const org = await settingsService.getOrganisation(orgId)
+        if (org) {
+          const hostPartner: PartnerFormData = {
+            ...emptyPartner(1),
+            org_name: org.name || '',
+            role: 'coordinator',
+            country: org.country || '',
+          }
+          setPartners([hostPartner])
+        } else {
+          setPartners([emptyPartner(1)])
+        }
+      } catch {
+        setPartners([emptyPartner(1)])
+      }
+    }
+    loadHostOrg()
+  }, [orgId, isEdit])
+
+  // Load existing project data in edit mode
+  useEffect(() => {
+    if (!editId) return
+    async function loadProject() {
+      try {
+        const proj = await collabProjectService.get(editId!)
+        setProject({
+          title: proj.title || '',
+          acronym: proj.acronym || '',
+          grant_number: proj.grant_number || '',
+          funding_programme: proj.funding_programme || 'Horizon Europe',
+          funding_scheme: proj.funding_scheme || '',
+          start_date: proj.start_date || '',
+          end_date: proj.end_date || '',
+          duration_months: proj.duration_months ? String(proj.duration_months) : '',
+        })
+
+        // Load partners
+        const partnerList = await collabPartnerService.list(editId!)
+        const pMap: Record<number, string> = {}
+        const loadedPartners: PartnerFormData[] = partnerList.map((p, i) => {
+          pMap[i] = p.id
+          return {
+            _key: crypto.randomUUID(),
+            org_name: p.org_name || '',
+            org_type: p.org_type || '',
+            role: p.role || 'partner',
+            participant_number: p.participant_number ? String(p.participant_number) : String(i + 1),
+            contact_name: p.contact_name || '',
+            contact_email: p.contact_email || '',
+            country: p.country || '',
+            budget_personnel: String(p.budget_personnel || 0),
+            budget_subcontracting: String(p.budget_subcontracting || 0),
+            budget_travel: String(p.budget_travel || 0),
+            budget_equipment: String(p.budget_equipment || 0),
+            budget_other_goods: String(p.budget_other_goods || 0),
+            total_person_months: String(p.total_person_months || 0),
+            funding_rate: String(p.funding_rate || 100),
+            indirect_cost_rate: String(p.indirect_cost_rate || 25),
+            indirect_cost_base: p.indirect_cost_base || 'all_except_subcontracting',
+          }
+        })
+        setPartners(loadedPartners)
+        setDbPartnerIds(pMap)
+
+        // Build reverse map: DB partner id -> form index
+        const partnerIdToIdx: Record<string, number> = {}
+        partnerList.forEach((p, i) => { partnerIdToIdx[p.id] = i })
+
+        // Load WPs + tasks + effort
+        const wpList = proj.work_packages || await collabWpService.list(editId!)
+        const wMap: Record<number, string> = {}
+        const tMap: Record<string, string> = {}
+        const loadedWps: WpFormData[] = []
+
+        for (let wi = 0; wi < wpList.length; wi++) {
+          const wp = wpList[wi]
+          wMap[wi] = wp.id
+          const tasks = await collabTaskService.list(wp.id)
+          const loadedTasks: TaskFormData[] = tasks.map(t => {
+            tMap[t.task_number] = t.id
+            // Build effort map from joined data
+            const effort: Record<string, string> = {}
+            for (let pi = 0; pi < loadedPartners.length; pi++) effort[String(pi)] = '0'
+            if (t.effort) {
+              for (const e of t.effort) {
+                const idx = partnerIdToIdx[e.partner_id]
+                if (idx !== undefined) effort[String(idx)] = String(e.person_months || 0)
+              }
+            }
+            return {
+              _key: crypto.randomUUID(),
+              task_number: t.task_number || '',
+              title: t.title || '',
+              start_month: t.start_month ? String(t.start_month) : '',
+              end_month: t.end_month ? String(t.end_month) : '',
+              leader_partner_idx: t.leader_partner_id ? String(partnerIdToIdx[t.leader_partner_id] ?? '') : '',
+              effort,
+            }
+          })
+
+          loadedWps.push({
+            _key: crypto.randomUUID(),
+            wp_number: String(wp.wp_number),
+            title: wp.title || '',
+            total_person_months: String(wp.total_person_months || 0),
+            start_month: wp.start_month ? String(wp.start_month) : '1',
+            end_month: wp.end_month ? String(wp.end_month) : '',
+            leader_partner_idx: wp.leader_partner_id ? String(partnerIdToIdx[wp.leader_partner_id] ?? '') : '',
+            tasks: loadedTasks,
+          })
+        }
+        setWps(loadedWps.length > 0 ? loadedWps : [emptyWp(1)])
+        setDbWpIds(wMap)
+        setDbTaskIds(tMap)
+
+        // Load deliverables
+        const delList = await collabDeliverableService.list(editId!)
+        if (delList.length > 0) {
+          setDeliverables(delList.map(d => ({
+            _key: crypto.randomUUID(),
+            number: d.number || '',
+            title: d.title || '',
+            wp_number: d.wp_id ? String(wpList.find(w => w.id === d.wp_id)?.wp_number || '') : '',
+            task_number: '',
+            due_month: d.due_month ? String(d.due_month) : '',
+            type: d.type || '',
+            dissemination: d.dissemination || 'public',
+            leader_partner_idx: d.leader_partner_id ? String(partnerIdToIdx[d.leader_partner_id] ?? '') : '',
+          })))
+        }
+
+        // Load milestones
+        const msList = await collabMilestoneService.list(editId!)
+        if (msList.length > 0) {
+          setMilestones(msList.map(m => ({
+            _key: crypto.randomUUID(),
+            number: m.number || '',
+            title: m.title || '',
+            wp_number: m.wp_id ? String(wpList.find(w => w.id === m.wp_id)?.wp_number || '') : '',
+            due_month: m.due_month ? String(m.due_month) : '',
+            verification_means: m.verification_means || '',
+          })))
+        }
+      } catch (err) {
+        console.error('[CollabEdit] Failed to load project:', err)
+        toast({ title: 'Error', description: 'Failed to load project data', variant: 'destructive' })
+      } finally {
+        setLoadingEdit(false)
+      }
+    }
+    loadProject()
+  }, [editId])
 
   // Helpers
   const updateProject = (field: keyof ProjectFormData, value: string) => {
@@ -338,13 +509,22 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
   const addTaskToWp = (wpIdx: number) => {
     setWps(prev => prev.map((w, i) => {
       if (i !== wpIdx) return w
-      return { ...w, tasks: [...w.tasks, emptyTask(w.wp_number, w.tasks.length + 1)] }
+      return { ...w, tasks: [...w.tasks, emptyTask(w.wp_number, w.tasks.length + 1, partners.length)] }
     }))
   }
   const updateTask = (wpIdx: number, tIdx: number, field: string, value: string) => {
     setWps(prev => prev.map((w, wi) => {
       if (wi !== wpIdx) return w
       return { ...w, tasks: w.tasks.map((t, ti) => ti === tIdx ? { ...t, [field]: value } : t) }
+    }))
+  }
+  const updateTaskEffort = (wpIdx: number, tIdx: number, partnerIdx: number, value: string) => {
+    setWps(prev => prev.map((w, wi) => {
+      if (wi !== wpIdx) return w
+      return {
+        ...w,
+        tasks: w.tasks.map((t, ti) => ti === tIdx ? { ...t, effort: { ...t.effort, [String(partnerIdx)]: value } } : t),
+      }
     }))
   }
   const removeTask = (wpIdx: number, tIdx: number) => {
@@ -436,15 +616,25 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
           start_month: wp.start_month ? String(wp.start_month) : '1',
           end_month: wp.end_month ? String(wp.end_month) : '',
           leader_partner_idx: wp.leader_participant_number ? String(wp.leader_participant_number - 1) : '',
-          tasks: (wp.tasks || []).map(t => ({
-            _key: crypto.randomUUID(),
-            task_number: t.task_number || '',
-            title: t.title || '',
-            start_month: t.start_month ? String(t.start_month) : '',
-            end_month: t.end_month ? String(t.end_month) : '',
-            leader_partner_idx: t.leader_participant_number ? String(t.leader_participant_number - 1) : '',
-            person_months: t.person_months ? String(t.person_months) : '0',
-          })),
+          tasks: (wp.tasks || []).map(t => {
+            // Initialize empty effort map — AI doesn't provide per-partner breakdown
+            const eff: Record<string, string> = {}
+            const pCount = d.partners?.length || 1
+            for (let pi = 0; pi < pCount; pi++) eff[String(pi)] = '0'
+            // If AI gave a total person_months for the task and a leader, assign it to the leader
+            if (t.person_months && t.leader_participant_number) {
+              eff[String(t.leader_participant_number - 1)] = String(t.person_months)
+            }
+            return {
+              _key: crypto.randomUUID(),
+              task_number: t.task_number || '',
+              title: t.title || '',
+              start_month: t.start_month ? String(t.start_month) : '',
+              end_month: t.end_month ? String(t.end_month) : '',
+              leader_partner_idx: t.leader_participant_number ? String(t.leader_participant_number - 1) : '',
+              effort: eff,
+            }
+          }),
         })))
       }
       // Fill deliverables
@@ -505,13 +695,45 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
     return true
   }, [step, project, partners])
 
-  // Save everything
+  // Shared helper: build partner data object
+  const buildPartnerData = (p: PartnerFormData, projectId: string, idx: number, isHostPartner: boolean) => {
+    const d: Record<string, any> = {
+      project_id: projectId,
+      org_name: p.org_name,
+      role: p.role,
+      participant_number: parseInt(p.participant_number) || idx + 1,
+      budget_personnel: parseFloat(p.budget_personnel) || 0,
+      budget_subcontracting: parseFloat(p.budget_subcontracting) || 0,
+      budget_travel: parseFloat(p.budget_travel) || 0,
+      budget_equipment: parseFloat(p.budget_equipment) || 0,
+      budget_other_goods: parseFloat(p.budget_other_goods) || 0,
+      total_person_months: parseFloat(p.total_person_months) || 0,
+      funding_rate: parseFloat(p.funding_rate) || 100,
+      indirect_cost_rate: parseFloat(p.indirect_cost_rate) || 25,
+      indirect_cost_base: p.indirect_cost_base,
+      is_host: isHostPartner,
+    }
+    if (p.contact_name) d.contact_name = p.contact_name
+    if (p.contact_email) d.contact_email = p.contact_email
+    if (p.country) d.country = p.country
+    if (p.org_type) d.org_type = p.org_type
+    return d
+  }
+
+  // Shared helper: compute task total PMs from effort map
+  const taskTotalPMs = (t: TaskFormData) =>
+    Object.values(t.effort).reduce((s, v) => s + (parseFloat(v) || 0), 0)
+
+  // Shared helper: compute WP total PMs from its tasks
+  const wpComputedPMs = (wp: WpFormData) =>
+    wp.tasks.reduce((s, t) => s + taskTotalPMs(t), 0)
+
+  // Save everything (create mode)
   const handleCreate = async () => {
     if (!orgId) return
     setSaving(true)
     try {
       // 1. Create the project
-      console.log('[CollabCreate] Step 1: Creating project…')
       const created = await collabProjectService.create({
         host_org_id: orgId,
         title: project.title,
@@ -525,54 +747,30 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
         status: 'draft',
         created_by: user?.id || null,
       } as any)
-      console.log('[CollabCreate] Project created:', created.id)
 
-      // 2. Create partners (we need IDs for leadership references)
-      console.log('[CollabCreate] Step 2: Creating partners…')
+      // 2. Create partners
       const partnerMap: Record<number, string> = {}
       for (let i = 0; i < partners.length; i++) {
         const p = partners[i]
-        const partnerData: Record<string, any> = {
-          project_id: created.id,
-          org_name: p.org_name,
-          role: p.role,
-          participant_number: parseInt(p.participant_number) || i + 1,
-          budget_personnel: parseFloat(p.budget_personnel) || 0,
-          budget_subcontracting: parseFloat(p.budget_subcontracting) || 0,
-          budget_travel: parseFloat(p.budget_travel) || 0,
-          budget_equipment: parseFloat(p.budget_equipment) || 0,
-          budget_other_goods: parseFloat(p.budget_other_goods) || 0,
-          total_person_months: parseFloat(p.total_person_months) || 0,
-          funding_rate: parseFloat(p.funding_rate) || 100,
-          indirect_cost_rate: parseFloat(p.indirect_cost_rate) || 25,
-          indirect_cost_base: p.indirect_cost_base,
-        }
-        if (p.contact_name) partnerData.contact_name = p.contact_name
-        if (p.contact_email) partnerData.contact_email = p.contact_email
-        if (p.country) partnerData.country = p.country
-        // org_type is from enhance_collab_module migration — include only if non-empty
-        if (p.org_type) partnerData.org_type = p.org_type
+        const partnerData = buildPartnerData(p, created.id, i, i === 0)
         try {
           const cp = await collabPartnerService.create(partnerData as any)
           partnerMap[i] = cp.id
-          console.log(`[CollabCreate] Partner ${i} created:`, cp.id)
         } catch (pErr) {
-          // If org_type column doesn't exist, retry without it
-          console.warn(`[CollabCreate] Partner ${i} create failed, retrying without org_type:`, pErr)
+          console.warn(`[CollabCreate] Partner ${i} create failed, retrying without optional fields:`, pErr)
           delete partnerData.org_type
+          delete partnerData.is_host
           const cp = await collabPartnerService.create(partnerData as any)
           partnerMap[i] = cp.id
-          console.log(`[CollabCreate] Partner ${i} created (without org_type):`, cp.id)
         }
       }
 
-      // 3. Create work packages
-      console.log('[CollabCreate] Step 3: Creating work packages…')
+      // 3. Create work packages (compute total_person_months from tasks)
       let createdWps: any[] = []
       const wpRows = wps.filter(w => w.title.trim()).map(w => ({
         wp_number: parseInt(w.wp_number) || 0,
         title: w.title,
-        total_person_months: parseFloat(w.total_person_months) || 0,
+        total_person_months: wpComputedPMs(w) || parseFloat(w.total_person_months) || 0,
         start_month: w.start_month ? parseInt(w.start_month) : null,
         end_month: w.end_month ? parseInt(w.end_month) : null,
         leader_partner_id: w.leader_partner_idx ? (partnerMap[parseInt(w.leader_partner_idx)] || null) : null,
@@ -580,25 +778,24 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
       try {
         createdWps = await collabWpService.upsertMany(created.id, wpRows)
       } catch (wpErr) {
-        // If new columns don't exist, retry with basic fields only
         console.warn('[CollabCreate] WP create with new fields failed, retrying basic:', wpErr)
         createdWps = await collabWpService.upsertMany(
           created.id,
           wpRows.map(({ start_month, end_month, leader_partner_id, ...basic }) => basic)
         )
       }
-      console.log(`[CollabCreate] ${createdWps.length} WPs created`)
 
       // Build WP number → ID map
       const wpIdMap: Record<number, string> = {}
       for (const wp of createdWps) wpIdMap[wp.wp_number] = wp.id
 
-      // 4. Create tasks for each WP (optional — table may not exist yet)
+      // 4. Create tasks + effort allocations
+      const allEffort: { task_id: string; partner_id: string; person_months: number }[] = []
       try {
         for (const wp of wps) {
           const wpId = wpIdMap[parseInt(wp.wp_number)]
           if (!wpId || wp.tasks.length === 0) continue
-          await collabTaskService.createMany(
+          const created_tasks = await collabTaskService.createMany(
             created.id,
             wpId,
             wp.tasks.filter(t => t.title.trim()).map(t => ({
@@ -607,16 +804,36 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
               start_month: t.start_month ? parseInt(t.start_month) : null,
               end_month: t.end_month ? parseInt(t.end_month) : null,
               leader_partner_id: t.leader_partner_idx ? (partnerMap[parseInt(t.leader_partner_idx)] || null) : null,
-              person_months: parseFloat(t.person_months) || 0,
+              person_months: taskTotalPMs(t),
             }))
           )
+          // Build effort rows
+          const validTasks = wp.tasks.filter(t => t.title.trim())
+          for (let ti = 0; ti < created_tasks.length; ti++) {
+            const t = validTasks[ti]
+            if (!t) continue
+            for (const [pidx, pm] of Object.entries(t.effort)) {
+              const pms = parseFloat(pm) || 0
+              if (pms <= 0) continue
+              const partnerId = partnerMap[parseInt(pidx)]
+              if (partnerId) {
+                allEffort.push({ task_id: created_tasks[ti].id, partner_id: partnerId, person_months: pms })
+              }
+            }
+          }
         }
-        console.log('[CollabCreate] Tasks created')
       } catch (tErr) {
         console.warn('[CollabCreate] Tasks creation skipped (migration may be pending):', tErr)
       }
 
-      // 5. Create deliverables (optional — table may not exist yet)
+      // 4b. Save effort allocations
+      try {
+        if (allEffort.length > 0) await collabTaskEffortService.upsertMany(allEffort)
+      } catch (eErr) {
+        console.warn('[CollabCreate] Effort save skipped (migration may be pending):', eErr)
+      }
+
+      // 5. Create deliverables
       try {
         const delsToCreate = deliverables.filter(d => d.title.trim()).map(d => ({
           wp_id: d.wp_number ? (wpIdMap[parseInt(d.wp_number)] || null) : null,
@@ -627,15 +844,12 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
           due_month: parseInt(d.due_month) || 1,
           leader_partner_id: d.leader_partner_idx ? (partnerMap[parseInt(d.leader_partner_idx)] || null) : null,
         }))
-        if (delsToCreate.length > 0) {
-          await collabDeliverableService.createMany(created.id, delsToCreate)
-          console.log(`[CollabCreate] ${delsToCreate.length} deliverables created`)
-        }
+        if (delsToCreate.length > 0) await collabDeliverableService.createMany(created.id, delsToCreate)
       } catch (dErr) {
-        console.warn('[CollabCreate] Deliverables creation skipped (migration may be pending):', dErr)
+        console.warn('[CollabCreate] Deliverables creation skipped:', dErr)
       }
 
-      // 6. Create milestones (optional — table may not exist yet)
+      // 6. Create milestones
       try {
         const msToCreate = milestones.filter(m => m.title.trim()).map(m => ({
           wp_id: m.wp_number ? (wpIdMap[parseInt(m.wp_number)] || null) : null,
@@ -644,12 +858,9 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
           due_month: parseInt(m.due_month) || 1,
           verification_means: m.verification_means || null,
         }))
-        if (msToCreate.length > 0) {
-          await collabMilestoneService.createMany(created.id, msToCreate)
-          console.log(`[CollabCreate] ${msToCreate.length} milestones created`)
-        }
+        if (msToCreate.length > 0) await collabMilestoneService.createMany(created.id, msToCreate)
       } catch (mErr) {
-        console.warn('[CollabCreate] Milestones creation skipped (migration may be pending):', mErr)
+        console.warn('[CollabCreate] Milestones creation skipped:', mErr)
       }
 
       toast({ title: 'Created', description: `Collaboration project "${project.acronym}" created successfully` })
@@ -657,6 +868,165 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
     } catch (err) {
       console.error('[CollabCreate] FATAL ERROR:', err)
       const msg = err instanceof Error ? err.message : 'Failed to create project'
+      toast({ title: 'Error', description: msg, variant: 'destructive' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Save everything (edit mode) — delete-and-recreate for WPs/tasks/deliverables/milestones
+  const handleUpdate = async () => {
+    if (!editId || !orgId) return
+    setSaving(true)
+    try {
+      // 1. Update project
+      await collabProjectService.update(editId, {
+        title: project.title,
+        acronym: project.acronym,
+        grant_number: project.grant_number || null,
+        funding_programme: project.funding_programme || null,
+        funding_scheme: project.funding_scheme || null,
+        start_date: project.start_date || null,
+        end_date: project.end_date || null,
+        duration_months: project.duration_months ? parseInt(project.duration_months) : null,
+      } as any)
+
+      // 2. Upsert partners — update existing, create new
+      const partnerMap: Record<number, string> = {}
+      for (let i = 0; i < partners.length; i++) {
+        const p = partners[i]
+        const existingId = dbPartnerIds[i]
+        const partnerData = buildPartnerData(p, editId, i, i === 0)
+        if (existingId) {
+          // Update existing partner
+          try {
+            await collabPartnerService.update(existingId, partnerData as any)
+            partnerMap[i] = existingId
+          } catch {
+            delete partnerData.is_host
+            delete partnerData.org_type
+            await collabPartnerService.update(existingId, partnerData as any)
+            partnerMap[i] = existingId
+          }
+        } else {
+          // Create new partner
+          try {
+            const cp = await collabPartnerService.create(partnerData as any)
+            partnerMap[i] = cp.id
+          } catch {
+            delete partnerData.is_host
+            delete partnerData.org_type
+            const cp = await collabPartnerService.create(partnerData as any)
+            partnerMap[i] = cp.id
+          }
+        }
+      }
+      // Delete removed partners (those in dbPartnerIds but not in current indices)
+      for (const [idx, id] of Object.entries(dbPartnerIds)) {
+        if (!partnerMap[parseInt(idx)] || partnerMap[parseInt(idx)] !== id) {
+          try { await collabPartnerService.remove(id) } catch { /* ok */ }
+        }
+      }
+
+      // 3. Recreate WPs (upsertMany deletes + reinserts)
+      let createdWps: any[] = []
+      const wpRows = wps.filter(w => w.title.trim()).map(w => ({
+        wp_number: parseInt(w.wp_number) || 0,
+        title: w.title,
+        total_person_months: wpComputedPMs(w) || parseFloat(w.total_person_months) || 0,
+        start_month: w.start_month ? parseInt(w.start_month) : null,
+        end_month: w.end_month ? parseInt(w.end_month) : null,
+        leader_partner_id: w.leader_partner_idx ? (partnerMap[parseInt(w.leader_partner_idx)] || null) : null,
+      }))
+      try {
+        createdWps = await collabWpService.upsertMany(editId, wpRows)
+      } catch {
+        createdWps = await collabWpService.upsertMany(
+          editId,
+          wpRows.map(({ start_month, end_month, leader_partner_id, ...basic }) => basic)
+        )
+      }
+      const wpIdMap: Record<number, string> = {}
+      for (const wp of createdWps) wpIdMap[wp.wp_number] = wp.id
+
+      // 4. Recreate tasks + effort
+      // First delete old tasks for this project (cascade deletes effort)
+      try {
+        const oldTasks = await collabTaskService.listByProject(editId)
+        for (const t of oldTasks) await collabTaskService.remove(t.id)
+      } catch { /* ok */ }
+
+      const allEffort: { task_id: string; partner_id: string; person_months: number }[] = []
+      try {
+        for (const wp of wps) {
+          const wpId = wpIdMap[parseInt(wp.wp_number)]
+          if (!wpId || wp.tasks.length === 0) continue
+          const created_tasks = await collabTaskService.createMany(
+            editId,
+            wpId,
+            wp.tasks.filter(t => t.title.trim()).map(t => ({
+              task_number: t.task_number,
+              title: t.title,
+              start_month: t.start_month ? parseInt(t.start_month) : null,
+              end_month: t.end_month ? parseInt(t.end_month) : null,
+              leader_partner_id: t.leader_partner_idx ? (partnerMap[parseInt(t.leader_partner_idx)] || null) : null,
+              person_months: taskTotalPMs(t),
+            }))
+          )
+          const validTasks = wp.tasks.filter(t => t.title.trim())
+          for (let ti = 0; ti < created_tasks.length; ti++) {
+            const t = validTasks[ti]
+            if (!t) continue
+            for (const [pidx, pm] of Object.entries(t.effort)) {
+              const pms = parseFloat(pm) || 0
+              if (pms <= 0) continue
+              const partnerId = partnerMap[parseInt(pidx)]
+              if (partnerId) allEffort.push({ task_id: created_tasks[ti].id, partner_id: partnerId, person_months: pms })
+            }
+          }
+        }
+      } catch (tErr) {
+        console.warn('[CollabEdit] Tasks save skipped:', tErr)
+      }
+      try {
+        if (allEffort.length > 0) await collabTaskEffortService.upsertMany(allEffort)
+      } catch { /* ok */ }
+
+      // 5. Recreate deliverables (delete old, create new)
+      try {
+        const oldDels = await collabDeliverableService.list(editId)
+        for (const d of oldDels) await collabDeliverableService.remove(d.id)
+        const delsToCreate = deliverables.filter(d => d.title.trim()).map(d => ({
+          wp_id: d.wp_number ? (wpIdMap[parseInt(d.wp_number)] || null) : null,
+          number: d.number,
+          title: d.title,
+          type: d.type || null,
+          dissemination: d.dissemination || null,
+          due_month: parseInt(d.due_month) || 1,
+          leader_partner_id: d.leader_partner_idx ? (partnerMap[parseInt(d.leader_partner_idx)] || null) : null,
+        }))
+        if (delsToCreate.length > 0) await collabDeliverableService.createMany(editId, delsToCreate)
+      } catch { /* ok */ }
+
+      // 6. Recreate milestones
+      try {
+        const oldMs = await collabMilestoneService.list(editId)
+        for (const m of oldMs) await collabMilestoneService.remove(m.id)
+        const msToCreate = milestones.filter(m => m.title.trim()).map(m => ({
+          wp_id: m.wp_number ? (wpIdMap[parseInt(m.wp_number)] || null) : null,
+          number: m.number,
+          title: m.title,
+          due_month: parseInt(m.due_month) || 1,
+          verification_means: m.verification_means || null,
+        }))
+        if (msToCreate.length > 0) await collabMilestoneService.createMany(editId, msToCreate)
+      } catch { /* ok */ }
+
+      toast({ title: 'Saved', description: `Project "${project.acronym}" updated successfully` })
+      navigate(`/projects/collaboration/${editId}`)
+    } catch (err) {
+      console.error('[CollabEdit] FATAL ERROR:', err)
+      const msg = err instanceof Error ? err.message : 'Failed to update project'
       toast({ title: 'Error', description: msg, variant: 'destructive' })
     } finally {
       setSaving(false)
@@ -677,16 +1047,25 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
 
   const warn = dateWarning(project)
 
+  if (loadingEdit) {
+    return (
+      <div className="max-w-4xl mx-auto py-20 text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+        <p className="mt-3 text-sm text-muted-foreground">Loading project data…</p>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/projects/collaboration')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(isEdit ? `/projects/collaboration/${editId}` : '/projects/collaboration')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-xl font-semibold">New Collaboration Project</h1>
-          <p className="text-sm text-muted-foreground">Set up a multi-partner project with external reporting</p>
+          <h1 className="text-xl font-semibold">{isEdit ? `Edit: ${project.acronym || 'Project'}` : 'New Collaboration Project'}</h1>
+          <p className="text-sm text-muted-foreground">{isEdit ? 'Edit all project details, partners, work plan, deliverables and milestones' : 'Set up a multi-partner project with external reporting'}</p>
         </div>
       </div>
 
@@ -802,7 +1181,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
         <StepPartners partners={partners} updatePartner={updatePartner} addPartner={addPartner} removePartner={removePartner} countryOptions={countryOptions} />
       )}
       {step === 2 && (
-        <StepWorkPlan wps={wps} updateWp={updateWp} addWp={addWp} removeWp={removeWp} partners={partners} addTaskToWp={addTaskToWp} updateTask={updateTask} removeTask={removeTask} />
+        <StepWorkPlan wps={wps} updateWp={updateWp} addWp={addWp} removeWp={removeWp} partners={partners} addTaskToWp={addTaskToWp} updateTask={updateTask} updateTaskEffort={updateTaskEffort} removeTask={removeTask} />
       )}
       {step === 3 && (
         <StepDeliverablesAndMilestones
@@ -817,7 +1196,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
 
       {/* Navigation */}
       <div className="flex justify-between pt-2">
-        <Button variant="outline" onClick={() => step === 0 ? navigate('/projects/collaboration') : setStep(step - 1)}>
+        <Button variant="outline" onClick={() => step === 0 ? navigate(isEdit ? `/projects/collaboration/${editId}` : '/projects/collaboration') : setStep(step - 1)}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           {step === 0 ? 'Cancel' : 'Back'}
         </Button>
@@ -826,8 +1205,8 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
             Next <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         ) : (
-          <Button onClick={handleCreate} disabled={saving || !canNext()}>
-            {saving ? 'Creating...' : 'Create Project'}
+          <Button onClick={isEdit ? handleUpdate : handleCreate} disabled={saving || !canNext()}>
+            {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Project'}
             <Check className="ml-2 h-4 w-4" />
           </Button>
         )}
@@ -1033,7 +1412,7 @@ function StepPartners({ partners, updatePartner, addPartner, removePartner, coun
 // Step 3: Work Plan (WPs + Tasks)
 // ============================================================================
 
-function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, updateTask, removeTask }: {
+function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, updateTask, updateTaskEffort, removeTask }: {
   wps: WpFormData[]
   updateWp: (idx: number, field: string, value: any) => void
   addWp: () => void
@@ -1041,31 +1420,44 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
   partners: PartnerFormData[]
   addTaskToWp: (wpIdx: number) => void
   updateTask: (wpIdx: number, tIdx: number, field: string, value: string) => void
+  updateTaskEffort: (wpIdx: number, tIdx: number, partnerIdx: number, value: string) => void
   removeTask: (wpIdx: number, tIdx: number) => void
 }) {
+  // Helper: compute task total PMs from effort
+  const taskTotal = (t: TaskFormData) =>
+    Object.values(t.effort).reduce((s, v) => s + (parseFloat(v) || 0), 0)
+  // Helper: compute WP total PMs from its tasks
+  const wpTotal = (wp: WpFormData) =>
+    wp.tasks.reduce((s, t) => s + taskTotal(t), 0)
+  // Grand total
+  const grandTotal = wps.reduce((s, w) => s + wpTotal(w), 0)
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-medium">Work Packages & Tasks</h3>
-          <p className="text-sm text-muted-foreground">Define work packages, their timing, leadership, and add tasks</p>
+          <p className="text-sm text-muted-foreground">Define work packages, tasks, and allocate person-months per partner per task</p>
         </div>
         <Button variant="outline" size="sm" onClick={addWp} className="gap-2"><Plus className="h-4 w-4" /> Add WP</Button>
       </div>
 
-      {wps.map((wp, idx) => (
+      {wps.map((wp, idx) => {
+        const wpPMs = wpTotal(wp)
+        return (
         <Card key={wp._key}>
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">WP{wp.wp_number}</Badge>
               <span className="font-medium text-sm flex-1 truncate">{wp.title || 'Untitled'}</span>
+              <span className="text-xs text-muted-foreground">{wpPMs.toFixed(1)} PMs</span>
               {wps.length > 1 && (
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeWp(idx)}>
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </Button>
               )}
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
               <div className="space-y-1">
                 <Label className="text-[10px]">WP #</Label>
                 <Input value={wp.wp_number} onChange={e => updateWp(idx, 'wp_number', e.target.value)} className="h-8 text-xs text-center" />
@@ -1082,10 +1474,6 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
                 <Label className="text-[10px]">End M</Label>
                 <Input type="number" value={wp.end_month} onChange={e => updateWp(idx, 'end_month', e.target.value)} placeholder="M36" className="h-8 text-xs" />
               </div>
-              <div className="space-y-1">
-                <Label className="text-[10px]">PMs</Label>
-                <Input type="number" value={wp.total_person_months} onChange={e => updateWp(idx, 'total_person_months', e.target.value)} className="h-8 text-xs text-right" />
-              </div>
             </div>
             <div className="space-y-1">
               <Label className="text-[10px]">WP Leader</Label>
@@ -1095,7 +1483,7 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
               </select>
             </div>
 
-            {/* Tasks — always visible */}
+            {/* Tasks */}
             <div className="mt-2 pt-3 border-t space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold">Tasks under WP{wp.wp_number}</span>
@@ -1108,49 +1496,77 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
                   <p className="text-xs text-muted-foreground">No tasks yet — click <strong>"Add Task"</strong> to break this WP into individual tasks</p>
                 </div>
               )}
-                {wp.tasks.map((t, ti) => (
-                  <div key={t._key} className="flex items-start gap-2 p-2 rounded border bg-muted/20">
-                    <div className="grid gap-1.5 flex-1 grid-cols-2 md:grid-cols-7">
-                      <div className="space-y-0.5">
-                        <Label className="text-[9px]">Task #</Label>
-                        <Input value={t.task_number} onChange={e => updateTask(idx, ti, 'task_number', e.target.value)} className="h-7 text-[11px]" />
+                {wp.tasks.map((t, ti) => {
+                  const tTotal = taskTotal(t)
+                  return (
+                  <div key={t._key} className="p-2 rounded border bg-muted/20 space-y-2">
+                    <div className="flex items-start gap-2">
+                      <div className="grid gap-1.5 flex-1 grid-cols-2 md:grid-cols-6">
+                        <div className="space-y-0.5">
+                          <Label className="text-[9px]">Task #</Label>
+                          <Input value={t.task_number} onChange={e => updateTask(idx, ti, 'task_number', e.target.value)} className="h-7 text-[11px]" />
+                        </div>
+                        <div className="space-y-0.5 md:col-span-2">
+                          <Label className="text-[9px]">Title</Label>
+                          <Input value={t.title} onChange={e => updateTask(idx, ti, 'title', e.target.value)} className="h-7 text-[11px]" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[9px]">Task Leader</Label>
+                          <select value={t.leader_partner_idx} onChange={e => updateTask(idx, ti, 'leader_partner_idx', e.target.value)} className="flex h-7 w-full rounded-md border border-input bg-background px-1 py-0.5 text-[11px]">
+                            <option value="">—</option>
+                            {partners.map((p, pi) => <option key={p._key} value={String(pi)}>{p.org_name || `#${p.participant_number}`}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[9px]">Start M</Label>
+                          <Input type="number" value={t.start_month} onChange={e => updateTask(idx, ti, 'start_month', e.target.value)} className="h-7 text-[11px]" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label className="text-[9px]">End M</Label>
+                          <Input type="number" value={t.end_month} onChange={e => updateTask(idx, ti, 'end_month', e.target.value)} className="h-7 text-[11px]" />
+                        </div>
                       </div>
-                      <div className="space-y-0.5 md:col-span-2">
-                        <Label className="text-[9px]">Title</Label>
-                        <Input value={t.title} onChange={e => updateTask(idx, ti, 'title', e.target.value)} className="h-7 text-[11px]" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <Label className="text-[9px]">Task Leader</Label>
-                        <select value={t.leader_partner_idx} onChange={e => updateTask(idx, ti, 'leader_partner_idx', e.target.value)} className="flex h-7 w-full rounded-md border border-input bg-background px-1 py-0.5 text-[11px]">
-                          <option value="">—</option>
-                          {partners.map((p, pi) => <option key={p._key} value={String(pi)}>{p.org_name || `#${p.participant_number}`}</option>)}
-                        </select>
-                      </div>
-                      <div className="space-y-0.5">
-                        <Label className="text-[9px]">Start M</Label>
-                        <Input type="number" value={t.start_month} onChange={e => updateTask(idx, ti, 'start_month', e.target.value)} className="h-7 text-[11px]" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <Label className="text-[9px]">End M</Label>
-                        <Input type="number" value={t.end_month} onChange={e => updateTask(idx, ti, 'end_month', e.target.value)} className="h-7 text-[11px]" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <Label className="text-[9px]">PMs</Label>
-                        <Input type="number" value={t.person_months} onChange={e => updateTask(idx, ti, 'person_months', e.target.value)} className="h-7 text-[11px]" />
+                      <div className="flex flex-col items-center gap-0.5 shrink-0 mt-3">
+                        <span className="text-[9px] text-muted-foreground font-medium">{tTotal.toFixed(1)} PMs</span>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeTask(idx, ti)}>
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
                       </div>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0 mt-3" onClick={() => removeTask(idx, ti)}>
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </Button>
+                    {/* Per-partner effort allocation */}
+                    {partners.length > 0 && (
+                      <div className="pl-1">
+                        <Label className="text-[9px] text-muted-foreground mb-1 block">PMs per partner:</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {partners.map((p, pi) => (
+                            <div key={p._key} className="flex items-center gap-1">
+                              <span className="text-[10px] text-muted-foreground truncate max-w-[80px]" title={p.org_name || `#${p.participant_number}`}>
+                                {p.org_name ? (p.org_name.length > 10 ? p.org_name.substring(0, 10) + '…' : p.org_name) : `#${p.participant_number}`}
+                              </span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.5"
+                                value={t.effort[String(pi)] ?? '0'}
+                                onChange={e => updateTaskEffort(idx, ti, pi, e.target.value)}
+                                className="h-6 w-16 text-[11px] text-right"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
+                  )
+                })}
             </div>
           </CardContent>
         </Card>
-      ))}
+        )
+      })}
       {wps.length > 0 && (
         <div className="text-right text-sm text-muted-foreground">
-          Total: {wps.reduce((s, w) => s + (parseFloat(w.total_person_months) || 0), 0).toFixed(1)} PMs across {wps.length} WP{wps.length !== 1 ? 's' : ''}
+          Total: {grandTotal.toFixed(1)} PMs across {wps.length} WP{wps.length !== 1 ? 's' : ''}
         </div>
       )}
     </div>
@@ -1318,6 +1734,8 @@ function StepReview({ project, partners, wps, deliverables, milestones }: {
         + (parseFloat(p.budget_travel) || 0) + (parseFloat(p.budget_equipment) || 0)
         + (parseFloat(p.budget_other_goods) || 0), 0)
   const totalTasks = wps.reduce((s, w) => s + w.tasks.length, 0)
+  const taskPMs = (t: TaskFormData) => Object.values(t.effort).reduce((s, v) => s + (parseFloat(v) || 0), 0)
+  const wpPMs = (w: WpFormData) => w.tasks.reduce((s, t) => s + taskPMs(t), 0)
 
   return (
     <div className="space-y-4">
@@ -1375,12 +1793,12 @@ function StepReview({ project, partners, wps, deliverables, milestones }: {
                 <div key={w._key}>
                   <div className="flex justify-between">
                     <span>WP{w.wp_number}: {w.title} <span className="text-muted-foreground text-xs">(M{w.start_month}–M{w.end_month || '?'})</span></span>
-                    <span className="text-muted-foreground">{w.total_person_months} PMs</span>
+                    <span className="text-muted-foreground">{wpPMs(w).toFixed(1)} PMs</span>
                   </div>
                   {w.tasks.filter(t => t.title.trim()).map(t => (
                     <div key={t._key} className="ml-6 text-xs text-muted-foreground flex justify-between">
                       <span>{t.task_number}: {t.title}</span>
-                      <span>{t.person_months} PMs</span>
+                      <span>{taskPMs(t).toFixed(1)} PMs</span>
                     </div>
                   ))}
                 </div>

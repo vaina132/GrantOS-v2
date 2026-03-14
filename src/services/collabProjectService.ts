@@ -14,6 +14,7 @@ import type {
   CollabTask,
   CollabDeliverable,
   CollabMilestone,
+  CollabPartnerTaskEffort,
 } from '@/types'
 
 // ============================================================================
@@ -195,11 +196,28 @@ export const collabTaskService = {
   async list(wpId: string): Promise<CollabTask[]> {
     const { data, error } = await supabase
       .from('collab_tasks')
-      .select('*')
+      .select('*, collab_partner_task_effort(*)')
       .eq('wp_id', wpId)
       .order('task_number', { ascending: true })
     if (error) throw error
-    return (data ?? []) as unknown as CollabTask[]
+    // Map joined name to 'effort'
+    return ((data ?? []) as any[]).map(t => ({
+      ...t,
+      effort: t.collab_partner_task_effort ?? [],
+    })) as CollabTask[]
+  },
+
+  async listByProject(projectId: string): Promise<CollabTask[]> {
+    const { data, error } = await supabase
+      .from('collab_tasks')
+      .select('*, collab_partner_task_effort(*)')
+      .eq('project_id', projectId)
+      .order('task_number', { ascending: true })
+    if (error) throw error
+    return ((data ?? []) as any[]).map(t => ({
+      ...t,
+      effort: t.collab_partner_task_effort ?? [],
+    })) as CollabTask[]
   },
 
   async createMany(projectId: string, wpId: string, tasks: {
@@ -223,6 +241,55 @@ export const collabTaskService = {
 
   async remove(id: string): Promise<void> {
     const { error } = await supabase.from('collab_tasks').delete().eq('id', id)
+    if (error) throw error
+  },
+
+  async update(id: string, updates: Partial<CollabTask>): Promise<CollabTask> {
+    const { data, error } = await supabase
+      .from('collab_tasks')
+      .update(updates as any)
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw error
+    return data as unknown as CollabTask
+  },
+}
+
+// ============================================================================
+// Partner Task Effort (per-partner-per-task PM allocations)
+// ============================================================================
+
+export const collabTaskEffortService = {
+  async listByProject(projectId: string): Promise<CollabPartnerTaskEffort[]> {
+    // Get all tasks for the project, then get effort for those tasks
+    const { data: tasks } = await supabase
+      .from('collab_tasks')
+      .select('id')
+      .eq('project_id', projectId)
+    if (!tasks || tasks.length === 0) return []
+    const taskIds = tasks.map(t => t.id)
+    const { data, error } = await supabase
+      .from('collab_partner_task_effort')
+      .select('*')
+      .in('task_id', taskIds)
+    if (error) throw error
+    return (data ?? []) as unknown as CollabPartnerTaskEffort[]
+  },
+
+  async upsertMany(efforts: { task_id: string; partner_id: string; person_months: number }[]): Promise<void> {
+    if (efforts.length === 0) return
+    const { error } = await supabase
+      .from('collab_partner_task_effort')
+      .upsert(efforts as any, { onConflict: 'task_id,partner_id' })
+    if (error) throw error
+  },
+
+  async removeForTask(taskId: string): Promise<void> {
+    const { error } = await supabase
+      .from('collab_partner_task_effort')
+      .delete()
+      .eq('task_id', taskId)
     if (error) throw error
   },
 }
