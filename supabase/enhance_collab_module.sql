@@ -73,6 +73,7 @@ ALTER TABLE collab_deliverables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE collab_milestones ENABLE ROW LEVEL SECURITY;
 
 -- collab_tasks RLS
+DROP POLICY IF EXISTS collab_tasks_host_read ON collab_tasks;
 CREATE POLICY collab_tasks_host_read ON collab_tasks FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM collab_projects cp
@@ -80,6 +81,7 @@ CREATE POLICY collab_tasks_host_read ON collab_tasks FOR SELECT
     WHERE cp.id = collab_tasks.project_id
   ));
 
+DROP POLICY IF EXISTS collab_tasks_host_write ON collab_tasks;
 CREATE POLICY collab_tasks_host_write ON collab_tasks FOR ALL
   USING (EXISTS (
     SELECT 1 FROM collab_projects cp
@@ -88,6 +90,7 @@ CREATE POLICY collab_tasks_host_write ON collab_tasks FOR ALL
   ));
 
 -- collab_deliverables RLS
+DROP POLICY IF EXISTS collab_deliverables_host_read ON collab_deliverables;
 CREATE POLICY collab_deliverables_host_read ON collab_deliverables FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM collab_projects cp
@@ -95,6 +98,7 @@ CREATE POLICY collab_deliverables_host_read ON collab_deliverables FOR SELECT
     WHERE cp.id = collab_deliverables.project_id
   ));
 
+DROP POLICY IF EXISTS collab_deliverables_host_write ON collab_deliverables;
 CREATE POLICY collab_deliverables_host_write ON collab_deliverables FOR ALL
   USING (EXISTS (
     SELECT 1 FROM collab_projects cp
@@ -103,6 +107,7 @@ CREATE POLICY collab_deliverables_host_write ON collab_deliverables FOR ALL
   ));
 
 -- collab_milestones RLS
+DROP POLICY IF EXISTS collab_milestones_host_read ON collab_milestones;
 CREATE POLICY collab_milestones_host_read ON collab_milestones FOR SELECT
   USING (EXISTS (
     SELECT 1 FROM collab_projects cp
@@ -110,6 +115,7 @@ CREATE POLICY collab_milestones_host_read ON collab_milestones FOR SELECT
     WHERE cp.id = collab_milestones.project_id
   ));
 
+DROP POLICY IF EXISTS collab_milestones_host_write ON collab_milestones;
 CREATE POLICY collab_milestones_host_write ON collab_milestones FOR ALL
   USING (EXISTS (
     SELECT 1 FROM collab_projects cp
