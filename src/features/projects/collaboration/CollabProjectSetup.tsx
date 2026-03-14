@@ -683,13 +683,25 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
   }
 
   // Validation
+  const hasMonthRangeError = useCallback(() => {
+    for (const wp of wps) {
+      const ws = parseInt(wp.start_month), we = parseInt(wp.end_month)
+      if (ws && we && we < ws) return true
+      for (const t of wp.tasks) {
+        const ts = parseInt(t.start_month), te = parseInt(t.end_month)
+        if (ts && te && te < ts) return true
+      }
+    }
+    return false
+  }, [wps])
+
   const canNext = useCallback(() => {
     if (step === 0) return project.title.trim() && project.acronym.trim()
     if (step === 1) return partners.length > 0 && partners.every(p => p.org_name.trim())
-    if (step === 2) return true
+    if (step === 2) return !hasMonthRangeError()
     if (step === 3) return true
     return true
-  }, [step, project, partners])
+  }, [step, project, partners, hasMonthRangeError])
 
   // Shared helper: build partner data object
   const buildPartnerData = (p: PartnerFormData, projectId: string, idx: number, isHostPartner: boolean) => {
@@ -1422,6 +1434,11 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
   // Helper: compute task total PMs from effort
   const taskTotal = (t: TaskFormData) =>
     Object.values(t.effort).reduce((s, v) => s + (parseFloat(v) || 0), 0)
+  // Helper: check if end < start
+  const badRange = (s: string, e: string) => {
+    const si = parseInt(s), ei = parseInt(e)
+    return si && ei && ei < si
+  }
   // Helper: compute WP total PMs from its tasks
   const wpTotal = (wp: WpFormData) =>
     wp.tasks.reduce((s, t) => s + taskTotal(t), 0)
@@ -1467,8 +1484,9 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
                 <Input type="number" value={wp.start_month} onChange={e => updateWp(idx, 'start_month', e.target.value)} placeholder="M1" className="h-8 text-xs" />
               </div>
               <div className="space-y-1">
-                <Label className="text-[10px]">End M</Label>
-                <Input type="number" value={wp.end_month} onChange={e => updateWp(idx, 'end_month', e.target.value)} placeholder="M36" className="h-8 text-xs" />
+                <Label className={`text-[10px] ${badRange(wp.start_month, wp.end_month) ? 'text-destructive' : ''}`}>End M</Label>
+                <Input type="number" value={wp.end_month} onChange={e => updateWp(idx, 'end_month', e.target.value)} placeholder="M36" className={`h-8 text-xs ${badRange(wp.start_month, wp.end_month) ? 'border-destructive' : ''}`} />
+                {badRange(wp.start_month, wp.end_month) && <p className="text-[9px] text-destructive">End must be ≥ Start</p>}
               </div>
             </div>
             <div className="space-y-1">
@@ -1518,8 +1536,9 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
                           <Input type="number" value={t.start_month} onChange={e => updateTask(idx, ti, 'start_month', e.target.value)} className="h-7 text-[11px]" />
                         </div>
                         <div className="space-y-0.5">
-                          <Label className="text-[9px]">End M</Label>
-                          <Input type="number" value={t.end_month} onChange={e => updateTask(idx, ti, 'end_month', e.target.value)} className="h-7 text-[11px]" />
+                          <Label className={`text-[9px] ${badRange(t.start_month, t.end_month) ? 'text-destructive' : ''}`}>End M</Label>
+                          <Input type="number" value={t.end_month} onChange={e => updateTask(idx, ti, 'end_month', e.target.value)} className={`h-7 text-[11px] ${badRange(t.start_month, t.end_month) ? 'border-destructive' : ''}`} />
+                          {badRange(t.start_month, t.end_month) && <p className="text-[9px] text-destructive">End ≥ Start</p>}
                         </div>
                       </div>
                       <div className="flex flex-col items-center gap-0.5 shrink-0 mt-3">

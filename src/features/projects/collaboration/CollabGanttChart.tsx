@@ -2,7 +2,7 @@ import { useMemo, useState, useRef, useCallback } from 'react'
 import { ZoomIn, ZoomOut, RotateCcw, CalendarDays, FileText, Target, ClipboardList, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { parseISO, differenceInMonths, startOfMonth, addMonths, format } from 'date-fns'
+import { parseISO, differenceInMonths, startOfMonth, addMonths, format, getDaysInMonth } from 'date-fns'
 import type { CollabProject, CollabPartner, CollabWorkPackage, CollabTask, CollabDeliverable, CollabMilestone, CollabReportingPeriod } from '@/types'
 
 const ZOOM_LEVELS = [20, 30, 40, 60, 80, 110, 150]
@@ -95,10 +95,13 @@ export function CollabGanttChart({
     )
   }
 
-  // Today line position
+  // Today line position — precise fractional month from timeline start
   const today = new Date()
-  const todayMonth = differenceInMonths(today, timelineStart) + 1
-  const todayLeft = todayMonth * colWidth + (today.getDate() / 30) * colWidth
+  const wholeMonths = differenceInMonths(today, timelineStart)
+  const monthStart = addMonths(timelineStart, wholeMonths)
+  const dayFraction = (today.getTime() - monthStart.getTime()) / (getDaysInMonth(monthStart) * 86400000)
+  const todayMonth = wholeMonths + 1
+  const todayLeft = (wholeMonths + dayFraction) * colWidth
 
   // Row height
   const ROW_H = 44

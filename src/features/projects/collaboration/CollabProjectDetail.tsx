@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Contact, Download, ChevronDown, ChevronRight, Target, ListChecks, GanttChart as GanttIcon } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
-import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService, collabTaskService, collabDeliverableService, collabMilestoneService } from '@/services/collabProjectService'
+import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService, collabTaskService, collabDeliverableService, collabMilestoneService, collabTaskEffortService } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -67,6 +67,14 @@ export function CollabProjectDetail() {
   const [editPeriodId, setEditPeriodId] = useState<string | null>(null)
   const [editPeriod, setEditPeriod] = useState({ title: '', period_type: 'informal' as 'formal' | 'informal', start_month: '', end_month: '', due_date: '' })
 
+  // Task add/edit
+  const [addTaskWpId, setAddTaskWpId] = useState<string | null>(null)
+  const [newTask, setNewTask] = useState({ task_number: '', title: '', start_month: '', end_month: '', leader_partner_id: '' })
+  const emptyNewTask = { task_number: '', title: '', start_month: '', end_month: '', leader_partner_id: '' }
+
+  // Effort data for effort overview
+  const [effortData, setEffortData] = useState<{ task_id: string; partner_id: string; person_months: number }[]>([])
+
   const load = async () => {
     if (!id) return
     setLoading(true)
@@ -117,6 +125,11 @@ export function CollabProjectDetail() {
         }
       }
       setPeriodReports(rpMap)
+      // Load effort data
+      try {
+        const eff = await collabTaskEffortService.listByProject(id)
+        setEffortData(eff.map(e => ({ task_id: e.task_id, partner_id: e.partner_id, person_months: e.person_months })))
+      } catch { /* ignore — table may not exist yet */ }
     } catch {
       toast({ title: 'Error', description: 'Failed to load project', variant: 'destructive' })
     } finally {
@@ -323,6 +336,42 @@ export function CollabProjectDetail() {
     }
   }
 
+  const handleAddTask = async (wpId: string) => {
+    if (!id || !newTask.title.trim()) return
+    const sm = parseInt(newTask.start_month) || undefined
+    const em = parseInt(newTask.end_month) || undefined
+    if (sm && em && em < sm) {
+      toast({ title: 'Invalid', description: 'End month must be ≥ start month', variant: 'destructive' })
+      return
+    }
+    try {
+      await collabTaskService.createMany(id, wpId, [{
+        task_number: newTask.task_number || 'T' + ((tasksByWp[wpId]?.length ?? 0) + 1),
+        title: newTask.title,
+        start_month: sm ?? null,
+        end_month: em ?? null,
+        leader_partner_id: newTask.leader_partner_id || null,
+      }])
+      toast({ title: 'Added', description: 'Task created' })
+      setAddTaskWpId(null)
+      setNewTask(emptyNewTask)
+      load()
+    } catch {
+      toast({ title: 'Error', description: 'Failed to add task', variant: 'destructive' })
+    }
+  }
+
+  const handleDeleteTask = async (taskId: string, taskTitle: string) => {
+    if (!confirm(`Delete task "${taskTitle}"?`)) return
+    try {
+      await collabTaskService.remove(taskId)
+      toast({ title: 'Deleted', description: `Task "${taskTitle}" removed` })
+      load()
+    } catch {
+      toast({ title: 'Error', description: 'Failed to delete task', variant: 'destructive' })
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -462,6 +511,9 @@ export function CollabProjectDetail() {
           </TabsTrigger>
           <TabsTrigger value="budget" className="gap-2">
             <DollarSign className="h-4 w-4" /> Budget Overview
+          </TabsTrigger>
+          <TabsTrigger value="effort" className="gap-2">
+            <LayoutGrid className="h-4 w-4" /> Effort Overview
           </TabsTrigger>
           <TabsTrigger value="gantt" className="gap-2">
             <GanttIcon className="h-4 w-4" /> Timeline
@@ -613,24 +665,69 @@ export function CollabProjectDetail() {
                           </tr>
                           {isExpWp && wpTasks.map(t => {
                             const taskLeader = t.leader_partner_id ? partners.find(p => p.id === t.leader_partner_id) : null
+                            const taskEffortTotal = effortData.filter(e => e.task_id === t.id).reduce((s, e) => s + e.person_months, 0)
                             return (
                               <tr key={t.id} className="border-b bg-muted/[0.04]">
                                 <td className="p-2 pl-8 font-mono text-xs text-muted-foreground">{t.task_number}</td>
                                 <td className="p-2 text-xs">
-                                  <div>{t.title}</div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span>{t.title}</span>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 opacity-50 hover:opacity-100" onClick={(e) => { e.stopPropagation(); handleDeleteTask(t.id, t.title) }}>
+                                      <Trash2 className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
                                   <div className="flex gap-3 text-[10px] text-muted-foreground mt-0.5">
                                     {taskLeader && <span>Lead: {taskLeader.org_name}</span>}
                                     {t.start_month != null && t.end_month != null && <span>M{t.start_month}–M{t.end_month}</span>}
                                   </div>
                                 </td>
-                                <td className="p-2 text-right text-xs text-muted-foreground">{t.person_months > 0 ? t.person_months : '—'}</td>
-                                {partners.map(p => (
-                                  <td key={p.id} className="p-2"></td>
-                                ))}
+                                <td className="p-2 text-right text-xs text-muted-foreground">{taskEffortTotal > 0 ? taskEffortTotal.toFixed(1) : (t.person_months > 0 ? t.person_months : '—')}</td>
+                                {partners.map(p => {
+                                  const eff = effortData.find(e => e.task_id === t.id && e.partner_id === p.id)
+                                  return (
+                                    <td key={p.id} className="p-2 text-right tabular-nums text-[10px] text-muted-foreground">
+                                      {eff && eff.person_months > 0 ? eff.person_months.toFixed(1) : ''}
+                                    </td>
+                                  )
+                                })}
                                 <td className="p-2"></td>
                               </tr>
                             )
                           })}
+                          {/* Add Task row */}
+                          {isExpWp && addTaskWpId === wp.id && (
+                            <tr className="border-b bg-blue-50/50 dark:bg-blue-950/10">
+                              <td className="p-2 pl-8">
+                                <Input value={newTask.task_number} onChange={e => setNewTask(t => ({ ...t, task_number: e.target.value }))} placeholder="#" className="h-7 w-16 text-[11px]" />
+                              </td>
+                              <td className="p-2">
+                                <div className="flex gap-2">
+                                  <Input value={newTask.title} onChange={e => setNewTask(t => ({ ...t, title: e.target.value }))} placeholder="Task title" className="h-7 text-[11px] flex-1" />
+                                  <select value={newTask.leader_partner_id} onChange={e => setNewTask(t => ({ ...t, leader_partner_id: e.target.value }))} className="flex h-7 rounded-md border border-input bg-background px-1 text-[11px] w-28">
+                                    <option value="">Leader…</option>
+                                    {partners.map(p => <option key={p.id} value={p.id}>{p.org_name}</option>)}
+                                  </select>
+                                  <Input type="number" value={newTask.start_month} onChange={e => setNewTask(t => ({ ...t, start_month: e.target.value }))} placeholder="Start M" className="h-7 w-16 text-[11px]" />
+                                  <Input type="number" value={newTask.end_month} onChange={e => setNewTask(t => ({ ...t, end_month: e.target.value }))} placeholder="End M" className="h-7 w-16 text-[11px]" />
+                                </div>
+                              </td>
+                              <td className="p-2" colSpan={partners.length + 2}>
+                                <div className="flex gap-1.5">
+                                  <Button size="sm" className="h-7 text-xs" onClick={() => handleAddTask(wp.id)} disabled={!newTask.title.trim()}>Add</Button>
+                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAddTaskWpId(null); setNewTask(emptyNewTask) }}>Cancel</Button>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          {isExpWp && addTaskWpId !== wp.id && (
+                            <tr className="border-b">
+                              <td colSpan={3 + partners.length + 1} className="p-1.5 pl-8">
+                                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-primary" onClick={(e) => { e.stopPropagation(); setAddTaskWpId(wp.id); setNewTask(emptyNewTask) }}>
+                                  <Plus className="h-3 w-3" /> Add Task
+                                </Button>
+                              </td>
+                            </tr>
+                          )}
                         </React.Fragment>
                       )
                     })}
@@ -1086,6 +1183,102 @@ export function CollabProjectDetail() {
               </CardContent>
             </Card>
           </>)}
+        </TabsContent>
+
+        {/* Effort Overview Tab */}
+        <TabsContent value="effort" className="mt-4 space-y-4">
+          {partners.length === 0 || wps.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">Add partners and work packages to see the effort overview</p>
+          ) : (
+            <Card>
+              <CardContent className="p-0 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left bg-muted/50">
+                      <th className="p-3 font-medium sticky left-0 bg-muted/50">WP / Task</th>
+                      {partners.map(p => (
+                        <th key={p.id} className="p-3 font-medium text-right text-xs min-w-[80px]" title={p.org_name}>
+                          <div className="truncate max-w-[80px]">{p.org_name}</div>
+                          <div className="text-[10px] text-muted-foreground font-normal">{p.role === 'coordinator' ? 'Coord' : `#${p.participant_number}`}</div>
+                        </th>
+                      ))}
+                      <th className="p-3 font-medium text-right w-24">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {wps.map(wp => {
+                      const wpTasks = tasksByWp[wp.id] ?? []
+                      // Compute per-partner PMs for this WP (sum of task efforts)
+                      const wpPartnerPMs = partners.map(p => {
+                        return wpTasks.reduce((s, t) => {
+                          const eff = effortData.find(e => e.task_id === t.id && e.partner_id === p.id)
+                          return s + (eff?.person_months ?? 0)
+                        }, 0)
+                      })
+                      const wpTotal = wpPartnerPMs.reduce((s, v) => s + v, 0)
+                      return (
+                        <React.Fragment key={wp.id}>
+                          <tr className="border-b bg-primary/[0.03] font-medium">
+                            <td className="p-2.5 sticky left-0 bg-primary/[0.03]">
+                              <span className="font-mono text-xs mr-1.5">WP{wp.wp_number}</span>
+                              {wp.title}
+                            </td>
+                            {wpPartnerPMs.map((pm, i) => (
+                              <td key={partners[i].id} className="p-2.5 text-right tabular-nums text-xs">
+                                {pm > 0 ? pm.toFixed(1) : <span className="text-muted-foreground/40">—</span>}
+                              </td>
+                            ))}
+                            <td className="p-2.5 text-right tabular-nums font-bold">
+                              {wpTotal > 0 ? wpTotal.toFixed(1) : '—'}
+                            </td>
+                          </tr>
+                          {wpTasks.map(t => {
+                            const taskPartnerPMs = partners.map(p => {
+                              const eff = effortData.find(e => e.task_id === t.id && e.partner_id === p.id)
+                              return eff?.person_months ?? 0
+                            })
+                            const taskTotal = taskPartnerPMs.reduce((s, v) => s + v, 0)
+                            return (
+                              <tr key={t.id} className="border-b">
+                                <td className="p-2 pl-8 sticky left-0 bg-background text-xs text-muted-foreground">
+                                  <span className="font-mono mr-1">{t.task_number}</span>
+                                  {t.title}
+                                </td>
+                                {taskPartnerPMs.map((pm, i) => (
+                                  <td key={partners[i].id} className="p-2 text-right tabular-nums text-[11px] text-muted-foreground">
+                                    {pm > 0 ? pm.toFixed(1) : ''}
+                                  </td>
+                                ))}
+                                <td className="p-2 text-right tabular-nums text-xs font-medium">
+                                  {taskTotal > 0 ? taskTotal.toFixed(1) : (t.person_months > 0 ? t.person_months.toFixed(1) : '')}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </React.Fragment>
+                      )
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-muted/50 font-medium border-t-2">
+                      <td className="p-3 sticky left-0 bg-muted/50">Total</td>
+                      {partners.map(p => {
+                        const partnerTotal = effortData.filter(e => e.partner_id === p.id).reduce((s, e) => s + e.person_months, 0)
+                        return (
+                          <td key={p.id} className="p-3 text-right tabular-nums text-xs">
+                            {partnerTotal > 0 ? partnerTotal.toFixed(1) : '—'}
+                          </td>
+                        )
+                      })}
+                      <td className="p-3 text-right tabular-nums font-bold">
+                        {effortData.reduce((s, e) => s + e.person_months, 0).toFixed(1)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
       <EditProjectDialog
