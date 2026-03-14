@@ -97,10 +97,10 @@ export function TimesheetGrid() {
       // Load assignments across ALL months of the year (not just selected month)
       // This ensures projects show even if no PM allocated for this specific month
       const [days, hols, abs, alloc] = await Promise.all([
-        timesheetService.listDays(orgId, currentPersonId, globalYear, selectedMonth),
-        holidayService.listForMonth(orgId, globalYear, selectedMonth),
-        absenceService.list(orgId, { person_id: currentPersonId, year: globalYear }),
-        loadAssignmentsAllMonths(orgId, currentPersonId, globalYear),
+        timesheetService.listDays(orgId, currentPersonId, globalYear, selectedMonth).catch(e => { console.error('[TS] listDays failed:', e); throw e }),
+        holidayService.listForMonth(orgId, globalYear, selectedMonth).catch(e => { console.error('[TS] holidays failed:', e); throw e }),
+        absenceService.list(orgId, { person_id: currentPersonId, year: globalYear }).catch(e => { console.error('[TS] absences failed:', e); throw e }),
+        loadAssignmentsAllMonths(orgId, currentPersonId, globalYear).catch(e => { console.error('[TS] allocations failed:', e); throw e }),
       ])
       setHolidays(hols)
       setAbsences(abs)
@@ -118,6 +118,7 @@ export function TimesheetGrid() {
       // Ensure envelope exists (don't block on failure)
       timesheetService.ensureEnvelope(orgId, currentPersonId, globalYear, selectedMonth).catch(() => {})
     } catch (err) {
+      console.error('[TimesheetGrid] loadData failed:', err)
       const message = err instanceof Error ? err.message : 'Failed to load timesheet data'
       toast({ title: 'Error', description: message, variant: 'destructive' })
     } finally {

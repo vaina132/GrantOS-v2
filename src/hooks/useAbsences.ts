@@ -17,6 +17,7 @@ export function useAbsences(filters?: Omit<AbsenceFilters, 'year'>) {
       const data = await absenceService.list(orgId, { ...filters, year: globalYear })
       setAbsences(data)
     } catch (err) {
+      console.error('[useAbsences] load failed:', err)
       const message = err instanceof Error ? err.message : 'Failed to load absences'
       toast({ title: 'Error', description: message, variant: 'destructive' })
     } finally {
