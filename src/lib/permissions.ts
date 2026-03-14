@@ -1,4 +1,4 @@
-import type { OrgRole, GuestAccessLevel, RolePermission } from '@/types'
+import type { OrgRole, RolePermission } from '@/types'
 
 export interface Permissions {
   // Module visibility
@@ -13,7 +13,6 @@ export interface Permissions {
   canSeeReports: boolean
   canSeeImport: boolean
   canSeeAudit: boolean
-  canSeeGuests: boolean
   canSeeProposals: boolean
   // Data privacy
   canSeeSalary: boolean
@@ -47,7 +46,6 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permissions> = {
     canSeeReports: true,
     canSeeImport: true,
     canSeeAudit: true,
-    canSeeGuests: true,
     canSeeProposals: true,
     canSeeSalary: true,
     canSeeFinancialDetails: true,
@@ -74,7 +72,6 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permissions> = {
     canSeeReports: true,
     canSeeImport: false,
     canSeeAudit: false,
-    canSeeGuests: false,
     canSeeProposals: true,
     canSeeSalary: false,
     canSeeFinancialDetails: true,
@@ -101,7 +98,6 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permissions> = {
     canSeeReports: true,
     canSeeImport: false,
     canSeeAudit: true,
-    canSeeGuests: false,
     canSeeProposals: true,
     canSeeSalary: true,
     canSeeFinancialDetails: true,
@@ -128,7 +124,6 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permissions> = {
     canSeeReports: false,
     canSeeImport: false,
     canSeeAudit: false,
-    canSeeGuests: false,
     canSeeProposals: false,
     canSeeSalary: false,
     canSeeFinancialDetails: false,
@@ -155,7 +150,6 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permissions> = {
     canSeeReports: false,
     canSeeImport: false,
     canSeeAudit: false,
-    canSeeGuests: false,
     canSeeProposals: false,
     canSeeSalary: false,
     canSeeFinancialDetails: false,
@@ -168,63 +162,6 @@ const ROLE_PERMISSIONS: Record<OrgRole, Permissions> = {
     canGenerateReports: false,
     canManageUsers: false,
     canWrite: true,
-    canManageOrg: false,
-  },
-}
-
-const GUEST_PERMISSIONS: Record<GuestAccessLevel, Permissions> = {
-  contributor: {
-    canSeeDashboard: false,
-    canSeeProjects: true,
-    canSeeStaff: false,
-    canSeeAllocations: false,
-    canSeeTimesheets: true,
-    canSeeAbsences: false,
-    canSeeFinancials: false,
-    canSeeTimeline: false,
-    canSeeReports: false,
-    canSeeImport: false,
-    canSeeAudit: false,
-    canSeeGuests: false,
-    canSeeProposals: false,
-    canSeeSalary: false,
-    canSeeFinancialDetails: false,
-    canSeePersonnelRates: false,
-    canManageProjects: false,
-    canManageAllocations: false,
-    canApproveTimesheets: false,
-    canSubmitTimesheets: true,
-    canManageBudgets: false,
-    canGenerateReports: false,
-    canManageUsers: false,
-    canWrite: true,
-    canManageOrg: false,
-  },
-  read_only: {
-    canSeeDashboard: false,
-    canSeeProjects: true,
-    canSeeStaff: false,
-    canSeeAllocations: false,
-    canSeeTimesheets: false,
-    canSeeAbsences: false,
-    canSeeFinancials: false,
-    canSeeTimeline: false,
-    canSeeReports: false,
-    canSeeImport: false,
-    canSeeAudit: false,
-    canSeeGuests: false,
-    canSeeProposals: false,
-    canSeeSalary: false,
-    canSeeFinancialDetails: false,
-    canSeePersonnelRates: false,
-    canManageProjects: false,
-    canManageAllocations: false,
-    canApproveTimesheets: false,
-    canSubmitTimesheets: false,
-    canManageBudgets: false,
-    canGenerateReports: false,
-    canManageUsers: false,
-    canWrite: false,
     canManageOrg: false,
   },
 }
@@ -243,7 +180,6 @@ export function rolePermissionToPermissions(rp: RolePermission): Permissions {
     canSeeReports: rp.can_see_reports,
     canSeeImport: rp.can_see_import,
     canSeeAudit: rp.can_see_audit,
-    canSeeGuests: rp.can_see_guests,
     canSeeProposals: rp.can_see_proposals ?? true,
     canSeeSalary: rp.can_see_salary_info,
     canSeeFinancialDetails: rp.can_see_financial_details,
@@ -265,10 +201,6 @@ export function computePermissions(role: OrgRole): Permissions {
   return ROLE_PERMISSIONS[role] ?? DEFAULT_PERMISSIONS
 }
 
-export function computeGuestPermissions(accessLevel: GuestAccessLevel): Permissions {
-  return GUEST_PERMISSIONS[accessLevel]
-}
-
 export const DEFAULT_PERMISSIONS: Permissions = {
   canSeeDashboard: false,
   canSeeProjects: false,
@@ -281,7 +213,6 @@ export const DEFAULT_PERMISSIONS: Permissions = {
   canSeeReports: false,
   canSeeImport: false,
   canSeeAudit: false,
-  canSeeGuests: false,
   canSeeProposals: false,
   canSeeSalary: false,
   canSeeFinancialDetails: false,
@@ -300,7 +231,6 @@ export const DEFAULT_PERMISSIONS: Permissions = {
 export interface RoutePermission {
   path: string
   minPermission?: PermissionKey
-  guestAllowed?: boolean
 }
 
 export const ROUTE_PERMISSIONS: RoutePermission[] = [
@@ -308,14 +238,13 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { path: '/projects', minPermission: 'canSeeProjects' },
   { path: '/staff', minPermission: 'canSeeStaff' },
   { path: '/allocations', minPermission: 'canSeeAllocations' },
-  { path: '/timesheets', minPermission: 'canSeeTimesheets', guestAllowed: true },
+  { path: '/timesheets', minPermission: 'canSeeTimesheets' },
   { path: '/absences', minPermission: 'canSeeAbsences' },
   { path: '/financials', minPermission: 'canSeeFinancials' },
   { path: '/timeline', minPermission: 'canSeeTimeline' },
   { path: '/reports', minPermission: 'canSeeReports' },
   { path: '/import', minPermission: 'canSeeImport' },
   { path: '/audit', minPermission: 'canSeeAudit' },
-  { path: '/guests', minPermission: 'canSeeGuests' },
   { path: '/proposals', minPermission: 'canSeeProposals' },
   { path: '/settings', minPermission: 'canManageOrg' },
 ]

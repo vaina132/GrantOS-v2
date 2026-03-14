@@ -31,7 +31,6 @@ const MODULE_PERMISSIONS: PermissionItem[] = [
   { key: 'can_see_reports', label: 'Reports', description: 'Generate and export reports' },
   { key: 'can_see_import', label: 'Import', description: 'Data import tools' },
   { key: 'can_see_audit', label: 'Audit Log', description: 'Activity and change history' },
-  { key: 'can_see_guests', label: 'Guest Access', description: 'Manage external guest users' },
   { key: 'can_see_proposals', label: 'Proposals', description: 'View and manage grant proposals pipeline' },
 ]
 
@@ -107,7 +106,6 @@ export function RolePermissions() {
       can_see_reports: 'canSeeReports',
       can_see_import: 'canSeeImport',
       can_see_audit: 'canSeeAudit',
-      can_see_guests: 'canSeeGuests',
       can_see_proposals: 'canSeeProposals',
       can_see_salary_info: 'canSeeSalary',
       can_see_financial_details: 'canSeeFinancialDetails',
@@ -203,7 +201,6 @@ export function RolePermissions() {
       canSeeReports: 'can_see_reports',
       canSeeImport: 'can_see_import',
       canSeeAudit: 'can_see_audit',
-      canSeeGuests: 'can_see_guests',
       canSeeProposals: 'can_see_proposals',
       canSeeSalary: 'can_see_salary_info',
       canSeeFinancialDetails: 'can_see_financial_details',

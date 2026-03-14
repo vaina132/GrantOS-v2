@@ -13,7 +13,6 @@ const LABEL_MAP: Record<string, string> = {
   reports: 'Reports',
   import: 'Import',
   audit: 'Audit Log',
-  guests: 'Guest Access',
   settings: 'Settings',
   new: 'New',
   edit: 'Edit',

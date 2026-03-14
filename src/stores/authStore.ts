@@ -2,13 +2,12 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import {
   computePermissions,
-  computeGuestPermissions,
   rolePermissionToPermissions,
   DEFAULT_PERMISSIONS,
   type Permissions,
   type PermissionKey,
 } from '@/lib/permissions'
-import type { OrgRole, OrgPlan, AccessType, GuestProject } from '@/types'
+import type { OrgRole, OrgPlan, AccessType } from '@/types'
 import type { User } from '@supabase/supabase-js'
 
 interface AuthState {
@@ -18,7 +17,6 @@ interface AuthState {
   role: OrgRole | null
   permissions: Permissions
   accessType: AccessType | null
-  guestProjects: GuestProject[]
   orgPlan: OrgPlan | null
   trialEndsAt: string | null
   isLoading: boolean
@@ -41,7 +39,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   role: null,
   permissions: DEFAULT_PERMISSIONS,
   accessType: null,
-  guestProjects: [],
   orgPlan: null,
   trialEndsAt: null,
   isLoading: true,
@@ -93,7 +90,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           role: null,
           permissions: DEFAULT_PERMISSIONS,
           accessType: null,
-          guestProjects: [],
           orgPlan: null,
           trialEndsAt: null,
           isLoading: false,
@@ -169,7 +165,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       role: null,
       permissions: DEFAULT_PERMISSIONS,
       accessType: null,
-      guestProjects: [],
       orgPlan: null,
       trialEndsAt: null,
       isLoading: false,
@@ -203,7 +198,6 @@ async function loadUserContext(
       role: 'Admin',
       permissions: computePermissions('Admin'),
       accessType: 'member',
-      guestProjects: [],
       orgPlan: 'enterprise',
       trialEndsAt: null,
       isLoading: false,
@@ -270,58 +264,8 @@ async function loadUserContext(
       role,
       permissions,
       accessType: 'member',
-      guestProjects: [],
       orgPlan: (org?.plan as OrgPlan) ?? null,
       trialEndsAt: org?.trial_ends_at ?? null,
-      isLoading: false,
-      error: null,
-    })
-    return
-  }
-
-  // Try project_guests — use SECURITY DEFINER function to claim pending
-  // invitations by email and return all active guest entries in one step.
-  const { data: guests, error: guestError } = await supabase
-    .rpc('claim_guest_invitations', { p_user_id: user.id, p_email: user.email ?? '' })
-
-  // Any error — bootstrap as admin in early dev
-  if (guestError) {
-    console.warn('[GrantLume] claim_guest_invitations failed, bootstrapping as admin:', guestError.code, guestError.message)
-    set({
-      user,
-      orgId: null,
-      orgName: 'Development',
-      role: 'Admin',
-      permissions: computePermissions('Admin'),
-      accessType: 'member',
-      guestProjects: [],
-      orgPlan: 'enterprise',
-      trialEndsAt: null,
-      isLoading: false,
-      error: null,
-    })
-    return
-  }
-
-  const guestRows = (guests ?? []) as { id: string; org_id: string; project_id: string; access_level: string; status: string }[]
-
-  if (guestRows.length > 0) {
-    const first = guestRows[0]
-    const accessLevel = first.access_level as 'contributor' | 'read_only'
-
-    set({
-      user,
-      orgId: first.org_id,
-      orgName: null,
-      role: null,
-      permissions: computeGuestPermissions(accessLevel),
-      accessType: 'guest',
-      guestProjects: guestRows.map((g) => ({
-        project_id: g.project_id,
-        access_level: g.access_level as 'contributor' | 'read_only',
-      })),
-      orgPlan: null,
-      trialEndsAt: null,
       isLoading: false,
       error: null,
     })
@@ -336,7 +280,6 @@ async function loadUserContext(
     role: null,
     permissions: DEFAULT_PERMISSIONS,
     accessType: null,
-    guestProjects: [],
     orgPlan: null,
     trialEndsAt: null,
     isLoading: false,

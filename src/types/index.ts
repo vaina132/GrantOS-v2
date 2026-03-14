@@ -1,6 +1,5 @@
 export type OrgRole = 'Admin' | 'Project Manager' | 'Finance Officer' | 'Viewer' | 'External Participant'
-export type GuestAccessLevel = 'contributor' | 'read_only'
-export type AccessType = 'member' | 'guest'
+export type AccessType = 'member'
 export type OrgPlan = 'trial' | 'starter' | 'growth' | 'enterprise'
 
 export type ProjectStatus = 'Upcoming' | 'Active' | 'Completed' | 'Suspended'
@@ -59,7 +58,6 @@ export interface RolePermission {
   can_see_reports: boolean
   can_see_import: boolean
   can_see_audit: boolean
-  can_see_guests: boolean
   can_see_proposals: boolean
   // Data privacy
   can_see_salary_info: boolean
@@ -400,24 +398,6 @@ export interface AuditChange {
   created_at: string
 }
 
-export type GuestInvitationStatus = 'pending' | 'accepted' | 'revoked'
-
-export interface ProjectGuest {
-  id: string
-  org_id: string
-  project_id: string
-  user_id: string | null
-  invited_email: string | null
-  invited_name: string | null
-  guest_org_name: string | null
-  invited_by: string | null
-  access_level: GuestAccessLevel
-  status: GuestInvitationStatus
-  is_active: boolean
-  expires_at: string | null
-  created_at: string
-  updated_at: string
-}
 
 export interface PeriodLock {
   id: string
@@ -429,11 +409,6 @@ export interface PeriodLock {
   notes: string | null
   created_at: string
   updated_at: string
-}
-
-export interface GuestProject {
-  project_id: string
-  access_level: GuestAccessLevel
 }
 
 export interface Deliverable {

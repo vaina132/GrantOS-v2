@@ -254,25 +254,6 @@ export function budgetAlertEmail(params: {
   }
 }
 
-export function guestInvitationEmail(params: {
-  guestEmail: string; orgName: string; projectAcronym: string; invitedByName: string; accessLevel: string; loginUrl: string
-}): EmailTemplate {
-  return {
-    subject: `You've been given guest access to ${params.projectAcronym} on GrantLume`,
-    html: layout('Guest Invitation', [
-      heading('Guest Access Granted'),
-      paragraph(`<strong>${params.invitedByName}</strong> has given you guest access to the project <strong>${params.projectAcronym}</strong> in <strong>${params.orgName}</strong>.`),
-      detailTable(
-        detailRow('Project', params.projectAcronym) +
-        detailRow('Access Level', params.accessLevel) +
-        detailRow('Organisation', params.orgName)
-      ),
-      button('Access Project', params.loginUrl),
-      paragraph(`<span style="font-size:13px;color:${MUTED};">If you weren't expecting this, you can safely ignore this email.</span>`),
-    ].join('')),
-  }
-}
-
 export function trialExpiringEmail(params: {
   userName: string; orgName: string; daysRemaining: number; upgradeUrl: string
 }): EmailTemplate {
@@ -612,7 +593,7 @@ export function substituteNotificationEmail(params: {
         `<strong>Duration:</strong> ${params.days} day${params.days === '1' ? '' : 's'}`,
       ].join('<br/>')),
       paragraph('Please coordinate with your colleague before their leave begins to ensure a smooth handover of any ongoing tasks or responsibilities.'),
-      ctaButton('View Absences', params.absencesUrl),
+      button('View Absences', params.absencesUrl),
       paragraph(`<span style="font-size:13px;color:${MUTED};">You can manage your notification preferences in your GrantLume profile settings.</span>`),
     ].join('')),
   }

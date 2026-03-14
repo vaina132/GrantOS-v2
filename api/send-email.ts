@@ -9,7 +9,6 @@ import {
   timesheetSubmittedEmail,
   projectEndingSoonEmail,
   budgetAlertEmail,
-  guestInvitationEmail,
   trialExpiringEmail,
   periodLockedEmail,
   signupConfirmationEmail,
@@ -39,7 +38,6 @@ const TEMPLATE_MAP: Record<string, (params: any) => EmailTemplate> = {
   timesheetSubmitted: timesheetSubmittedEmail,
   projectEndingSoon: projectEndingSoonEmail,
   budgetAlert: budgetAlertEmail,
-  guestInvitation: guestInvitationEmail,
   trialExpiring: trialExpiringEmail,
   periodLocked: periodLockedEmail,
   signupConfirmation: signupConfirmationEmail,
@@ -71,7 +69,6 @@ const PREF_COLUMN_MAP: Record<string, string> = {
   invitation: 'email_invitations',
   welcome: 'email_welcome',
   trialExpiring: 'email_trial_expiring',
-  // guestInvitation — always sent (access grant, no opt-out)
   // absenceCancelled — always sent (approver needs to know)
   // staffDeactivated — always sent (courtesy notice)
   // memberRemoved — always sent (access revocation notice)

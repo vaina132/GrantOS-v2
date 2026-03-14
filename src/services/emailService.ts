@@ -12,7 +12,6 @@ type EmailTemplate =
   | 'timesheetSubmitted'
   | 'projectEndingSoon'
   | 'budgetAlert'
-  | 'guestInvitation'
   | 'trialExpiring'
   | 'periodLocked'
   | 'signupConfirmation'
@@ -145,17 +144,6 @@ export const emailService = {
     return sendEmail({ template: 'budgetAlert', to: params.to, params })
   },
 
-  /** Send guest invitation */
-  async sendGuestInvitation(params: {
-    guestEmail: string
-    orgName: string
-    projectAcronym: string
-    invitedByName: string
-    accessLevel: string
-    loginUrl: string
-  }) {
-    return sendEmail({ template: 'guestInvitation', to: params.guestEmail, params })
-  },
 
   /** Notify about trial expiring */
   async sendTrialExpiring(params: {

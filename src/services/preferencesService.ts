@@ -13,7 +13,7 @@ export const EMAIL_PREF_MAP: Record<string, keyof UserPreferences> = {
   welcome: 'email_welcome',
   trialExpiring: 'email_trial_expiring',
   substituteNotification: 'email_substitute_notifications',
-  // guestInvitation — always sent, no opt-out (it's an access grant)
+  // Access-grant emails are always sent (no opt-out)
 }
 
 export const EMAIL_PREF_LABELS: { key: keyof UserPreferences; label: string; description: string }[] = [

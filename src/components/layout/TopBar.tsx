@@ -20,7 +20,7 @@ import { NotificationBell } from '@/components/layout/NotificationBell'
 export function TopBar() {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { user, role, accessType, orgPlan, trialEndsAt, signOut } = useAuthStore()
+  const { user, role, orgPlan, trialEndsAt, signOut } = useAuthStore()
   const { toggleSidebar, darkMode, toggleDarkMode } = useUiStore()
   const userEmail = user?.email ?? ''
   const initials = userEmail.slice(0, 2).toUpperCase()
@@ -76,11 +76,6 @@ export function TopBar() {
                       {role}
                     </Badge>
                   )}
-                  {accessType === 'guest' && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                      Guest
-                    </Badge>
-                  )}
                 </div>
               </div>
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -91,7 +86,7 @@ export function TopBar() {
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium">{userEmail}</p>
                 <p className="text-xs text-muted-foreground">
-                  {role ?? 'Guest'}{accessType === 'guest' ? ' (External)' : ''}
+                  {role ?? 'Member'}
                 </p>
               </div>
             </DropdownMenuLabel>

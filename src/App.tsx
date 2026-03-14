@@ -22,7 +22,6 @@ import { ReportsPage } from '@/features/reports/ReportsPage'
 import { ImportPage } from '@/features/import/ImportPage'
 import { AuditPage } from '@/features/audit/AuditPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
-import { GuestAccessPage } from '@/features/guests/GuestAccessPage'
 import { ProposalsPage } from '@/features/proposals/ProposalsPage'
 import { ProfileSettingsPage } from '@/features/profile/ProfileSettingsPage'
 import { TermsPage } from '@/features/legal/TermsPage'
@@ -166,14 +165,6 @@ export default function App() {
                         element={
                           <ProtectedRoute permission="canSeeAudit">
                             <AuditPage />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/guests"
-                        element={
-                          <ProtectedRoute permission="canSeeGuests">
-                            <GuestAccessPage />
                           </ProtectedRoute>
                         }
                       />

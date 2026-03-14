@@ -13,7 +13,6 @@ import {
   FileText,
   Upload,
   Shield,
-  UserCheck,
   Settings,
   HelpCircle,
   X,
@@ -31,7 +30,6 @@ interface NavItem {
   labelKey: string
   icon: LucideIcon
   permission?: PermissionKey
-  guestAllowed?: boolean
 }
 
 interface NavGroup {
@@ -44,16 +42,16 @@ const NAV_GROUPS: NavGroup[] = [
     labelKey: 'nav.core',
     items: [
       { path: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
-      { path: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
-      { path: '/proposals', labelKey: 'nav.proposals', icon: Lightbulb, permission: 'canSeeProposals' },
       { path: '/staff', labelKey: 'nav.staff', icon: Users },
+      { path: '/proposals', labelKey: 'nav.proposals', icon: Lightbulb, permission: 'canSeeProposals' },
+      { path: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
     ],
   },
   {
     labelKey: 'nav.operations',
     items: [
       { path: '/allocations', labelKey: 'nav.allocations', icon: CalendarDays, permission: 'canSeeAllocations' },
-      { path: '/timesheets', labelKey: 'nav.timesheets', icon: ClipboardCheck, permission: 'canSeeTimesheets', guestAllowed: true },
+      { path: '/timesheets', labelKey: 'nav.timesheets', icon: ClipboardCheck, permission: 'canSeeTimesheets' },
       { path: '/absences', labelKey: 'nav.absences', icon: CalendarOff, permission: 'canSeeAbsences' },
       { path: '/financials', labelKey: 'nav.financials', icon: DollarSign, permission: 'canSeeFinancials' },
       { path: '/timeline', labelKey: 'nav.timeline', icon: GanttChart, permission: 'canSeeTimeline' },
@@ -65,32 +63,24 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/reports', labelKey: 'nav.reports', icon: FileText, permission: 'canSeeReports' },
       { path: '/import', labelKey: 'nav.import', icon: Upload, permission: 'canSeeImport' },
       { path: '/audit', labelKey: 'nav.auditLog', icon: Shield, permission: 'canSeeAudit' },
-      { path: '/guests', labelKey: 'nav.guestAccess', icon: UserCheck, permission: 'canSeeGuests' },
       { path: '/settings', labelKey: 'nav.settings', icon: Settings, permission: 'canManageOrg' },
     ],
   },
 ]
 
-const GUEST_NAV_ITEMS: NavItem[] = [
-  { path: '/projects', labelKey: 'nav.projectOverview', icon: FolderKanban },
-  { path: '/timesheets', labelKey: 'nav.timesheets', icon: ClipboardCheck, guestAllowed: true },
-]
-
 export function Sidebar() {
-  const { can, accessType, orgName } = useAuthStore()
+  const { can, orgName } = useAuthStore()
   const { sidebarOpen, setSidebarOpen } = useUiStore()
   const location = useLocation()
   const { t } = useTranslation()
 
-  const visibleGroups = accessType === 'guest'
-    ? [{ labelKey: '', items: GUEST_NAV_ITEMS }]
-    : NAV_GROUPS.map((group) => ({
-        ...group,
-        items: group.items.filter((item) => {
-          if (!item.permission) return true
-          return can(item.permission)
-        }),
-      })).filter((group) => group.items.length > 0)
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (!item.permission) return true
+        return can(item.permission)
+      }),
+    })).filter((group) => group.items.length > 0)
 
   return (
     <>
