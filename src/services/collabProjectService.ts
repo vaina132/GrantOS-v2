@@ -194,7 +194,7 @@ export const collabWpService = {
 
 export const collabTaskService = {
   async list(wpId: string): Promise<CollabTask[]> {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('collab_tasks')
       .select('*, collab_partner_task_effort(*)')
       .eq('wp_id', wpId)
@@ -208,7 +208,7 @@ export const collabTaskService = {
   },
 
   async listByProject(projectId: string): Promise<CollabTask[]> {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('collab_tasks')
       .select('*, collab_partner_task_effort(*)')
       .eq('project_id', projectId)
@@ -269,7 +269,7 @@ export const collabTaskEffortService = {
       .eq('project_id', projectId)
     if (!tasks || tasks.length === 0) return []
     const taskIds = tasks.map(t => t.id)
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('collab_partner_task_effort')
       .select('*')
       .in('task_id', taskIds)
@@ -279,14 +279,14 @@ export const collabTaskEffortService = {
 
   async upsertMany(efforts: { task_id: string; partner_id: string; person_months: number }[]): Promise<void> {
     if (efforts.length === 0) return
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('collab_partner_task_effort')
       .upsert(efforts as any, { onConflict: 'task_id,partner_id' })
     if (error) throw error
   },
 
   async removeForTask(taskId: string): Promise<void> {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('collab_partner_task_effort')
       .delete()
       .eq('task_id', taskId)

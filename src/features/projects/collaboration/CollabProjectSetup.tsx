@@ -315,8 +315,6 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
   const [milestones, setMilestones] = useState<MilestoneFormData[]>([])
   // Map of existing DB IDs for edit mode: partnerIdx -> DB id, etc.
   const [dbPartnerIds, setDbPartnerIds] = useState<Record<number, string>>({})
-  const [dbWpIds, setDbWpIds] = useState<Record<number, string>>({}) // eslint-disable-line
-  const [dbTaskIds, setDbTaskIds] = useState<Record<string, string>>({}) // eslint-disable-line
 
   // Load host org as default first partner on mount (create mode only)
   useEffect(() => {
@@ -436,8 +434,6 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
           })
         }
         setWps(loadedWps.length > 0 ? loadedWps : [emptyWp(1)])
-        setDbWpIds(wMap)
-        setDbTaskIds(tMap)
 
         // Load deliverables
         const delList = await collabDeliverableService.list(editId!)
