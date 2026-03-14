@@ -689,6 +689,7 @@ export function CollabProjectDetail() {
                   <thead>
                     <tr className="border-b text-left">
                       <th className="p-3 font-medium sticky left-0 bg-background">Partner</th>
+                      <th className="p-3 font-medium">Country</th>
                       <th className="p-3 font-medium text-right">Personnel</th>
                       <th className="p-3 font-medium text-right">Subcontracting</th>
                       <th className="p-3 font-medium text-right">Travel</th>
@@ -722,6 +723,7 @@ export function CollabProjectDetail() {
                               {p.org_name}
                             </div>
                           </td>
+                          <td className="p-3 text-xs text-muted-foreground">{p.country || '—'}</td>
                           <td className="p-3 text-right tabular-nums">€{p.budget_personnel.toLocaleString()}</td>
                           <td className="p-3 text-right tabular-nums">€{p.budget_subcontracting.toLocaleString()}</td>
                           <td className="p-3 text-right tabular-nums">€{p.budget_travel.toLocaleString()}</td>
@@ -764,6 +766,7 @@ export function CollabProjectDetail() {
                       return (
                         <tr className="bg-muted/50 font-medium border-t-2">
                           <td className="p-3 sticky left-0 bg-muted/50">Total ({partners.length} partners)</td>
+                          <td className="p-3"></td>
                           <td className="p-3 text-right tabular-nums">€{totals.personnel.toLocaleString()}</td>
                           <td className="p-3 text-right tabular-nums">€{totals.subcontracting.toLocaleString()}</td>
                           <td className="p-3 text-right tabular-nums">€{totals.travel.toLocaleString()}</td>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Users, Globe, FileText, MoreHorizontal, Trash2, Rocket } from 'lucide-react'
+import { Plus, Users, Globe, FileText, MoreHorizontal, Trash2, Rocket, Search } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService } from '@/services/collabProjectService'
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,8 @@ export function CollabProjectList() {
   const navigate = useNavigate()
   const [projects, setProjects] = useState<CollabProject[]>([])
   const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'active' | 'archived'>('all')
+  const [search, setSearch] = useState('')
 
   const load = async () => {
     if (!orgId) return
@@ -73,6 +75,22 @@ export function CollabProjectList() {
     return partners.find((pt: any) => pt.role === 'coordinator')?.org_name ?? '—'
   }
 
+  const filtered = projects.filter(p => {
+    if (statusFilter !== 'all' && p.status !== statusFilter) return false
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      return p.acronym.toLowerCase().includes(q) || p.title.toLowerCase().includes(q) || (p.grant_number ?? '').toLowerCase().includes(q)
+    }
+    return true
+  })
+
+  const counts = {
+    all: projects.length,
+    draft: projects.filter(p => p.status === 'draft').length,
+    active: projects.filter(p => p.status === 'active').length,
+    archived: projects.filter(p => p.status === 'archived').length,
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -96,6 +114,36 @@ export function CollabProjectList() {
         </Button>
       </div>
 
+      {/* Filter tabs + search */}
+      {projects.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex gap-1 bg-muted rounded-lg p-1">
+            {(['all', 'draft', 'active', 'archived'] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  statusFilter === s
+                    ? 'bg-background shadow-sm text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {s.charAt(0).toUpperCase() + s.slice(1)} ({counts[s]})
+              </button>
+            ))}
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search by acronym, title..."
+              className="flex h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 py-1 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+        </div>
+      )}
+
       {projects.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
@@ -110,9 +158,13 @@ export function CollabProjectList() {
             </Button>
           </CardContent>
         </Card>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-sm text-muted-foreground">No projects match your filters</p>
+        </div>
       ) : (
         <div className="grid gap-4">
-          {projects.map((p) => (
+          {filtered.map((p) => (
             <Card
               key={p.id}
               className="hover:shadow-md transition-shadow cursor-pointer"

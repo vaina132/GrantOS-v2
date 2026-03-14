@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Send, CheckCircle, XCircle, RotateCcw, Clock, Plus, Trash2, Save } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
-import { collabReportService, collabLineService } from '@/services/collabProjectService'
+import { collabReportService, collabLineService, collabWpService } from '@/services/collabProjectService'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from '@/components/ui/use-toast'
-import type { CollabReport, CollabReportLine, CollabReportSection } from '@/types'
+import type { CollabReport, CollabReportLine, CollabReportSection, CollabWorkPackage } from '@/types'
 
 const REPORT_STATUS_COLORS: Record<string, string> = {
   draft: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
@@ -34,6 +34,7 @@ export function CollabReportPage() {
   const { user } = useAuthStore()
   const [report, setReport] = useState<CollabReport | null>(null)
   const [lines, setLines] = useState<CollabReportLine[]>([])
+  const [wps, setWps] = useState<CollabWorkPackage[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [rejectionNote, setRejectionNote] = useState('')
@@ -54,6 +55,13 @@ export function CollabReportPage() {
       ])
       setReport(r)
       setLines(l)
+      // Load WPs if we have a project ID
+      if (r?.period?.project_id) {
+        try {
+          const wpList = await collabWpService.list(r.period.project_id)
+          setWps(wpList)
+        } catch { /* non-critical */ }
+      }
       // Initialize edit data
       const ed: Record<string, { amount: string; justification: string }> = {}
       for (const line of l) {
@@ -452,7 +460,22 @@ export function CollabReportPage() {
                           return (
                             <tr key={`new-${idx}`} className="border-b last:border-0 bg-primary/5">
                               <td className="p-3 text-muted-foreground text-xs">new</td>
-                              <td className="p-3 text-xs">—</td>
+                              <td className="p-3">
+                                <select
+                                  value={nl.wp_id}
+                                  onChange={e => {
+                                    const updated = [...newLines]
+                                    updated[globalIdx] = { ...nl, wp_id: e.target.value }
+                                    setNewLines(updated)
+                                  }}
+                                  className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
+                                >
+                                  <option value="">— Select WP —</option>
+                                  {wps.map(wp => (
+                                    <option key={wp.id} value={wp.id}>WP{wp.wp_number}: {wp.title}</option>
+                                  ))}
+                                </select>
+                              </td>
                               <td className="p-3">
                                 <Input
                                   type="number"
