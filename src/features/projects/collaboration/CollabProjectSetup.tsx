@@ -163,6 +163,7 @@ interface DeliverableFormData {
   number: string
   title: string
   wp_number: string
+  task_number: string
   due_month: string
   type: string
   dissemination: string
@@ -233,6 +234,7 @@ function emptyDeliverable(num: number): DeliverableFormData {
     number: `D${num}`,
     title: '',
     wp_number: '',
+    task_number: '',
     due_month: '',
     type: '',
     dissemination: 'public',
@@ -432,6 +434,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
           number: del.number || '',
           title: del.title || '',
           wp_number: del.wp_number ? String(del.wp_number) : '',
+          task_number: '',
           due_month: del.due_month ? String(del.due_month) : '',
           type: del.type || '',
           dissemination: del.dissemination || 'public',
@@ -1073,7 +1076,7 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
               )}
                 {wp.tasks.map((t, ti) => (
                   <div key={t._key} className="flex items-start gap-2 p-2 rounded border bg-muted/20">
-                    <div className="grid gap-1.5 flex-1 grid-cols-2 md:grid-cols-6">
+                    <div className="grid gap-1.5 flex-1 grid-cols-2 md:grid-cols-7">
                       <div className="space-y-0.5">
                         <Label className="text-[9px]">Task #</Label>
                         <Input value={t.task_number} onChange={e => updateTask(idx, ti, 'task_number', e.target.value)} className="h-7 text-[11px]" />
@@ -1081,6 +1084,13 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
                       <div className="space-y-0.5 md:col-span-2">
                         <Label className="text-[9px]">Title</Label>
                         <Input value={t.title} onChange={e => updateTask(idx, ti, 'title', e.target.value)} className="h-7 text-[11px]" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <Label className="text-[9px]">Task Leader</Label>
+                        <select value={t.leader_partner_idx} onChange={e => updateTask(idx, ti, 'leader_partner_idx', e.target.value)} className="flex h-7 w-full rounded-md border border-input bg-background px-1 py-0.5 text-[11px]">
+                          <option value="">—</option>
+                          {partners.map((p, pi) => <option key={p._key} value={String(pi)}>{p.org_name || `#${p.participant_number}`}</option>)}
+                        </select>
                       </div>
                       <div className="space-y-0.5">
                         <Label className="text-[9px]">Start M</Label>
@@ -1149,7 +1159,7 @@ function StepDeliverablesAndMilestones({
           <Card key={d._key}>
             <CardContent className="p-3">
               <div className="flex items-start gap-2">
-                <div className="grid gap-2 flex-1 grid-cols-2 md:grid-cols-7">
+                <div className="grid gap-2 flex-1 grid-cols-2 md:grid-cols-4">
                   <div className="space-y-0.5">
                     <Label className="text-[10px]"># (e.g. D1.1)</Label>
                     <Input value={d.number} onChange={e => updateDeliverable(idx, 'number', e.target.value)} className="h-8 text-xs" />
@@ -1159,15 +1169,24 @@ function StepDeliverablesAndMilestones({
                     <Input value={d.title} onChange={e => updateDeliverable(idx, 'title', e.target.value)} className="h-8 text-xs" />
                   </div>
                   <div className="space-y-0.5">
-                    <Label className="text-[10px]">WP #</Label>
+                    <Label className="text-[10px]">Due M</Label>
+                    <Input type="number" value={d.due_month} onChange={e => updateDeliverable(idx, 'due_month', e.target.value)} className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <Label className="text-[10px]">WP</Label>
                     <select value={d.wp_number} onChange={e => updateDeliverable(idx, 'wp_number', e.target.value)} className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs">
                       <option value="">—</option>
-                      {wps.map(w => <option key={w._key} value={w.wp_number}>WP{w.wp_number}</option>)}
+                      {wps.map(w => <option key={w._key} value={w.wp_number}>WP{w.wp_number} {w.title ? `— ${w.title}` : ''}</option>)}
                     </select>
                   </div>
                   <div className="space-y-0.5">
-                    <Label className="text-[10px]">Due M</Label>
-                    <Input type="number" value={d.due_month} onChange={e => updateDeliverable(idx, 'due_month', e.target.value)} className="h-8 text-xs" />
+                    <Label className="text-[10px]">Task</Label>
+                    <select value={d.task_number} onChange={e => updateDeliverable(idx, 'task_number', e.target.value)} className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs">
+                      <option value="">—</option>
+                      {wps.flatMap(w => w.tasks.map(t => (
+                        <option key={t._key} value={t.task_number}>{t.task_number} {t.title ? `— ${t.title}` : ''}</option>
+                      )))}
+                    </select>
                   </div>
                   <div className="space-y-0.5">
                     <Label className="text-[10px]">Type</Label>
@@ -1181,10 +1200,10 @@ function StepDeliverablesAndMilestones({
                     </select>
                   </div>
                   <div className="space-y-0.5">
-                    <Label className="text-[10px]">Lead</Label>
+                    <Label className="text-[10px]">Lead Partner</Label>
                     <select value={d.leader_partner_idx} onChange={e => updateDeliverable(idx, 'leader_partner_idx', e.target.value)} className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs">
                       <option value="">—</option>
-                      {partners.map((p, pi) => <option key={p._key} value={String(pi)}>#{p.participant_number}</option>)}
+                      {partners.map((p, pi) => <option key={p._key} value={String(pi)}>{p.org_name || `Partner #${p.participant_number}`}</option>)}
                     </select>
                   </div>
                 </div>

@@ -603,6 +603,7 @@ export interface CollabDeliverable {
   id: string
   project_id: string
   wp_id: string | null
+  task_id: string | null
   number: string
   title: string
   description: string | null

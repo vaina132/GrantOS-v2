@@ -244,6 +244,7 @@ export const collabDeliverableService = {
 
   async createMany(projectId: string, deliverables: {
     wp_id?: string | null
+    task_id?: string | null
     number: string
     title: string
     description?: string | null
