@@ -16,10 +16,10 @@ export function useAbsences(filters?: Omit<AbsenceFilters, 'year'>) {
     try {
       const data = await absenceService.list(orgId, { ...filters, year: globalYear })
       setAbsences(data)
-    } catch (err) {
+    } catch (err: any) {
       console.error('[useAbsences] load failed:', err)
-      const message = err instanceof Error ? err.message : 'Failed to load absences'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err?.message || err?.details || err?.hint || JSON.stringify(err) || 'Unknown error'
+      toast({ title: 'Absence load error', description: message, variant: 'destructive' })
     } finally {
       setIsLoading(false)
     }

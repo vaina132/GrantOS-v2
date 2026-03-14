@@ -117,10 +117,10 @@ export function TimesheetGrid() {
 
       // Ensure envelope exists (don't block on failure)
       timesheetService.ensureEnvelope(orgId, currentPersonId, globalYear, selectedMonth).catch(() => {})
-    } catch (err) {
+    } catch (err: any) {
       console.error('[TimesheetGrid] loadData failed:', err)
-      const message = err instanceof Error ? err.message : 'Failed to load timesheet data'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err?.message || err?.details || err?.hint || JSON.stringify(err) || 'Unknown error'
+      toast({ title: 'Timesheet load error', description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
