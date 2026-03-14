@@ -501,3 +501,158 @@ export interface GrantAIExtraction {
   }[]
   confidence_notes: string
 }
+
+// ============================================================================
+// External Project Collaboration Module
+// ============================================================================
+
+export type CollabProjectStatus = 'draft' | 'active' | 'archived'
+export type CollabPartnerRole = 'coordinator' | 'partner'
+export type CollabPartnerInviteStatus = 'pending' | 'accepted' | 'declined'
+export type CollabPeriodType = 'formal' | 'informal'
+export type CollabReportStatus = 'draft' | 'submitted' | 'approved' | 'rejected'
+export type CollabIndirectCostBase = 'all_direct' | 'personnel_only' | 'all_except_subcontracting'
+export type CollabReportSection = 'personnel_effort' | 'personnel_costs' | 'subcontracting' | 'travel' | 'equipment' | 'other_goods'
+export type CollabEventType = 'generated' | 'saved' | 'submitted' | 'approved' | 'rejected' | 'resubmitted' | 'notified' | 'comment'
+
+export interface CollabProject {
+  id: string
+  host_org_id: string
+  title: string
+  acronym: string
+  grant_number: string | null
+  funding_programme: string | null
+  funding_scheme: string | null
+  start_date: string | null
+  end_date: string | null
+  duration_months: number | null
+  status: CollabProjectStatus
+  deviation_personnel_effort: number
+  deviation_personnel_costs: number
+  deviation_pm_rate: number
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  // Joined data
+  partners?: CollabPartner[]
+  work_packages?: CollabWorkPackage[]
+}
+
+export interface CollabPartner {
+  id: string
+  project_id: string
+  org_name: string
+  role: CollabPartnerRole
+  participant_number: number | null
+  contact_name: string | null
+  contact_email: string | null
+  budget_personnel: number
+  budget_subcontracting: number
+  budget_travel: number
+  budget_equipment: number
+  budget_other_goods: number
+  total_person_months: number
+  funding_rate: number
+  indirect_cost_rate: number
+  indirect_cost_base: CollabIndirectCostBase
+  user_id: string | null
+  linked_org_id: string | null
+  invite_status: CollabPartnerInviteStatus
+  invite_token: string | null
+  created_at: string
+  updated_at: string
+  // Joined data
+  contacts?: CollabContact[]
+  wp_allocations?: CollabPartnerWpAlloc[]
+}
+
+export interface CollabWorkPackage {
+  id: string
+  project_id: string
+  wp_number: number
+  title: string
+  total_person_months: number
+  created_at: string
+}
+
+export interface CollabPartnerWpAlloc {
+  id: string
+  partner_id: string
+  wp_id: string
+  person_months: number
+  created_at: string
+  // Joined
+  work_package?: CollabWorkPackage
+}
+
+export interface CollabContact {
+  id: string
+  partner_id: string
+  name: string
+  email: string
+  role_note: string | null
+  notify_reminders: boolean
+  notify_approvals: boolean
+  notify_rejections: boolean
+  created_at: string
+}
+
+export interface CollabReportingPeriod {
+  id: string
+  project_id: string
+  period_type: CollabPeriodType
+  title: string
+  start_month: number
+  end_month: number
+  due_date: string | null
+  reports_generated: boolean
+  beneficiaries_notified: boolean
+  created_at: string
+  updated_at: string
+  // Joined
+  reports?: CollabReport[]
+}
+
+export interface CollabReport {
+  id: string
+  period_id: string
+  partner_id: string
+  status: CollabReportStatus
+  submitted_at: string | null
+  reviewed_at: string | null
+  reviewed_by: string | null
+  rejection_note: string | null
+  created_at: string
+  updated_at: string
+  // Joined
+  partner?: CollabPartner
+  period?: CollabReportingPeriod
+  lines?: CollabReportLine[]
+  events?: CollabReportEvent[]
+}
+
+export interface CollabReportLine {
+  id: string
+  report_id: string
+  section: CollabReportSection
+  wp_id: string | null
+  line_order: number
+  data: Record<string, any>
+  justification: string | null
+  justification_required: boolean
+  created_at: string
+  updated_at: string
+  // Joined
+  work_package?: CollabWorkPackage
+}
+
+export interface CollabReportEvent {
+  id: string
+  report_id: string
+  event_type: CollabEventType
+  actor_user_id: string | null
+  actor_name: string | null
+  actor_role: 'coordinator' | 'partner' | 'system' | null
+  note: string | null
+  created_at: string
+}

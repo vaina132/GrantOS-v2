@@ -3,6 +3,9 @@ import { ProjectList } from './ProjectList'
 import { ProjectDetail } from './ProjectDetail'
 import { ProjectForm } from './ProjectForm'
 import { GrantAIWizard } from './GrantAIWizard'
+import { CollabProjectList } from './collaboration/CollabProjectList'
+import { CollabProjectSetup } from './collaboration/CollabProjectSetup'
+import { CollabProjectDetail } from './collaboration/CollabProjectDetail'
 
 export function ProjectsPage() {
   return (
@@ -10,6 +13,9 @@ export function ProjectsPage() {
       <Route index element={<ProjectList />} />
       <Route path="new" element={<ProjectForm />} />
       <Route path="import-ai" element={<GrantAIWizard />} />
+      <Route path="collaboration" element={<CollabProjectList />} />
+      <Route path="collaboration/new" element={<CollabProjectSetup />} />
+      <Route path="collaboration/:id" element={<CollabProjectDetail />} />
       <Route path=":id" element={<ProjectDetail />} />
       <Route path=":id/edit" element={<ProjectForm />} />
     </Routes>
