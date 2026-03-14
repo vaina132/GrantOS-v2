@@ -126,6 +126,7 @@ export type Database = {
           can_generate_reports: boolean
           can_manage_users: boolean
           can_manage_org: boolean
+          can_see_proposals: boolean
           created_at: string
           updated_at: string
         }
@@ -156,6 +157,7 @@ export type Database = {
           can_generate_reports?: boolean
           can_manage_users?: boolean
           can_manage_org?: boolean
+          can_see_proposals?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -186,6 +188,7 @@ export type Database = {
           can_generate_reports?: boolean
           can_manage_users?: boolean
           can_manage_org?: boolean
+          can_see_proposals?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -1335,6 +1338,384 @@ export type Database = {
             referencedColumns: ['id']
           },
         ]
+      }
+      collab_projects: {
+        Row: {
+          id: string
+          host_org_id: string
+          title: string
+          acronym: string
+          grant_number: string | null
+          funding_programme: string | null
+          funding_scheme: string | null
+          start_date: string | null
+          end_date: string | null
+          duration_months: number | null
+          status: string
+          deviation_personnel_effort: number
+          deviation_personnel_costs: number
+          deviation_pm_rate: number
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          host_org_id: string
+          title: string
+          acronym: string
+          grant_number?: string | null
+          funding_programme?: string | null
+          funding_scheme?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          duration_months?: number | null
+          status?: string
+          deviation_personnel_effort?: number
+          deviation_personnel_costs?: number
+          deviation_pm_rate?: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          host_org_id?: string
+          title?: string
+          acronym?: string
+          grant_number?: string | null
+          funding_programme?: string | null
+          funding_scheme?: string | null
+          start_date?: string | null
+          end_date?: string | null
+          duration_months?: number | null
+          status?: string
+          deviation_personnel_effort?: number
+          deviation_personnel_costs?: number
+          deviation_pm_rate?: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      collab_partners: {
+        Row: {
+          id: string
+          project_id: string
+          org_name: string
+          role: string
+          participant_number: number | null
+          contact_name: string | null
+          contact_email: string | null
+          country: string | null
+          budget_personnel: number
+          budget_subcontracting: number
+          budget_travel: number
+          budget_equipment: number
+          budget_other_goods: number
+          total_person_months: number
+          funding_rate: number
+          indirect_cost_rate: number
+          indirect_cost_base: string
+          user_id: string | null
+          linked_org_id: string | null
+          invite_status: string
+          invite_token: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          org_name: string
+          role: string
+          participant_number?: number | null
+          contact_name?: string | null
+          contact_email?: string | null
+          country?: string | null
+          budget_personnel?: number
+          budget_subcontracting?: number
+          budget_travel?: number
+          budget_equipment?: number
+          budget_other_goods?: number
+          total_person_months?: number
+          funding_rate?: number
+          indirect_cost_rate?: number
+          indirect_cost_base?: string
+          user_id?: string | null
+          linked_org_id?: string | null
+          invite_status?: string
+          invite_token?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          org_name?: string
+          role?: string
+          participant_number?: number | null
+          contact_name?: string | null
+          contact_email?: string | null
+          country?: string | null
+          budget_personnel?: number
+          budget_subcontracting?: number
+          budget_travel?: number
+          budget_equipment?: number
+          budget_other_goods?: number
+          total_person_months?: number
+          funding_rate?: number
+          indirect_cost_rate?: number
+          indirect_cost_base?: string
+          user_id?: string | null
+          linked_org_id?: string | null
+          invite_status?: string
+          invite_token?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      collab_work_packages: {
+        Row: {
+          id: string
+          project_id: string
+          wp_number: number
+          title: string
+          total_person_months: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          wp_number: number
+          title: string
+          total_person_months?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          wp_number?: number
+          title?: string
+          total_person_months?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      collab_partner_wp_allocs: {
+        Row: {
+          id: string
+          partner_id: string
+          wp_id: string
+          person_months: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          partner_id: string
+          wp_id: string
+          person_months?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          partner_id?: string
+          wp_id?: string
+          person_months?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      collab_contacts: {
+        Row: {
+          id: string
+          partner_id: string
+          name: string
+          email: string
+          role_note: string | null
+          notify_reminders: boolean
+          notify_approvals: boolean
+          notify_rejections: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          partner_id: string
+          name: string
+          email: string
+          role_note?: string | null
+          notify_reminders?: boolean
+          notify_approvals?: boolean
+          notify_rejections?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          partner_id?: string
+          name?: string
+          email?: string
+          role_note?: string | null
+          notify_reminders?: boolean
+          notify_approvals?: boolean
+          notify_rejections?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      collab_reporting_periods: {
+        Row: {
+          id: string
+          project_id: string
+          period_type: string
+          title: string
+          start_month: number
+          end_month: number
+          due_date: string | null
+          reports_generated: boolean
+          beneficiaries_notified: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          period_type: string
+          title: string
+          start_month: number
+          end_month: number
+          due_date?: string | null
+          reports_generated?: boolean
+          beneficiaries_notified?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          period_type?: string
+          title?: string
+          start_month?: number
+          end_month?: number
+          due_date?: string | null
+          reports_generated?: boolean
+          beneficiaries_notified?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      collab_reports: {
+        Row: {
+          id: string
+          period_id: string
+          partner_id: string
+          status: string
+          submitted_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          rejection_note: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          period_id: string
+          partner_id: string
+          status?: string
+          submitted_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          period_id?: string
+          partner_id?: string
+          status?: string
+          submitted_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          rejection_note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      collab_report_lines: {
+        Row: {
+          id: string
+          report_id: string
+          section: string
+          wp_id: string | null
+          line_order: number
+          data: Json
+          justification: string | null
+          justification_required: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          report_id: string
+          section: string
+          wp_id?: string | null
+          line_order?: number
+          data?: Json
+          justification?: string | null
+          justification_required?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          report_id?: string
+          section?: string
+          wp_id?: string | null
+          line_order?: number
+          data?: Json
+          justification?: string | null
+          justification_required?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      collab_report_events: {
+        Row: {
+          id: string
+          report_id: string
+          event_type: string
+          actor_user_id: string | null
+          actor_name: string | null
+          actor_role: string | null
+          note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          report_id: string
+          event_type: string
+          actor_user_id?: string | null
+          actor_name?: string | null
+          actor_role?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          report_id?: string
+          event_type?: string
+          actor_user_id?: string | null
+          actor_name?: string | null
+          actor_role?: string | null
+          note?: string | null
+          created_at?: string
+        }
+        Relationships: []
       }
     }
     Views: {
