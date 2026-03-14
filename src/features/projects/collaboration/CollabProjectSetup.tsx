@@ -491,6 +491,13 @@ function StepWorkPackages({ wps, updateWp, addWp, removeWp }: {
       <Card>
         <CardContent className="p-4">
           <div className="space-y-3">
+            {/* Column headers */}
+            <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground">
+              <div className="w-20 text-center">WP #</div>
+              <div className="flex-1">Title</div>
+              <div className="w-28 text-right">Person-Months</div>
+              {wps.length > 1 && <div className="w-8" />}
+            </div>
             {wps.map((wp, idx) => (
               <div key={wp._key} className="flex items-center gap-3">
                 <div className="w-20">
@@ -514,7 +521,7 @@ function StepWorkPackages({ wps, updateWp, addWp, removeWp }: {
                     type="number"
                     value={wp.total_person_months}
                     onChange={e => updateWp(idx, 'total_person_months', e.target.value)}
-                    placeholder="PMs"
+                    placeholder="0"
                     className="h-9 text-sm text-right"
                   />
                 </div>

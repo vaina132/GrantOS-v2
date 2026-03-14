@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS collab_partners (
   participant_number INTEGER,
   contact_name TEXT,
   contact_email TEXT,
+  country TEXT,
   -- Budget allocations from Grant Agreement
   budget_personnel NUMERIC(14,2) DEFAULT 0,
   budget_subcontracting NUMERIC(14,2) DEFAULT 0,
