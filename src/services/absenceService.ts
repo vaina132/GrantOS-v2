@@ -8,7 +8,7 @@ export interface AbsenceFilters {
   month?: number
 }
 
-const SELECT = '*, persons(full_name)'
+const SELECT = '*, persons!absences_person_id_fkey(full_name)'
 
 export const absenceService = {
   async list(orgId: string | null, filters?: AbsenceFilters): Promise<Absence[]> {
@@ -135,7 +135,7 @@ export const absenceService = {
   ): Promise<Absence[]> {
     let query = supabase
       .from('absences')
-      .select('*, persons(full_name, department, avatar_url)')
+      .select('*, persons!absences_person_id_fkey(full_name, department, avatar_url)')
       .eq('org_id', orgId)
       .in('status', ['pending', 'approved'])
       .lte('start_date', endDate)

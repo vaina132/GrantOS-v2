@@ -111,7 +111,7 @@ async function fetchReportData(
     case 'absence_summary': {
       const { data, error } = await supabase
         .from('absences')
-        .select('type, days, start_date, end_date, persons(full_name)')
+        .select('type, days, start_date, end_date, persons!absences_person_id_fkey(full_name)')
         .eq('org_id', orgId)
       if (error) throw error
       return {
