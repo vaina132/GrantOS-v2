@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Contact, Download } from 'lucide-react'
+import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Contact, Download, ChevronDown, ChevronRight, Target, ListChecks } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
-import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService } from '@/services/collabProjectService'
+import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService, collabTaskService, collabDeliverableService, collabMilestoneService } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,7 +17,7 @@ import { EditProjectDialog } from './EditProjectDialog'
 import { EditAllocDialog } from './EditAllocDialog'
 import { EditContactDialog } from './EditContactDialog'
 import { generateCollabBudgetPDF } from '@/services/reportGenerator'
-import type { CollabProject, CollabPartner, CollabWorkPackage, CollabPartnerWpAlloc, CollabReportingPeriod, CollabReport } from '@/types'
+import type { CollabProject, CollabPartner, CollabWorkPackage, CollabPartnerWpAlloc, CollabReportingPeriod, CollabReport, CollabTask, CollabDeliverable, CollabMilestone } from '@/types'
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
@@ -40,6 +40,10 @@ export function CollabProjectDetail() {
   const [wps, setWps] = useState<CollabWorkPackage[]>([])
   const [allocs, setAllocs] = useState<CollabPartnerWpAlloc[]>([])
   const [periods, setPeriods] = useState<CollabReportingPeriod[]>([])
+  const [tasksByWp, setTasksByWp] = useState<Record<string, CollabTask[]>>({})
+  const [deliverables, setDeliverables] = useState<CollabDeliverable[]>([])
+  const [milestones, setMilestones] = useState<CollabMilestone[]>([])
+  const [expandedWps, setExpandedWps] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [sendingInvites, setSendingInvites] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -85,6 +89,23 @@ export function CollabProjectDetail() {
         } catch { /* ignore */ }
       }
       setAllocs(allAllocs)
+      // Load tasks for each WP
+      const tMap: Record<string, CollabTask[]> = {}
+      for (const wp of workPackages) {
+        try {
+          tMap[wp.id] = await collabTaskService.list(wp.id)
+        } catch { /* ignore */ }
+      }
+      setTasksByWp(tMap)
+      // Load deliverables & milestones
+      try {
+        const [dels, mss] = await Promise.all([
+          collabDeliverableService.list(id),
+          collabMilestoneService.list(id),
+        ])
+        setDeliverables(dels)
+        setMilestones(mss)
+      } catch { /* ignore */ }
       // Pre-load reports for generated periods so status badges show
       const rpMap: Record<string, CollabReport[]> = {}
       for (const per of rPeriods) {
@@ -383,7 +404,7 @@ export function CollabProjectDetail() {
       </div>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold">{partners.length}</p>
@@ -395,6 +416,18 @@ export function CollabProjectDetail() {
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-bold">{wps.length}</p>
             <p className="text-xs text-muted-foreground">Work Packages</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold">{deliverables.length}</p>
+            <p className="text-xs text-muted-foreground">Deliverables</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <p className="text-2xl font-bold">{milestones.length}</p>
+            <p className="text-xs text-muted-foreground">Milestones</p>
           </CardContent>
         </Card>
         <Card>
@@ -422,6 +455,9 @@ export function CollabProjectDetail() {
           </TabsTrigger>
           <TabsTrigger value="periods" className="gap-2">
             <Calendar className="h-4 w-4" /> Reporting Periods
+          </TabsTrigger>
+          <TabsTrigger value="deliverables" className="gap-2">
+            <ListChecks className="h-4 w-4" /> Deliverables & Milestones
           </TabsTrigger>
           <TabsTrigger value="budget" className="gap-2">
             <DollarSign className="h-4 w-4" /> Budget Overview
@@ -525,27 +561,73 @@ export function CollabProjectDetail() {
                     {wps.map(wp => {
                       const wpAllocs = allocs.filter(a => a.wp_id === wp.id)
                       const totalAllocated = wpAllocs.reduce((s, a) => s + a.person_months, 0)
+                      const wpTasks = tasksByWp[wp.id] ?? []
+                      const isExpWp = expandedWps.has(wp.id)
+                      const leaderPartner = wp.leader_partner_id ? partners.find(p => p.id === wp.leader_partner_id) : null
                       return (
-                        <tr key={wp.id} className="border-b last:border-0">
-                          <td className="p-3 font-mono">{wp.wp_number}</td>
-                          <td className="p-3">{wp.title}</td>
-                          <td className="p-3 text-right">{wp.total_person_months}</td>
-                          {partners.map(p => {
-                            const a = wpAllocs.find(al => al.partner_id === p.id)
+                        <React.Fragment key={wp.id}>
+                          <tr
+                            className="border-b hover:bg-muted/30 cursor-pointer"
+                            onClick={() => setExpandedWps(prev => {
+                              const next = new Set(prev)
+                              next.has(wp.id) ? next.delete(wp.id) : next.add(wp.id)
+                              return next
+                            })}
+                          >
+                            <td className="p-3 font-mono">
+                              <div className="flex items-center gap-1">
+                                {wpTasks.length > 0 ? (
+                                  isExpWp ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                                ) : <span className="w-3" />}
+                                {wp.wp_number}
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <div>{wp.title}</div>
+                              <div className="flex gap-3 text-[10px] text-muted-foreground mt-0.5">
+                                {leaderPartner && <span>Lead: {leaderPartner.org_name}</span>}
+                                {wp.start_month != null && wp.end_month != null && <span>M{wp.start_month}–M{wp.end_month}</span>}
+                                {wpTasks.length > 0 && <span>{wpTasks.length} task{wpTasks.length !== 1 ? 's' : ''}</span>}
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">{wp.total_person_months}</td>
+                            {partners.map(p => {
+                              const a = wpAllocs.find(al => al.partner_id === p.id)
+                              return (
+                                <td key={p.id} className="p-3 text-right tabular-nums text-xs text-muted-foreground">
+                                  {a ? a.person_months : '—'}
+                                </td>
+                              )
+                            })}
+                            <td className={`p-3 text-right tabular-nums font-medium ${
+                              Math.abs(totalAllocated - wp.total_person_months) > 0.1
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : 'text-emerald-600 dark:text-emerald-400'
+                            }`}>
+                              {totalAllocated.toFixed(1)}
+                            </td>
+                          </tr>
+                          {isExpWp && wpTasks.map(t => {
+                            const taskLeader = t.leader_partner_id ? partners.find(p => p.id === t.leader_partner_id) : null
                             return (
-                              <td key={p.id} className="p-3 text-right tabular-nums text-xs text-muted-foreground">
-                                {a ? a.person_months : '—'}
-                              </td>
+                              <tr key={t.id} className="border-b bg-muted/[0.04]">
+                                <td className="p-2 pl-8 font-mono text-xs text-muted-foreground">{t.task_number}</td>
+                                <td className="p-2 text-xs">
+                                  <div>{t.title}</div>
+                                  <div className="flex gap-3 text-[10px] text-muted-foreground mt-0.5">
+                                    {taskLeader && <span>Lead: {taskLeader.org_name}</span>}
+                                    {t.start_month != null && t.end_month != null && <span>M{t.start_month}–M{t.end_month}</span>}
+                                  </div>
+                                </td>
+                                <td className="p-2 text-right text-xs text-muted-foreground">{t.person_months > 0 ? t.person_months : '—'}</td>
+                                {partners.map(p => (
+                                  <td key={p.id} className="p-2"></td>
+                                ))}
+                                <td className="p-2"></td>
+                              </tr>
                             )
                           })}
-                          <td className={`p-3 text-right tabular-nums font-medium ${
-                            Math.abs(totalAllocated - wp.total_person_months) > 0.1
-                              ? 'text-amber-600 dark:text-amber-400'
-                              : 'text-emerald-600 dark:text-emerald-400'
-                          }`}>
-                            {totalAllocated.toFixed(1)}
-                          </td>
-                        </tr>
+                        </React.Fragment>
                       )
                     })}
                     <tr className="bg-muted/50 font-medium">
@@ -777,6 +859,102 @@ export function CollabProjectDetail() {
               })}
             </div>
           )}
+        </TabsContent>
+
+        {/* Deliverables & Milestones Tab */}
+        <TabsContent value="deliverables" className="mt-4 space-y-6">
+          {/* Deliverables */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <ListChecks className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium">Deliverables</h3>
+              <Badge variant="secondary" className="text-[10px]">{deliverables.length}</Badge>
+            </div>
+            {deliverables.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">No deliverables defined yet</p>
+            ) : (
+              <Card>
+                <CardContent className="p-0 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="px-3 py-2 text-left font-medium text-xs w-20">#</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs">Title</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs w-16">WP</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs w-20">Type</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs w-24">Dissemination</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs w-20">Due</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs">Lead</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {deliverables.map((d, idx) => {
+                        const wp = d.wp_id ? wps.find(w => w.id === d.wp_id) : null
+                        const leader = d.leader_partner_id ? partners.find(p => p.id === d.leader_partner_id) : null
+                        return (
+                          <tr key={d.id} className={`border-b last:border-0 ${idx % 2 === 1 ? 'bg-muted/[0.03]' : ''}`}>
+                            <td className="px-3 py-2 font-mono text-xs">{d.number}</td>
+                            <td className="px-3 py-2">{d.title}</td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground">{wp ? `WP${wp.wp_number}` : '—'}</td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground capitalize">{d.type || '—'}</td>
+                            <td className="px-3 py-2 text-xs">
+                              {d.dissemination ? (
+                                <Badge variant="outline" className="text-[10px] capitalize">{d.dissemination}</Badge>
+                              ) : '—'}
+                            </td>
+                            <td className="px-3 py-2 text-xs font-mono">M{d.due_month}</td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground">{leader?.org_name ?? '—'}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Milestones */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium">Milestones</h3>
+              <Badge variant="secondary" className="text-[10px]">{milestones.length}</Badge>
+            </div>
+            {milestones.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">No milestones defined yet</p>
+            ) : (
+              <Card>
+                <CardContent className="p-0 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="px-3 py-2 text-left font-medium text-xs w-20">#</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs">Title</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs w-16">WP</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs w-20">Due</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs">Verification Means</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {milestones.map((m, idx) => {
+                        const wp = m.wp_id ? wps.find(w => w.id === m.wp_id) : null
+                        return (
+                          <tr key={m.id} className={`border-b last:border-0 ${idx % 2 === 1 ? 'bg-muted/[0.03]' : ''}`}>
+                            <td className="px-3 py-2 font-mono text-xs">{m.number}</td>
+                            <td className="px-3 py-2">{m.title}</td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground">{wp ? `WP${wp.wp_number}` : '—'}</td>
+                            <td className="px-3 py-2 text-xs font-mono">M{m.due_month}</td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground">{m.verification_means || '—'}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </TabsContent>
 
         {/* Budget Overview Tab */}
