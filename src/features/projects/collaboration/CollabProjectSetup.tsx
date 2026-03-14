@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, ArrowRight, Check, Plus, Trash2, Upload, Sparkles, Loader2,
-  FileText, X, AlertTriangle, Info, ChevronDown, ChevronRight,
+  FileText, X, AlertTriangle, Info,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import {
@@ -282,7 +282,7 @@ function dateWarning(project: ProjectFormData): string | null {
 // Main Component
 // ============================================================================
 
-export function CollabProjectSetup() {
+export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-import' }) {
   const { orgId, user } = useAuthStore()
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
@@ -474,6 +474,7 @@ export function CollabProjectSetup() {
     setSaving(true)
     try {
       // 1. Create the project
+      console.log('[CollabCreate] Step 1: Creating project…')
       const created = await collabProjectService.create({
         host_org_id: orgId,
         title: project.title,
@@ -487,8 +488,10 @@ export function CollabProjectSetup() {
         status: 'draft',
         created_by: user?.id || null,
       } as any)
+      console.log('[CollabCreate] Project created:', created.id)
 
-      // 2. Create partners first (we need IDs for leadership references)
+      // 2. Create partners (we need IDs for leadership references)
+      console.log('[CollabCreate] Step 2: Creating partners…')
       const partnerMap: Record<number, string> = {}
       for (let i = 0; i < partners.length; i++) {
         const p = partners[i]
@@ -510,75 +513,112 @@ export function CollabProjectSetup() {
         if (p.contact_name) partnerData.contact_name = p.contact_name
         if (p.contact_email) partnerData.contact_email = p.contact_email
         if (p.country) partnerData.country = p.country
+        // org_type is from enhance_collab_module migration — include only if non-empty
         if (p.org_type) partnerData.org_type = p.org_type
-        const cp = await collabPartnerService.create(partnerData as any)
-        partnerMap[i] = cp.id
+        try {
+          const cp = await collabPartnerService.create(partnerData as any)
+          partnerMap[i] = cp.id
+          console.log(`[CollabCreate] Partner ${i} created:`, cp.id)
+        } catch (pErr) {
+          // If org_type column doesn't exist, retry without it
+          console.warn(`[CollabCreate] Partner ${i} create failed, retrying without org_type:`, pErr)
+          delete partnerData.org_type
+          const cp = await collabPartnerService.create(partnerData as any)
+          partnerMap[i] = cp.id
+          console.log(`[CollabCreate] Partner ${i} created (without org_type):`, cp.id)
+        }
       }
 
       // 3. Create work packages
-      const createdWps = await collabWpService.upsertMany(
-        created.id,
-        wps.filter(w => w.title.trim()).map(w => ({
-          wp_number: parseInt(w.wp_number) || 0,
-          title: w.title,
-          total_person_months: parseFloat(w.total_person_months) || 0,
-          start_month: w.start_month ? parseInt(w.start_month) : null,
-          end_month: w.end_month ? parseInt(w.end_month) : null,
-          leader_partner_id: w.leader_partner_idx ? (partnerMap[parseInt(w.leader_partner_idx)] || null) : null,
-        }))
-      )
+      console.log('[CollabCreate] Step 3: Creating work packages…')
+      let createdWps: any[] = []
+      const wpRows = wps.filter(w => w.title.trim()).map(w => ({
+        wp_number: parseInt(w.wp_number) || 0,
+        title: w.title,
+        total_person_months: parseFloat(w.total_person_months) || 0,
+        start_month: w.start_month ? parseInt(w.start_month) : null,
+        end_month: w.end_month ? parseInt(w.end_month) : null,
+        leader_partner_id: w.leader_partner_idx ? (partnerMap[parseInt(w.leader_partner_idx)] || null) : null,
+      }))
+      try {
+        createdWps = await collabWpService.upsertMany(created.id, wpRows)
+      } catch (wpErr) {
+        // If new columns don't exist, retry with basic fields only
+        console.warn('[CollabCreate] WP create with new fields failed, retrying basic:', wpErr)
+        createdWps = await collabWpService.upsertMany(
+          created.id,
+          wpRows.map(({ start_month, end_month, leader_partner_id, ...basic }) => basic)
+        )
+      }
+      console.log(`[CollabCreate] ${createdWps.length} WPs created`)
 
       // Build WP number → ID map
       const wpIdMap: Record<number, string> = {}
       for (const wp of createdWps) wpIdMap[wp.wp_number] = wp.id
 
-      // 4. Create tasks for each WP
-      for (const wp of wps) {
-        const wpId = wpIdMap[parseInt(wp.wp_number)]
-        if (!wpId || wp.tasks.length === 0) continue
-        await collabTaskService.createMany(
-          created.id,
-          wpId,
-          wp.tasks.filter(t => t.title.trim()).map(t => ({
-            task_number: t.task_number,
-            title: t.title,
-            start_month: t.start_month ? parseInt(t.start_month) : null,
-            end_month: t.end_month ? parseInt(t.end_month) : null,
-            leader_partner_id: t.leader_partner_idx ? (partnerMap[parseInt(t.leader_partner_idx)] || null) : null,
-            person_months: parseFloat(t.person_months) || 0,
-          }))
-        )
+      // 4. Create tasks for each WP (optional — table may not exist yet)
+      try {
+        for (const wp of wps) {
+          const wpId = wpIdMap[parseInt(wp.wp_number)]
+          if (!wpId || wp.tasks.length === 0) continue
+          await collabTaskService.createMany(
+            created.id,
+            wpId,
+            wp.tasks.filter(t => t.title.trim()).map(t => ({
+              task_number: t.task_number,
+              title: t.title,
+              start_month: t.start_month ? parseInt(t.start_month) : null,
+              end_month: t.end_month ? parseInt(t.end_month) : null,
+              leader_partner_id: t.leader_partner_idx ? (partnerMap[parseInt(t.leader_partner_idx)] || null) : null,
+              person_months: parseFloat(t.person_months) || 0,
+            }))
+          )
+        }
+        console.log('[CollabCreate] Tasks created')
+      } catch (tErr) {
+        console.warn('[CollabCreate] Tasks creation skipped (migration may be pending):', tErr)
       }
 
-      // 5. Create deliverables
-      const delsToCreate = deliverables.filter(d => d.title.trim()).map(d => ({
-        wp_id: d.wp_number ? (wpIdMap[parseInt(d.wp_number)] || null) : null,
-        number: d.number,
-        title: d.title,
-        type: d.type || null,
-        dissemination: d.dissemination || null,
-        due_month: parseInt(d.due_month) || 1,
-        leader_partner_id: d.leader_partner_idx ? (partnerMap[parseInt(d.leader_partner_idx)] || null) : null,
-      }))
-      if (delsToCreate.length > 0) {
-        await collabDeliverableService.createMany(created.id, delsToCreate)
+      // 5. Create deliverables (optional — table may not exist yet)
+      try {
+        const delsToCreate = deliverables.filter(d => d.title.trim()).map(d => ({
+          wp_id: d.wp_number ? (wpIdMap[parseInt(d.wp_number)] || null) : null,
+          number: d.number,
+          title: d.title,
+          type: d.type || null,
+          dissemination: d.dissemination || null,
+          due_month: parseInt(d.due_month) || 1,
+          leader_partner_id: d.leader_partner_idx ? (partnerMap[parseInt(d.leader_partner_idx)] || null) : null,
+        }))
+        if (delsToCreate.length > 0) {
+          await collabDeliverableService.createMany(created.id, delsToCreate)
+          console.log(`[CollabCreate] ${delsToCreate.length} deliverables created`)
+        }
+      } catch (dErr) {
+        console.warn('[CollabCreate] Deliverables creation skipped (migration may be pending):', dErr)
       }
 
-      // 6. Create milestones
-      const msToCreate = milestones.filter(m => m.title.trim()).map(m => ({
-        wp_id: m.wp_number ? (wpIdMap[parseInt(m.wp_number)] || null) : null,
-        number: m.number,
-        title: m.title,
-        due_month: parseInt(m.due_month) || 1,
-        verification_means: m.verification_means || null,
-      }))
-      if (msToCreate.length > 0) {
-        await collabMilestoneService.createMany(created.id, msToCreate)
+      // 6. Create milestones (optional — table may not exist yet)
+      try {
+        const msToCreate = milestones.filter(m => m.title.trim()).map(m => ({
+          wp_id: m.wp_number ? (wpIdMap[parseInt(m.wp_number)] || null) : null,
+          number: m.number,
+          title: m.title,
+          due_month: parseInt(m.due_month) || 1,
+          verification_means: m.verification_means || null,
+        }))
+        if (msToCreate.length > 0) {
+          await collabMilestoneService.createMany(created.id, msToCreate)
+          console.log(`[CollabCreate] ${msToCreate.length} milestones created`)
+        }
+      } catch (mErr) {
+        console.warn('[CollabCreate] Milestones creation skipped (migration may be pending):', mErr)
       }
 
       toast({ title: 'Created', description: `Collaboration project "${project.acronym}" created successfully` })
       navigate(`/projects/collaboration/${created.id}`)
     } catch (err) {
+      console.error('[CollabCreate] FATAL ERROR:', err)
       const msg = err instanceof Error ? err.message : 'Failed to create project'
       toast({ title: 'Error', description: msg, variant: 'destructive' })
     } finally {
@@ -613,8 +653,8 @@ export function CollabProjectSetup() {
         </div>
       </div>
 
-      {/* AI Import Banner */}
-      <Card className="border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+      {/* AI Import Banner — only shown on AI import route */}
+      {mode === 'ai-import' && <Card className="border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
             <Sparkles className="h-5 w-5 text-purple-500 mt-0.5 shrink-0" />
@@ -689,7 +729,7 @@ export function CollabProjectSetup() {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Stepper */}
       <div className="flex items-center gap-1">
@@ -966,9 +1006,6 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
   updateTask: (wpIdx: number, tIdx: number, field: string, value: string) => void
   removeTask: (wpIdx: number, tIdx: number) => void
 }) {
-  const [expanded, setExpanded] = useState<Record<number, boolean>>({})
-  const toggle = (i: number) => setExpanded(prev => ({ ...prev, [i]: !prev[i] }))
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -983,9 +1020,6 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
         <Card key={wp._key}>
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2">
-              <button onClick={() => toggle(idx)} className="text-muted-foreground hover:text-foreground">
-                {expanded[idx] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </button>
               <Badge variant="secondary" className="text-xs">WP{wp.wp_number}</Badge>
               <span className="font-medium text-sm flex-1 truncate">{wp.title || 'Untitled'}</span>
               {wps.length > 1 && (
@@ -1024,18 +1058,19 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
               </select>
             </div>
 
-            {/* Tasks */}
-            {expanded[idx] && (
-              <div className="ml-4 pl-4 border-l space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Tasks</span>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs gap-1" onClick={() => addTaskToWp(idx)}>
-                    <Plus className="h-3 w-3" /> Add Task
-                  </Button>
+            {/* Tasks — always visible */}
+            <div className="mt-2 pt-3 border-t space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold">Tasks under WP{wp.wp_number}</span>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/5" onClick={() => addTaskToWp(idx)}>
+                  <Plus className="h-3.5 w-3.5" /> Add Task
+                </Button>
+              </div>
+              {wp.tasks.length === 0 && (
+                <div className="rounded-md border border-dashed border-muted-foreground/25 py-4 text-center">
+                  <p className="text-xs text-muted-foreground">No tasks yet — click <strong>"Add Task"</strong> to break this WP into individual tasks</p>
                 </div>
-                {wp.tasks.length === 0 && (
-                  <p className="text-[11px] text-muted-foreground italic">No tasks yet. Click "Add Task" to define tasks under this WP.</p>
-                )}
+              )}
                 {wp.tasks.map((t, ti) => (
                   <div key={t._key} className="flex items-start gap-2 p-2 rounded border bg-muted/20">
                     <div className="grid gap-1.5 flex-1 grid-cols-2 md:grid-cols-6">
@@ -1065,8 +1100,7 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
                     </Button>
                   </div>
                 ))}
-              </div>
-            )}
+            </div>
           </CardContent>
         </Card>
       ))}

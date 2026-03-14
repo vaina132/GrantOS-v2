@@ -138,7 +138,7 @@ export function CollabProjectList() {
                 Upload a grant agreement PDF or budget table screenshot and let AI extract partners, work packages, deliverables, and milestones automatically.
               </p>
             </div>
-            <Button size="sm" variant="outline" className="shrink-0 gap-1.5 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40" onClick={() => navigate('/projects/collaboration/new')}>
+            <Button size="sm" variant="outline" className="shrink-0 gap-1.5 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40" onClick={() => navigate('/projects/collaboration/new/ai-import')}>
               <Sparkles className="h-3.5 w-3.5" />
               Import &amp; Create
             </Button>
@@ -184,10 +184,16 @@ export function CollabProjectList() {
             <p className="text-sm text-muted-foreground mb-6 max-w-md">
               Create a collaboration project to manage multi-partner EU-funded research with external financial reporting.
             </p>
-            <Button onClick={() => navigate('/projects/collaboration/new')} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Create Your First Collaboration
-            </Button>
+            <div className="flex gap-3">
+              <Button onClick={() => navigate('/projects/collaboration/new')} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create Manually
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/projects/collaboration/new/ai-import')} className="gap-2 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40">
+                <Sparkles className="h-4 w-4 text-purple-500" />
+                Import with AI
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : filtered.length === 0 ? (

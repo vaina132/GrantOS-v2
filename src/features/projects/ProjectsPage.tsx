@@ -15,7 +15,8 @@ export function ProjectsPage() {
       <Route path="new" element={<ProjectForm />} />
       <Route path="import-ai" element={<GrantAIWizard />} />
       <Route path="collaboration" element={<CollabProjectList />} />
-      <Route path="collaboration/new" element={<CollabProjectSetup />} />
+      <Route path="collaboration/new" element={<CollabProjectSetup mode="manual" />} />
+      <Route path="collaboration/new/ai-import" element={<CollabProjectSetup mode="ai-import" />} />
       <Route path="collaboration/:id" element={<CollabProjectDetail />} />
       <Route path="collaboration/report/:reportId" element={<CollabReportPage />} />
       <Route path=":id" element={<ProjectDetail />} />
