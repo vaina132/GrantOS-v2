@@ -122,6 +122,7 @@ export interface Project {
   budget_subcontracting: number | null
   budget_other: number | null
   responsible_person_id: string | null
+  collab_project_id: string | null
   created_at: string
   updated_at: string
   funding_schemes?: FundingScheme | null

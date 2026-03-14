@@ -8,7 +8,7 @@ import { useAuthStore } from '@/stores/authStore'
 import {
   collabProjectService, collabPartnerService, collabWpService,
   collabTaskService, collabDeliverableService, collabMilestoneService,
-  collabTaskEffortService,
+  collabTaskEffortService, syncCollabToMyProjects,
 } from '@/services/collabProjectService'
 import { settingsService } from '@/services/settingsService'
 import { collabAIService } from '@/services/collabAIService'
@@ -871,6 +871,9 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
         console.warn('[CollabCreate] Milestones creation skipped:', mErr)
       }
 
+      // Sync to My Projects
+      await syncCollabToMyProjects(created.id, orgId)
+
       toast({ title: 'Created', description: `Collaboration project "${project.acronym}" created successfully` })
       navigate(`/projects/collaboration/${created.id}`)
     } catch (err) {
@@ -1029,6 +1032,9 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
         }))
         if (msToCreate.length > 0) await collabMilestoneService.createMany(editId, msToCreate)
       } catch { /* ok */ }
+
+      // Sync to My Projects
+      await syncCollabToMyProjects(editId, orgId)
 
       toast({ title: 'Saved', description: `Project "${project.acronym}" updated successfully` })
       navigate(`/projects/collaboration/${editId}`)

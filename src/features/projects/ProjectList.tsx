@@ -75,8 +75,8 @@ export function ProjectList() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Projects"
-        description="Manage your grant projects"
+        title="My Projects"
+        description="Your organisation's share of each project"
         actions={
           can('canManageProjects') ? (
             <div className="flex gap-2">

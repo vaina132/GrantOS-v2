@@ -90,6 +90,117 @@ export const collabProjectService = {
 }
 
 // ============================================================================
+// Sync collab → My Projects
+// ============================================================================
+
+/**
+ * After creating or updating a collab project, upsert a corresponding row
+ * in the `projects` table that reflects **only the host organisation's**
+ * budget / PM slice.  The link is maintained via `collab_project_id`.
+ */
+export async function syncCollabToMyProjects(
+  collabProjectId: string,
+  orgId: string,
+): Promise<void> {
+  try {
+    // 1. Fetch collab project metadata
+    const { data: cp, error: cpErr } = await supabase
+      .from('collab_projects')
+      .select('*')
+      .eq('id', collabProjectId)
+      .single()
+    if (cpErr || !cp) return
+
+    // 2. Find the host partner (is_host = true, or linked_org_id matches, or first coordinator)
+    const { data: partners } = await supabase
+      .from('collab_partners')
+      .select('*')
+      .eq('project_id', collabProjectId)
+      .order('participant_number', { ascending: true })
+    const allPartners = (partners ?? []) as any[]
+    const hostPartner =
+      allPartners.find((p: any) => p.is_host === true) ??
+      allPartners.find((p: any) => p.linked_org_id === orgId) ??
+      allPartners.find((p: any) => p.role === 'coordinator') ??
+      allPartners[0]
+
+    if (!hostPartner) return
+
+    // 3. Compute budget values from the host partner
+    const totalDirect =
+      (hostPartner.budget_personnel ?? 0) +
+      (hostPartner.budget_subcontracting ?? 0) +
+      (hostPartner.budget_travel ?? 0) +
+      (hostPartner.budget_equipment ?? 0) +
+      (hostPartner.budget_other_goods ?? 0)
+
+    const indirectBase =
+      hostPartner.indirect_cost_base === 'personnel_only'
+        ? (hostPartner.budget_personnel ?? 0)
+        : hostPartner.indirect_cost_base === 'all_except_subcontracting'
+          ? totalDirect - (hostPartner.budget_subcontracting ?? 0)
+          : totalDirect
+    const indirect = indirectBase * ((hostPartner.indirect_cost_rate ?? 0) / 100)
+    const grandTotal = totalDirect + indirect
+
+    // Map collab status → project status
+    const statusMap: Record<string, string> = { draft: 'Upcoming', active: 'Active', archived: 'Completed' }
+    const projectStatus = statusMap[cp.status] ?? 'Upcoming'
+
+    // Compute end_date from start_date + duration if end_date is missing
+    let endDate = cp.end_date
+    if (!endDate && cp.start_date && cp.duration_months) {
+      const d = new Date(cp.start_date)
+      d.setMonth(d.getMonth() + cp.duration_months)
+      endDate = d.toISOString().split('T')[0]
+    }
+
+    const projectData: Record<string, any> = {
+      org_id: orgId,
+      acronym: cp.acronym,
+      title: cp.title,
+      grant_number: cp.grant_number || null,
+      status: projectStatus,
+      start_date: cp.start_date || new Date().toISOString().split('T')[0],
+      end_date: endDate || new Date().toISOString().split('T')[0],
+      total_budget: Math.round(grandTotal),
+      budget_personnel: hostPartner.budget_personnel ?? 0,
+      budget_travel: hostPartner.budget_travel ?? 0,
+      budget_subcontracting: hostPartner.budget_subcontracting ?? 0,
+      budget_other: (hostPartner.budget_equipment ?? 0) + (hostPartner.budget_other_goods ?? 0),
+      overhead_rate: hostPartner.indirect_cost_rate ?? 0,
+      is_lead_organisation: hostPartner.role === 'coordinator',
+      has_wps: true,
+      collab_project_id: collabProjectId,
+      updated_at: new Date().toISOString(),
+    }
+
+    // 4. Check if a linked project already exists
+    const { data: existing } = await (supabase as any)
+      .from('projects')
+      .select('id')
+      .eq('collab_project_id', collabProjectId)
+      .eq('org_id', orgId)
+      .maybeSingle()
+
+    if (existing?.id) {
+      // Update existing
+      await supabase
+        .from('projects')
+        .update(projectData as any)
+        .eq('id', existing.id)
+    } else {
+      // Create new
+      await supabase
+        .from('projects')
+        .insert(projectData as any)
+    }
+  } catch (err) {
+    console.warn('[syncCollabToMyProjects] Sync failed (non-fatal):', err)
+  }
+}
+
+// ============================================================================
 // Partners
 // ============================================================================
 

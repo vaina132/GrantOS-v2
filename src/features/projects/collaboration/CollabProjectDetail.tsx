@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Contact, Download, ChevronDown, ChevronRight, Target, ListChecks, GanttChart as GanttIcon } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
-import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService, collabTaskService, collabDeliverableService, collabMilestoneService, collabTaskEffortService } from '@/services/collabProjectService'
+import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService, collabTaskService, collabDeliverableService, collabMilestoneService, collabTaskEffortService, syncCollabToMyProjects } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -32,10 +32,20 @@ const INVITE_STATUS_COLORS: Record<string, string> = {
   declined: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400',
 }
 
+const TAB_ITEMS = [
+  { value: 'partners', label: 'Partners', icon: Users },
+  { value: 'wps', label: 'Work Packages', icon: FileText },
+  { value: 'periods', label: 'Periods', icon: Calendar },
+  { value: 'deliverables', label: 'Deliverables', icon: ListChecks },
+  { value: 'budget', label: 'Budget', icon: DollarSign },
+  { value: 'effort', label: 'Effort', icon: LayoutGrid },
+  { value: 'gantt', label: 'Timeline', icon: GanttIcon },
+]
+
 export function CollabProjectDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { orgName, user } = useAuthStore()
+  const { orgId, orgName, user } = useAuthStore()
   const [project, setProject] = useState<CollabProject | null>(null)
   const [partners, setPartners] = useState<CollabPartner[]>([])
   const [wps, setWps] = useState<CollabWorkPackage[]>([])
@@ -46,6 +56,7 @@ export function CollabProjectDetail() {
   const [milestones, setMilestones] = useState<CollabMilestone[]>([])
   const [expandedWps, setExpandedWps] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('partners')
   const [sendingInvites, setSendingInvites] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
@@ -143,6 +154,7 @@ export function CollabProjectDetail() {
     if (!id || !confirm('Launch this project? Status will change to Active.')) return
     try {
       await collabProjectService.launch(id)
+      if (orgId) await syncCollabToMyProjects(id, orgId)
       toast({ title: 'Launched', description: 'Project is now active' })
       load()
     } catch {
@@ -157,6 +169,7 @@ export function CollabProjectDetail() {
     if (!confirm(`${label} this project?`)) return
     try {
       await collabProjectService.update(id, { status: newStatus } as any)
+      if (orgId) await syncCollabToMyProjects(id, orgId)
       toast({ title: `${label}d`, description: `Project ${newStatus === 'archived' ? 'archived' : 'restored to active'}` })
       load()
     } catch {
@@ -495,29 +508,26 @@ export function CollabProjectDetail() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="partners">
-        <TabsList>
-          <TabsTrigger value="partners" className="gap-2">
-            <Users className="h-4 w-4" /> Partners
-          </TabsTrigger>
-          <TabsTrigger value="wps" className="gap-2">
-            <FileText className="h-4 w-4" /> Work Packages
-          </TabsTrigger>
-          <TabsTrigger value="periods" className="gap-2">
-            <Calendar className="h-4 w-4" /> Reporting Periods
-          </TabsTrigger>
-          <TabsTrigger value="deliverables" className="gap-2">
-            <ListChecks className="h-4 w-4" /> Deliverables & Milestones
-          </TabsTrigger>
-          <TabsTrigger value="budget" className="gap-2">
-            <DollarSign className="h-4 w-4" /> Budget Overview
-          </TabsTrigger>
-          <TabsTrigger value="effort" className="gap-2">
-            <LayoutGrid className="h-4 w-4" /> Effort Overview
-          </TabsTrigger>
-          <TabsTrigger value="gantt" className="gap-2">
-            <GanttIcon className="h-4 w-4" /> Timeline
-          </TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        {/* Mobile dropdown (visible < md) */}
+        <div className="md:hidden mb-4">
+          <select
+            value={activeTab}
+            onChange={e => setActiveTab(e.target.value)}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            {TAB_ITEMS.map(t => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </div>
+        {/* Desktop scrollable tabs (visible >= md) */}
+        <TabsList className="hidden md:inline-flex w-full justify-start overflow-x-auto">
+          {TAB_ITEMS.map(t => (
+            <TabsTrigger key={t.value} value={t.value} className="gap-1.5 text-xs whitespace-nowrap">
+              <t.icon className="h-3.5 w-3.5" /> {t.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         {/* Partners Tab */}
