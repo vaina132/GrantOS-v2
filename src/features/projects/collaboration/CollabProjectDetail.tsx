@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil } from 'lucide-react'
+import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService, collabPartnerService, collabWpService, collabPeriodService, collabReportService } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from '@/components/ui/use-toast'
 import { EditPartnerDialog } from './EditPartnerDialog'
 import { EditWpDialog } from './EditWpDialog'
+import { EditProjectDialog } from './EditProjectDialog'
 import type { CollabProject, CollabPartner, CollabWorkPackage, CollabReportingPeriod, CollabReport } from '@/types'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -43,6 +44,7 @@ export function CollabProjectDetail() {
   const [editPartner, setEditPartner] = useState<CollabPartner | null>(null)
   const [showPartnerDialog, setShowPartnerDialog] = useState(false)
   const [showWpDialog, setShowWpDialog] = useState(false)
+  const [showProjectDialog, setShowProjectDialog] = useState(false)
 
   // Period reports
   const [periodReports, setPeriodReports] = useState<Record<string, CollabReport[]>>({})
@@ -218,6 +220,17 @@ export function CollabProjectDetail() {
     }
   }
 
+  const handleDeletePeriod = async (periodId: string, title: string) => {
+    if (!confirm(`Delete reporting period "${title}"? This cannot be undone.`)) return
+    try {
+      await collabPeriodService.remove(periodId)
+      toast({ title: 'Deleted', description: `Period "${title}" removed` })
+      load()
+    } catch {
+      toast({ title: 'Error', description: 'Failed to delete period', variant: 'destructive' })
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -269,6 +282,9 @@ export function CollabProjectDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => setShowProjectDialog(true)} className="gap-2">
+            <Pencil className="h-4 w-4" /> Edit
+          </Button>
           {pendingCount > 0 && (
             <Button variant="outline" onClick={handleSendAllInvites} disabled={sendingInvites} className="gap-2">
               <Send className="h-4 w-4" />
@@ -326,6 +342,9 @@ export function CollabProjectDetail() {
           </TabsTrigger>
           <TabsTrigger value="periods" className="gap-2">
             <Calendar className="h-4 w-4" /> Reporting Periods
+          </TabsTrigger>
+          <TabsTrigger value="budget" className="gap-2">
+            <DollarSign className="h-4 w-4" /> Budget Overview
           </TabsTrigger>
         </TabsList>
 
@@ -520,9 +539,14 @@ export function CollabProjectDetail() {
                               <FileText className="h-3.5 w-3.5" /> {isExpanded ? 'Hide' : 'View'} Reports
                             </Button>
                           ) : (
-                            <Button size="sm" variant="outline" onClick={() => handleGenerateReports(p.id)} className="gap-1.5 text-xs">
-                              <FileText className="h-3.5 w-3.5" /> Generate Reports
-                            </Button>
+                            <>
+                              <Button size="sm" variant="outline" onClick={() => handleGenerateReports(p.id)} className="gap-1.5 text-xs">
+                                <FileText className="h-3.5 w-3.5" /> Generate Reports
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleDeletePeriod(p.id, p.title)} className="h-8 w-8 p-0">
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -571,7 +595,119 @@ export function CollabProjectDetail() {
             </div>
           )}
         </TabsContent>
+
+        {/* Budget Overview Tab */}
+        <TabsContent value="budget" className="mt-4 space-y-4">
+          {partners.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">Add partners to see budget overview</p>
+          ) : (
+            <Card>
+              <CardContent className="p-0 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left">
+                      <th className="p-3 font-medium sticky left-0 bg-background">Partner</th>
+                      <th className="p-3 font-medium text-right">Personnel</th>
+                      <th className="p-3 font-medium text-right">Subcontracting</th>
+                      <th className="p-3 font-medium text-right">Travel</th>
+                      <th className="p-3 font-medium text-right">Equipment</th>
+                      <th className="p-3 font-medium text-right">Other Goods</th>
+                      <th className="p-3 font-medium text-right">Total Direct</th>
+                      <th className="p-3 font-medium text-right">Indirect</th>
+                      <th className="p-3 font-medium text-right font-bold">Grand Total</th>
+                      <th className="p-3 font-medium text-right">Funding</th>
+                      <th className="p-3 font-medium text-right">PMs</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {partners.map(p => {
+                      const direct = p.budget_personnel + p.budget_subcontracting + p.budget_travel + p.budget_equipment + p.budget_other_goods
+                      const indirectBase = p.indirect_cost_base === 'personnel_only'
+                        ? p.budget_personnel
+                        : p.indirect_cost_base === 'all_except_subcontracting'
+                          ? direct - p.budget_subcontracting
+                          : direct
+                      const indirect = indirectBase * (p.indirect_cost_rate / 100)
+                      const grand = direct + indirect
+                      const funding = grand * (p.funding_rate / 100)
+                      return (
+                        <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                          <td className="p-3 font-medium sticky left-0 bg-background">
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant={p.role === 'coordinator' ? 'default' : 'secondary'} className="text-[10px]">
+                                {p.role === 'coordinator' ? 'C' : `#${p.participant_number}`}
+                              </Badge>
+                              {p.org_name}
+                            </div>
+                          </td>
+                          <td className="p-3 text-right tabular-nums">€{p.budget_personnel.toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums">€{p.budget_subcontracting.toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums">€{p.budget_travel.toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums">€{p.budget_equipment.toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums">€{p.budget_other_goods.toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums font-medium">€{direct.toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums text-muted-foreground">€{Math.round(indirect).toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums font-bold">€{Math.round(grand).toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums text-muted-foreground">€{Math.round(funding).toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums">{p.total_person_months}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                  <tfoot>
+                    {(() => {
+                      const totals = partners.reduce((acc, p) => {
+                        const direct = p.budget_personnel + p.budget_subcontracting + p.budget_travel + p.budget_equipment + p.budget_other_goods
+                        const indirectBase = p.indirect_cost_base === 'personnel_only'
+                          ? p.budget_personnel
+                          : p.indirect_cost_base === 'all_except_subcontracting'
+                            ? direct - p.budget_subcontracting
+                            : direct
+                        const indirect = indirectBase * (p.indirect_cost_rate / 100)
+                        const grand = direct + indirect
+                        const funding = grand * (p.funding_rate / 100)
+                        return {
+                          personnel: acc.personnel + p.budget_personnel,
+                          subcontracting: acc.subcontracting + p.budget_subcontracting,
+                          travel: acc.travel + p.budget_travel,
+                          equipment: acc.equipment + p.budget_equipment,
+                          other: acc.other + p.budget_other_goods,
+                          direct: acc.direct + direct,
+                          indirect: acc.indirect + indirect,
+                          grand: acc.grand + grand,
+                          funding: acc.funding + funding,
+                          pms: acc.pms + p.total_person_months,
+                        }
+                      }, { personnel: 0, subcontracting: 0, travel: 0, equipment: 0, other: 0, direct: 0, indirect: 0, grand: 0, funding: 0, pms: 0 })
+                      return (
+                        <tr className="bg-muted/50 font-medium border-t-2">
+                          <td className="p-3 sticky left-0 bg-muted/50">Total ({partners.length} partners)</td>
+                          <td className="p-3 text-right tabular-nums">€{totals.personnel.toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums">€{totals.subcontracting.toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums">€{totals.travel.toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums">€{totals.equipment.toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums">€{totals.other.toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums">€{totals.direct.toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums">€{Math.round(totals.indirect).toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums font-bold">€{Math.round(totals.grand).toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums">€{Math.round(totals.funding).toLocaleString()}</td>
+                          <td className="p-3 text-right tabular-nums">{totals.pms.toFixed(1)}</td>
+                        </tr>
+                      )
+                    })()}
+                  </tfoot>
+                </table>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
       </Tabs>
+      <EditProjectDialog
+        project={project}
+        open={showProjectDialog}
+        onClose={() => setShowProjectDialog(false)}
+        onSaved={load}
+      />
       <EditPartnerDialog
         partner={editPartner}
         projectId={id!}

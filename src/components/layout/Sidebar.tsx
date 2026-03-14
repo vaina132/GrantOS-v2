@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   FolderKanban,
   Lightbulb,
+  Globe,
   Users,
   CalendarDays,
   ClipboardCheck,
@@ -45,6 +46,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/staff', labelKey: 'nav.staff', icon: Users },
       { path: '/proposals', labelKey: 'nav.proposals', icon: Lightbulb, permission: 'canSeeProposals' },
       { path: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
+      { path: '/projects/collaboration', labelKey: 'nav.collaboration', icon: Globe },
     ],
   },
   {
@@ -130,7 +132,12 @@ export function Sidebar() {
               <div className="space-y-0.5">
                 {group.items.map((item) => {
                   const Icon = item.icon
-                  const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/')
+                  // Check if a more specific sibling path matches — if so, this item should not be active
+                  const hasMoreSpecificMatch = group.items.some(
+                    (other) => other.path !== item.path && other.path.startsWith(item.path + '/') &&
+                    (location.pathname === other.path || location.pathname.startsWith(other.path + '/'))
+                  )
+                  const isActive = !hasMoreSpecificMatch && (location.pathname === item.path || location.pathname.startsWith(item.path + '/'))
                   return (
                     <NavLink
                       key={item.path}
