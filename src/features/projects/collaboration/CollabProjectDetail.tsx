@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore } from 'lucide-react'
+import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Contact } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
@@ -15,6 +15,7 @@ import { EditPartnerDialog } from './EditPartnerDialog'
 import { EditWpDialog } from './EditWpDialog'
 import { EditProjectDialog } from './EditProjectDialog'
 import { EditAllocDialog } from './EditAllocDialog'
+import { EditContactDialog } from './EditContactDialog'
 import type { CollabProject, CollabPartner, CollabWorkPackage, CollabPartnerWpAlloc, CollabReportingPeriod, CollabReport } from '@/types'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -48,6 +49,7 @@ export function CollabProjectDetail() {
   const [showWpDialog, setShowWpDialog] = useState(false)
   const [showProjectDialog, setShowProjectDialog] = useState(false)
   const [allocPartner, setAllocPartner] = useState<CollabPartner | null>(null)
+  const [contactPartner, setContactPartner] = useState<CollabPartner | null>(null)
 
   // Period reports
   const [periodReports, setPeriodReports] = useState<Record<string, CollabReport[]>>({})
@@ -82,6 +84,16 @@ export function CollabProjectDetail() {
         } catch { /* ignore */ }
       }
       setAllocs(allAllocs)
+      // Pre-load reports for generated periods so status badges show
+      const rpMap: Record<string, CollabReport[]> = {}
+      for (const per of rPeriods) {
+        if (per.reports_generated) {
+          try {
+            rpMap[per.id] = await collabReportService.listForPeriod(per.id)
+          } catch { /* ignore */ }
+        }
+      }
+      setPeriodReports(rpMap)
     } catch {
       toast({ title: 'Error', description: 'Failed to load project', variant: 'destructive' })
     } finally {
@@ -459,6 +471,9 @@ export function CollabProjectDetail() {
                             <LayoutGrid className="h-3.5 w-3.5" /> WPs
                           </Button>
                         )}
+                        <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setContactPartner(p)}>
+                          <Contact className="h-3.5 w-3.5" /> Contacts
+                        </Button>
                         {p.invite_status === 'pending' && p.contact_email && (
                           <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => handleSendInvite(p)}>
                             <Mail className="h-3.5 w-3.5" /> Email
@@ -631,9 +646,24 @@ export function CollabProjectDetail() {
                               {p.period_type}
                             </Badge>
                             <span className="font-medium">{p.title}</span>
-                            {p.reports_generated && (
+                            {p.reports_generated && reports.length > 0 && (() => {
+                              const statusCounts = reports.reduce((acc, r) => {
+                                acc[r.status] = (acc[r.status] || 0) + 1
+                                return acc
+                              }, {} as Record<string, number>)
+                              return (
+                                <span className="flex items-center gap-1.5 text-[10px]">
+                                  {isExpanded ? '▾' : '▸'}
+                                  {statusCounts.approved && <Badge variant="secondary" className="h-4 text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">{statusCounts.approved} approved</Badge>}
+                                  {statusCounts.submitted && <Badge variant="secondary" className="h-4 text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{statusCounts.submitted} submitted</Badge>}
+                                  {statusCounts.draft && <Badge variant="secondary" className="h-4 text-[10px] bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">{statusCounts.draft} draft</Badge>}
+                                  {statusCounts.rejected && <Badge variant="secondary" className="h-4 text-[10px] bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">{statusCounts.rejected} returned</Badge>}
+                                </span>
+                              )
+                            })()}
+                            {p.reports_generated && reports.length === 0 && (
                               <span className="text-xs text-muted-foreground">
-                                {isExpanded ? '▾' : '▸'} {reports.length || ''} reports
+                                {isExpanded ? '▾' : '▸'} reports
                               </span>
                             )}
                           </div>
@@ -883,6 +913,15 @@ export function CollabProjectDetail() {
           wps={wps}
           open={!!allocPartner}
           onClose={() => setAllocPartner(null)}
+          onSaved={load}
+        />
+      )}
+      {contactPartner && (
+        <EditContactDialog
+          partnerId={contactPartner.id}
+          partnerName={contactPartner.org_name}
+          open={!!contactPartner}
+          onClose={() => setContactPartner(null)}
           onSaved={load}
         />
       )}
