@@ -495,7 +495,7 @@ export function AbsenceList() {
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editTarget ? 'Edit Absence' : 'Record Absence'}</DialogTitle>
           </DialogHeader>

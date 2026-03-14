@@ -595,7 +595,7 @@ export function AbsenceTimeline() {
 
       {/* Absence creation dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); setSelection(null); setSubstitutePersonId(null); setSubstituteOverlap(false) } }}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Record Absence</DialogTitle>
           </DialogHeader>
