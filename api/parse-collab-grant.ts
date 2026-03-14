@@ -213,17 +213,71 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const claudeData = await claudeResponse.json()
+    console.log('[GrantLume] Claude response stop_reason:', claudeData.stop_reason, 'usage:', JSON.stringify(claudeData.usage))
+
     const textBlock = claudeData.content?.find((b: any) => b.type === 'text')
     if (!textBlock?.text) {
-      return res.status(502).json({ error: 'No response from AI' })
+      console.error('[GrantLume] No text block in Claude response. Content types:', claudeData.content?.map((b: any) => b.type))
+      return res.status(502).json({ error: 'No response from AI. The document may be too complex or the AI did not return valid output.' })
     }
 
+    // Robust JSON extraction — handle markdown fences, leading text, etc.
     let jsonStr = textBlock.text.trim()
+    console.log('[GrantLume] Raw response length:', jsonStr.length, 'first 200 chars:', jsonStr.substring(0, 200))
+
+    // Strip markdown code fences
     if (jsonStr.startsWith('```')) {
-      jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+      jsonStr = jsonStr.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?\s*```\s*$/, '')
+    }
+    // If response starts with text before JSON, find the first {
+    if (!jsonStr.startsWith('{')) {
+      const jsonStart = jsonStr.indexOf('{')
+      if (jsonStart >= 0) {
+        jsonStr = jsonStr.substring(jsonStart)
+        // Find the matching closing brace
+        let depth = 0
+        let jsonEnd = -1
+        for (let i = 0; i < jsonStr.length; i++) {
+          if (jsonStr[i] === '{') depth++
+          if (jsonStr[i] === '}') depth--
+          if (depth === 0) { jsonEnd = i; break }
+        }
+        if (jsonEnd > 0) jsonStr = jsonStr.substring(0, jsonEnd + 1)
+      }
     }
 
-    const extraction = JSON.parse(jsonStr)
+    let extraction: any
+    try {
+      extraction = JSON.parse(jsonStr)
+    } catch (parseErr) {
+      console.error('[GrantLume] JSON parse failed. First 500 chars:', jsonStr.substring(0, 500))
+      return res.status(502).json({
+        error: 'AI returned invalid JSON. The document may not contain a recognisable grant agreement structure. Try a different file or add instructions.',
+        raw_preview: textBlock.text.substring(0, 300),
+      })
+    }
+
+    // Validate extraction has minimal required data
+    const hasProject = extraction.project?.title || extraction.project?.acronym
+    const hasPartners = Array.isArray(extraction.partners) && extraction.partners.length > 0
+    const hasWPs = Array.isArray(extraction.work_packages) && extraction.work_packages.length > 0
+
+    if (!hasProject && !hasPartners && !hasWPs) {
+      console.warn('[GrantLume] Extraction returned empty data:', JSON.stringify(extraction).substring(0, 500))
+      return res.status(200).json({
+        extraction,
+        usage: claudeData.usage,
+        warning: 'AI could not find meaningful project data in this document. Try uploading a grant agreement annex with budget tables, work packages, and partner information.',
+      })
+    }
+
+    console.log('[GrantLume] Extraction success:',
+      'project:', extraction.project?.acronym || '(no acronym)',
+      'partners:', extraction.partners?.length || 0,
+      'WPs:', extraction.work_packages?.length || 0,
+      'deliverables:', extraction.deliverables?.length || 0,
+      'milestones:', extraction.milestones?.length || 0,
+    )
 
     return res.status(200).json({ extraction, usage: claudeData.usage })
   } catch (err) {

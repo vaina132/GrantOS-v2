@@ -30,6 +30,7 @@ import {
   collabPartnerInvitationEmail,
   collabReportReminderEmail,
   collabReportStatusEmail,
+  collabDeliverableReminderEmail,
 } from './emails/templates.js'
 import type { EmailTemplate } from './emails/templates.js'
 
@@ -62,6 +63,7 @@ const TEMPLATE_MAP: Record<string, (params: any) => EmailTemplate> = {
   collabPartnerInvitation: collabPartnerInvitationEmail,
   collabReportReminder: collabReportReminderEmail,
   collabReportStatus: collabReportStatusEmail,
+  collabDeliverableReminder: collabDeliverableReminderEmail,
 }
 
 /** Maps template name → user_preferences column that controls it */

@@ -70,7 +70,7 @@ export const collabAIService = {
   async parseCollabGrant(
     file: File,
     opts?: { userInstructions?: string },
-  ): Promise<{ extraction: CollabAIExtraction; usage?: any }> {
+  ): Promise<{ extraction: CollabAIExtraction; usage?: any; warning?: string }> {
     const storagePath = `collab-temp/${Date.now()}_${file.name}`
     const { error: uploadError } = await supabase.storage
       .from('grant-uploads')
@@ -97,7 +97,7 @@ export const collabAIService = {
       }
 
       const data = await response.json()
-      return data as { extraction: CollabAIExtraction; usage?: any }
+      return data as { extraction: CollabAIExtraction; usage?: any; warning?: string }
     } finally {
       await supabase.storage.from('grant-uploads').remove([storagePath]).catch(() => {})
     }

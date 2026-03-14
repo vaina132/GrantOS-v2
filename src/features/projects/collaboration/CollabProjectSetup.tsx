@@ -372,20 +372,40 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
       const result = await collabAIService.parseCollabGrant(aiFile, {
         userInstructions: aiInstructions.trim() || undefined,
       })
+
+      // Check for warning (AI returned empty/useless data)
+      if (result.warning) {
+        toast({
+          title: 'No Data Found',
+          description: result.warning,
+          variant: 'destructive',
+        })
+        setAiParsing(false)
+        return
+      }
+
       const d = result.extraction
+      if (!d) {
+        toast({ title: 'Import Error', description: 'AI returned no extraction data.', variant: 'destructive' })
+        setAiParsing(false)
+        return
+      }
+
       // Fill project
-      setProject({
-        title: d.project.title || '',
-        acronym: d.project.acronym || '',
-        grant_number: d.project.grant_number || '',
-        funding_programme: d.project.funding_programme || 'Horizon Europe',
-        funding_scheme: d.project.funding_scheme || '',
-        start_date: d.project.start_date || '',
-        end_date: d.project.end_date || '',
-        duration_months: d.project.duration_months ? String(d.project.duration_months) : '',
-      })
+      if (d.project) {
+        setProject({
+          title: d.project.title || '',
+          acronym: d.project.acronym || '',
+          grant_number: d.project.grant_number || '',
+          funding_programme: d.project.funding_programme || 'Horizon Europe',
+          funding_scheme: d.project.funding_scheme || '',
+          start_date: d.project.start_date || '',
+          end_date: d.project.end_date || '',
+          duration_months: d.project.duration_months ? String(d.project.duration_months) : '',
+        })
+      }
       // Fill partners
-      if (d.partners.length > 0) {
+      if (d.partners && d.partners.length > 0) {
         setPartners(d.partners.map((p, i) => ({
           _key: crypto.randomUUID(),
           org_name: p.org_name || '',
@@ -407,7 +427,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
         })))
       }
       // Fill work packages with tasks
-      if (d.work_packages.length > 0) {
+      if (d.work_packages && d.work_packages.length > 0) {
         setWps(d.work_packages.map(wp => ({
           _key: crypto.randomUUID(),
           wp_number: String(wp.wp_number),
@@ -428,7 +448,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
         })))
       }
       // Fill deliverables
-      if (d.deliverables.length > 0) {
+      if (d.deliverables && d.deliverables.length > 0) {
         setDeliverables(d.deliverables.map(del => ({
           _key: crypto.randomUUID(),
           number: del.number || '',
@@ -442,7 +462,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
         })))
       }
       // Fill milestones
-      if (d.milestones.length > 0) {
+      if (d.milestones && d.milestones.length > 0) {
         setMilestones(d.milestones.map(ms => ({
           _key: crypto.randomUUID(),
           number: ms.number || '',
@@ -452,11 +472,25 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
           verification_means: ms.verification_means || '',
         })))
       }
-      toast({ title: 'AI Import Complete', description: `Extracted project data. Please review all fields before creating.${d.confidence_notes ? ` Notes: ${d.confidence_notes}` : ''}` })
+      const counts = [
+        d.partners?.length ? `${d.partners.length} partners` : '',
+        d.work_packages?.length ? `${d.work_packages.length} WPs` : '',
+        d.deliverables?.length ? `${d.deliverables.length} deliverables` : '',
+        d.milestones?.length ? `${d.milestones.length} milestones` : '',
+      ].filter(Boolean).join(', ')
+      const usageInfo = result.usage ? ` (${result.usage.input_tokens + result.usage.output_tokens} tokens used)` : ''
+      toast({
+        title: 'AI Import Complete',
+        description: `Extracted: ${counts || 'project data'}. Review all fields before creating.${d.confidence_notes ? ` Notes: ${d.confidence_notes}` : ''}${usageInfo}`,
+      })
       setAiFile(null)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'AI import failed'
-      toast({ title: 'Import Error', description: msg, variant: 'destructive' })
+      toast({
+        title: 'Import Error',
+        description: `${msg}. Try a different file format or add specific instructions about where the data is located.`,
+        variant: 'destructive',
+      })
     } finally {
       setAiParsing(false)
     }

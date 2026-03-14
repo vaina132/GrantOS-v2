@@ -33,6 +33,7 @@ type EmailTemplate =
   | 'collabPartnerInvitation'
   | 'collabReportReminder'
   | 'collabReportStatus'
+  | 'collabDeliverableReminder'
 
 interface SendEmailOptions {
   template: EmailTemplate
@@ -382,6 +383,21 @@ export const emailService = {
     reportUrl: string
   }) {
     return sendEmail({ template: 'collabReportReminder', to: params.to, params })
+  },
+
+  /** Send collaboration deliverable reminder */
+  async sendCollabDeliverableReminder(params: {
+    to: string
+    contactName: string
+    orgName: string
+    projectAcronym: string
+    deliverableNumber: string
+    deliverableTitle: string
+    dueMonth: number
+    dueDate: string
+    projectUrl: string
+  }) {
+    return sendEmail({ template: 'collabDeliverableReminder', to: params.to, params })
   },
 
   /** Send collaboration report status (approved/rejected) */

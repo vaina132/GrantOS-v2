@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Send, CheckCircle, XCircle, RotateCcw, Clock, Plus, Trash2, Save } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
-import { collabReportService, collabLineService, collabWpService } from '@/services/collabProjectService'
+import { collabReportService, collabLineService, collabWpService, collabPartnerService, collabAllocService, collabProjectService } from '@/services/collabProjectService'
+import { emailService } from '@/services/emailService'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from '@/components/ui/use-toast'
-import type { CollabReport, CollabReportLine, CollabReportSection, CollabWorkPackage } from '@/types'
+import type { CollabReport, CollabReportLine, CollabReportSection, CollabWorkPackage, CollabPartner, CollabPartnerWpAlloc } from '@/types'
 
 const REPORT_STATUS_COLORS: Record<string, string> = {
   draft: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
@@ -35,6 +36,9 @@ export function CollabReportPage() {
   const [report, setReport] = useState<CollabReport | null>(null)
   const [lines, setLines] = useState<CollabReportLine[]>([])
   const [wps, setWps] = useState<CollabWorkPackage[]>([])
+  const [partner, setPartner] = useState<CollabPartner | null>(null)
+  const [allocs, setAllocs] = useState<CollabPartnerWpAlloc[]>([])
+  const [projectAcronym, setProjectAcronym] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [rejectionNote, setRejectionNote] = useState('')
@@ -55,11 +59,28 @@ export function CollabReportPage() {
       ])
       setReport(r)
       setLines(l)
-      // Load WPs if we have a project ID
+      // Load WPs, project info, and partner planned data
       if (r?.period?.project_id) {
         try {
           const wpList = await collabWpService.list(r.period.project_id)
           setWps(wpList)
+        } catch { /* non-critical */ }
+        try {
+          const proj = await collabProjectService.get(r.period.project_id)
+          setProjectAcronym(proj.acronym || '')
+        } catch { /* non-critical */ }
+      }
+      // Load partner details (planned budget)
+      if (r?.partner_id) {
+        try {
+          const partners = r?.period?.project_id ? await collabPartnerService.list(r.period.project_id) : []
+          const p = partners.find(p => p.id === r.partner_id)
+          if (p) setPartner(p)
+          // Load WP allocations for this partner
+          try {
+            const a = await collabAllocService.list(r.partner_id)
+            setAllocs(a)
+          } catch { /* non-critical */ }
         } catch { /* non-critical */ }
       }
       // Initialize edit data
@@ -184,6 +205,20 @@ export function CollabReportPage() {
     try {
       await collabReportService.approve(reportId, user.id, user.email || 'Coordinator')
       toast({ title: 'Approved' })
+      // Send status email to partner
+      const contactEmail = partner?.contact_email || report?.partner?.contact_email
+      if (contactEmail) {
+        emailService.sendCollabReportStatus({
+          to: contactEmail,
+          contactName: partner?.contact_name || '',
+          orgName: partner?.org_name || partnerName,
+          projectAcronym,
+          periodTitle,
+          status: 'approved',
+          reviewerName: user.email || 'Coordinator',
+          reportUrl: `${window.location.origin}/projects/collaboration/report/${reportId}`,
+        }).catch(() => { /* fire-and-forget */ })
+      }
       load()
     } catch {
       toast({ title: 'Error', description: 'Failed to approve', variant: 'destructive' })
@@ -195,6 +230,21 @@ export function CollabReportPage() {
     try {
       await collabReportService.reject(reportId, user.id, user.email || 'Coordinator', rejectionNote.trim())
       toast({ title: 'Returned', description: 'Report returned to partner for corrections' })
+      // Send status email to partner
+      const contactEmail = partner?.contact_email || report?.partner?.contact_email
+      if (contactEmail) {
+        emailService.sendCollabReportStatus({
+          to: contactEmail,
+          contactName: partner?.contact_name || '',
+          orgName: partner?.org_name || partnerName,
+          projectAcronym,
+          periodTitle,
+          status: 'rejected',
+          reviewerName: user.email || 'Coordinator',
+          rejectionNote: rejectionNote.trim(),
+          reportUrl: `${window.location.origin}/projects/collaboration/report/${reportId}`,
+        }).catch(() => { /* fire-and-forget */ })
+      }
       setShowRejectForm(false)
       setRejectionNote('')
       load()
@@ -332,36 +382,173 @@ export function CollabReportPage() {
         </Card>
       )}
 
-      {/* Summary row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{lines.length}</p>
-            <p className="text-xs text-muted-foreground">Cost Lines</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">€{grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            <p className="text-xs text-muted-foreground">Total Reported</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{sectionTotals.personnel_effort?.toFixed(1) || '0.0'}</p>
-            <p className="text-xs text-muted-foreground">Person-Months</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <div className="flex items-center justify-center gap-1.5">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm font-medium">{report.status}</p>
+      {/* Planned vs Actual summary */}
+      {(() => {
+        const plannedBudget = partner
+          ? partner.budget_personnel + partner.budget_subcontracting + partner.budget_travel + partner.budget_equipment + partner.budget_other_goods
+          : 0
+        const plannedPMs = partner?.total_person_months ?? 0
+        const reportedPMs = sectionTotals.personnel_effort ?? 0
+        const deviationPMs = plannedPMs > 0 ? ((reportedPMs - plannedPMs) / plannedPMs) * 100 : 0
+        const deviationBudget = plannedBudget > 0 ? ((grandTotal - plannedBudget) / plannedBudget) * 100 : 0
+        const devColor = (pct: number) => Math.abs(pct) < 10 ? 'text-emerald-600' : Math.abs(pct) < 25 ? 'text-amber-600' : 'text-red-600'
+
+        // Planned budget by section (from partner data)
+        const plannedBySection: Record<string, number> = {
+          personnel_effort: plannedPMs,
+          personnel_costs: partner?.budget_personnel ?? 0,
+          subcontracting: partner?.budget_subcontracting ?? 0,
+          travel: partner?.budget_travel ?? 0,
+          equipment: partner?.budget_equipment ?? 0,
+          other_goods: partner?.budget_other_goods ?? 0,
+        }
+
+        return (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-sm font-medium capitalize">{report.status}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{lines.length} cost line{lines.length !== 1 ? 's' : ''}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <p className="text-lg font-bold">{reportedPMs.toFixed(1)}</p>
+                  <p className="text-xs text-muted-foreground">Reported PMs</p>
+                  {plannedPMs > 0 && (
+                    <p className={`text-[10px] font-medium mt-0.5 ${devColor(deviationPMs)}`}>
+                      of {plannedPMs} planned ({deviationPMs >= 0 ? '+' : ''}{deviationPMs.toFixed(1)}%)
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <p className="text-lg font-bold">€{grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                  <p className="text-xs text-muted-foreground">Total Reported</p>
+                  {plannedBudget > 0 && (
+                    <p className={`text-[10px] font-medium mt-0.5 ${devColor(deviationBudget)}`}>
+                      of €{plannedBudget.toLocaleString()} planned ({deviationBudget >= 0 ? '+' : ''}{deviationBudget.toFixed(1)}%)
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <p className="text-lg font-bold">{allocs.length > 0 ? allocs.reduce((s, a) => s + a.person_months, 0).toFixed(1) : '—'}</p>
+                  <p className="text-xs text-muted-foreground">WP Allocations (PMs)</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <p className="text-lg font-bold">{partner?.funding_rate ?? '—'}%</p>
+                  <p className="text-xs text-muted-foreground">Funding Rate</p>
+                </CardContent>
+              </Card>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Current Status</p>
-          </CardContent>
-        </Card>
-      </div>
+
+            {/* Per-section planned vs actual */}
+            {partner && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Planned vs Reported Budget</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left bg-muted/50">
+                        <th className="p-3 font-medium text-xs">Category</th>
+                        <th className="p-3 font-medium text-xs text-right">Planned</th>
+                        <th className="p-3 font-medium text-xs text-right">Reported</th>
+                        <th className="p-3 font-medium text-xs text-right">Deviation</th>
+                        <th className="p-3 font-medium text-xs w-32">Progress</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {SECTIONS.map(s => {
+                        const planned = plannedBySection[s.key] ?? 0
+                        const reported = sectionTotals[s.key] ?? 0
+                        const dev = planned > 0 ? ((reported - planned) / planned) * 100 : 0
+                        const pct = planned > 0 ? Math.min(100, (reported / planned) * 100) : 0
+                        const isMonetary = s.key !== 'personnel_effort'
+                        const prefix = isMonetary ? '€' : ''
+                        const fmt = (v: number) => isMonetary ? `${prefix}${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : v.toFixed(1)
+                        return (
+                          <tr key={s.key} className="border-b last:border-0">
+                            <td className="p-3 text-xs font-medium">{s.label}</td>
+                            <td className="p-3 text-xs text-right tabular-nums text-muted-foreground">{planned > 0 ? fmt(planned) : '—'}</td>
+                            <td className="p-3 text-xs text-right tabular-nums font-medium">{fmt(reported)}</td>
+                            <td className={`p-3 text-xs text-right tabular-nums font-medium ${planned > 0 ? devColor(dev) : 'text-muted-foreground'}`}>
+                              {planned > 0 ? `${dev >= 0 ? '+' : ''}${dev.toFixed(1)}%` : '—'}
+                            </td>
+                            <td className="p-3">
+                              {planned > 0 && (
+                                <div className="w-full bg-muted rounded-full h-2">
+                                  <div
+                                    className={`h-2 rounded-full transition-all ${pct > 100 ? 'bg-red-400' : pct > 80 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                                    style={{ width: `${Math.min(100, pct)}%` }}
+                                  />
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Per-WP allocation vs reported effort */}
+            {allocs.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Effort by Work Package (PMs)</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left bg-muted/50">
+                        <th className="p-3 font-medium text-xs">Work Package</th>
+                        <th className="p-3 font-medium text-xs text-right">Allocated PMs</th>
+                        <th className="p-3 font-medium text-xs text-right">Reported PMs</th>
+                        <th className="p-3 font-medium text-xs text-right">Deviation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {wps.map(wp => {
+                        const alloc = allocs.find(a => a.wp_id === wp.id)
+                        const allocPMs = alloc?.person_months ?? 0
+                        const wpEffortLines = lines.filter(l => l.section === 'personnel_effort' && l.wp_id === wp.id)
+                        const reportedPMs = wpEffortLines.reduce((s, l) => {
+                          const ed = editData[l.id]
+                          return s + (parseFloat(ed?.amount || '0') || 0)
+                        }, 0)
+                        const dev = allocPMs > 0 ? ((reportedPMs - allocPMs) / allocPMs) * 100 : 0
+                        return (
+                          <tr key={wp.id} className="border-b last:border-0">
+                            <td className="p-3 text-xs font-medium">WP{wp.wp_number}: {wp.title}</td>
+                            <td className="p-3 text-xs text-right tabular-nums text-muted-foreground">{allocPMs > 0 ? allocPMs.toFixed(1) : '—'}</td>
+                            <td className="p-3 text-xs text-right tabular-nums font-medium">{reportedPMs > 0 ? reportedPMs.toFixed(1) : '0.0'}</td>
+                            <td className={`p-3 text-xs text-right tabular-nums font-medium ${allocPMs > 0 ? devColor(dev) : 'text-muted-foreground'}`}>
+                              {allocPMs > 0 ? `${dev >= 0 ? '+' : ''}${dev.toFixed(1)}%` : '—'}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )
+      })()}
 
       {/* Cost sections */}
       <Tabs defaultValue="personnel_costs">

@@ -642,6 +642,28 @@ export function collabReportReminderEmail(params: {
   }
 }
 
+export function collabDeliverableReminderEmail(params: {
+  contactName: string; orgName: string; projectAcronym: string;
+  deliverableNumber: string; deliverableTitle: string; dueMonth: number;
+  dueDate: string; projectUrl: string
+}): EmailTemplate {
+  return {
+    subject: `Deliverable due soon: ${params.deliverableNumber} — ${params.projectAcronym}`,
+    html: layout('Deliverable Reminder', [
+      heading('Deliverable Due Soon'),
+      paragraph(`Hi ${params.contactName || 'there'},`),
+      paragraph(`A deliverable assigned to <strong>${params.orgName}</strong> is due soon. Please ensure it is prepared and submitted on time.`),
+      detailTable(
+        detailRow('Project', params.projectAcronym) +
+        detailRow('Deliverable', `${params.deliverableNumber} — ${params.deliverableTitle}`) +
+        detailRow('Due', `Month ${params.dueMonth} (${params.dueDate})`)
+      ),
+      button('View Project', params.projectUrl),
+      paragraph(`<span style="font-size:13px;color:${MUTED};">You can manage your notification preferences in your GrantLume profile settings.</span>`),
+    ].join('')),
+  }
+}
+
 export function collabReportStatusEmail(params: {
   contactName: string; orgName: string; projectAcronym: string;
   periodTitle: string; status: string; reviewerName: string;

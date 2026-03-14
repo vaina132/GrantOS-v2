@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Contact, Download, ChevronDown, ChevronRight, Target, ListChecks } from 'lucide-react'
+import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Contact, Download, ChevronDown, ChevronRight, Target, ListChecks, GanttChart as GanttIcon } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService, collabTaskService, collabDeliverableService, collabMilestoneService } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
@@ -16,6 +16,7 @@ import { EditWpDialog } from './EditWpDialog'
 import { EditProjectDialog } from './EditProjectDialog'
 import { EditAllocDialog } from './EditAllocDialog'
 import { EditContactDialog } from './EditContactDialog'
+import { CollabGanttChart } from './CollabGanttChart'
 import { generateCollabBudgetPDF } from '@/services/reportGenerator'
 import type { CollabProject, CollabPartner, CollabWorkPackage, CollabPartnerWpAlloc, CollabReportingPeriod, CollabReport, CollabTask, CollabDeliverable, CollabMilestone } from '@/types'
 
@@ -461,6 +462,9 @@ export function CollabProjectDetail() {
           </TabsTrigger>
           <TabsTrigger value="budget" className="gap-2">
             <DollarSign className="h-4 w-4" /> Budget Overview
+          </TabsTrigger>
+          <TabsTrigger value="gantt" className="gap-2">
+            <GanttIcon className="h-4 w-4" /> Timeline
           </TabsTrigger>
         </TabsList>
 
@@ -955,6 +959,19 @@ export function CollabProjectDetail() {
               </Card>
             )}
           </div>
+        </TabsContent>
+
+        {/* Gantt / Timeline Tab */}
+        <TabsContent value="gantt" className="mt-4">
+          <CollabGanttChart
+            project={project}
+            partners={partners}
+            wps={wps}
+            tasksByWp={tasksByWp}
+            deliverables={deliverables}
+            milestones={milestones}
+            periods={periods}
+          />
         </TabsContent>
 
         {/* Budget Overview Tab */}
