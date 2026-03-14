@@ -28,6 +28,7 @@ import { TermsPage } from '@/features/legal/TermsPage'
 import { PrivacyPage } from '@/features/legal/PrivacyPage'
 import { LandingPage } from '@/features/landing/LandingPage'
 import { HelpPage } from '@/features/help/HelpPage'
+import { CollabAcceptInvite } from '@/features/projects/collaboration/CollabAcceptInvite'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -90,6 +91,7 @@ export default function App() {
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/collab/accept" element={<CollabAcceptInvite />} />
 
         <Route
           path="/*"

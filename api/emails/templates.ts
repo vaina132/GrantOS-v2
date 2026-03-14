@@ -598,3 +598,74 @@ export function substituteNotificationEmail(params: {
     ].join('')),
   }
 }
+
+export function collabPartnerInvitationEmail(params: {
+  contactName: string; orgName: string; projectAcronym: string; projectTitle: string;
+  coordinatorOrg: string; senderName: string; role: string; acceptUrl: string
+}): EmailTemplate {
+  return {
+    subject: `You're invited to join "${params.projectAcronym}" on GrantLume`,
+    html: layout('Collaboration Invitation', [
+      heading('Project Collaboration Invitation'),
+      paragraph(`Hi ${params.contactName || 'there'},`),
+      paragraph(`<strong>${params.senderName}</strong> from <strong>${params.coordinatorOrg}</strong> has invited <strong>${params.orgName}</strong> to collaborate on a research project via GrantLume.`),
+      detailTable(
+        detailRow('Project', `${params.projectAcronym} — ${params.projectTitle}`) +
+        detailRow('Your Role', params.role === 'coordinator' ? 'Coordinator' : 'Partner') +
+        detailRow('Coordinator', params.coordinatorOrg)
+      ),
+      paragraph('By accepting this invitation, you will be able to submit financial reports and track your project contributions directly on GrantLume.'),
+      button('Accept Invitation', params.acceptUrl),
+      paragraph(`<span style="font-size:13px;color:${MUTED};">If you weren't expecting this invitation, you can safely ignore this email. The link will remain valid.</span>`),
+    ].join('')),
+  }
+}
+
+export function collabReportReminderEmail(params: {
+  contactName: string; orgName: string; projectAcronym: string;
+  periodTitle: string; dueDate: string; reportUrl: string
+}): EmailTemplate {
+  return {
+    subject: `Reporting reminder: ${params.periodTitle} for ${params.projectAcronym}`,
+    html: layout('Report Reminder', [
+      heading('Financial Report Due'),
+      paragraph(`Hi ${params.contactName || 'there'},`),
+      paragraph(`This is a reminder that the financial report for <strong>${params.orgName}</strong> is due for the reporting period below.`),
+      detailTable(
+        detailRow('Project', params.projectAcronym) +
+        detailRow('Period', params.periodTitle) +
+        detailRow('Due Date', params.dueDate)
+      ),
+      button('Submit Report', params.reportUrl),
+      paragraph(`<span style="font-size:13px;color:${MUTED};">You can manage your notification preferences in your GrantLume profile settings.</span>`),
+    ].join('')),
+  }
+}
+
+export function collabReportStatusEmail(params: {
+  contactName: string; orgName: string; projectAcronym: string;
+  periodTitle: string; status: string; reviewerName: string;
+  rejectionNote?: string; reportUrl: string
+}): EmailTemplate {
+  const approved = params.status === 'approved'
+  return {
+    subject: `Report ${approved ? 'approved' : 'returned'}: ${params.periodTitle} — ${params.projectAcronym}`,
+    html: layout(approved ? 'Report Approved' : 'Report Returned', [
+      heading(approved ? 'Report Approved' : 'Report Returned for Corrections'),
+      paragraph(`Hi ${params.contactName || 'there'},`),
+      paragraph(approved
+        ? `Your financial report for <strong>${params.orgName}</strong> has been <strong style="color:${SUCCESS};">approved</strong> by ${params.reviewerName}.`
+        : `Your financial report for <strong>${params.orgName}</strong> has been <strong style="color:${DANGER};">returned</strong> by ${params.reviewerName} with corrections needed.`
+      ),
+      detailTable(
+        detailRow('Project', params.projectAcronym) +
+        detailRow('Period', params.periodTitle) +
+        detailRow('Status', approved ? '✓ Approved' : '✗ Needs Corrections')
+      ),
+      params.rejectionNote
+        ? infoBox(`<strong>Reviewer note:</strong> ${params.rejectionNote}`, DANGER, '#fef2f2')
+        : '',
+      button(approved ? 'View Report' : 'Revise Report', params.reportUrl),
+    ].join('')),
+  }
+}

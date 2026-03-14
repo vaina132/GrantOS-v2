@@ -30,6 +30,9 @@ type EmailTemplate =
   | 'proposalStatusChanged'
   | 'memberRemoved'
   | 'substituteNotification'
+  | 'collabPartnerInvitation'
+  | 'collabReportReminder'
+  | 'collabReportStatus'
 
 interface SendEmailOptions {
   template: EmailTemplate
@@ -351,5 +354,48 @@ export const emailService = {
     absencesUrl: string
   }) {
     return sendEmail({ template: 'substituteNotification', to: params.to, params })
+  },
+
+  /** Send collaboration partner invitation */
+  async sendCollabPartnerInvitation(params: {
+    to: string
+    contactName: string
+    orgName: string
+    projectAcronym: string
+    projectTitle: string
+    coordinatorOrg: string
+    senderName: string
+    role: string
+    acceptUrl: string
+  }) {
+    return sendEmail({ template: 'collabPartnerInvitation', to: params.to, params })
+  },
+
+  /** Send collaboration report reminder */
+  async sendCollabReportReminder(params: {
+    to: string
+    contactName: string
+    orgName: string
+    projectAcronym: string
+    periodTitle: string
+    dueDate: string
+    reportUrl: string
+  }) {
+    return sendEmail({ template: 'collabReportReminder', to: params.to, params })
+  },
+
+  /** Send collaboration report status (approved/rejected) */
+  async sendCollabReportStatus(params: {
+    to: string
+    contactName: string
+    orgName: string
+    projectAcronym: string
+    periodTitle: string
+    status: string
+    reviewerName: string
+    rejectionNote?: string
+    reportUrl: string
+  }) {
+    return sendEmail({ template: 'collabReportStatus', to: params.to, params })
   },
 }
