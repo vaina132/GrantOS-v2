@@ -5,15 +5,15 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/timesheet-reminders",
+      "path": "/api/cron?job=timesheet-reminders",
       "schedule": "0 9 * * 1"
     },
     {
-      "path": "/api/cron/project-alerts",
+      "path": "/api/cron?job=project-alerts",
       "schedule": "0 8 * * *"
     },
     {
-      "path": "/api/cron/collab-reminders",
+      "path": "/api/cron?job=collab-reminders",
       "schedule": "0 9 * * *"
     }
   ]
