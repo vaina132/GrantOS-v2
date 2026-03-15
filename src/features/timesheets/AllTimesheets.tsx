@@ -40,12 +40,14 @@ export function AllTimesheets() {
   const [envelopes, setEnvelopes] = useState<TimesheetEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [hoursPerDay, setHoursPerDay] = useState(8)
+  const [hasDocuSign, setHasDocuSign] = useState(false)
 
   // Load org settings
   useEffect(() => {
     if (!orgId) return
     settingsService.getOrganisation(orgId).then(org => {
       if (org?.working_hours_per_day) setHoursPerDay(org.working_hours_per_day)
+      setHasDocuSign(!!(org?.docusign_integration_key && org?.docusign_user_id && org?.docusign_account_id && org?.docusign_rsa_private_key))
     }).catch(() => {})
   }, [orgId])
 
@@ -216,8 +218,8 @@ export function AllTimesheets() {
                     )
                   })()}
 
-                  {/* Approve / Reject for Signed timesheets */}
-                  {pe.envelope?.status === 'Signed' && (
+                  {/* Approve / Reject for Submitted (no DocuSign) or Signed (DocuSign) timesheets */}
+                  {(pe.envelope?.status === 'Signed' || (pe.envelope?.status === 'Submitted' && !hasDocuSign)) && (
                     <div className="flex gap-1">
                       <Button
                         size="sm"

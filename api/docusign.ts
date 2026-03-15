@@ -30,11 +30,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 // Action: sign — Create DocuSign envelope + get embedded signing URL
 // ════════════════════════════════════════════════════════════════════════════
 
-async function getDocuSignAccessToken(): Promise<string> {
-  const integrationKey = process.env.DOCUSIGN_INTEGRATION_KEY!
-  const userId = process.env.DOCUSIGN_USER_ID!
-  const rsaPrivateKey = (process.env.DOCUSIGN_RSA_PRIVATE_KEY || '').replace(/\\n/g, '\n')
-  const oauthBase = process.env.DOCUSIGN_OAUTH_BASE_URL || 'https://account-d.docusign.com'
+interface DocuSignConfig {
+  integrationKey: string
+  userId: string
+  accountId: string
+  rsaPrivateKey: string
+  baseUrl: string
+  oauthBaseUrl: string
+}
+
+async function getDocuSignAccessToken(config: DocuSignConfig): Promise<string> {
+  const { integrationKey, userId, rsaPrivateKey, oauthBaseUrl: oauthBase } = config
 
   // Build JWT assertion
   const now = Math.floor(Date.now() / 1000)
@@ -160,11 +166,6 @@ async function handleSign(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing orgId, personId, year, or month' })
   }
 
-  // Validate env vars
-  if (!process.env.DOCUSIGN_INTEGRATION_KEY || !process.env.DOCUSIGN_USER_ID || !process.env.DOCUSIGN_ACCOUNT_ID) {
-    return res.status(500).json({ error: 'DocuSign is not configured. Set DOCUSIGN_* environment variables.' })
-  }
-
   const supabase: any = createClient(
     process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     process.env.SUPABASE_SERVICE_ROLE_KEY || '',
@@ -180,13 +181,27 @@ async function handleSign(req: VercelRequest, res: VercelResponse) {
     if (pErr || !person) return res.status(404).json({ error: 'Person not found' })
     if (!person.email) return res.status(400).json({ error: 'Person has no email address — required for DocuSign' })
 
-    // 2. Get org info
+    // 2. Get org info + DocuSign config from DB
     const { data: org } = await supabase
       .from('organisations')
-      .select('name')
+      .select('name, docusign_integration_key, docusign_user_id, docusign_account_id, docusign_rsa_private_key, docusign_base_url, docusign_oauth_base_url')
       .eq('id', orgId)
       .single()
     const orgName = org?.name || 'Organisation'
+
+    // Resolve DocuSign config: DB first, env vars as fallback
+    const dsConfig: DocuSignConfig = {
+      integrationKey: org?.docusign_integration_key || process.env.DOCUSIGN_INTEGRATION_KEY || '',
+      userId: org?.docusign_user_id || process.env.DOCUSIGN_USER_ID || '',
+      accountId: org?.docusign_account_id || process.env.DOCUSIGN_ACCOUNT_ID || '',
+      rsaPrivateKey: (org?.docusign_rsa_private_key || process.env.DOCUSIGN_RSA_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+      baseUrl: org?.docusign_base_url || process.env.DOCUSIGN_BASE_URL || 'https://demo.docusign.net/restapi',
+      oauthBaseUrl: org?.docusign_oauth_base_url || process.env.DOCUSIGN_OAUTH_BASE_URL || 'https://account-d.docusign.com',
+    }
+
+    if (!dsConfig.integrationKey || !dsConfig.userId || !dsConfig.accountId || !dsConfig.rsaPrivateKey) {
+      return res.status(500).json({ error: 'DocuSign is not configured. Go to Settings → Integrations to set up DocuSign.' })
+    }
 
     // 3. Get the timesheet envelope
     const { data: envelope, error: eErr } = await supabase
@@ -238,9 +253,9 @@ async function handleSign(req: VercelRequest, res: VercelResponse) {
     })
 
     // 6. Get DocuSign access token
-    const accessToken = await getDocuSignAccessToken()
-    const accountId = process.env.DOCUSIGN_ACCOUNT_ID!
-    const baseUrl = process.env.DOCUSIGN_BASE_URL || 'https://demo.docusign.net/restapi'
+    const accessToken = await getDocuSignAccessToken(dsConfig)
+    const accountId = dsConfig.accountId
+    const baseUrl = dsConfig.baseUrl
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.grantlume.com'
 
     // 7. Create envelope with embedded signing

@@ -10,8 +10,9 @@ import { HolidaySettings } from './HolidaySettings'
 import { RolePermissions } from './RolePermissions'
 import { AbsenceApprovers } from './AbsenceApprovers'
 import { AbsenceTypeSettings } from './AbsenceTypeSettings'
+import { IntegrationsSettings } from './IntegrationsSettings'
 
-type SettingsTab = 'org' | 'users' | 'roles' | 'funding' | 'locks' | 'holidays' | 'approvers' | 'absence-types'
+type SettingsTab = 'org' | 'users' | 'roles' | 'funding' | 'locks' | 'holidays' | 'approvers' | 'absence-types' | 'integrations'
 
 export function SettingsPage() {
   const { t } = useTranslation()
@@ -31,6 +32,7 @@ export function SettingsPage() {
           { key: 'holidays', label: 'Holidays' },
           { key: 'approvers', label: 'Absence Approvers' },
           { key: 'absence-types', label: 'Absence Types' },
+          { key: 'integrations', label: 'Integrations' },
         ] as { key: SettingsTab; label: string }[]).map((item) => (
           <Button
             key={item.key}
@@ -51,6 +53,7 @@ export function SettingsPage() {
       {tab === 'holidays' && <HolidaySettings />}
       {tab === 'approvers' && <AbsenceApprovers />}
       {tab === 'absence-types' && <AbsenceTypeSettings />}
+      {tab === 'integrations' && <IntegrationsSettings />}
     </div>
   )
 }

@@ -73,6 +73,7 @@ export function TimesheetGrid() {
   const [envelope, setEnvelope] = useState<TimesheetEntry | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [signing, setSigning] = useState(false)
+  const [hasDocuSign, setHasDocuSign] = useState(false)
 
   // Fill Month Full state
   const [fillFullOpen, setFillFullOpen] = useState(false)
@@ -87,11 +88,12 @@ export function TimesheetGrid() {
   const isAdmin = can('canApproveTimesheets') || can('canManageProjects')
   const currentPersonId = selectedPersonId || staff.find(p => p.email === user?.email)?.id || ''
 
-  // Load org settings (hours per day)
+  // Load org settings (hours per day + DocuSign config)
   useEffect(() => {
     if (!orgId) return
     settingsService.getOrganisation(orgId).then(org => {
       if (org?.working_hours_per_day) setHoursPerDay(org.working_hours_per_day)
+      setHasDocuSign(!!(org?.docusign_integration_key && org?.docusign_user_id && org?.docusign_account_id && org?.docusign_rsa_private_key))
     }).catch(() => {})
   }, [orgId])
 
@@ -515,7 +517,7 @@ export function TimesheetGrid() {
     setSubmitting(true)
     try {
       await timesheetService.submit(orgId, currentPersonId, globalYear, selectedMonth, user.id)
-      toast({ title: 'Submitted', description: 'Timesheet submitted. You can now sign it.' })
+      toast({ title: 'Submitted', description: hasDocuSign ? 'Timesheet submitted. You can now sign it.' : 'Timesheet submitted for approval.' })
       await loadData()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to submit'
@@ -679,7 +681,7 @@ export function TimesheetGrid() {
           <div>
             <div className="text-sm font-semibold">
               {envelopeStatus === 'Draft' && 'Draft — Fill in your hours and submit'}
-              {envelopeStatus === 'Submitted' && 'Submitted — Ready for signing'}
+              {envelopeStatus === 'Submitted' && (hasDocuSign ? 'Submitted — Ready for signing' : 'Submitted — Awaiting approval')}
               {envelopeStatus === 'Signing' && 'Signing in progress — Waiting for e-signature'}
               {envelopeStatus === 'Signed' && 'Signed — Awaiting approval'}
               {envelopeStatus === 'Approved' && 'Approved ✓'}
@@ -704,8 +706,8 @@ export function TimesheetGrid() {
             </Button>
           )}
 
-          {/* Submitted → Sign */}
-          {envelopeStatus === 'Submitted' && (
+          {/* Submitted → Sign (only if DocuSign is configured) */}
+          {envelopeStatus === 'Submitted' && hasDocuSign && (
             <>
               <Button variant="outline" size="sm" onClick={handleRecall} className="gap-1.5">
                 <Undo2 className="h-3.5 w-3.5" />
@@ -718,7 +720,39 @@ export function TimesheetGrid() {
             </>
           )}
 
-          {/* Signing → waiting */}
+          {/* Submitted → admin can approve/reject directly (no DocuSign) */}
+          {envelopeStatus === 'Submitted' && !hasDocuSign && isAdmin && (
+            <>
+              <Button size="sm" variant="outline" onClick={async () => {
+                if (!orgId || !currentPersonId || !user?.id) return
+                await timesheetService.updateEnvelopeStatus(orgId, currentPersonId, globalYear, selectedMonth, 'Approved', user.id)
+                toast({ title: 'Approved', description: 'Timesheet approved.' })
+                await loadData()
+              }} className="gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Approve
+              </Button>
+              <Button size="sm" variant="outline" onClick={async () => {
+                if (!orgId || !currentPersonId || !user?.id) return
+                await timesheetService.updateEnvelopeStatus(orgId, currentPersonId, globalYear, selectedMonth, 'Rejected', user.id)
+                toast({ title: 'Rejected', description: 'Timesheet rejected. The person can revise and resubmit.' })
+                await loadData()
+              }} className="gap-1.5 text-red-600 border-red-300 hover:bg-red-50">
+                <Undo2 className="h-3.5 w-3.5" />
+                Reject
+              </Button>
+            </>
+          )}
+
+          {/* Submitted → non-admin recall (no DocuSign) */}
+          {envelopeStatus === 'Submitted' && !hasDocuSign && !isAdmin && (
+            <Button variant="outline" size="sm" onClick={handleRecall} className="gap-1.5">
+              <Undo2 className="h-3.5 w-3.5" />
+              Recall
+            </Button>
+          )}
+
+          {/* Signing → waiting (DocuSign flow only) */}
           {envelopeStatus === 'Signing' && envelope?.signature_url && (
             <Button size="sm" variant="outline" onClick={() => window.open(envelope.signature_url!, '_blank')} className="gap-1.5">
               <PenTool className="h-3.5 w-3.5" />
@@ -726,7 +760,7 @@ export function TimesheetGrid() {
             </Button>
           )}
 
-          {/* Signed → admin can approve/reject */}
+          {/* Signed → admin can approve/reject (DocuSign flow) */}
           {envelopeStatus === 'Signed' && isAdmin && (
             <>
               <Button size="sm" variant="outline" onClick={async () => {

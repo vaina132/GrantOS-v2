@@ -29,6 +29,13 @@ export interface Organisation {
   plan: OrgPlan
   trial_ends_at: string | null
   is_active: boolean
+  // DocuSign integration
+  docusign_integration_key: string | null
+  docusign_user_id: string | null
+  docusign_account_id: string | null
+  docusign_rsa_private_key: string | null
+  docusign_base_url: string | null
+  docusign_oauth_base_url: string | null
   created_at: string
   updated_at: string
 }
