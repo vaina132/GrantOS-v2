@@ -383,6 +383,11 @@ export function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const c = t[lang]
 
+  // On the marketing domain, link to app.grantlume.com for login/signup
+  const hostname = window.location.hostname
+  const isAppDomain = hostname.startsWith('app.') || hostname === 'localhost' || hostname === '127.0.0.1'
+  const appBase = isAppDomain ? '' : 'https://app.grantlume.com'
+
   return (
     <div className="min-h-screen bg-white text-gray-900 antialiased">
       {/* ── Navigation ── */}
@@ -412,19 +417,19 @@ export function LandingPage() {
                 <Globe className="h-4 w-4" />
                 {lang === 'en' ? 'DE' : 'EN'}
               </button>
-              <Link
-                to="/login"
+              <a
+                href={`${appBase}/login`}
                 className="text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors"
               >
                 {c.nav.login}
-              </Link>
-              <Link
-                to="/signup"
+              </a>
+              <a
+                href={`${appBase}/signup`}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors shadow-sm"
               >
                 {c.nav.tryFree}
                 <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
+              </a>
             </div>
 
             {/* Mobile menu button */}
@@ -454,12 +459,12 @@ export function LandingPage() {
                 {c.nav.security}
               </a>
               <div className="flex gap-3 pt-2">
-                <Link to="/login" className="flex-1 text-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700">
+                <a href={`${appBase}/login`} className="flex-1 text-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700">
                   {c.nav.login}
-                </Link>
-                <Link to="/signup" className="flex-1 text-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white">
+                </a>
+                <a href={`${appBase}/signup`} className="flex-1 text-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white">
                   {c.nav.tryFree}
-                </Link>
+                </a>
               </div>
             </div>
           )}
@@ -492,20 +497,20 @@ export function LandingPage() {
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link
-                to="/signup"
+              <a
+                href={`${appBase}/signup`}
                 className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-8 py-4 text-base font-semibold text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/30"
               >
                 {c.hero.cta}
                 <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                to="/login"
+              </a>
+              <a
+                href={`${appBase}/login`}
                 className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
               >
                 {c.hero.login}
                 <ChevronRight className="h-4 w-4" />
-              </Link>
+              </a>
             </div>
 
             <p className="mt-4 text-sm text-gray-500">{c.hero.ctaSub}</p>
@@ -624,8 +629,8 @@ export function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  to="/signup"
+                <a
+                  href={`${appBase}/signup`}
                   className={`block w-full text-center rounded-lg py-2.5 text-sm font-semibold transition-colors ${
                     plan.highlighted
                       ? 'bg-white text-blue-600 hover:bg-blue-50'
@@ -633,7 +638,7 @@ export function LandingPage() {
                   }`}
                 >
                   {plan.cta}
-                </Link>
+                </a>
               </div>
             ))}
           </div>
@@ -696,13 +701,13 @@ export function LandingPage() {
                 {c.cta.subtitle}
               </p>
               <div className="mt-8">
-                <Link
-                  to="/signup"
+                <a
+                  href={`${appBase}/signup`}
                   className="inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-base font-semibold text-blue-700 hover:bg-blue-50 transition-colors shadow-lg"
                 >
                   {c.cta.button}
                   <ArrowRight className="h-4 w-4" />
-                </Link>
+                </a>
               </div>
               <p className="mt-4 text-sm text-blue-200">{c.cta.note}</p>
             </div>

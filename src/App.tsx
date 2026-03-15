@@ -80,10 +80,20 @@ export default function App() {
   // User is authenticated but has no organisation — show onboarding
   const needsOnboarding = user && !orgId
 
+  // Detect whether we're on the app subdomain (app.grantlume.com) or the marketing domain
+  const hostname = window.location.hostname
+  const isAppDomain = hostname.startsWith('app.') || hostname === 'localhost' || hostname === '127.0.0.1'
+
   return (
     <>
       <Routes>
-        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+        <Route path="/" element={
+          user
+            ? <Navigate to="/dashboard" replace />
+            : isAppDomain
+              ? <Navigate to="/login" replace />
+              : <LandingPage />
+        } />
         <Route path="/home" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
         <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <SignUpPage />} />
@@ -97,7 +107,9 @@ export default function App() {
         <Route
           path="/*"
           element={
-            <ProtectedRoute>
+            !user && !isAppDomain ? (
+              <LandingPage />
+            ) : <ProtectedRoute>
               {needsOnboarding ? (
                 <OnboardingWizard />
               ) : (
