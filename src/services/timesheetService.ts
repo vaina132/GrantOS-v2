@@ -255,7 +255,7 @@ export const timesheetService = {
       const period = `${MONTHS[month - 1]} ${year}`
       const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
 
-      supabase.from('persons').select('full_name, email, user_id').eq('id', personId).single()
+      Promise.resolve(supabase.from('persons').select('full_name, email, user_id').eq('id', personId).single())
       .then(({ data: person }) => {
         const personName = (person as any)?.full_name ?? 'Team member'
         const personEmail = (person as any)?.email
