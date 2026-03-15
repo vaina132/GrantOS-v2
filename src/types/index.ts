@@ -299,6 +299,8 @@ export interface UserPreferences {
   email_welcome: boolean
   email_trial_expiring: boolean
   email_substitute_notifications: boolean
+  email_absence_notifications: boolean
+  email_collab_notifications: boolean
   created_at: string
   updated_at: string
 }

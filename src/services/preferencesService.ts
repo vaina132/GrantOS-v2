@@ -13,6 +13,13 @@ export const EMAIL_PREF_MAP: Record<string, keyof UserPreferences> = {
   welcome: 'email_welcome',
   trialExpiring: 'email_trial_expiring',
   substituteNotification: 'email_substitute_notifications',
+  absenceRequested: 'email_absence_notifications',
+  absenceApproved: 'email_absence_notifications',
+  absenceRejected: 'email_absence_notifications',
+  collabPartnerInvitation: 'email_collab_notifications',
+  collabReportReminder: 'email_collab_notifications',
+  collabReportStatus: 'email_collab_notifications',
+  collabDeliverableReminder: 'email_collab_notifications',
   // Access-grant emails are always sent (no opt-out)
 }
 
@@ -27,6 +34,8 @@ export const EMAIL_PREF_LABELS: { key: keyof UserPreferences; label: string; des
   { key: 'email_welcome', label: 'Welcome Email', description: 'Welcome message after signing up' },
   { key: 'email_trial_expiring', label: 'Trial Expiring', description: 'Reminders when your trial is about to end' },
   { key: 'email_substitute_notifications', label: 'Substitute Notifications', description: 'Notifications when you are nominated as a substitute for a colleague on leave' },
+  { key: 'email_absence_notifications', label: 'Absence Notifications', description: 'Updates when absence requests are submitted, approved, or rejected' },
+  { key: 'email_collab_notifications', label: 'Collaboration Notifications', description: 'Partner invitations, report reminders, and report status updates for collaboration projects' },
 ]
 
 /** Build an in-memory default preferences object (all notifications ON) */
@@ -46,6 +55,8 @@ function makeDefaults(userId: string, orgId: string): UserPreferences {
     email_welcome: true,
     email_trial_expiring: true,
     email_substitute_notifications: true,
+    email_absence_notifications: true,
+    email_collab_notifications: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }

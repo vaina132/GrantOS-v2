@@ -134,7 +134,9 @@
     "ref": "Ref: {{ref}}",
     "countItems": "{{count}} {{item}}",
     "allCategories": "Alle Kategorien",
-    "exportPdf": "PDF exportieren"
+    "exportPdf": "PDF exportieren",
+    "selectCountry": "Land auswählen...",
+    "selectPerson": "Person auswählen..."
   },
   "auth": {
     "login": "Anmelden",

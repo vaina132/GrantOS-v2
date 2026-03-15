@@ -136,6 +136,7 @@
     "allCategories": "Tüm Kategoriler",
     "exportPdf": "PDF Dışa Aktar",
     "selectCountry": "Ülke seçin...",
+    "selectPerson": "Kişi seçin...",
     "hasBeenUpdated": "{{name}} güncellendi.",
     "hasBeenCreated": "{{name}} oluşturuldu.",
     "created": "Oluşturuldu",

@@ -86,6 +86,13 @@ const PREF_COLUMN_MAP: Record<string, string> = {
   projectCreated: 'email_project_alerts',
   proposalStatusChanged: 'email_project_alerts',
   substituteNotification: 'email_substitute_notifications',
+  absenceRequested: 'email_absence_notifications',
+  absenceApproved: 'email_absence_notifications',
+  absenceRejected: 'email_absence_notifications',
+  collabPartnerInvitation: 'email_collab_notifications',
+  collabReportReminder: 'email_collab_notifications',
+  collabReportStatus: 'email_collab_notifications',
+  collabDeliverableReminder: 'email_collab_notifications',
 }
 
 const FROM_ADDRESS = 'GrantLume <notifications@grantlume.com>'

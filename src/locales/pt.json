@@ -136,6 +136,7 @@
     "allCategories": "Todas as categorias",
     "exportPdf": "Exportar PDF",
     "selectCountry": "Selecionar país...",
+    "selectPerson": "Selecionar pessoa...",
     "hasBeenUpdated": "{{name}} foi atualizado.",
     "hasBeenCreated": "{{name}} foi criado.",
     "created": "Criado",
