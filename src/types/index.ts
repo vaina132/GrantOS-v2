@@ -522,6 +522,20 @@ export type CollabOrgType = 'HES' | 'REC' | 'PRC' | 'PUB' | 'OTH'
 export type CollabDeliverableType = 'report' | 'data' | 'software' | 'demonstrator' | 'other'
 export type CollabDisseminationLevel = 'public' | 'confidential' | 'classified'
 
+export type CollabReminderUnit = 'days' | 'weeks' | 'months'
+
+export interface CollabReminderSetting {
+  enabled: boolean
+  lead_time: number
+  unit: CollabReminderUnit
+}
+
+export interface CollabReminderSettings {
+  deliverables: CollabReminderSetting
+  milestones: CollabReminderSetting
+  reports: CollabReminderSetting
+}
+
 export interface CollabProject {
   id: string
   host_org_id: string
@@ -537,6 +551,7 @@ export interface CollabProject {
   deviation_personnel_effort: number
   deviation_personnel_costs: number
   deviation_pm_rate: number
+  reminder_settings: CollabReminderSettings
   created_by: string | null
   created_at: string
   updated_at: string

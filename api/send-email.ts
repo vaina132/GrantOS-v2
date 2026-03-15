@@ -31,6 +31,7 @@ import {
   collabReportReminderEmail,
   collabReportStatusEmail,
   collabDeliverableReminderEmail,
+  collabMilestoneReminderEmail,
 } from './emails/templates.js'
 import type { EmailTemplate } from './emails/templates.js'
 
@@ -64,6 +65,7 @@ const TEMPLATE_MAP: Record<string, (params: any) => EmailTemplate> = {
   collabReportReminder: collabReportReminderEmail,
   collabReportStatus: collabReportStatusEmail,
   collabDeliverableReminder: collabDeliverableReminderEmail,
+  collabMilestoneReminder: collabMilestoneReminderEmail,
 }
 
 /** Maps template name → user_preferences column that controls it */
@@ -93,6 +95,7 @@ const PREF_COLUMN_MAP: Record<string, string> = {
   collabReportReminder: 'email_collab_notifications',
   collabReportStatus: 'email_collab_notifications',
   collabDeliverableReminder: 'email_collab_notifications',
+  collabMilestoneReminder: 'email_collab_notifications',
 }
 
 const FROM_ADDRESS = 'GrantLume <notifications@grantlume.com>'

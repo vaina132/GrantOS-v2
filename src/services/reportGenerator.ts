@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 import { formatCurrency } from '@/lib/utils'
-import type { Project, Person, TimesheetEntry, Proposal, CollabPartner } from '@/types'
+import type { Project, Person, TimesheetEntry, Proposal, CollabPartner, CollabProject, CollabWorkPackage, CollabTask, CollabDeliverable, CollabMilestone, CollabReportingPeriod, CollabReport } from '@/types'
 
 // Brand colors
 const PRIMARY = [37, 99, 235] as const   // blue-600
@@ -597,3 +597,421 @@ export function generateCollabBudgetPDF(
 
   doc.save(`${acronym}_budget_overview.pdf`)
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// Collab: EC Periodic Technical Report
+// ════════════════════════════════════════════════════════════════════════════
+
+export function generateCollabPeriodicReportPDF(
+  project: CollabProject,
+  partners: CollabPartner[],
+  wps: CollabWorkPackage[],
+  tasksByWp: Record<string, CollabTask[]>,
+  deliverables: CollabDeliverable[],
+  milestones: CollabMilestone[],
+  period: CollabReportingPeriod,
+  reports: CollabReport[],
+) {
+  const doc = setupDoc(`Periodic Technical Report — ${period.title}`, project.acronym)
+  let y = 36
+
+  // Project identity
+  y = addSectionTitle(doc, y, '1. Project Information')
+  y = addKeyValue(doc, y, 'Project Acronym', project.acronym)
+  y = addKeyValue(doc, y, 'Project Title', project.title)
+  if (project.grant_number) y = addKeyValue(doc, y, 'Grant Agreement', project.grant_number)
+  if (project.funding_programme) y = addKeyValue(doc, y, 'Programme', project.funding_programme)
+  y = addKeyValue(doc, y, 'Reporting Period', `${period.title} (M${period.start_month}–M${period.end_month})`)
+  if (period.due_date) y = addKeyValue(doc, y, 'Due Date', period.due_date)
+  y = addKeyValue(doc, y, 'Partners', String(partners.length))
+  const coord = partners.find(p => p.role === 'coordinator')
+  if (coord) y = addKeyValue(doc, y, 'Coordinator', coord.org_name)
+  y += 4
+
+  // Consortium
+  y = addSectionTitle(doc, y, '2. Consortium Overview')
+  const consortiumCols = [
+    { label: '#', x: 14, width: 10 },
+    { label: 'Organisation', x: 24, width: 50 },
+    { label: 'Country', x: 74, width: 20 },
+    { label: 'Role', x: 94, width: 25 },
+    { label: 'PMs', x: 119, width: 20, align: 'right' as const },
+  ]
+  y = drawTableHeader(doc, y, consortiumCols)
+  partners.forEach((p, i) => {
+    if (y > 270) { doc.addPage(); y = 20 }
+    y = drawTableRow(doc, y, [
+      { value: String(p.participant_number ?? i + 1), x: 14, width: 10 },
+      { value: p.org_name, x: 24, width: 50 },
+      { value: p.country || '—', x: 74, width: 20 },
+      { value: p.role, x: 94, width: 25 },
+      { value: p.total_person_months.toFixed(1), x: 119, width: 20, align: 'right' },
+    ], i % 2 === 1)
+  })
+  y += 6
+
+  // Work Package Progress
+  if (y > 240) { doc.addPage(); y = 20 }
+  y = addSectionTitle(doc, y, '3. Work Package Progress')
+  for (const wp of wps) {
+    if (y > 255) { doc.addPage(); y = 20 }
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.setTextColor(...DARK)
+    doc.text(`WP${wp.wp_number}: ${wp.title}`, 14, y)
+    y += 5
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...MUTED)
+    const wpMeta: string[] = []
+    if (wp.start_month != null && wp.end_month != null) wpMeta.push(`M${wp.start_month}–M${wp.end_month}`)
+    wpMeta.push(`${wp.total_person_months} PMs`)
+    const tasks = tasksByWp[wp.id] ?? []
+    if (tasks.length > 0) wpMeta.push(`${tasks.length} task(s)`)
+    doc.text(wpMeta.join(' · '), 14, y)
+    y += 5
+
+    if (tasks.length > 0) {
+      for (const tk of tasks) {
+        if (y > 270) { doc.addPage(); y = 20 }
+        doc.setTextColor(...DARK)
+        doc.setFontSize(7)
+        doc.text(`  ${tk.task_number}: ${tk.title}`, 18, y)
+        if (tk.start_month != null && tk.end_month != null) {
+          doc.setTextColor(...MUTED)
+          doc.text(`M${tk.start_month}–M${tk.end_month}`, 120, y)
+        }
+        y += 4
+      }
+    }
+    y += 3
+  }
+
+  // Deliverables
+  if (y > 230) { doc.addPage(); y = 20 }
+  y = addSectionTitle(doc, y, '4. Deliverables')
+  const periodDels = deliverables.filter(d => d.due_month >= period.start_month && d.due_month <= period.end_month)
+  if (periodDels.length === 0) {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(8)
+    doc.setTextColor(...MUTED)
+    doc.text('No deliverables due in this reporting period.', 14, y)
+    y += 6
+  } else {
+    const delCols = [
+      { label: '#', x: 14, width: 15 },
+      { label: 'Title', x: 29, width: 70 },
+      { label: 'WP', x: 99, width: 15 },
+      { label: 'Type', x: 114, width: 25 },
+      { label: 'Due', x: 139, width: 15 },
+      { label: 'Lead', x: 154, width: 40 },
+    ]
+    y = drawTableHeader(doc, y, delCols)
+    periodDels.forEach((d, i) => {
+      if (y > 270) { doc.addPage(); y = 20 }
+      const wp = d.wp_id ? wps.find(w => w.id === d.wp_id) : null
+      const leader = d.leader_partner_id ? partners.find(p => p.id === d.leader_partner_id) : null
+      y = drawTableRow(doc, y, [
+        { value: d.number, x: 14, width: 15 },
+        { value: d.title, x: 29, width: 70 },
+        { value: wp ? `WP${wp.wp_number}` : '—', x: 99, width: 15 },
+        { value: d.type || '—', x: 114, width: 25 },
+        { value: `M${d.due_month}`, x: 139, width: 15 },
+        { value: leader?.org_name ?? '—', x: 154, width: 40 },
+      ], i % 2 === 1)
+    })
+    y += 6
+  }
+
+  // Milestones
+  if (y > 230) { doc.addPage(); y = 20 }
+  y = addSectionTitle(doc, y, '5. Milestones')
+  const periodMs = milestones.filter(m => m.due_month >= period.start_month && m.due_month <= period.end_month)
+  if (periodMs.length === 0) {
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(8)
+    doc.setTextColor(...MUTED)
+    doc.text('No milestones due in this reporting period.', 14, y)
+    y += 6
+  } else {
+    const msCols = [
+      { label: '#', x: 14, width: 15 },
+      { label: 'Title', x: 29, width: 70 },
+      { label: 'WP', x: 99, width: 15 },
+      { label: 'Due', x: 114, width: 15 },
+      { label: 'Verification', x: 129, width: 65 },
+    ]
+    y = drawTableHeader(doc, y, msCols)
+    periodMs.forEach((m, i) => {
+      if (y > 270) { doc.addPage(); y = 20 }
+      const wp = m.wp_id ? wps.find(w => w.id === m.wp_id) : null
+      y = drawTableRow(doc, y, [
+        { value: m.number, x: 14, width: 15 },
+        { value: m.title, x: 29, width: 70 },
+        { value: wp ? `WP${wp.wp_number}` : '—', x: 99, width: 15 },
+        { value: `M${m.due_month}`, x: 114, width: 15 },
+        { value: m.verification_means || '—', x: 129, width: 65 },
+      ], i % 2 === 1)
+    })
+    y += 6
+  }
+
+  // Partner report status
+  if (reports.length > 0) {
+    if (y > 240) { doc.addPage(); y = 20 }
+    y = addSectionTitle(doc, y, '6. Partner Financial Report Status')
+    const rpCols = [
+      { label: 'Partner', x: 14, width: 60 },
+      { label: 'Status', x: 74, width: 30 },
+      { label: 'Submitted', x: 104, width: 35 },
+      { label: 'Reviewed', x: 139, width: 35 },
+    ]
+    y = drawTableHeader(doc, y, rpCols)
+    reports.forEach((r, i) => {
+      if (y > 270) { doc.addPage(); y = 20 }
+      const rPartner = r.partner ?? partners.find(p => p.id === r.partner_id)
+      y = drawTableRow(doc, y, [
+        { value: rPartner?.org_name ?? '—', x: 14, width: 60 },
+        { value: r.status, x: 74, width: 30 },
+        { value: r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : '—', x: 104, width: 35 },
+        { value: r.reviewed_at ? new Date(r.reviewed_at).toLocaleDateString() : '—', x: 139, width: 35 },
+      ], i % 2 === 1)
+    })
+  }
+
+  // Footer
+  addFooter(doc)
+  doc.save(`${project.acronym}_periodic_report_${period.title.replace(/\s/g, '_')}.pdf`)
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Collab: Financial Statement (Form C style)
+// ════════════════════════════════════════════════════════════════════════════
+
+export function generateCollabFinancialStatementPDF(
+  project: CollabProject,
+  partners: CollabPartner[],
+  period: CollabReportingPeriod,
+  reports: CollabReport[],
+) {
+  const doc = setupDoc(`Financial Statement — ${period.title}`, project.acronym)
+  let y = 36
+
+  y = addSectionTitle(doc, y, '1. Project & Period')
+  y = addKeyValue(doc, y, 'Project', `${project.acronym} — ${project.title}`)
+  if (project.grant_number) y = addKeyValue(doc, y, 'Grant Agreement', project.grant_number)
+  y = addKeyValue(doc, y, 'Period', `${period.title} (M${period.start_month}–M${period.end_month})`)
+  y += 6
+
+  // Budget overview per partner
+  y = addSectionTitle(doc, y, '2. Planned Budget by Partner')
+  const budCols = [
+    { label: 'Partner', x: 14, width: 40 },
+    { label: 'Personnel', x: 54, width: 22, align: 'right' as const },
+    { label: 'Subcontract', x: 76, width: 22, align: 'right' as const },
+    { label: 'Travel', x: 98, width: 20, align: 'right' as const },
+    { label: 'Equipment', x: 118, width: 22, align: 'right' as const },
+    { label: 'Other', x: 140, width: 20, align: 'right' as const },
+    { label: 'Total', x: 160, width: 22, align: 'right' as const },
+    { label: 'Indirect', x: 182, width: 20, align: 'right' as const },
+  ]
+  y = drawTableHeader(doc, y, budCols)
+
+  const fmt = (n: number) => `€${Math.round(n).toLocaleString()}`
+  const totals = { pers: 0, sub: 0, trav: 0, equip: 0, other: 0, direct: 0, indirect: 0 }
+
+  partners.forEach((p, i) => {
+    if (y > 270) { doc.addPage(); y = 20 }
+    const direct = p.budget_personnel + p.budget_subcontracting + p.budget_travel + p.budget_equipment + p.budget_other_goods
+    const indirectBase = p.indirect_cost_base === 'personnel_only'
+      ? p.budget_personnel
+      : p.indirect_cost_base === 'all_except_subcontracting'
+        ? direct - p.budget_subcontracting
+        : direct
+    const indirect = indirectBase * (p.indirect_cost_rate / 100)
+    totals.pers += p.budget_personnel
+    totals.sub += p.budget_subcontracting
+    totals.trav += p.budget_travel
+    totals.equip += p.budget_equipment
+    totals.other += p.budget_other_goods
+    totals.direct += direct
+    totals.indirect += indirect
+
+    y = drawTableRow(doc, y, [
+      { value: p.org_name, x: 14, width: 40, bold: p.role === 'coordinator' },
+      { value: fmt(p.budget_personnel), x: 54, width: 22, align: 'right' },
+      { value: fmt(p.budget_subcontracting), x: 76, width: 22, align: 'right' },
+      { value: fmt(p.budget_travel), x: 98, width: 20, align: 'right' },
+      { value: fmt(p.budget_equipment), x: 118, width: 22, align: 'right' },
+      { value: fmt(p.budget_other_goods), x: 140, width: 20, align: 'right' },
+      { value: fmt(direct), x: 160, width: 22, align: 'right', bold: true },
+      { value: fmt(indirect), x: 182, width: 20, align: 'right' },
+    ], i % 2 === 1)
+  })
+
+  // Total row
+  y += 2
+  doc.setDrawColor(...BORDER)
+  doc.line(14, y - 1, 202, y - 1)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(8)
+  doc.setTextColor(...DARK)
+  doc.text('Total', 14, y + 1)
+  const totalRowVals = [
+    { v: fmt(totals.pers), x: 54, w: 22 },
+    { v: fmt(totals.sub), x: 76, w: 22 },
+    { v: fmt(totals.trav), x: 98, w: 20 },
+    { v: fmt(totals.equip), x: 118, w: 22 },
+    { v: fmt(totals.other), x: 140, w: 20 },
+    { v: fmt(totals.direct), x: 160, w: 22 },
+    { v: fmt(Math.round(totals.indirect)), x: 182, w: 20 },
+  ]
+  for (const v of totalRowVals) {
+    doc.text(v.v, v.x + v.w, y + 1, { align: 'right' })
+  }
+  y += 10
+
+  // Report statuses
+  if (reports.length > 0) {
+    if (y > 240) { doc.addPage(); y = 20 }
+    y = addSectionTitle(doc, y, '3. Partner Report Status')
+    const statusCols = [
+      { label: 'Partner', x: 14, width: 50 },
+      { label: 'Status', x: 64, width: 25 },
+      { label: 'Submitted', x: 89, width: 30 },
+      { label: 'Reviewed', x: 119, width: 30 },
+    ]
+    y = drawTableHeader(doc, y, statusCols)
+    reports.forEach((r, i) => {
+      if (y > 270) { doc.addPage(); y = 20 }
+      const rPartner = r.partner ?? partners.find(p => p.id === r.partner_id)
+      y = drawTableRow(doc, y, [
+        { value: rPartner?.org_name ?? '—', x: 14, width: 50 },
+        { value: r.status.charAt(0).toUpperCase() + r.status.slice(1), x: 64, width: 25, bold: r.status === 'approved' },
+        { value: r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : '—', x: 89, width: 30 },
+        { value: r.reviewed_at ? new Date(r.reviewed_at).toLocaleDateString() : '—', x: 119, width: 30 },
+      ], i % 2 === 1)
+    })
+  }
+
+  addFooter(doc)
+  doc.save(`${project.acronym}_financial_statement_${period.title.replace(/\s/g, '_')}.pdf`)
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Collab: Publishable Summary
+// ════════════════════════════════════════════════════════════════════════════
+
+export function generateCollabPublishableSummaryPDF(
+  project: CollabProject,
+  partners: CollabPartner[],
+  wps: CollabWorkPackage[],
+  deliverables: CollabDeliverable[],
+  milestones: CollabMilestone[],
+) {
+  const doc = setupDoc('Publishable Summary', project.acronym)
+  let y = 36
+
+  // Project overview
+  y = addSectionTitle(doc, y, '1. Project Overview')
+  y = addKeyValue(doc, y, 'Acronym', project.acronym)
+  y = addKeyValue(doc, y, 'Title', project.title)
+  if (project.grant_number) y = addKeyValue(doc, y, 'Grant Agreement', project.grant_number)
+  if (project.funding_programme) y = addKeyValue(doc, y, 'Programme', project.funding_programme)
+  if (project.funding_scheme) y = addKeyValue(doc, y, 'Scheme', project.funding_scheme)
+  if (project.start_date && project.end_date) y = addKeyValue(doc, y, 'Duration', `${project.start_date} → ${project.end_date} (${project.duration_months ?? '?'} months)`)
+  y += 4
+
+  // Consortium
+  y = addSectionTitle(doc, y, '2. Consortium')
+  partners.forEach((p, i) => {
+    if (y > 270) { doc.addPage(); y = 20 }
+    doc.setFont('helvetica', i === 0 || p.role === 'coordinator' ? 'bold' : 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(...DARK)
+    const label = `${p.participant_number ?? i + 1}. ${p.org_name}`
+    const meta = [p.country, p.role === 'coordinator' ? 'Coordinator' : 'Partner'].filter(Boolean).join(' — ')
+    doc.text(label, 14, y)
+    doc.setTextColor(...MUTED)
+    doc.setFont('helvetica', 'normal')
+    doc.text(meta, 100, y)
+    y += 5
+  })
+  y += 4
+
+  // Work Plan
+  if (y > 240) { doc.addPage(); y = 20 }
+  y = addSectionTitle(doc, y, '3. Work Plan')
+  wps.forEach((wp) => {
+    if (y > 265) { doc.addPage(); y = 20 }
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8)
+    doc.setTextColor(...DARK)
+    doc.text(`WP${wp.wp_number}: ${wp.title}`, 14, y)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(...MUTED)
+    const meta = []
+    if (wp.start_month != null && wp.end_month != null) meta.push(`M${wp.start_month}–M${wp.end_month}`)
+    meta.push(`${wp.total_person_months} PMs`)
+    doc.text(meta.join(' · '), 120, y)
+    y += 5
+  })
+  y += 4
+
+  // Key deliverables
+  if (deliverables.length > 0) {
+    if (y > 240) { doc.addPage(); y = 20 }
+    y = addSectionTitle(doc, y, '4. Key Deliverables')
+    deliverables.forEach((d) => {
+      if (y > 270) { doc.addPage(); y = 20 }
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(...DARK)
+      doc.text(`${d.number}: ${d.title}`, 14, y)
+      doc.setTextColor(...MUTED)
+      doc.text(`M${d.due_month}`, 160, y)
+      if (d.type) doc.text(d.type, 175, y)
+      y += 5
+    })
+    y += 4
+  }
+
+  // Key milestones
+  if (milestones.length > 0) {
+    if (y > 240) { doc.addPage(); y = 20 }
+    y = addSectionTitle(doc, y, '5. Key Milestones')
+    milestones.forEach((m) => {
+      if (y > 270) { doc.addPage(); y = 20 }
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(...DARK)
+      doc.text(`${m.number}: ${m.title}`, 14, y)
+      doc.setTextColor(...MUTED)
+      doc.text(`M${m.due_month}`, 160, y)
+      y += 5
+    })
+    y += 4
+  }
+
+  // Budget summary
+  if (y > 240) { doc.addPage(); y = 20 }
+  y = addSectionTitle(doc, y, `${deliverables.length > 0 && milestones.length > 0 ? '6' : deliverables.length > 0 || milestones.length > 0 ? '5' : '4'}. Budget Summary`)
+  const totalBudget = partners.reduce((sum, p) => {
+    const direct = p.budget_personnel + p.budget_subcontracting + p.budget_travel + p.budget_equipment + p.budget_other_goods
+    const indirectBase = p.indirect_cost_base === 'personnel_only'
+      ? p.budget_personnel
+      : p.indirect_cost_base === 'all_except_subcontracting'
+        ? direct - p.budget_subcontracting
+        : direct
+    return sum + direct + indirectBase * (p.indirect_cost_rate / 100)
+  }, 0)
+  const totalPMs = partners.reduce((sum, p) => sum + p.total_person_months, 0)
+  y = addKeyValue(doc, y, 'Total Budget', `€${Math.round(totalBudget).toLocaleString()}`)
+  y = addKeyValue(doc, y, 'Total Person-Months', totalPMs.toFixed(1))
+  y = addKeyValue(doc, y, 'Partners', String(partners.length))
+
+  addFooter(doc)
+  doc.save(`${project.acronym}_publishable_summary.pdf`)
+}
+
+

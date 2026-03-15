@@ -7,6 +7,7 @@ import {
   trialExpiringEmail,
   collabReportReminderEmail,
   collabDeliverableReminderEmail,
+  collabMilestoneReminderEmail,
 } from './emails/templates.js'
 
 /**
@@ -257,8 +258,19 @@ async function runProjectAlerts(
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Job 3: Collab Reminders — report due + deliverable due (daily 9am)
+// Job 3: Collab Reminders — per-project settings for reports, deliverables
+//         and milestones (daily 9am). Also creates in-app notifications.
 // ════════════════════════════════════════════════════════════════════════════
+
+/** Convert reminder setting {lead_time, unit} to days */
+function reminderToDays(leadTime: number, unit: string): number {
+  switch (unit) {
+    case 'weeks': return leadTime * 7
+    case 'months': return leadTime * 30
+    default: return leadTime
+  }
+}
+
 async function runCollabReminders(
   supabase: ReturnType<typeof createClient>,
   resend: InstanceType<typeof Resend>,
@@ -268,75 +280,101 @@ async function runCollabReminders(
 ) {
   const now = new Date()
   let totalSent = 0
+  let totalNotifs = 0
+
+  const defaultSettings = {
+    deliverables: { enabled: true, lead_time: 14, unit: 'days' },
+    milestones: { enabled: true, lead_time: 14, unit: 'days' },
+    reports: { enabled: true, lead_time: 7, unit: 'days' },
+  }
 
   try {
-    // ── 1. Report due reminders (7 days before due_date) ──
-    const reminderDate = new Date(now)
-    reminderDate.setDate(reminderDate.getDate() + 7)
-    const reminderDateStr = reminderDate.toISOString().split('T')[0]
+    // Load all active collab projects with their reminder settings
+    const { data: activeProjects } = await supabase
+      .from('collab_projects')
+      .select('id, acronym, title, start_date, duration_months, reminder_settings, host_org_id, created_by')
+      .eq('status', 'active')
 
-    const { data: duePeriods } = await supabase
-      .from('collab_reporting_periods')
-      .select('id, project_id, title, start_month, end_month, due_date, reports_generated')
-      .eq('due_date', reminderDateStr)
-      .eq('reports_generated', true)
+    if (!activeProjects || activeProjects.length === 0) {
+      return res.status(200).json({ job: 'collab-reminders', sent: 0, notifications: 0 })
+    }
 
-    if (duePeriods && duePeriods.length > 0) {
-      for (const period of duePeriods) {
-        const { data: project } = await supabase
-          .from('collab_projects')
-          .select('id, acronym, title, status')
-          .eq('id', period.project_id)
-          .eq('status', 'active')
-          .single()
+    for (const proj of activeProjects) {
+      const settings = { ...defaultSettings, ...(proj.reminder_settings || {}) }
 
-        if (!project) continue
+      // ── 1. Report due reminders ──
+      if (settings.reports?.enabled) {
+        const leadDays = reminderToDays(settings.reports.lead_time, settings.reports.unit)
+        const reminderDate = new Date(now)
+        reminderDate.setDate(reminderDate.getDate() + leadDays)
+        const reminderDateStr = reminderDate.toISOString().split('T')[0]
 
-        const { data: draftReports } = await supabase
-          .from('collab_reports')
-          .select('id, partner_id, status')
-          .eq('period_id', period.id)
-          .in('status', ['draft', 'rejected'])
+        const { data: duePeriods } = await supabase
+          .from('collab_reporting_periods')
+          .select('id, title, start_month, end_month, due_date')
+          .eq('project_id', proj.id)
+          .eq('due_date', reminderDateStr)
+          .eq('reports_generated', true)
 
-        if (!draftReports || draftReports.length === 0) continue
+        if (duePeriods && duePeriods.length > 0) {
+          for (const period of duePeriods) {
+            const { data: draftReports } = await supabase
+              .from('collab_reports')
+              .select('id, partner_id, status')
+              .eq('period_id', period.id)
+              .in('status', ['draft', 'rejected'])
 
-        for (const report of draftReports) {
-          const { data: partner } = await supabase
-            .from('collab_partners')
-            .select('id, org_name, contact_name, contact_email')
-            .eq('id', report.partner_id)
-            .single()
+            if (!draftReports || draftReports.length === 0) continue
 
-          if (!partner?.contact_email) continue
+            for (const report of draftReports) {
+              const { data: partner } = await supabase
+                .from('collab_partners')
+                .select('id, org_name, contact_name, contact_email, user_id')
+                .eq('id', report.partner_id)
+                .single()
 
-          try {
-            const template = collabReportReminderEmail({
-              contactName: partner.contact_name || '',
-              orgName: partner.org_name,
-              projectAcronym: project.acronym,
-              periodTitle: period.title,
-              dueDate: period.due_date,
-              reportUrl: `${appUrl}/projects/collaboration/report/${report.id}`,
-            })
+              if (!partner) continue
 
-            await resend.emails.send({ from, to: partner.contact_email, subject: template.subject, html: template.html })
-            totalSent++
-          } catch (err) {
-            console.error(`[cron] Failed to send collab report reminder to ${partner.contact_email}:`, err)
+              // Email
+              if (partner.contact_email) {
+                try {
+                  const template = collabReportReminderEmail({
+                    contactName: partner.contact_name || '',
+                    orgName: partner.org_name,
+                    projectAcronym: proj.acronym,
+                    periodTitle: period.title,
+                    dueDate: period.due_date,
+                    reportUrl: `${appUrl}/projects/collaboration/report/${report.id}`,
+                  })
+                  await resend.emails.send({ from, to: partner.contact_email, subject: template.subject, html: template.html })
+                  totalSent++
+                } catch (err) {
+                  console.error(`[cron] Failed to send report reminder to ${partner.contact_email}:`, err)
+                }
+              }
+
+              // In-app notification
+              if (partner.user_id) {
+                try {
+                  await supabase.from('notifications').insert({
+                    user_id: partner.user_id,
+                    org_id: proj.host_org_id,
+                    type: 'collab_report_reminder',
+                    title: `Report due: ${period.title} — ${proj.acronym}`,
+                    message: `Your financial report for ${partner.org_name} is due on ${period.due_date}. Please submit it on time.`,
+                    link: `/projects/collaboration/report/${report.id}`,
+                  })
+                  totalNotifs++
+                } catch { /* ignore */ }
+              }
+            }
           }
         }
       }
-    }
 
-    // ── 2. Deliverable due reminders (30 and 14 days before) ──
-    const { data: activeProjects } = await supabase
-      .from('collab_projects')
-      .select('id, acronym, title, start_date, duration_months')
-      .eq('status', 'active')
-
-    if (activeProjects && activeProjects.length > 0) {
-      for (const proj of activeProjects) {
-        if (!proj.start_date) continue
+      // ── 2. Deliverable due reminders ──
+      if (settings.deliverables?.enabled && proj.start_date) {
+        const leadDays = reminderToDays(settings.deliverables.lead_time, settings.deliverables.unit)
         const projectStart = new Date(proj.start_date)
 
         const { data: dels } = await supabase
@@ -344,48 +382,158 @@ async function runCollabReminders(
           .select('id, number, title, due_month, leader_partner_id')
           .eq('project_id', proj.id)
 
-        if (!dels || dels.length === 0) continue
+        if (dels && dels.length > 0) {
+          for (const del of dels) {
+            if (!del.due_month) continue
 
-        for (const del of dels) {
-          if (!del.due_month || !del.leader_partner_id) continue
+            const dueDate = new Date(projectStart)
+            dueDate.setMonth(dueDate.getMonth() + del.due_month - 1)
+            dueDate.setMonth(dueDate.getMonth() + 1, 0) // last day of month
 
-          const dueDate = new Date(projectStart)
-          dueDate.setMonth(dueDate.getMonth() + del.due_month - 1)
-          dueDate.setMonth(dueDate.getMonth() + 1, 0)
+            const daysUntilDue = Math.floor((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+            if (daysUntilDue !== leadDays) continue
 
-          const daysUntilDue = Math.floor((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-          if (daysUntilDue !== 30 && daysUntilDue !== 14) continue
+            // Send to leader partner + coordinator
+            const partnerIds = new Set<string>()
+            if (del.leader_partner_id) partnerIds.add(del.leader_partner_id)
 
-          const { data: partner } = await supabase
-            .from('collab_partners')
-            .select('id, org_name, contact_name, contact_email')
-            .eq('id', del.leader_partner_id)
-            .single()
+            const { data: coordPartner } = await supabase
+              .from('collab_partners')
+              .select('id')
+              .eq('project_id', proj.id)
+              .eq('role', 'coordinator')
+              .single()
+            if (coordPartner) partnerIds.add(coordPartner.id)
 
-          if (!partner?.contact_email) continue
+            for (const pid of partnerIds) {
+              const { data: partner } = await supabase
+                .from('collab_partners')
+                .select('id, org_name, contact_name, contact_email, user_id')
+                .eq('id', pid)
+                .single()
+              if (!partner) continue
 
-          try {
-            const template = collabDeliverableReminderEmail({
-              contactName: partner.contact_name || '',
-              orgName: partner.org_name,
-              projectAcronym: proj.acronym,
-              deliverableNumber: del.number,
-              deliverableTitle: del.title,
-              dueMonth: del.due_month,
-              dueDate: dueDate.toISOString().split('T')[0],
-              projectUrl: `${appUrl}/projects/collaboration/${proj.id}`,
-            })
+              if (partner.contact_email) {
+                try {
+                  const template = collabDeliverableReminderEmail({
+                    contactName: partner.contact_name || '',
+                    orgName: partner.org_name,
+                    projectAcronym: proj.acronym,
+                    deliverableNumber: del.number,
+                    deliverableTitle: del.title,
+                    dueMonth: del.due_month,
+                    dueDate: dueDate.toISOString().split('T')[0],
+                    projectUrl: `${appUrl}/projects/collaboration/${proj.id}`,
+                  })
+                  await resend.emails.send({ from, to: partner.contact_email, subject: template.subject, html: template.html })
+                  totalSent++
+                } catch (err) {
+                  console.error(`[cron] Failed to send deliverable reminder to ${partner.contact_email}:`, err)
+                }
+              }
 
-            await resend.emails.send({ from, to: partner.contact_email, subject: template.subject, html: template.html })
-            totalSent++
-          } catch (err) {
-            console.error(`[cron] Failed to send collab deliverable reminder to ${partner.contact_email}:`, err)
+              if (partner.user_id) {
+                try {
+                  await supabase.from('notifications').insert({
+                    user_id: partner.user_id,
+                    org_id: proj.host_org_id,
+                    type: 'collab_deliverable_reminder',
+                    title: `Deliverable due: ${del.number} — ${proj.acronym}`,
+                    message: `Deliverable "${del.title}" is due in ${leadDays} day(s) (M${del.due_month}).`,
+                    link: `/projects/collaboration/${proj.id}`,
+                  })
+                  totalNotifs++
+                } catch { /* ignore */ }
+              }
+            }
+          }
+        }
+      }
+
+      // ── 3. Milestone due reminders ──
+      if (settings.milestones?.enabled && proj.start_date) {
+        const leadDays = reminderToDays(settings.milestones.lead_time, settings.milestones.unit)
+        const projectStart = new Date(proj.start_date)
+
+        const { data: milestones } = await supabase
+          .from('collab_milestones')
+          .select('id, number, title, due_month, wp_id')
+          .eq('project_id', proj.id)
+
+        if (milestones && milestones.length > 0) {
+          for (const ms of milestones) {
+            if (!ms.due_month) continue
+
+            const dueDate = new Date(projectStart)
+            dueDate.setMonth(dueDate.getMonth() + ms.due_month - 1)
+            dueDate.setMonth(dueDate.getMonth() + 1, 0)
+
+            const daysUntilDue = Math.floor((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+            if (daysUntilDue !== leadDays) continue
+
+            // Notify the coordinator (milestones don't have a leader_partner_id)
+            const { data: coordPartner } = await supabase
+              .from('collab_partners')
+              .select('id, org_name, contact_name, contact_email, user_id')
+              .eq('project_id', proj.id)
+              .eq('role', 'coordinator')
+              .single()
+
+            if (coordPartner) {
+              if (coordPartner.contact_email) {
+                try {
+                  const template = collabMilestoneReminderEmail({
+                    contactName: coordPartner.contact_name || '',
+                    orgName: coordPartner.org_name,
+                    projectAcronym: proj.acronym,
+                    milestoneNumber: ms.number,
+                    milestoneTitle: ms.title,
+                    dueMonth: ms.due_month,
+                    dueDate: dueDate.toISOString().split('T')[0],
+                    projectUrl: `${appUrl}/projects/collaboration/${proj.id}`,
+                  })
+                  await resend.emails.send({ from, to: coordPartner.contact_email, subject: template.subject, html: template.html })
+                  totalSent++
+                } catch (err) {
+                  console.error(`[cron] Failed to send milestone reminder to ${coordPartner.contact_email}:`, err)
+                }
+              }
+
+              if (coordPartner.user_id) {
+                try {
+                  await supabase.from('notifications').insert({
+                    user_id: coordPartner.user_id,
+                    org_id: proj.host_org_id,
+                    type: 'collab_milestone_reminder',
+                    title: `Milestone due: ${ms.number} — ${proj.acronym}`,
+                    message: `Milestone "${ms.title}" is due in ${leadDays} day(s) (M${ms.due_month}).`,
+                    link: `/projects/collaboration/${proj.id}`,
+                  })
+                  totalNotifs++
+                } catch { /* ignore */ }
+              }
+            }
+
+            // Also notify project creator if different from coordinator
+            if (proj.created_by && proj.created_by !== coordPartner?.user_id) {
+              try {
+                await supabase.from('notifications').insert({
+                  user_id: proj.created_by,
+                  org_id: proj.host_org_id,
+                  type: 'collab_milestone_reminder',
+                  title: `Milestone due: ${ms.number} — ${proj.acronym}`,
+                  message: `Milestone "${ms.title}" is due in ${leadDays} day(s) (M${ms.due_month}).`,
+                  link: `/projects/collaboration/${proj.id}`,
+                })
+                totalNotifs++
+              } catch { /* ignore */ }
+            }
           }
         }
       }
     }
 
-    return res.status(200).json({ job: 'collab-reminders', sent: totalSent })
+    return res.status(200).json({ job: 'collab-reminders', sent: totalSent, notifications: totalNotifs })
   } catch (err) {
     console.error('[cron] collab-reminders error:', err)
     return res.status(500).json({ error: 'Cron job failed', details: String(err) })

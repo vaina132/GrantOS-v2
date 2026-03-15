@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Download, ChevronDown, ChevronRight, Target, ListChecks, GanttChart as GanttIcon } from 'lucide-react'
+import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Download, ChevronDown, ChevronRight, Target, ListChecks, GanttChart as GanttIcon, Bell, ClipboardList } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService, collabTaskService, collabDeliverableService, collabMilestoneService, collabTaskEffortService, syncCollabToMyProjects } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
@@ -19,7 +19,7 @@ import { EditAllocDialog } from './EditAllocDialog'
 import { EditContactDialog } from './EditContactDialog'
 import { CollabGanttChart } from './CollabGanttChart'
 import { generateCollabBudgetPDF } from '@/services/reportGenerator'
-import type { CollabProject, CollabPartner, CollabWorkPackage, CollabPartnerWpAlloc, CollabReportingPeriod, CollabReport, CollabTask, CollabDeliverable, CollabMilestone } from '@/types'
+import type { CollabProject, CollabPartner, CollabWorkPackage, CollabPartnerWpAlloc, CollabReportingPeriod, CollabReport, CollabTask, CollabDeliverable, CollabMilestone, CollabReminderSettings, CollabReminderUnit } from '@/types'
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
@@ -38,11 +38,18 @@ const TAB_KEYS = [
   { value: 'partners', labelKey: 'collaboration.tabPartners', icon: Users },
   { value: 'wps', labelKey: 'collaboration.tabWps', icon: LayoutGrid },
   { value: 'periods', labelKey: 'collaboration.tabPeriods', icon: Calendar },
+  { value: 'reports', labelKey: 'collaboration.tabReports', icon: ClipboardList },
   { value: 'deliverables', labelKey: 'collaboration.tabDelMs', icon: ListChecks },
   { value: 'budget', labelKey: 'collaboration.tabBudget', icon: DollarSign },
   { value: 'effort', labelKey: 'collaboration.tabEffort', icon: Target },
   { value: 'gantt', labelKey: 'collaboration.tabTimeline', icon: GanttIcon },
 ]
+
+const DEFAULT_REMINDER_SETTINGS: CollabReminderSettings = {
+  deliverables: { enabled: true, lead_time: 14, unit: 'days' },
+  milestones: { enabled: true, lead_time: 14, unit: 'days' },
+  reports: { enabled: true, lead_time: 7, unit: 'days' },
+}
 
 export function CollabProjectDetail() {
   const { t } = useTranslation()
@@ -88,6 +95,23 @@ export function CollabProjectDetail() {
   // Effort data for effort overview
   const [effortData, setEffortData] = useState<{ task_id: string; partner_id: string; person_months: number }[]>([])
 
+  // Reminder settings
+  const [reminderSettings, setReminderSettings] = useState<CollabReminderSettings>(DEFAULT_REMINDER_SETTINGS)
+  const [savingReminders, setSavingReminders] = useState(false)
+
+  const handleSaveReminders = async () => {
+    if (!id) return
+    setSavingReminders(true)
+    try {
+      await collabProjectService.update(id, { reminder_settings: reminderSettings } as any)
+      toast({ title: t('common.saved'), description: t('collaboration.reminderSettingsSaved') })
+    } catch {
+      toast({ title: t('common.error'), description: t('common.failedToSave'), variant: 'destructive' })
+    } finally {
+      setSavingReminders(false)
+    }
+  }
+
   const load = async () => {
     if (!id) return
     setLoading(true)
@@ -99,6 +123,9 @@ export function CollabProjectDetail() {
         collabPeriodService.list(id),
       ])
       setProject(proj)
+      if (proj.reminder_settings) {
+        setReminderSettings({ ...DEFAULT_REMINDER_SETTINGS, ...proj.reminder_settings })
+      }
       setPartners(parts)
       setWps(workPackages)
       setPeriods(rPeriods)
@@ -583,6 +610,71 @@ export function CollabProjectDetail() {
               })()}
             </CardContent>
           </Card>
+
+          {/* Reminder Settings */}
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">{t('collaboration.reminderSettings')}</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">{t('collaboration.reminderSettingsDesc')}</p>
+
+              {(['deliverables', 'milestones', 'reports'] as const).map(cat => {
+                const setting = reminderSettings[cat]
+                return (
+                  <div key={cat} className="flex items-center gap-3 flex-wrap">
+                    <label className="flex items-center gap-2 min-w-[160px]">
+                      <input
+                        type="checkbox"
+                        checked={setting.enabled}
+                        onChange={e => setReminderSettings(prev => ({
+                          ...prev,
+                          [cat]: { ...prev[cat], enabled: e.target.checked },
+                        }))}
+                        className="accent-primary h-4 w-4"
+                      />
+                      <span className="text-sm font-medium capitalize">{t(`collaboration.reminder_${cat}`)}</span>
+                    </label>
+                    {setting.enabled && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={365}
+                          value={setting.lead_time}
+                          onChange={e => setReminderSettings(prev => ({
+                            ...prev,
+                            [cat]: { ...prev[cat], lead_time: parseInt(e.target.value) || 1 },
+                          }))}
+                          className="h-8 w-20 text-sm"
+                        />
+                        <select
+                          value={setting.unit}
+                          onChange={e => setReminderSettings(prev => ({
+                            ...prev,
+                            [cat]: { ...prev[cat], unit: e.target.value as CollabReminderUnit },
+                          }))}
+                          className="flex h-8 rounded-md border border-input bg-background px-2 py-1 text-sm"
+                        >
+                          <option value="days">{t('collaboration.unitDays')}</option>
+                          <option value="weeks">{t('collaboration.unitWeeks')}</option>
+                          <option value="months">{t('collaboration.unitMonths')}</option>
+                        </select>
+                        <span className="text-xs text-muted-foreground">{t('collaboration.beforeDue')}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+
+              <div className="pt-2">
+                <Button size="sm" onClick={handleSaveReminders} disabled={savingReminders}>
+                  {savingReminders ? t('common.saving') : t('common.saveChanges')}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Partners Tab */}
@@ -1011,6 +1103,138 @@ export function CollabProjectDetail() {
               })}
             </div>
           )}
+        </TabsContent>
+
+        {/* Reports Tab — EC-compatible report generation */}
+        <TabsContent value="reports" className="mt-4 space-y-4">
+          <p className="text-sm text-muted-foreground">{t('collaboration.reportsTabDesc')}</p>
+
+          {/* Periodic Technical Report */}
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-blue-500" />
+                    {t('collaboration.periodicTechnicalReport')}
+                  </h3>
+                  <p className="text-xs text-muted-foreground max-w-lg">{t('collaboration.periodicTechnicalReportDesc')}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    defaultValue=""
+                    id="tech-report-period"
+                  >
+                    <option value="" disabled>{t('collaboration.selectPeriod')}</option>
+                    {periods.map(p => (
+                      <option key={p.id} value={p.id}>{p.title} (M{p.start_month}–M{p.end_month})</option>
+                    ))}
+                  </select>
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      const periodId = (document.getElementById('tech-report-period') as HTMLSelectElement)?.value
+                      if (!periodId) { toast({ title: t('collaboration.selectPeriodFirst'), variant: 'destructive' }); return }
+                      const period = periods.find(p => p.id === periodId)
+                      if (!period || !project) return
+                      import('@/services/reportGenerator').then(mod => {
+                        mod.generateCollabPeriodicReportPDF(project, partners, wps, tasksByWp, deliverables, milestones, period, periodReports[periodId] ?? [])
+                      })
+                    }}
+                  >
+                    <Download className="h-4 w-4" /> {t('collaboration.generatePdf')}
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-400" /> {t('collaboration.reportIncludesObjectives')}</div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /> {t('collaboration.reportIncludesWpProgress')}</div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400" /> {t('collaboration.reportIncludesDeliverables')}</div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-violet-400" /> {t('collaboration.reportIncludesMilestones')}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Financial Statement (Form C) */}
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-emerald-500" />
+                    {t('collaboration.financialStatement')}
+                  </h3>
+                  <p className="text-xs text-muted-foreground max-w-lg">{t('collaboration.financialStatementDesc')}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    defaultValue=""
+                    id="fin-report-period"
+                  >
+                    <option value="" disabled>{t('collaboration.selectPeriod')}</option>
+                    {periods.filter(p => p.reports_generated).map(p => (
+                      <option key={p.id} value={p.id}>{p.title} (M{p.start_month}–M{p.end_month})</option>
+                    ))}
+                  </select>
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      const periodId = (document.getElementById('fin-report-period') as HTMLSelectElement)?.value
+                      if (!periodId) { toast({ title: t('collaboration.selectPeriodFirst'), variant: 'destructive' }); return }
+                      const period = periods.find(p => p.id === periodId)
+                      if (!period || !project) return
+                      import('@/services/reportGenerator').then(mod => {
+                        mod.generateCollabFinancialStatementPDF(project, partners, period, periodReports[periodId] ?? [])
+                      })
+                    }}
+                  >
+                    <Download className="h-4 w-4" /> {t('collaboration.generatePdf')}
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /> {t('collaboration.reportIncludesCostBreakdown')}</div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-400" /> {t('collaboration.reportIncludesPerPartner')}</div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400" /> {t('collaboration.reportIncludesIndirectCosts')}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Publishable Summary */}
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4 text-violet-500" />
+                    {t('collaboration.publishableSummary')}
+                  </h3>
+                  <p className="text-xs text-muted-foreground max-w-lg">{t('collaboration.publishableSummaryDesc')}</p>
+                </div>
+                <Button
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => {
+                    if (!project) return
+                    import('@/services/reportGenerator').then(mod => {
+                      mod.generateCollabPublishableSummaryPDF(project, partners, wps, deliverables, milestones)
+                    })
+                  }}
+                >
+                  <Download className="h-4 w-4" /> {t('collaboration.generatePdf')}
+                </Button>
+              </div>
+              <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-violet-400" /> {t('collaboration.reportIncludesConsortium')}</div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-400" /> {t('collaboration.reportIncludesWorkPlan')}</div>
+                <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /> {t('collaboration.reportIncludesImpact')}</div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Deliverables & Milestones Tab */}

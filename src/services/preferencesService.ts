@@ -20,6 +20,7 @@ export const EMAIL_PREF_MAP: Record<string, keyof UserPreferences> = {
   collabReportReminder: 'email_collab_notifications',
   collabReportStatus: 'email_collab_notifications',
   collabDeliverableReminder: 'email_collab_notifications',
+  collabMilestoneReminder: 'email_collab_notifications',
   // Access-grant emails are always sent (no opt-out)
 }
 
