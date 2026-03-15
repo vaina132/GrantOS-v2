@@ -92,6 +92,7 @@ export interface Person {
   annual_salary: number | null
   overhead_rate: number | null
   country: string | null
+  region: string | null
   is_active: boolean
   avatar_url: string | null
   vacation_days_per_year: number | null

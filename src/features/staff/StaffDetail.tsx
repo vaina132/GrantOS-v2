@@ -16,6 +16,7 @@ import { toast } from '@/components/ui/use-toast'
 import { ArrowLeft, Pencil, Mail, Briefcase, Calendar, DollarSign, MapPin, FolderKanban, CalendarOff, Send } from 'lucide-react'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { COUNTRIES } from '@/data/countries'
+import { HOLIDAY_REGIONS } from '@/data/holidayRegions'
 import type { OrgRole } from '@/types'
 
 interface PersonProject {
@@ -115,6 +116,10 @@ export function StaffDetail() {
 
   const countryName = person?.country
     ? COUNTRIES.find((c) => c.code === person.country)?.name ?? person.country
+    : null
+
+  const regionName = person?.country && person?.region && HOLIDAY_REGIONS[person.country]
+    ? HOLIDAY_REGIONS[person.country][person.region] ?? person.region
     : null
 
   if (isLoading) {
@@ -257,7 +262,7 @@ export function StaffDetail() {
                 {countryName && (
                   <span className="flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5" />
-                    {countryName}
+                    {regionName ? `${regionName}, ${countryName}` : countryName}
                   </span>
                 )}
               </div>
@@ -332,6 +337,7 @@ export function StaffDetail() {
               <InfoRow label={t('staff.department')} value={person.department} />
               <InfoRow label={t('staff.role')} value={person.role} />
               {countryName && <InfoRow label={t('staff.country')} value={countryName} />}
+              {regionName && <InfoRow label={t('staff.region')} value={regionName} />}
             </dl>
           </CardContent>
         </Card>

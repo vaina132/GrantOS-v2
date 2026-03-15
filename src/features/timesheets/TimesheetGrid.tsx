@@ -147,8 +147,25 @@ export function TimesheetGrid() {
   // Build calendar days for the month
   const calendarDays: DayInfo[] = useMemo(() => {
     const daysInMonth = new Date(globalYear, selectedMonth, 0).getDate()
-    const holidaySet = new Set(holidays.map(h => h.date))
-    const holidayNames = new Map(holidays.map(h => [h.date, h.name]))
+
+    // Filter holidays to only those matching the current person's country + region
+    const currentPerson = staff.find(p => p.id === currentPersonId)
+    const personCountry = currentPerson?.country ?? null
+    const personRegion = currentPerson?.region ?? null
+    const filteredHolidays = holidays.filter(h => {
+      // Manual holidays (no country) apply to everyone
+      if (!h.country_code) return true
+      // Country must match
+      if (h.country_code !== personCountry) return false
+      // National holidays (no region) apply to everyone in that country
+      if (!h.region_code) return true
+      // Regional holidays: if person has no region set, include all; otherwise must match
+      if (!personRegion) return true
+      return h.region_code === personRegion
+    })
+
+    const holidaySet = new Set(filteredHolidays.map(h => h.date))
+    const holidayNames = new Map(filteredHolidays.map(h => [h.date, h.name]))
 
     // Build absence date set for this person
     const absenceDates = new Set<string>()
@@ -184,7 +201,7 @@ export function TimesheetGrid() {
       })
     }
     return result
-  }, [globalYear, selectedMonth, holidays, absences, currentPersonId])
+  }, [globalYear, selectedMonth, holidays, absences, currentPersonId, staff])
 
   const availableDays = useMemo(() => calendarDays.filter(d => d.isAvailable), [calendarDays])
   const availableDateStrs = useMemo(() => availableDays.map(d => d.dateStr), [availableDays])

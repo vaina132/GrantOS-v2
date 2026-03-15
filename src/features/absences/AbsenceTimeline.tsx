@@ -192,15 +192,25 @@ export function AbsenceTimeline() {
       .catch(() => setAllOrgHolidays([]))
   }, [orgId, globalYear, month])
 
-  // Per-person holiday sets: only include holidays that match the person's country
+  // Per-person holiday sets: only include holidays that match the person's country AND region
   // Holidays with no country_code (manually added) apply to everyone
+  // Holidays with a country_code but no region_code apply to everyone in that country
+  // Holidays with a region_code only apply to people in that specific region
   const personHolidaySets = useMemo(() => {
     const sets: Record<string, Set<string>> = {}
     const names: Record<string, Map<string, string>> = {}
     for (const p of staff) {
-      const personHols = allOrgHolidays.filter(h =>
-        h.country_code === null || h.country_code === p.country
-      )
+      const personHols = allOrgHolidays.filter(h => {
+        // Manual holidays (no country) apply to everyone
+        if (h.country_code === null) return true
+        // Country must match
+        if (h.country_code !== p.country) return false
+        // National holidays (no region) apply to everyone in that country
+        if (h.region_code === null) return true
+        // Regional holidays: if person has no region set, include all; otherwise must match
+        if (!p.region) return true
+        return h.region_code === p.region
+      })
       sets[p.id] = new Set(personHols.map(h => h.date))
       names[p.id] = new Map(personHols.map(h => [h.date, h.name]))
     }

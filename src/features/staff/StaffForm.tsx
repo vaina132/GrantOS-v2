@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
 import { ArrowLeft, Save, Upload, X, Mail, UserPlus, Send } from 'lucide-react'
 import { COUNTRIES } from '@/data/countries'
+import { HOLIDAY_REGIONS } from '@/data/holidayRegions'
 import type { OrgRole } from '@/types'
 
 const ORG_ROLES: OrgRole[] = ['Admin', 'Project Manager', 'Finance Officer', 'Viewer', 'External Participant']
@@ -37,6 +38,7 @@ const staffSchema = z.object({
   annual_salary: z.coerce.number().min(0, 'Must be 0 or greater').nullable().optional(),
   vacation_days_per_year: z.coerce.number().min(0, 'Must be 0 or greater').nullable().optional(),
   country: z.string().max(2).nullable().or(z.literal('')),
+  region: z.string().max(10).nullable().or(z.literal('')),
   is_active: z.boolean(),
 }).refine((data) => {
   if (data.start_date && data.end_date) {
@@ -77,6 +79,7 @@ export function StaffForm() {
     handleSubmit,
     reset,
     control,
+    setValue,
     formState: { errors },
   } = useForm<StaffFormData>({
     resolver: zodResolver(staffSchema),
@@ -92,6 +95,7 @@ export function StaffForm() {
       annual_salary: null,
       vacation_days_per_year: 25,
       country: '',
+      region: '',
       is_active: true,
     },
   })
@@ -99,6 +103,20 @@ export function StaffForm() {
   // Watch email field to conditionally show invite toggle
   const watchedEmail = useWatch({ control, name: 'email' })
   const hasEmail = !!watchedEmail && watchedEmail.includes('@')
+
+  // Watch country to show region dropdown dynamically
+  const watchedCountry = useWatch({ control, name: 'country' })
+  const availableRegions = useMemo(() => {
+    if (!watchedCountry || !HOLIDAY_REGIONS[watchedCountry]) return []
+    return Object.entries(HOLIDAY_REGIONS[watchedCountry]).sort(([, a], [, b]) => a.localeCompare(b))
+  }, [watchedCountry])
+
+  // Clear region when country changes and the current region is not valid for the new country
+  useEffect(() => {
+    if (!watchedCountry || !HOLIDAY_REGIONS[watchedCountry]) {
+      setValue('region', '')
+    }
+  }, [watchedCountry, setValue])
 
   useEffect(() => {
     if (person) {
@@ -114,6 +132,7 @@ export function StaffForm() {
         annual_salary: person.annual_salary,
         vacation_days_per_year: person.vacation_days_per_year ?? 25,
         country: person.country ?? '',
+        region: person.region ?? '',
         is_active: person.is_active,
       })
       setExistingAvatarUrl(person.avatar_url ?? null)
@@ -156,6 +175,7 @@ export function StaffForm() {
         annual_salary: data.annual_salary ?? null,
         vacation_days_per_year: data.vacation_days_per_year ?? null,
         country: data.country || null,
+        region: data.region || null,
         org_id: orgId ?? '',
       }
 
@@ -306,18 +326,37 @@ export function StaffForm() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="country">{t('staff.country')}</Label>
-                <select
-                  id="country"
-                  {...register('country')}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="">{t('common.selectCountry')}</option>
-                  {COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.code}>{c.name}</option>
-                  ))}
-                </select>
+              <div className={availableRegions.length > 0 ? 'grid grid-cols-2 gap-4' : ''}>
+                <div className="space-y-2">
+                  <Label htmlFor="country">{t('staff.country')}</Label>
+                  <select
+                    id="country"
+                    {...register('country')}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">{t('common.selectCountry')}</option>
+                    {COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {availableRegions.length > 0 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="region">{t('staff.region')}</Label>
+                    <select
+                      id="region"
+                      {...register('region')}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">{t('staff.selectRegion')}</option>
+                      {availableRegions.map(([code, name]) => (
+                        <option key={code} value={code}>{name}</option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-muted-foreground">{t('staff.regionDesc')}</p>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
