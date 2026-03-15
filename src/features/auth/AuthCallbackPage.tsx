@@ -123,7 +123,7 @@ export function AuthCallbackPage() {
           setStatus((prev) => {
             if (prev === 'loading') {
               console.error('[AuthCallback] Timed out waiting for session')
-              setMessage('Unable to verify your email. The link may have expired or already been used. Please try signing in.')
+              setMessage(t('auth.verifyExpired'))
               subscription.unsubscribe()
               return 'error'
             }
@@ -133,7 +133,7 @@ export function AuthCallbackPage() {
       } catch (err) {
         console.error('[AuthCallback] Unexpected error:', err)
         setStatus('error')
-        setMessage('Something went wrong. Please try signing in.')
+        setMessage(t('auth.somethingWentWrong'))
       }
     }
 
@@ -141,11 +141,11 @@ export function AuthCallbackPage() {
       // For signup confirmations, show the "Email Confirmed" interstitial page
       if (type === 'signup') {
         setStatus('confirmed')
-        setMessage('Your email has been confirmed successfully!')
+        setMessage(t('auth.emailConfirmedSuccess'))
       } else {
         // For other flows (magic link, email change, etc.) redirect immediately
         setStatus('success')
-        setMessage('Verified! Redirecting...')
+        setMessage(t('auth.verifiedRedirecting'))
         setTimeout(() => navigate('/dashboard', { replace: true }), 1500)
       }
     }

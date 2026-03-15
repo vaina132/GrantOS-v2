@@ -27,12 +27,12 @@ export function ForgotPasswordPage() {
       if (error) throw error
       setSent(true)
       toast({
-        title: 'Reset link sent',
-        description: 'Check your email for a password reset link.',
+        title: t('auth.resetLinkSent'),
+        description: t('auth.checkEmailForReset'),
       })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to send reset link.'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('auth.failedToSendReset')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -82,12 +82,12 @@ export function ForgotPasswordPage() {
                   {t('auth.resetLinkSentDesc')}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Didn't receive it? Check your spam folder or{' '}
+                  {t('auth.didntReceiveReset')}{' '}
                   <button
                     onClick={() => setSent(false)}
                     className="text-primary hover:text-primary/80 underline underline-offset-4"
                   >
-                    try again
+                    {t('auth.tryAgain')}
                   </button>
                 </p>
               </div>

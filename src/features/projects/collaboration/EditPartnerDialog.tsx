@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -51,6 +52,7 @@ const EMPTY: PartnerFormState = {
 }
 
 export function EditPartnerDialog({ partner, projectId, open, onClose, onSaved }: EditPartnerDialogProps) {
+  const { t } = useTranslation()
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
   const isNew = !partner
@@ -105,7 +107,7 @@ export function EditPartnerDialog({ partner, projectId, open, onClose, onSaved }
           indirect_cost_rate: form.indirect_cost_rate,
           indirect_cost_base: form.indirect_cost_base as CollabIndirectCostBase,
         })
-        toast({ title: 'Created', description: `${form.org_name} added` })
+        toast({ title: t('common.created'), description: `${form.org_name} ${t('collaboration.partnerAdded').toLowerCase()}` })
       } else {
         await collabPartnerService.update(partner!.id, {
           org_name: form.org_name.trim(),
@@ -124,26 +126,26 @@ export function EditPartnerDialog({ partner, projectId, open, onClose, onSaved }
           indirect_cost_rate: form.indirect_cost_rate,
           indirect_cost_base: form.indirect_cost_base as CollabIndirectCostBase,
         })
-        toast({ title: 'Updated', description: `${form.org_name} saved` })
+        toast({ title: t('common.updated'), description: `${form.org_name} ${t('common.saved').toLowerCase()}` })
       }
       onSaved()
       onClose()
     } catch {
-      toast({ title: 'Error', description: 'Failed to save partner', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToSavePartner'), variant: 'destructive' })
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async () => {
-    if (!partner || !confirm(`Remove ${partner.org_name}?`)) return
+    if (!partner || !confirm(`${t('common.remove')} ${partner.org_name}?`)) return
     try {
       await collabPartnerService.remove(partner.id)
-      toast({ title: 'Removed' })
+      toast({ title: t('common.removed') })
       onSaved()
       onClose()
     } catch {
-      toast({ title: 'Error', description: 'Failed to remove partner', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToRemovePartner'), variant: 'destructive' })
     }
   }
 
@@ -155,34 +157,34 @@ export function EditPartnerDialog({ partner, projectId, open, onClose, onSaved }
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       <div className="relative z-50 bg-background border rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
-        <h2 className="text-lg font-semibold">{isNew ? 'Add Partner' : `Edit ${partner?.org_name}`}</h2>
+        <h2 className="text-lg font-semibold">{isNew ? t('collaboration.addPartner') : `${t('common.edit')} ${partner?.org_name}`}</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <Label className="text-xs">Organisation Name *</Label>
+            <Label className="text-xs">{t('collaboration.orgName')} *</Label>
             <Input value={form.org_name} onChange={e => set('org_name', e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Role</Label>
+            <Label className="text-xs">{t('collaboration.role')}</Label>
             <select value={form.role} onChange={e => set('role', e.target.value)} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-              <option value="coordinator">Coordinator</option>
-              <option value="partner">Partner</option>
+              <option value="coordinator">{t('collaboration.coordinator')}</option>
+              <option value="partner">{t('collaboration.partner')}</option>
             </select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Participant #</Label>
+            <Label className="text-xs">{t('collaboration.participantNumber')}</Label>
             <Input type="number" value={form.participant_number ?? ''} onChange={e => setNum('participant_number', e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Country</Label>
+            <Label className="text-xs">{t('collaboration.country')}</Label>
             <Input value={form.country} onChange={e => set('country', e.target.value)} placeholder="e.g. DE" className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Contact Name</Label>
+            <Label className="text-xs">{t('collaboration.contactName')}</Label>
             <Input value={form.contact_name || ''} onChange={e => set('contact_name', e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Contact Email</Label>
+            <Label className="text-xs">{t('collaboration.contactEmail')}</Label>
             <Input type="email" value={form.contact_email || ''} onChange={e => set('contact_email', e.target.value)} className="h-9 text-sm" />
           </div>
         </div>
@@ -190,30 +192,30 @@ export function EditPartnerDialog({ partner, projectId, open, onClose, onSaved }
         <hr />
 
         <div>
-          <h3 className="text-sm font-medium mb-3">Budget</h3>
+          <h3 className="text-sm font-medium mb-3">{t('collaboration.budget')}</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Personnel</Label>
+              <Label className="text-xs">{t('collaboration.personnel')}</Label>
               <Input type="number" value={form.budget_personnel || ''} onChange={e => setNum('budget_personnel', e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Subcontracting</Label>
+              <Label className="text-xs">{t('collaboration.subcontracting')}</Label>
               <Input type="number" value={form.budget_subcontracting || ''} onChange={e => setNum('budget_subcontracting', e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Travel</Label>
+              <Label className="text-xs">{t('collaboration.travel')}</Label>
               <Input type="number" value={form.budget_travel || ''} onChange={e => setNum('budget_travel', e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Equipment</Label>
+              <Label className="text-xs">{t('collaboration.equipment')}</Label>
               <Input type="number" value={form.budget_equipment || ''} onChange={e => setNum('budget_equipment', e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Other Goods</Label>
+              <Label className="text-xs">{t('collaboration.otherGoods')}</Label>
               <Input type="number" value={form.budget_other_goods || ''} onChange={e => setNum('budget_other_goods', e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Total Budget</Label>
+              <Label className="text-xs">{t('collaboration.totalBudget')}</Label>
               <div className="h-9 flex items-center text-sm font-medium px-3 bg-muted rounded-md">€{totalBudget.toLocaleString()}</div>
             </div>
           </div>
@@ -223,23 +225,23 @@ export function EditPartnerDialog({ partner, projectId, open, onClose, onSaved }
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs">Person-Months</Label>
+            <Label className="text-xs">{t('collaboration.personMonths')}</Label>
             <Input type="number" step="0.1" value={form.total_person_months || ''} onChange={e => setNum('total_person_months', e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Funding Rate %</Label>
+            <Label className="text-xs">{t('collaboration.fundingRatePercent')}</Label>
             <Input type="number" value={form.funding_rate} onChange={e => setNum('funding_rate', e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Indirect Cost Rate %</Label>
+            <Label className="text-xs">{t('collaboration.indirectCostRatePercent')}</Label>
             <Input type="number" value={form.indirect_cost_rate} onChange={e => setNum('indirect_cost_rate', e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Indirect Base</Label>
+            <Label className="text-xs">{t('collaboration.indirectBase')}</Label>
             <select value={form.indirect_cost_base} onChange={e => set('indirect_cost_base', e.target.value)} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-              <option value="all_direct">All Direct Costs</option>
-              <option value="personnel_only">Personnel Only</option>
-              <option value="all_except_subcontracting">All Except Subcontracting</option>
+              <option value="all_direct">{t('collaboration.allDirectCosts')}</option>
+              <option value="personnel_only">{t('collaboration.personnelOnly')}</option>
+              <option value="all_except_subcontracting">{t('collaboration.allExceptSubcontracting')}</option>
             </select>
           </div>
         </div>
@@ -247,13 +249,13 @@ export function EditPartnerDialog({ partner, projectId, open, onClose, onSaved }
         <div className="flex items-center justify-between pt-2">
           <div>
             {!isNew && (
-              <Button variant="destructive" size="sm" onClick={handleDelete}>Remove Partner</Button>
+              <Button variant="destructive" size="sm" onClick={handleDelete}>{t('collaboration.removePartner')}</Button>
             )}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
             <Button onClick={handleSave} disabled={saving || !form.org_name.trim()}>
-              {saving ? 'Saving...' : isNew ? 'Add Partner' : 'Save Changes'}
+              {saving ? t('common.saving') : isNew ? t('collaboration.addPartner') : t('common.saveChanges')}
             </Button>
           </div>
         </div>

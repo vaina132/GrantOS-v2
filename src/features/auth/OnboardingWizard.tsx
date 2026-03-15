@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { CURRENCIES } from '@/data/currencies'
 type Step = 'org' | 'project' | 'done'
 
 export function OnboardingWizard() {
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const [step, setStep] = useState<Step>('org')
   const [loading, setLoading] = useState(false)
@@ -53,11 +55,11 @@ export function OnboardingWizard() {
       if (error) throw error
 
       setOrgId(newOrgId as string)
-      toast({ title: 'Organisation created!' })
+      toast({ title: t('onboarding.orgCreated') })
       setStep('project')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create organisation'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('onboarding.failedToCreateOrg')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -79,11 +81,11 @@ export function OnboardingWizard() {
         })
 
       if (error) throw error
-      toast({ title: 'Project created!' })
+      toast({ title: t('onboarding.projectCreated') })
       setStep('done')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create project'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('onboarding.failedToCreateProject')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -117,14 +119,14 @@ export function OnboardingWizard() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                 <Building2 className="h-8 w-8 text-primary" />
               </div>
-              <CardTitle className="text-2xl">Welcome, {userName.split(' ')[0]}!</CardTitle>
+              <CardTitle className="text-2xl">{t('onboarding.welcome', { name: userName.split(' ')[0] })}</CardTitle>
               <CardDescription>
-                Set up your organisation — this is your workspace where you'll manage grants, staff, and budgets.
+                {t('onboarding.setupOrgDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="orgName">Organisation Name *</Label>
+                <Label htmlFor="orgName">{t('onboarding.orgName')} *</Label>
                 <Input
                   id="orgName"
                   placeholder="e.g. My Research Lab"
@@ -134,7 +136,7 @@ export function OnboardingWizard() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="currency">Currency</Label>
+                <Label htmlFor="currency">{t('onboarding.currency')}</Label>
                 <select
                   id="currency"
                   value={currency}
@@ -151,7 +153,7 @@ export function OnboardingWizard() {
                 onClick={handleCreateOrg}
                 disabled={loading || !orgName.trim()}
               >
-                {loading ? 'Creating...' : 'Create Organisation'}
+                {loading ? t('common.creating') : t('onboarding.createOrg')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
 
@@ -168,15 +170,15 @@ export function OnboardingWizard() {
         {step === 'project' && (
           <>
             <CardHeader className="text-center">
-              <CardTitle className="text-2xl">Add your first project</CardTitle>
+              <CardTitle className="text-2xl">{t('onboarding.addFirstProject')}</CardTitle>
               <CardDescription>
-                You can always add more projects later from the Projects page.
+                {t('onboarding.addProjectLater')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Acronym *</Label>
+                  <Label>{t('onboarding.acronym')} *</Label>
                   <Input
                     placeholder="e.g. HORIZON"
                     value={projectAcronym}
@@ -185,7 +187,7 @@ export function OnboardingWizard() {
                   />
                 </div>
                 <div className="space-y-2 col-span-2">
-                  <Label>Title *</Label>
+                  <Label>{t('common.title')} *</Label>
                   <Input
                     placeholder="Full project title"
                     value={projectTitle}
@@ -193,7 +195,7 @@ export function OnboardingWizard() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Start Date *</Label>
+                  <Label>{t('common.start')} *</Label>
                   <Input
                     type="date"
                     value={startDate}
@@ -201,7 +203,7 @@ export function OnboardingWizard() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>End Date *</Label>
+                  <Label>{t('common.end')} *</Label>
                   <Input
                     type="date"
                     value={endDate}
@@ -211,14 +213,14 @@ export function OnboardingWizard() {
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={handleSkipProject}>
-                  Skip for now
+                  {t('onboarding.skipForNow')}
                 </Button>
                 <Button
                   className="flex-1"
                   onClick={handleCreateProject}
                   disabled={loading || !projectAcronym.trim() || !projectTitle.trim() || !startDate || !endDate}
                 >
-                  {loading ? 'Creating...' : 'Create Project'}
+                  {loading ? t('common.creating') : t('onboarding.createProject')}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
@@ -238,14 +240,14 @@ export function OnboardingWizard() {
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
                 <Check className="h-8 w-8 text-green-600" />
               </div>
-              <CardTitle className="text-2xl">You're all set!</CardTitle>
+              <CardTitle className="text-2xl">{t('onboarding.allSet')}</CardTitle>
               <CardDescription>
-                Your workspace is ready. Start by adding staff members and managing your projects.
+                {t('onboarding.workspaceReady')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Button className="w-full" onClick={handleFinish}>
-                Go to Dashboard
+                {t('onboarding.goToDashboard')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
 

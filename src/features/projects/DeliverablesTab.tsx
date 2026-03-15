@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { deliverablesService } from '@/services/deliverablesService'
 import { useAuthStore } from '@/stores/authStore'
 import { ConfirmModal } from '@/components/common/ConfirmModal'
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function DeliverablesTab({ project, workPackages, projectMonthLabel, projectMonthCount }: Props) {
+  const { t } = useTranslation()
   const { orgId, can } = useAuthStore()
 
   // Deliverables state
@@ -132,12 +134,12 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
         lead_person_id: null,
         due_month: addDel.due_month,
       })
-      toast({ title: 'Added', description: `Deliverable ${addDel.number} created.` })
+      toast({ title: t('deliverables.deliverableAdded') })
       setAddDel({ number: '', title: '', description: '', wp_id: '', due_month: 1 })
       setShowAddDel(false)
       loadDeliverables()
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to create deliverable', variant: 'destructive' })
+      toast({ title: t('common.error'), description: err instanceof Error ? err.message : t('common.failedToSave'), variant: 'destructive' })
     } finally {
       setSavingDel(false)
     }
@@ -159,11 +161,11 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
         work_package_id: editDel.work_package_id || null,
         due_month: editDel.due_month,
       })
-      toast({ title: 'Updated', description: 'Deliverable updated.' })
+      toast({ title: t('deliverables.deliverableUpdated') })
       setEditingDelId(null)
       loadDeliverables()
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to update', variant: 'destructive' })
+      toast({ title: t('common.error'), description: err instanceof Error ? err.message : t('common.failedToSave'), variant: 'destructive' })
     } finally {
       setEditSaving(false)
     }
@@ -174,11 +176,11 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
     setDeletingDel(true)
     try {
       await deliverablesService.removeDeliverable(deleteDelTarget.id)
-      toast({ title: 'Deleted', description: `Deliverable ${deleteDelTarget.number} removed.` })
+      toast({ title: t('deliverables.deliverableDeleted') })
       setDeleteDelTarget(null)
       loadDeliverables()
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to delete', variant: 'destructive' })
+      toast({ title: t('common.error'), description: err instanceof Error ? err.message : t('common.failedToDelete'), variant: 'destructive' })
     } finally {
       setDeletingDel(false)
     }
@@ -200,12 +202,12 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
         due_month: addMs.due_month,
         verification_means: addMs.verification_means.trim() || null,
       })
-      toast({ title: 'Added', description: `Milestone ${addMs.number} created.` })
+      toast({ title: t('deliverables.milestoneAdded') })
       setAddMs({ number: '', title: '', description: '', wp_id: '', due_month: 1, verification_means: '' })
       setShowAddMs(false)
       loadMilestones()
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to create milestone', variant: 'destructive' })
+      toast({ title: t('common.error'), description: err instanceof Error ? err.message : t('common.failedToSave'), variant: 'destructive' })
     } finally {
       setSavingMs(false)
     }
@@ -228,11 +230,11 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
         due_month: editMs.due_month,
         verification_means: editMs.verification_means || null,
       })
-      toast({ title: 'Updated', description: 'Milestone updated.' })
+      toast({ title: t('deliverables.milestoneUpdated') })
       setEditingMsId(null)
       loadMilestones()
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to update', variant: 'destructive' })
+      toast({ title: t('common.error'), description: err instanceof Error ? err.message : t('common.failedToSave'), variant: 'destructive' })
     } finally {
       setEditSaving(false)
     }
@@ -243,11 +245,11 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
     setDeletingMs(true)
     try {
       await deliverablesService.removeMilestone(deleteMsTarget.id)
-      toast({ title: 'Deleted', description: `Milestone ${deleteMsTarget.number} removed.` })
+      toast({ title: t('deliverables.milestoneDeleted') })
       setDeleteMsTarget(null)
       loadMilestones()
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to delete', variant: 'destructive' })
+      toast({ title: t('common.error'), description: err instanceof Error ? err.message : t('common.failedToDelete'), variant: 'destructive' })
     } finally {
       setDeletingMs(false)
     }
@@ -267,12 +269,12 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-lg border bg-card p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Deliverables</div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('deliverables.title')}</div>
           <div className="text-xl font-bold tabular-nums mt-0.5">{delTotal}</div>
           <div className="text-[11px] text-muted-foreground">defined for this project</div>
         </div>
         <div className="rounded-lg border bg-card p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Milestones</div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.milestones')}</div>
           <div className="text-xl font-bold tabular-nums mt-0.5">{msTotal}</div>
           <div className="text-[11px] text-muted-foreground">defined for this project</div>
         </div>
@@ -284,11 +286,11 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-base">Deliverables</CardTitle>
+              <CardTitle className="text-base">{t('deliverables.title')}</CardTitle>
             </div>
             {can('canManageProjects') && (
               <Button size="sm" onClick={() => setShowAddDel(v => !v)}>
-                <Plus className="mr-1 h-4 w-4" /> Add Deliverable
+                <Plus className="mr-1 h-4 w-4" /> {t('deliverables.addDeliverable')}
               </Button>
             )}
           </div>
@@ -304,10 +306,10 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                     <thead>
                       <tr className="border-b bg-muted/50">
                         <th className="px-3 py-2 text-left font-medium w-16">#</th>
-                        <th className="px-3 py-2 text-left font-medium">Title</th>
-                        <th className="px-3 py-2 text-left font-medium">Work Package</th>
-                        <th className="px-3 py-2 text-left font-medium">Due</th>
-                        {can('canManageProjects') && <th className="px-3 py-2 text-right font-medium">Actions</th>}
+                        <th className="px-3 py-2 text-left font-medium">{t('common.title')}</th>
+                        <th className="px-3 py-2 text-left font-medium">{t('deliverables.workPackage')}</th>
+                        <th className="px-3 py-2 text-left font-medium">{t('deliverables.dueMonth')}</th>
+                        {can('canManageProjects') && <th className="px-3 py-2 text-right font-medium">{t('common.actions')}</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -324,8 +326,8 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                             <td className="px-3 py-2">
                               {isEditing ? (
                                 <div className="space-y-1">
-                                  <Input value={editDel.title ?? ''} onChange={e => setEditDel(p => ({ ...p, title: e.target.value }))} className="h-7 text-xs" placeholder="Title" />
-                                  <Input value={editDel.description ?? ''} onChange={e => setEditDel(p => ({ ...p, description: e.target.value }))} className="h-7 text-xs" placeholder="Description" />
+                                  <Input value={editDel.title ?? ''} onChange={e => setEditDel(p => ({ ...p, title: e.target.value }))} className="h-7 text-xs" placeholder={t('common.title')} />
+                                  <Input value={editDel.description ?? ''} onChange={e => setEditDel(p => ({ ...p, description: e.target.value }))} className="h-7 text-xs" placeholder={t('common.description')} />
                                 </div>
                               ) : (
                                 <>
@@ -341,7 +343,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                                   onChange={e => handleEditDelWpChange(e.target.value)}
                                   className="h-7 rounded border border-input bg-background px-1 text-xs"
                                 >
-                                  <option value="">None</option>
+                                  <option value="">{t('common.none')}</option>
                                   {workPackages.map(wp => (
                                     <option key={wp.id} value={wp.id}>WP{wp.number ?? ''} {wp.name}</option>
                                   ))}
@@ -369,7 +371,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                                   {isEditing ? (
                                     <>
                                       <Button variant="ghost" size="sm" onClick={handleSaveEditDel} disabled={editSaving} className="h-7 text-xs">
-                                        <Save className="h-3 w-3 mr-1" />{editSaving ? '...' : 'Save'}
+                                        <Save className="h-3 w-3 mr-1" />{editSaving ? '...' : t('common.save')}
                                       </Button>
                                       <Button variant="ghost" size="sm" onClick={() => setEditingDelId(null)} className="h-7 text-xs"><X className="h-3 w-3" /></Button>
                                     </>
@@ -392,44 +394,44 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
 
               {deliverables.length === 0 && !showAddDel && (
                 <div className="text-center py-8 text-sm text-muted-foreground">
-                  No deliverables defined yet. Click "Add Deliverable" to get started.
+                  {t('deliverables.noDeliverablesDesc')}
                 </div>
               )}
 
               {/* Add form */}
               {showAddDel && can('canManageProjects') && (
                 <div className="space-y-3 rounded-lg border p-4 bg-muted/10">
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">New Deliverable</div>
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('deliverables.addDeliverable')}</div>
                   <div className="flex gap-2 items-end flex-wrap">
                     <div className="space-y-1">
-                      <Label className="text-xs">Number *</Label>
+                      <Label className="text-xs">{t('deliverables.number')} *</Label>
                       <Input value={addDel.number} onChange={e => setAddDel(p => ({ ...p, number: e.target.value }))} placeholder="D1.1" className="w-20" />
                     </div>
                     <div className="space-y-1 flex-1 min-w-[150px]">
-                      <Label className="text-xs">Title *</Label>
-                      <Input value={addDel.title} onChange={e => setAddDel(p => ({ ...p, title: e.target.value }))} placeholder="Deliverable title" />
+                      <Label className="text-xs">{t('common.title')} *</Label>
+                      <Input value={addDel.title} onChange={e => setAddDel(p => ({ ...p, title: e.target.value }))} />
                     </div>
                     <div className="space-y-1 flex-1 min-w-[120px]">
-                      <Label className="text-xs">Description</Label>
-                      <Input value={addDel.description} onChange={e => setAddDel(p => ({ ...p, description: e.target.value }))} placeholder="Optional" />
+                      <Label className="text-xs">{t('common.description')}</Label>
+                      <Input value={addDel.description} onChange={e => setAddDel(p => ({ ...p, description: e.target.value }))} placeholder={t('common.optional')} />
                     </div>
                   </div>
                   <div className="flex gap-2 items-end flex-wrap">
                     <div className="space-y-1">
-                      <Label className="text-xs">Work Package</Label>
+                      <Label className="text-xs">{t('deliverables.workPackage')}</Label>
                       <select
                         value={addDel.wp_id}
                         onChange={e => handleDelWpChange(e.target.value)}
                         className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
                       >
-                        <option value="">None</option>
+                        <option value="">{t('common.none')}</option>
                         {workPackages.map(wp => (
                           <option key={wp.id} value={wp.id}>WP{wp.number ?? ''} {wp.name}</option>
                         ))}
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Due Month</Label>
+                      <Label className="text-xs">{t('deliverables.dueMonth')}</Label>
                       <select
                         value={addDel.due_month}
                         onChange={e => setAddDel(p => ({ ...p, due_month: Number(e.target.value) }))}
@@ -441,7 +443,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                       </select>
                     </div>
                     <Button onClick={handleAddDeliverable} disabled={savingDel || !addDel.number.trim() || !addDel.title.trim()}>
-                      <Plus className="mr-1 h-4 w-4" /> {savingDel ? 'Adding...' : 'Add'}
+                      <Plus className="mr-1 h-4 w-4" /> {savingDel ? t('common.adding') : t('common.add')}
                     </Button>
                   </div>
                   {addDel.wp_id && (
@@ -462,11 +464,11 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-base">Milestones</CardTitle>
+              <CardTitle className="text-base">{t('projects.milestones')}</CardTitle>
             </div>
             {can('canManageProjects') && (
               <Button size="sm" onClick={() => setShowAddMs(v => !v)}>
-                <Plus className="mr-1 h-4 w-4" /> Add Milestone
+                <Plus className="mr-1 h-4 w-4" /> {t('deliverables.addMilestone')}
               </Button>
             )}
           </div>
@@ -482,11 +484,11 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                     <thead>
                       <tr className="border-b bg-muted/50">
                         <th className="px-3 py-2 text-left font-medium w-16">#</th>
-                        <th className="px-3 py-2 text-left font-medium">Title</th>
-                        <th className="px-3 py-2 text-left font-medium">Work Package</th>
-                        <th className="px-3 py-2 text-left font-medium">Due</th>
-                        <th className="px-3 py-2 text-left font-medium">Verification</th>
-                        {can('canManageProjects') && <th className="px-3 py-2 text-right font-medium">Actions</th>}
+                        <th className="px-3 py-2 text-left font-medium">{t('common.title')}</th>
+                        <th className="px-3 py-2 text-left font-medium">{t('deliverables.workPackage')}</th>
+                        <th className="px-3 py-2 text-left font-medium">{t('deliverables.dueMonth')}</th>
+                        <th className="px-3 py-2 text-left font-medium">{t('deliverables.verificationMeans')}</th>
+                        {can('canManageProjects') && <th className="px-3 py-2 text-right font-medium">{t('common.actions')}</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -503,8 +505,8 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                             <td className="px-3 py-2">
                               {isEditing ? (
                                 <div className="space-y-1">
-                                  <Input value={editMs.title ?? ''} onChange={e => setEditMs(p => ({ ...p, title: e.target.value }))} className="h-7 text-xs" placeholder="Title" />
-                                  <Input value={editMs.description ?? ''} onChange={e => setEditMs(p => ({ ...p, description: e.target.value }))} className="h-7 text-xs" placeholder="Description" />
+                                  <Input value={editMs.title ?? ''} onChange={e => setEditMs(p => ({ ...p, title: e.target.value }))} className="h-7 text-xs" placeholder={t('common.title')} />
+                                  <Input value={editMs.description ?? ''} onChange={e => setEditMs(p => ({ ...p, description: e.target.value }))} className="h-7 text-xs" placeholder={t('common.description')} />
                                 </div>
                               ) : (
                                 <>
@@ -520,7 +522,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                                   onChange={e => handleEditMsWpChange(e.target.value)}
                                   className="h-7 rounded border border-input bg-background px-1 text-xs"
                                 >
-                                  <option value="">None</option>
+                                  <option value="">{t('common.none')}</option>
                                   {workPackages.map(wp => (
                                     <option key={wp.id} value={wp.id}>WP{wp.number ?? ''} {wp.name}</option>
                                   ))}
@@ -544,7 +546,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                             </td>
                             <td className="px-3 py-2 text-xs text-muted-foreground">
                               {isEditing ? (
-                                <Input value={editMs.verification_means ?? ''} onChange={e => setEditMs(p => ({ ...p, verification_means: e.target.value }))} className="h-7 text-xs" placeholder="Means of verification" />
+                                <Input value={editMs.verification_means ?? ''} onChange={e => setEditMs(p => ({ ...p, verification_means: e.target.value }))} className="h-7 text-xs" placeholder={t('deliverables.verificationMeans')} />
                               ) : (
                                 m.verification_means || '—'
                               )}
@@ -555,7 +557,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                                   {isEditing ? (
                                     <>
                                       <Button variant="ghost" size="sm" onClick={handleSaveEditMs} disabled={editSaving} className="h-7 text-xs">
-                                        <Save className="h-3 w-3 mr-1" />{editSaving ? '...' : 'Save'}
+                                        <Save className="h-3 w-3 mr-1" />{editSaving ? '...' : t('common.save')}
                                       </Button>
                                       <Button variant="ghost" size="sm" onClick={() => setEditingMsId(null)} className="h-7 text-xs"><X className="h-3 w-3" /></Button>
                                     </>
@@ -578,44 +580,44 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
 
               {milestones.length === 0 && !showAddMs && (
                 <div className="text-center py-8 text-sm text-muted-foreground">
-                  No milestones defined yet. Click "Add Milestone" to get started.
+                  {t('deliverables.noMilestonesDesc')}
                 </div>
               )}
 
               {/* Add milestone form */}
               {showAddMs && can('canManageProjects') && (
                 <div className="space-y-3 rounded-lg border p-4 bg-muted/10">
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">New Milestone</div>
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('deliverables.addMilestone')}</div>
                   <div className="flex gap-2 items-end flex-wrap">
                     <div className="space-y-1">
-                      <Label className="text-xs">Number *</Label>
+                      <Label className="text-xs">{t('deliverables.number')} *</Label>
                       <Input value={addMs.number} onChange={e => setAddMs(p => ({ ...p, number: e.target.value }))} placeholder="MS1" className="w-20" />
                     </div>
                     <div className="space-y-1 flex-1 min-w-[150px]">
-                      <Label className="text-xs">Title *</Label>
-                      <Input value={addMs.title} onChange={e => setAddMs(p => ({ ...p, title: e.target.value }))} placeholder="Milestone title" />
+                      <Label className="text-xs">{t('common.title')} *</Label>
+                      <Input value={addMs.title} onChange={e => setAddMs(p => ({ ...p, title: e.target.value }))} />
                     </div>
                     <div className="space-y-1 flex-1 min-w-[120px]">
-                      <Label className="text-xs">Verification Means</Label>
-                      <Input value={addMs.verification_means} onChange={e => setAddMs(p => ({ ...p, verification_means: e.target.value }))} placeholder="e.g. Report submitted" />
+                      <Label className="text-xs">{t('deliverables.verificationMeans')}</Label>
+                      <Input value={addMs.verification_means} onChange={e => setAddMs(p => ({ ...p, verification_means: e.target.value }))} />
                     </div>
                   </div>
                   <div className="flex gap-2 items-end flex-wrap">
                     <div className="space-y-1">
-                      <Label className="text-xs">Work Package</Label>
+                      <Label className="text-xs">{t('deliverables.workPackage')}</Label>
                       <select
                         value={addMs.wp_id}
                         onChange={e => handleMsWpChange(e.target.value)}
                         className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
                       >
-                        <option value="">None</option>
+                        <option value="">{t('common.none')}</option>
                         {workPackages.map(wp => (
                           <option key={wp.id} value={wp.id}>WP{wp.number ?? ''} {wp.name}</option>
                         ))}
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Due Month</Label>
+                      <Label className="text-xs">{t('deliverables.dueMonth')}</Label>
                       <select
                         value={addMs.due_month}
                         onChange={e => setAddMs(p => ({ ...p, due_month: Number(e.target.value) }))}
@@ -627,7 +629,7 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
                       </select>
                     </div>
                     <Button onClick={handleAddMilestone} disabled={savingMs || !addMs.number.trim() || !addMs.title.trim()}>
-                      <Plus className="mr-1 h-4 w-4" /> {savingMs ? 'Adding...' : 'Add'}
+                      <Plus className="mr-1 h-4 w-4" /> {savingMs ? t('common.adding') : t('common.add')}
                     </Button>
                   </div>
                   {addMs.wp_id && (
@@ -645,9 +647,9 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
       <ConfirmModal
         open={!!deleteDelTarget}
         onOpenChange={(open) => !open && setDeleteDelTarget(null)}
-        title="Delete Deliverable"
-        message={`Are you sure you want to delete deliverable "${deleteDelTarget?.number} ${deleteDelTarget?.title}"?`}
-        confirmLabel="Delete"
+        title={t('deliverables.deleteDeliverable')}
+        message={t('deliverables.deleteDeliverableConfirm', { name: `${deleteDelTarget?.number} ${deleteDelTarget?.title}` })}
+        confirmLabel={t('common.delete')}
         destructive
         loading={deletingDel}
         onConfirm={handleDeleteDel}
@@ -656,9 +658,9 @@ export function DeliverablesTab({ project, workPackages, projectMonthLabel, proj
       <ConfirmModal
         open={!!deleteMsTarget}
         onOpenChange={(open) => !open && setDeleteMsTarget(null)}
-        title="Delete Milestone"
-        message={`Are you sure you want to delete milestone "${deleteMsTarget?.number} ${deleteMsTarget?.title}"?`}
-        confirmLabel="Delete"
+        title={t('deliverables.deleteMilestone')}
+        message={t('deliverables.deleteMilestoneConfirm', { name: `${deleteMsTarget?.number} ${deleteMsTarget?.title}` })}
+        confirmLabel={t('common.delete')}
         destructive
         loading={deletingMs}
         onConfirm={handleDeleteMs}

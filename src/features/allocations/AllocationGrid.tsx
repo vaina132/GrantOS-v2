@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { allocationsService } from '@/services/allocationsService'
 import type { AllocationCell } from '@/services/allocationsService'
 import { useAuthStore } from '@/stores/authStore'
@@ -40,6 +41,7 @@ interface GridRow {
 }
 
 export function AllocationGrid() {
+  const { t } = useTranslation()
   const mode: AssignmentType = 'actual'
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
@@ -339,7 +341,7 @@ export function AllocationGrid() {
       }
 
       await allocationsService.bulkUpsertAssignments(upserts)
-      toast({ title: 'Saved', description: 'Allocations have been saved.' })
+      toast({ title: t('allocations.saved'), description: t('allocations.allocationsSaved') })
       setDirty(false)
       refetchActual()
 
@@ -376,8 +378,8 @@ export function AllocationGrid() {
         }
       } catch { /* ignore email errors */ }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -402,7 +404,7 @@ export function AllocationGrid() {
     const existsInGrid = rows.some((r) => r.person.id === addPersonId && r.project.id === addProjectId)
     const existsInManual = manualRows.some((mr) => mr.personId === addPersonId && mr.projectId === addProjectId)
     if (existsInGrid || existsInManual) {
-      toast({ title: 'Already exists', description: 'This person-project combination is already in the grid.' })
+      toast({ title: t('allocations.alreadyExists'), description: t('allocations.alreadyExistsDesc') })
       return
     }
     setManualRows((prev) => [...prev, { personId: addPersonId, projectId: addProjectId }])
@@ -423,7 +425,7 @@ export function AllocationGrid() {
           className="gap-2"
         >
           <UserPlus className="h-4 w-4" />
-          Add Person to Project
+          {t('allocations.addPersonToProject')}
         </Button>
       ) : (
         <div className="rounded-lg border bg-card">
@@ -431,13 +433,13 @@ export function AllocationGrid() {
           <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
             <div className="flex items-center gap-2 text-sm font-medium">
               <UserPlus className="h-4 w-4 text-muted-foreground" />
-              Add Allocation Row
+              {t('allocations.addAllocationRow')}
             </div>
             <button
               onClick={() => { setAddRowOpen(false); setAddPersonId(''); setAddProjectId('') }}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
 
@@ -445,26 +447,26 @@ export function AllocationGrid() {
             {/* Dropdowns */}
             <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-3 items-end">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Person</label>
+                <label className="text-xs font-medium text-muted-foreground">{t('common.person')}</label>
                 <select
                   value={addPersonId}
                   onChange={(e) => setAddPersonId(e.target.value)}
                   className="flex w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <option value="">Select person...</option>
+                  <option value="">{t('allocations.selectPerson')}</option>
                   {staff.map((p) => (
                     <option key={p.id} value={p.id}>{p.full_name} (FTE {p.fte})</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Project</label>
+                <label className="text-xs font-medium text-muted-foreground">{t('common.project')}</label>
                 <select
                   value={addProjectId}
                   onChange={(e) => setAddProjectId(e.target.value)}
                   className="flex w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <option value="">Select project...</option>
+                  <option value="">{t('allocations.selectProject')}</option>
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>{p.acronym} — {p.title}</option>
                   ))}
@@ -472,7 +474,7 @@ export function AllocationGrid() {
               </div>
               <Button size="sm" onClick={handleAddRow} disabled={!addPersonId || !addProjectId} className="gap-1.5">
                 <Plus className="h-3.5 w-3.5" />
-                Add
+                {t('common.add')}
               </Button>
             </div>
 
@@ -485,7 +487,7 @@ export function AllocationGrid() {
                     <span className="text-muted-foreground font-normal ml-1.5">FTE {selectedPerson.fte}</span>
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    Year total: <span className="font-semibold text-foreground">{selectedPersonLoad.yearTotal.toFixed(1)} PM</span>
+                    {t('allocations.yearTotal')}: <span className="font-semibold text-foreground">{selectedPersonLoad.yearTotal.toFixed(1)} PM</span>
                   </span>
                 </div>
 
@@ -531,16 +533,16 @@ export function AllocationGrid() {
 
                 {/* Legend */}
                 <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
-                  <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-primary/60" />Allocated</span>
-                  <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-orange-200/70" />Absent</span>
-                  <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-muted/60" />Free</span>
-                  <span className="ml-auto">Numbers show free PM per month</span>
+                  <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-primary/60" />{t('allocations.allocated')}</span>
+                  <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-orange-200/70" />{t('allocations.absent')}</span>
+                  <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-sm bg-muted/60" />{t('allocations.free')}</span>
+                  <span className="ml-auto">{t('allocations.freePmPerMonth')}</span>
                 </div>
 
                 {/* Current projects list */}
                 {selectedPersonProjects.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
-                    <span className="text-[10px] text-muted-foreground mr-1 self-center">Currently on:</span>
+                    <span className="text-[10px] text-muted-foreground mr-1 self-center">{t('allocations.currentlyOn')}:</span>
                     {selectedPersonProjects.map((p) => (
                       <span
                         key={p.acronym}
@@ -564,8 +566,8 @@ export function AllocationGrid() {
     return (
       <EmptyState
         icon={Grid3x3}
-        title="No allocations yet"
-        description="Add staff and projects first, then create assignments here."
+        title={t('allocations.noAllocationsYet')}
+        description={t('allocations.noAllocationsDesc')}
       />
     )
   }
@@ -575,8 +577,8 @@ export function AllocationGrid() {
       <div className="space-y-4">
         <div className="rounded-lg border bg-card p-6 text-center space-y-3">
           <Grid3x3 className="mx-auto h-10 w-10 text-muted-foreground" />
-          <h3 className="font-semibold">No allocation rows yet</h3>
-          <p className="text-sm text-muted-foreground">Select a person and project below to start entering person-month allocations.</p>
+          <h3 className="font-semibold">{t('allocations.noAllocationRows')}</h3>
+          <p className="text-sm text-muted-foreground">{t('allocations.noAllocationRowsDesc')}</p>
         </div>
         {addRowPanel}
       </div>
@@ -589,10 +591,9 @@ export function AllocationGrid() {
         <div className="rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 px-4 py-3 flex items-start gap-3">
           <div className="text-blue-600 text-sm mt-0.5">ℹ️</div>
           <div>
-            <div className="text-sm font-medium text-blue-900 dark:text-blue-200">Timesheets Drive Allocations</div>
+            <div className="text-sm font-medium text-blue-900 dark:text-blue-200">{t('allocations.timesheetsDriveAllocations')}</div>
             <div className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
-              PM values are automatically calculated from timesheet entries and are read-only.
-              To change this, go to Settings → Organisation and disable "Timesheets Drive Allocations".
+              {t('allocations.timesheetsDriveDesc')}
             </div>
           </div>
         </div>
@@ -600,18 +601,18 @@ export function AllocationGrid() {
       {!timesheetDriven && (
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={undo} disabled={!canUndo}>
-            <Undo2 className="mr-1 h-4 w-4" /> Undo
+            <Undo2 className="mr-1 h-4 w-4" /> {t('allocations.undo')}
           </Button>
           <Button variant="outline" size="sm" onClick={redo} disabled={!canRedo}>
-            <Redo2 className="mr-1 h-4 w-4" /> Redo
+            <Redo2 className="mr-1 h-4 w-4" /> {t('allocations.redo')}
           </Button>
           <div className="flex-1" />
           {dirty && (
-            <Badge variant="secondary" className="text-xs">Unsaved changes</Badge>
+            <Badge variant="secondary" className="text-xs">{t('allocations.unsavedChanges')}</Badge>
           )}
           <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
             <Save className="mr-1 h-4 w-4" />
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? t('common.saving') : t('common.save')}
           </Button>
         </div>
       )}
@@ -620,8 +621,8 @@ export function AllocationGrid() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="px-3 py-2 text-left font-medium sticky left-0 bg-muted/50 min-w-[140px]">Person</th>
-              <th className="px-3 py-2 text-left font-medium min-w-[100px]">Project</th>
+              <th className="px-3 py-2 text-left font-medium sticky left-0 bg-muted/50 min-w-[140px]">{t('common.person')}</th>
+              <th className="px-3 py-2 text-left font-medium min-w-[100px]">{t('common.project')}</th>
               {MONTHS.map((m, i) => (
                 <th
                   key={m}
@@ -634,7 +635,7 @@ export function AllocationGrid() {
                   {isLocked(i + 1) && <span className="block text-[10px]">🔒</span>}
                 </th>
               ))}
-              <th className="px-3 py-2 text-right font-medium min-w-[60px]">Total</th>
+              <th className="px-3 py-2 text-right font-medium min-w-[60px]">{t('common.total')}</th>
             </tr>
           </thead>
           <tbody>

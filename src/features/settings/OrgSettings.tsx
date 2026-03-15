@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { settingsService } from '@/services/settingsService'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import { COUNTRIES } from '@/data/countries'
 import { CURRENCIES, currencyForCountry } from '@/data/currencies'
 
 export function OrgSettings() {
+  const { t } = useTranslation()
   const { orgId } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -57,10 +59,10 @@ export function OrgSettings() {
         departments: departments.split(',').map((d) => d.trim()).filter(Boolean),
         timesheets_drive_allocations: timesheetsDriveAllocations,
       })
-      toast({ title: 'Saved', description: 'Organisation settings updated.' })
+      toast({ title: t('settings.settingsSaved') })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -71,16 +73,16 @@ export function OrgSettings() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Organisation Details</CardTitle>
+        <CardTitle className="text-base">{t('settings.organisation')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Organisation Name</Label>
+            <Label>{t('settings.orgName')}</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Country</Label>
+            <Label>{t('staff.country')}</Label>
             <select
               value={country}
               onChange={(e) => {
@@ -90,14 +92,14 @@ export function OrgSettings() {
               }}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
-              <option value="">Select country...</option>
+              <option value="">{t('common.search')}...</option>
               {COUNTRIES.map((c) => (
                 <option key={c.code} value={c.code}>{c.name}</option>
               ))}
             </select>
           </div>
           <div className="space-y-2">
-            <Label>Currency</Label>
+            <Label>{t('settings.currency')}</Label>
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
@@ -109,19 +111,19 @@ export function OrgSettings() {
             </select>
           </div>
           <div className="space-y-2">
-            <Label>Working Hours / Day</Label>
+            <Label>{t('settings.workingHours')}</Label>
             <Input type="number" value={workingHoursPerDay} onChange={(e) => setWorkingHoursPerDay(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Working Days / Year</Label>
+            <Label>{t('settings.workingDaysYear')}</Label>
             <Input type="number" value={workingDaysPerYear} onChange={(e) => setWorkingDaysPerYear(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Default Overhead Rate (%)</Label>
+            <Label>{t('settings.defaultOverheadRate')}</Label>
             <Input type="number" value={defaultOverheadRate} onChange={(e) => setDefaultOverheadRate(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Departments (comma-separated)</Label>
+            <Label>{t('settings.departments')}</Label>
             <Input value={departments} onChange={(e) => setDepartments(e.target.value)} placeholder="e.g. CS, EE, Physics" />
           </div>
         </div>
@@ -129,10 +131,9 @@ export function OrgSettings() {
         <div className="rounded-lg border p-4 space-y-2">
           <div className="flex items-center justify-between">
             <div>
-              <Label className="text-sm font-semibold">Timesheets Drive Allocations</Label>
+              <Label className="text-sm font-semibold">{t('settings.timesheetsDriveAllocations')}</Label>
               <p className="text-xs text-muted-foreground mt-0.5">
-                When enabled, allocation PM values are automatically calculated from timesheet entries and become read-only.
-                When disabled, allocations can be edited manually.
+                {t('settings.timesheetsDriveAllocationsDesc')}
               </p>
             </div>
             <button
@@ -163,13 +164,13 @@ export function OrgSettings() {
                 setExporting(true)
                 try {
                   await exportService.exportOrganisation(orgId, 'json')
-                  toast({ title: 'Export complete', description: 'JSON file downloaded.' })
-                } catch (_e) { toast({ title: 'Export failed', variant: 'destructive' }) }
+                  toast({ title: t('settings.exportComplete') })
+                } catch (_e) { toast({ title: t('settings.exportFailed'), variant: 'destructive' }) }
                 finally { setExporting(false) }
               }}
             >
               <Download className="mr-1 h-4 w-4" />
-              {exporting ? 'Exporting...' : 'Export JSON'}
+              {exporting ? t('settings.exporting') : t('settings.exportJSON')}
             </Button>
             <Button
               variant="outline"
@@ -180,18 +181,18 @@ export function OrgSettings() {
                 setExporting(true)
                 try {
                   await exportService.exportOrganisation(orgId, 'csv')
-                  toast({ title: 'Export complete', description: 'CSV file downloaded.' })
-                } catch (_e) { toast({ title: 'Export failed', variant: 'destructive' }) }
+                  toast({ title: t('settings.exportComplete') })
+                } catch (_e) { toast({ title: t('settings.exportFailed'), variant: 'destructive' }) }
                 finally { setExporting(false) }
               }}
             >
               <Download className="mr-1 h-4 w-4" />
-              Export CSV
+              {t('settings.exportCSV')}
             </Button>
           </div>
           <Button onClick={handleSave} disabled={saving}>
             <Save className="mr-1 h-4 w-4" />
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? t('common.saving') : t('common.save')}
           </Button>
         </div>
       </CardContent>

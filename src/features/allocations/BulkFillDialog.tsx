@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -19,6 +20,7 @@ interface BulkFillDialogProps {
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export function BulkFillDialog({ open, onOpenChange, onApply }: BulkFillDialogProps) {
+  const { t } = useTranslation()
   const [pms, setPms] = useState('0')
   const [selectedMonths, setSelectedMonths] = useState<number[]>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
 
@@ -42,11 +44,11 @@ export function BulkFillDialog({ open, onOpenChange, onApply }: BulkFillDialogPr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Bulk Fill Person-Months</DialogTitle>
+          <DialogTitle>{t('allocations.bulkFillPMs')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="bulk-pms">Person-Months per selected month</Label>
+            <Label htmlFor="bulk-pms">{t('allocations.pmsPerMonth')}</Label>
             <Input
               id="bulk-pms"
               type="number"
@@ -60,13 +62,13 @@ export function BulkFillDialog({ open, onOpenChange, onApply }: BulkFillDialogPr
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Months to fill</Label>
+              <Label>{t('allocations.monthsToFill')}</Label>
               <div className="flex gap-2">
                 <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={selectAll}>
-                  All
+                  {t('common.all')}
                 </Button>
                 <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={selectNone}>
-                  None
+                  {t('common.none')}
                 </Button>
               </div>
             </div>
@@ -90,9 +92,9 @@ export function BulkFillDialog({ open, onOpenChange, onApply }: BulkFillDialogPr
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
           <Button onClick={handleApply} disabled={selectedMonths.length === 0}>
-            Apply to {selectedMonths.length} month{selectedMonths.length !== 1 ? 's' : ''}
+            {t('allocations.applyToMonths', { count: selectedMonths.length })}
           </Button>
         </DialogFooter>
       </DialogContent>

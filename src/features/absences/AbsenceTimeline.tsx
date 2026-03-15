@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { absenceService } from '@/services/absenceService'
 import { absenceApproverService } from '@/services/absenceApproverService'
 import { notificationService } from '@/services/notificationService'
@@ -169,6 +170,7 @@ const CELL_H = 20
 const NAME_W = 160
 
 export function AbsenceTimeline() {
+  const { t } = useTranslation()
   const { orgId, user, can } = useAuthStore()
   const { globalYear } = useUiStore()
   const { staff } = useStaff({ is_active: true })
@@ -334,10 +336,10 @@ export function AbsenceTimeline() {
         substitute_person_id: substitutePersonId || null,
       } as any)
       toast({
-        title: hasApprovers ? 'Request submitted' : 'Absence recorded',
+        title: hasApprovers ? t('absences.absenceSubmitted') : t('absences.absenceRecorded'),
         description: hasApprovers
-          ? `${dayCount} day${dayCount !== 1 ? 's' : ''} submitted for approval.`
-          : `${dayCount} day${dayCount !== 1 ? 's' : ''} added.`,
+          ? t('absences.daysSubmitted', { count: dayCount })
+          : t('absences.daysAdded', { count: dayCount }),
       })
 
       // Notify approvers
@@ -350,7 +352,7 @@ export function AbsenceTimeline() {
             orgId,
             userIds: approverUserIds,
             type: 'approval',
-            title: 'Absence Request',
+            title: t('absences.absenceRequest'),
             message: `${personName} requested ${absenceType}: ${selection.startDate} – ${selection.endDate} (${dayCount} days)`,
             link: '/absences',
           }).catch(() => {})
@@ -392,8 +394,13 @@ export function AbsenceTimeline() {
             orgId,
             userId: substitute.user_id,
             type: 'info',
-            title: 'Substitute Coverage',
-            message: `You have been nominated as substitute for ${absenteeName} (${absenceType}: ${selection.startDate} \u2013 ${selection.endDate}).`,
+            title: t('absences.substituteCoverage'),
+            message: t('absences.youHaveBeenNominatedAsSubstitute', { 
+              absenteeName, 
+              absenceType, 
+              startDate: selection.startDate, 
+              endDate: selection.endDate 
+            }),
             link: '/absences',
           }).catch(() => {})
         }
@@ -405,8 +412,8 @@ export function AbsenceTimeline() {
       setSubstituteOverlap(false)
       refetch()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -451,40 +458,40 @@ export function AbsenceTimeline() {
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 text-xs">
-        {ABSENCE_TYPES.map((t) => (
-          <div key={t} className="flex items-center gap-1.5">
-            <span className={cn('inline-block w-3 h-3 rounded-sm', ABSENCE_COLORS[t])} />
-            <span>{t}</span>
+        {ABSENCE_TYPES.map((aType) => (
+          <div key={aType} className="flex items-center gap-1.5">
+            <span className={cn('inline-block w-3 h-3 rounded-sm', ABSENCE_COLORS[aType])} />
+            <span>{aType}</span>
           </div>
         ))}
         <div className="flex items-center gap-1.5 ml-2">
           <span className="inline-block w-3 h-3 rounded-sm bg-muted border" />
-          <span>Weekend</span>
+          <span>{t('absences.weekend')}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-sm bg-amber-100 border border-amber-300" />
-          <span>Public Holiday</span>
+          <span>{t('absences.publicHoliday')}</span>
         </div>
         <div className="flex items-center gap-1.5 ml-2">
           <span className="inline-block w-2 h-2 rounded-full bg-amber-500 border border-amber-600" />
-          <span>Pending</span>
+          <span>{t('common.pending')}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 border border-emerald-600" />
-          <span>Approved</span>
+          <span>{t('common.approved')}</span>
         </div>
       </div>
 
       {/* Timeline grid */}
       {isLoading ? (
-        <div className="h-48 flex items-center justify-center text-muted-foreground">Loading...</div>
+        <div className="h-48 flex items-center justify-center text-muted-foreground">{t('common.loading')}</div>
       ) : (
         <div className="rounded-lg border overflow-x-auto select-none" onMouseLeave={() => { if (isDragging) { /* keep selection */ } }}>
           <div style={{ minWidth: NAME_W + days.length * CELL_W }}>
             {/* Header row: day numbers */}
             <div className="flex border-b bg-muted/50 sticky top-0 z-10">
               <div className="shrink-0 px-3 py-1 text-xs font-medium border-r flex items-end" style={{ width: NAME_W }}>
-                Staff
+                {t('nav.staff')}
               </div>
               {days.map((day) => (
                 <div
@@ -597,7 +604,7 @@ export function AbsenceTimeline() {
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); setSelection(null); setSubstitutePersonId(null); setSubstituteOverlap(false) } }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Record Absence</DialogTitle>
+            <DialogTitle>{t('absences.recordAbsence')}</DialogTitle>
           </DialogHeader>
           {selection && (
             <div className="space-y-4 py-4">
@@ -606,33 +613,33 @@ export function AbsenceTimeline() {
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">From:</span>{' '}
+                  <span className="text-muted-foreground">{t('common.from')}:</span>{' '}
                   <span className="font-medium">{selection.startDate}</span>{' '}
                   <Badge variant="outline" className="text-[10px]">{selection.startHalf.toUpperCase()}</Badge>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">To:</span>{' '}
+                  <span className="text-muted-foreground">{t('common.to')}:</span>{' '}
                   <span className="font-medium">{selection.endDate}</span>{' '}
                   <Badge variant="outline" className="text-[10px]">{selection.endHalf.toUpperCase()}</Badge>
                 </div>
               </div>
               <div className="text-sm">
-                <span className="text-muted-foreground">Working days:</span>{' '}
+                <span className="text-muted-foreground">{t('absences.workingDays')}:</span>{' '}
                 <span className="font-semibold">{computeDays(selection, personHolidaySets.sets[selection.personId] ?? new Set<string>())}</span>
               </div>
               <div className="space-y-2">
-                <Label>Absence Type</Label>
+                <Label>{t('absences.absenceType')}</Label>
                 <div className="flex flex-wrap gap-2">
-                  {ABSENCE_TYPES.map((t) => (
+                  {ABSENCE_TYPES.map((aType) => (
                     <Button
-                      key={t}
-                      variant={absenceType === t ? 'default' : 'outline'}
+                      key={aType}
+                      variant={absenceType === aType ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setAbsenceType(t)}
+                      onClick={() => setAbsenceType(aType)}
                       className="text-xs"
                     >
-                      <span className={cn('inline-block w-2.5 h-2.5 rounded-sm mr-1.5', ABSENCE_COLORS[t])} />
-                      {t}
+                      <span className={cn('inline-block w-2.5 h-2.5 rounded-sm mr-1.5', ABSENCE_COLORS[aType])} />
+                      {aType}
                     </Button>
                   ))}
                 </div>
@@ -640,13 +647,13 @@ export function AbsenceTimeline() {
 
               {/* Substitute dropdown */}
               <div className="space-y-2">
-                <Label>Substitute <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Label>{t('absences.substitute')} <span className="text-muted-foreground font-normal">({t('common.optional')})</span></Label>
                 <select
                   value={substitutePersonId ?? ''}
                   onChange={(e) => setSubstitutePersonId(e.target.value || null)}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <option value="">No substitute</option>
+                  <option value="">{t('absences.noSubstitute')}</option>
                   {staff
                     .filter((p) => p.id !== selection?.personId)
                     .map((p) => (
@@ -656,7 +663,7 @@ export function AbsenceTimeline() {
                 {substituteOverlap && (
                   <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                     <AlertTriangle className="h-3.5 w-3.5" />
-                    This person has an approved or pending absence overlapping these dates.
+                    {t('absences.substituteOverlap')}
                   </div>
                 )}
               </div>
@@ -671,9 +678,9 @@ export function AbsenceTimeline() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setDialogOpen(false); setSelection(null); setSubstitutePersonId(null); setSubstituteOverlap(false) }} disabled={saving}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setDialogOpen(false); setSelection(null); setSubstitutePersonId(null); setSubstituteOverlap(false) }} disabled={saving}>{t('common.cancel')}</Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : 'Save Absence'}
+              {saving ? t('common.saving') : t('absences.saveAbsence')}
             </Button>
           </DialogFooter>
         </DialogContent>

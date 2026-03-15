@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Plus, Users, Globe, FileText, MoreHorizontal, Trash2, Rocket, Search, Archive, ArchiveRestore, Sparkles } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService } from '@/services/collabProjectService'
@@ -22,6 +23,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export function CollabProjectList() {
+  const { t } = useTranslation()
   const { orgId } = useAuthStore()
   const navigate = useNavigate()
   const [projects, setProjects] = useState<CollabProject[]>([])
@@ -36,7 +38,7 @@ export function CollabProjectList() {
       const data = await collabProjectService.list(orgId)
       setProjects(data)
     } catch (err) {
-      toast({ title: 'Error', description: 'Failed to load collaboration projects', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToLoadProjects'), variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -45,37 +47,37 @@ export function CollabProjectList() {
   useEffect(() => { load() }, [orgId])
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this collaboration project? This cannot be undone.')) return
+    if (!confirm(t('collaboration.confirmDeleteProject'))) return
     try {
       await collabProjectService.remove(id)
-      toast({ title: 'Deleted', description: 'Collaboration project removed' })
+      toast({ title: t('common.deleted'), description: t('collaboration.projectDeleted') })
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to delete project', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToDeleteProject'), variant: 'destructive' })
     }
   }
 
   const handleLaunch = async (id: string) => {
-    if (!confirm('Launch this project? Invitations will be sent to all partners.')) return
+    if (!confirm(t('collaboration.confirmLaunchProject'))) return
     try {
       await collabProjectService.launch(id)
-      toast({ title: 'Launched', description: 'Project is now active' })
+      toast({ title: t('collaboration.launched'), description: t('collaboration.projectNowActive') })
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to launch project', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToLaunchProject'), variant: 'destructive' })
     }
   }
 
   const handleArchive = async (id: string, current: string) => {
     const newStatus = current === 'archived' ? 'active' : 'archived'
-    const label = newStatus === 'archived' ? 'Archive' : 'Unarchive'
-    if (!confirm(`${label} this project?`)) return
+    const label = newStatus === 'archived' ? t('collaboration.archive') : t('collaboration.unarchive')
+    if (!confirm(`${label}?`)) return
     try {
       await collabProjectService.update(id, { status: newStatus } as any)
-      toast({ title: `${label}d`, description: `Project ${newStatus === 'archived' ? 'archived' : 'restored to active'}` })
+      toast({ title: label, description: newStatus === 'archived' ? t('collaboration.projectArchived') : t('collaboration.projectRestoredActive') })
       load()
     } catch {
-      toast({ title: 'Error', description: `Failed to ${label.toLowerCase()} project`, variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToArchiveProject'), variant: 'destructive' })
     }
   }
 
@@ -116,14 +118,14 @@ export function CollabProjectList() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Collaboration Projects</h2>
+          <h2 className="text-xl font-semibold">{t('collaboration.title')}</h2>
           <p className="text-sm text-muted-foreground">
-            Multi-partner EU-funded projects with external reporting
+            {t('collaboration.description')}
           </p>
         </div>
         <Button onClick={() => navigate('/projects/collaboration/new')} className="gap-2">
           <Plus className="h-4 w-4" />
-          New Collaboration
+          {t('collaboration.newProject')}
         </Button>
       </div>
 
@@ -133,14 +135,14 @@ export function CollabProjectList() {
           <div className="flex items-center gap-3">
             <Sparkles className="h-5 w-5 text-purple-500 shrink-0" />
             <div className="flex-1">
-              <h3 className="font-medium text-sm">Quick Import with AI</h3>
+              <h3 className="font-medium text-sm">{t('collaboration.quickImportAI')}</h3>
               <p className="text-xs text-muted-foreground">
-                Upload a grant agreement PDF or budget table screenshot and let AI extract partners, work packages, deliverables, and milestones automatically.
+                {t('collaboration.quickImportAIDesc')}
               </p>
             </div>
             <Button size="sm" variant="outline" className="shrink-0 gap-1.5 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40" onClick={() => navigate('/projects/collaboration/new/ai-import')}>
               <Sparkles className="h-3.5 w-3.5" />
-              Import &amp; Create
+              {t('collaboration.importAndCreate')}
             </Button>
           </div>
         </CardContent>
@@ -160,7 +162,7 @@ export function CollabProjectList() {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {s.charAt(0).toUpperCase() + s.slice(1)} ({counts[s]})
+                {t(`collaboration.status_${s}`)} ({counts[s]})
               </button>
             ))}
           </div>
@@ -169,7 +171,7 @@ export function CollabProjectList() {
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by acronym, title..."
+              placeholder={t('collaboration.searchPlaceholder')}
               className="flex h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 py-1 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             />
           </div>
@@ -180,25 +182,25 @@ export function CollabProjectList() {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Globe className="h-12 w-12 text-muted-foreground/40 mb-4" />
-            <h3 className="text-lg font-medium mb-1">No collaboration projects yet</h3>
+            <h3 className="text-lg font-medium mb-1">{t('collaboration.noProjects')}</h3>
             <p className="text-sm text-muted-foreground mb-6 max-w-md">
-              Create a collaboration project to manage multi-partner EU-funded research with external financial reporting.
+              {t('collaboration.noProjectsDesc')}
             </p>
             <div className="flex gap-3">
               <Button onClick={() => navigate('/projects/collaboration/new')} className="gap-2">
                 <Plus className="h-4 w-4" />
-                Create Manually
+                {t('collaboration.createManually')}
               </Button>
               <Button variant="outline" onClick={() => navigate('/projects/collaboration/new/ai-import')} className="gap-2 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40">
                 <Sparkles className="h-4 w-4 text-purple-500" />
-                Import with AI
+                {t('collaboration.importWithAI')}
               </Button>
             </div>
           </CardContent>
         </Card>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-sm text-muted-foreground">No projects match your filters</p>
+          <p className="text-sm text-muted-foreground">{t('collaboration.noProjectsMatchFilters')}</p>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -227,9 +229,9 @@ export function CollabProjectList() {
                       )}
                       <span className="flex items-center gap-1">
                         <Users className="h-3.5 w-3.5" />
-                        {getPartnerCount(p)} partner{getPartnerCount(p) !== 1 ? 's' : ''}
+                        {t('collaboration.partnerCount', { count: getPartnerCount(p) })}
                       </span>
-                      <span>Coordinator: {getCoordinator(p)}</span>
+                      <span>{t('collaboration.coordinator')}: {getCoordinator(p)}</span>
                       {p.funding_programme && <span>{p.funding_programme}</span>}
                     </div>
                   </div>
@@ -244,19 +246,19 @@ export function CollabProjectList() {
                       {p.status === 'draft' && (
                         <DropdownMenuItem onClick={() => handleLaunch(p.id)}>
                           <Rocket className="mr-2 h-4 w-4" />
-                          Launch Project
+                          {t('collaboration.launchProject')}
                         </DropdownMenuItem>
                       )}
                       {p.status === 'active' && (
                         <DropdownMenuItem onClick={() => handleArchive(p.id, p.status)}>
                           <Archive className="mr-2 h-4 w-4" />
-                          Archive
+                          {t('collaboration.archive')}
                         </DropdownMenuItem>
                       )}
                       {p.status === 'archived' && (
                         <DropdownMenuItem onClick={() => handleArchive(p.id, p.status)}>
                           <ArchiveRestore className="mr-2 h-4 w-4" />
-                          Unarchive
+                          {t('collaboration.unarchive')}
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuItem
@@ -264,7 +266,7 @@ export function CollabProjectList() {
                         onClick={() => handleDelete(p.id)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
+                        {t('common.delete')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

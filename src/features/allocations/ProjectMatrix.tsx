@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStaff } from '@/hooks/useStaff'
 import { useProjects } from '@/hooks/useProjects'
 import { useAssignments } from '@/hooks/useAllocations'
@@ -22,6 +23,7 @@ function intensityColor(value: number): string {
 }
 
 export function ProjectMatrix() {
+  const { t } = useTranslation()
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
   const { staff, isLoading: loadingStaff } = useStaff({ is_active: true })
@@ -116,8 +118,8 @@ export function ProjectMatrix() {
     return (
       <EmptyState
         icon={FolderKanban}
-        title="No assignment data"
-        description="Create allocations first to see the project assignment matrix."
+        title={t('allocations.noAssignmentData')}
+        description={t('allocations.noAssignmentDataDesc')}
       />
     )
   }
@@ -125,7 +127,7 @@ export function ProjectMatrix() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4 text-xs">
-        <span className="text-muted-foreground">Intensity:</span>
+        <span className="text-muted-foreground">{t('allocations.intensity')}:</span>
         <div className="flex gap-1 items-center">
           <span className="inline-block w-6 h-4 rounded bg-blue-50 border" />
           <span>&le;1 PM</span>
@@ -148,7 +150,7 @@ export function ProjectMatrix() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="px-3 py-2 text-left font-medium sticky left-0 bg-muted/50 min-w-[150px]">Project</th>
+              <th className="px-3 py-2 text-left font-medium sticky left-0 bg-muted/50 min-w-[150px]">{t('common.project')}</th>
               {MONTHS.map((m, i) => (
                 <th key={i} className="px-1 py-2 text-center font-medium min-w-[50px]">{m}</th>
               ))}

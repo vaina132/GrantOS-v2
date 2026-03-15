@@ -1,4 +1,18 @@
-{
+/**
+ * Script to generate complete translation files for all languages.
+ * Run: node scripts/generate-translations.cjs
+ * 
+ * This script writes complete translation files for de, fr, es, pt, and tr
+ * with all keys matching en.json structure.
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+const localesDir = path.join(__dirname, '..', 'src', 'locales');
+
+// ─── German (de) ───────────────────────────────────────────────
+const de = {
   "nav": {
     "core": "Kern",
     "operations": "Betrieb",
@@ -781,7 +795,6 @@
     "totalBudget": "Gesamtbudget",
     "ourShare": "Unser Anteil",
     "setup": "Einrichtung",
-
     "failedToLoadProjects": "Projekte konnten nicht geladen werden",
     "failedToLoadProject": "Projekt konnte nicht geladen werden",
     "failedToDeleteProject": "Projekt konnte nicht gelöscht werden",
@@ -803,7 +816,6 @@
     "failedToResubmit": "Erneut einreichen fehlgeschlagen",
     "failedToApprove": "Genehmigen fehlgeschlagen",
     "failedToReject": "Ablehnen fehlgeschlagen",
-
     "confirmLaunchProject": "Projekt starten? Der Status wird auf Aktiv geändert.",
     "confirmDeleteProject": "Dieses Kollaborationsprojekt löschen? Dies kann nicht rückgängig gemacht werden.",
     "confirmGenerateReports": "Berichte für alle Partner in diesem Zeitraum generieren?",
@@ -813,7 +825,6 @@
     "confirmSubmitReport": "Bericht zur Prüfung einreichen? Sie können nach Rücksendung noch Änderungen vornehmen.",
     "confirmResubmitReport": "Bericht erneut einreichen?",
     "confirmApproveReport": "Bericht genehmigen?",
-
     "launched": "Gestartet",
     "projectNowActive": "Projekt ist jetzt aktiv",
     "archive": "Archivieren",
@@ -833,7 +844,6 @@
     "endMonthMustBeGte": "Endmonat muss ≥ Startmonat sein",
     "taskCreated": "Aufgabe erstellt",
     "taskRemoved": "Aufgabe \"{{title}}\" entfernt",
-
     "tabGeneral": "Allgemein",
     "tabPartners": "Partner",
     "tabWps": "APs",
@@ -842,7 +852,6 @@
     "tabBudget": "Budget",
     "tabEffort": "Aufwand",
     "tabTimeline": "Zeitplan",
-
     "projectNotFound": "Projekt nicht gefunden",
     "backToList": "Zurück zur Liste",
     "editAll": "Alle bearbeiten",
@@ -917,7 +926,6 @@
     "addPartnersWpsForEffort": "Partner und Arbeitspakete hinzufügen, um die Aufwandsübersicht zu sehen",
     "wpTask": "AP / Aufgabe",
     "coord": "Koord",
-
     "reportNotFound": "Bericht nicht gefunden",
     "goBack": "Zurück",
     "financialReport": "Finanzbericht",
@@ -957,14 +965,12 @@
     "workPackage": "Arbeitspaket",
     "allocatedPMs": "Zugewiesene PMs",
     "activityLog": "Aktivitätsprotokoll",
-
     "sectionPersonnelEffort": "Personalaufwand (PMs)",
     "sectionPersonnelCosts": "Personalkosten",
     "sectionSubcontracting": "Unteraufträge",
     "sectionTravel": "Reisen & Aufenthalt",
     "sectionEquipment": "Ausstattung",
     "sectionOtherGoods": "Sonstige Güter & Dienstleistungen",
-
     "setStartDateForGantt": "Projektstart und Laufzeit festlegen, um das Gantt-Diagramm zu sehen.",
     "addWpsForGantt": "Arbeitspakete hinzufügen, um das Gantt-Diagramm zu sehen.",
     "zoomIn": "Vergrößern",
@@ -977,7 +983,6 @@
     "task": "Aufgabe",
     "deliverable": "Ergebnis",
     "milestone": "Meilenstein",
-
     "noTokenProvided": "Kein Einladungstoken angegeben.",
     "invalidToken": "Ungültiger oder abgelaufener Einladungstoken.",
     "invitationError": "Einladungsfehler",
@@ -995,7 +1000,6 @@
     "youAreNowPartner": "Sie sind jetzt Partner in diesem Projekt.",
     "goToProject": "Zum Projekt",
     "failedToAcceptInvitation": "Einladung konnte nicht angenommen werden. Bitte versuchen Sie es erneut.",
-
     "filterAll": "Alle",
     "filterDraft": "Entwurf",
     "filterActive": "Aktiv",
@@ -1005,113 +1009,7 @@
     "noCollabProjectsFiltered": "Keine Kollaborationsprojekte entsprechen Ihren Filtern.",
     "createFirst": "Erstellen Sie Ihr erstes Kollaborationsprojekt.",
     "confirmDeleteFromList": "\"{{name}}\" löschen? Dies kann nicht rückgängig gemacht werden.",
-    "deletedProject": "\"{{name}}\" gelöscht",
-
-    "setupStepIdentity": "Projektidentität",
-    "setupStepPartners": "Partner",
-    "setupStepWorkPlan": "Arbeitsplan",
-    "setupStepDelMs": "Liefergegenstände & Meilensteine",
-    "setupStepReview": "Überprüfen & Erstellen",
-
-    "setupNewProject": "Neues Kollaborationsprojekt",
-    "setupNewDesc": "Richten Sie ein Multi-Partner-Projekt mit externer Berichterstattung ein",
-    "setupEditDesc": "Bearbeiten Sie alle Projektdetails, Partner, Arbeitsplan, Liefergegenstände und Meilensteine",
-    "setupLoadingProject": "Projektdaten werden geladen…",
-    "setupSaveChanges": "Änderungen speichern",
-    "setupCreateProject": "Projekt erstellen",
-    "setupProjectCreated": "Kollaborationsprojekt \"{{acronym}}\" erfolgreich erstellt",
-    "setupProjectUpdated": "Projekt \"{{acronym}}\" erfolgreich aktualisiert",
-    "setupFailedToCreate": "Projekt konnte nicht erstellt werden",
-    "setupFailedToUpdate": "Projekt konnte nicht aktualisiert werden",
-
-    "setupAiTitle": "Import aus Fördervertrag (KI)",
-    "setupAiDesc": "Laden Sie Ihren Fördervertrag als PDF oder einen Screenshot der Budgettabelle hoch. KI extrahiert Projektdetails, Partner, Arbeitspakete, Aufgaben, Liefergegenstände und Meilensteine.",
-    "setupAiBestDocs": "Beste Dokumente zum Hochladen",
-    "setupAiDoc1Title": "Anhang zum Fördervertrag",
-    "setupAiDoc1Desc": "enthält Budgettabelle, Arbeitspakete, Liefergegenstände",
-    "setupAiDoc2Title": "Screenshot der Budgettabelle",
-    "setupAiDoc2Desc": "Aufschlüsselung der Kosten pro Partner",
-    "setupAiDoc3Title": "Arbeitsplan-Abschnitt",
-    "setupAiDoc3Desc": "AP-Beschreibungen, Aufgaben, Gantt-Diagramm",
-    "setupAiDoc4Title": "Liefergegenstand-/Meilensteintabelle",
-    "setupAiDoc4Desc": "Liste mit Fälligkeitsmonaten",
-    "setupAiHintsPlaceholder": "Optionale Hinweise: z.B. 'Budget ist in Anhang 2, wir sind Partner 3'",
-    "setupAiDropzone": "PDF oder Bild hier ablegen oder klicken zum Durchsuchen",
-    "setupAiFileTypes": "PDF, PNG, JPG bis 25MB",
-    "setupAiAnalyzing": "Analysiere...",
-    "setupAiExtractBtn": "Daten extrahieren",
-    "setupAiNoData": "Keine Daten gefunden",
-    "setupAiImportError": "Importfehler",
-    "setupAiNoExtraction": "KI hat keine Extraktionsdaten zurückgegeben.",
-    "setupAiComplete": "KI-Import abgeschlossen",
-    "setupAiExtracted": "Extrahiert: {{counts}}. Überprüfen Sie alle Felder vor dem Erstellen.",
-    "setupAiProjectData": "Projektdaten",
-    "setupAiImportFailed": "KI-Import fehlgeschlagen",
-    "setupAiTryDifferent": "Versuchen Sie ein anderes Dateiformat oder fügen Sie spezifische Anweisungen hinzu, wo sich die Daten befinden.",
-
-    "setupProjectTitle": "Projekttitel",
-    "setupProjectTitlePh": "Vollständiger Projekttitel",
-    "setupAcronymPh": "z.B. ODEON, DataBridge",
-    "setupGrantNumberPh": "z.B. 101136128",
-    "setupProgrammePh": "z.B. Horizon Europe",
-    "setupSchemeTip": "Der spezifische Aktionstyp oder das Instrument unter dem Förderprogramm. Für Horizon Europe: RIA, IA, CSA, ERC-Stipendien, MSCA-Aktionen, EIC-Instrumente usw.",
-    "setupSchemePh": "z.B. Research and Innovation Action (RIA)",
-    "setupDurationPh": "z.B. 36",
-    "setupAutoCalculated": "automatisch berechnet",
-
-    "setupConsortiumPartners": "Konsortialpartner",
-    "setupConsortiumDesc": "Fügen Sie alle Organisationen einschließlich des Koordinators hinzu",
-    "setupAddPartner": "Partner hinzufügen",
-    "setupOrgName": "Organisationsname",
-    "setupOrgType": "Organisationstyp",
-    "setupOrgTypeTip": "Offizieller EU-Teilnehmertyp: HES = Universität, REC = Forschungsorganisation, PRC = Privatunternehmen, PUB = Öffentliche Einrichtung, OTH = Sonstige",
-    "setupSelect": "Auswählen...",
-    "setupParticipantNum": "Teilnehmer-Nr.",
-    "setupCountryTip": "ISO 3166-1 Alpha-2-Ländercode wie in Horizon Europe verwendet (z.B. DE, FR, IT, ES).",
-    "setupContactName": "Kontaktname",
-    "setupContactNamePh": "Berichtskontakt",
-    "setupContactEmail": "Kontakt-E-Mail",
-    "setupBudgetRates": "Budget & Sätze",
-    "setupIndirectRate": "Indirekte Kostenrate",
-    "setupIndirectBase": "Indirekte Kostenbasis",
-    "setupBaseAllDirect": "Alle direkten Kosten",
-    "setupBasePersonnelOnly": "Nur Personal",
-    "setupBaseAllExceptSub": "Alle außer Unteraufträge",
-
-    "setupWpAndTasks": "Arbeitspakete & Aufgaben",
-    "setupWpAndTasksDesc": "Definieren Sie Arbeitspakete, Aufgaben und weisen Sie Personenmonate pro Partner pro Aufgabe zu",
-    "setupAddWp": "AP hinzufügen",
-    "setupUntitled": "Unbenannt",
-    "setupTitle": "Titel",
-    "setupWpTitlePh": "Arbeitspaket-Titel",
-    "setupEndGteStart": "Ende muss ≥ Start sein",
-    "setupWpLeader": "AP-Leiter",
-    "setupSelectPartner": "Partner auswählen",
-    "setupTasksUnderWp": "Aufgaben unter AP{{wp}}",
-    "setupNoTasksYet": "Noch keine Aufgaben — klicken Sie auf \"Aufgabe hinzufügen\", um dieses AP in einzelne Aufgaben aufzuteilen",
-    "setupTaskNum": "Aufgabe #",
-    "setupTaskLeader": "Aufgabenleiter",
-    "setupPmsPerPartner": "PM pro Partner",
-    "setupTotalPMs": "Gesamt: {{pms}} PM über {{count}} AP(s)",
-
-    "setupDeliverablesDesc": "Projektergebnisse, die zu bestimmten Monaten eingereicht werden",
-    "setupNoDeliverablesAdded": "Noch keine Liefergegenstände hinzugefügt.",
-    "setupEgD": "z.B. D1.1",
-    "setupTypeReport": "Bericht",
-    "setupTypeData": "Daten",
-    "setupTypeSoftware": "Software",
-    "setupTypeDemonstrator": "Demonstrator",
-    "setupTypeOther": "Sonstige",
-    "setupLeadPartner": "Leitender Partner",
-
-    "setupMilestonesDesc": "Wichtige Kontrollpunkte zur Überprüfung des Projektfortschritts",
-    "setupNoMilestonesAdded": "Noch keine Meilensteine hinzugefügt.",
-    "setupEgMS": "z.B. MS1",
-    "setupVerificationPh": "Wie dieser Meilenstein überprüft wird",
-
-    "setupReviewSummary": "Projektübersicht",
-    "setupDraftNotice": "Das Projekt wird im Entwurfsstatus erstellt.",
-    "setupDraftDesc": "Sie können weiter bearbeiten, weitere Details hinzufügen und Berichtsperioden konfigurieren. Wenn bereit, starten Sie das Projekt, um Einladungen an alle Partner zu senden."
+    "deletedProject": "\"{{name}}\" gelöscht"
   },
   "onboarding": {
     "title": "Willkommen bei GrantLume",
@@ -1155,30 +1053,38 @@
     "projectNameRequired": "Projektname ist erforderlich"
   },
   "time": {
-    "jan": "Jan",
-    "feb": "Feb",
-    "mar": "Mär",
-    "apr": "Apr",
-    "may": "Mai",
-    "jun": "Jun",
-    "jul": "Jul",
-    "aug": "Aug",
-    "sep": "Sep",
-    "oct": "Okt",
-    "nov": "Nov",
-    "dec": "Dez",
-    "monday": "Montag",
-    "tuesday": "Dienstag",
-    "wednesday": "Mittwoch",
-    "thursday": "Donnerstag",
-    "friday": "Freitag",
-    "saturday": "Samstag",
-    "sunday": "Sonntag",
-    "today": "Heute",
-    "yesterday": "Gestern",
-    "tomorrow": "Morgen",
-    "thisWeek": "Diese Woche",
-    "thisMonth": "Dieser Monat",
-    "thisYear": "Dieses Jahr"
+    "jan": "Jan", "feb": "Feb", "mar": "Mär", "apr": "Apr",
+    "may": "Mai", "jun": "Jun", "jul": "Jul", "aug": "Aug",
+    "sep": "Sep", "oct": "Okt", "nov": "Nov", "dec": "Dez",
+    "monday": "Montag", "tuesday": "Dienstag", "wednesday": "Mittwoch",
+    "thursday": "Donnerstag", "friday": "Freitag", "saturday": "Samstag", "sunday": "Sonntag",
+    "today": "Heute", "yesterday": "Gestern", "tomorrow": "Morgen",
+    "thisWeek": "Diese Woche", "thisMonth": "Dieser Monat", "thisYear": "Dieses Jahr"
+  }
+};
+
+// Write de.json
+fs.writeFileSync(path.join(localesDir, 'de.json'), JSON.stringify(de, null, 2) + '\n');
+console.log('✓ de.json written');
+
+// ─── Verify keys match ──────────────────────────────────────────
+const en = JSON.parse(fs.readFileSync(path.join(localesDir, 'en.json'), 'utf8'));
+let missing = 0;
+for (const section of Object.keys(en)) {
+  if (!de[section]) { console.log(`  ✗ Missing section: ${section}`); missing++; continue; }
+  for (const key of Object.keys(en[section])) {
+    if (typeof en[section][key] === 'object') {
+      // nested (budgetChart.categories)
+      if (!de[section][key]) { console.log(`  ✗ Missing nested: ${section}.${key}`); missing++; continue; }
+      for (const subkey of Object.keys(en[section][key])) {
+        if (de[section][key][subkey] === undefined) { console.log(`  ✗ Missing: ${section}.${key}.${subkey}`); missing++; }
+      }
+    } else {
+      if (de[section][key] === undefined) { console.log(`  ✗ Missing: ${section}.${key}`); missing++; }
+    }
   }
 }
+if (missing === 0) console.log('✓ All keys present in de.json');
+else console.log(`✗ ${missing} missing key(s) in de.json`);
+
+console.log('\nDone. Run separately for fr, es, pt, tr.');

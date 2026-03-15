@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { financialService } from '@/services/financialService'
 import { useAuthStore } from '@/stores/authStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,12 +17,12 @@ import {
 } from 'recharts'
 import type { FinancialBudget, Project } from '@/types'
 
-const CATEGORY_LABELS: Record<string, string> = {
-  personnel: 'Personnel',
-  travel: 'Travel',
-  subcontracting: 'Subcontracting',
-  other: 'Other',
-  indirect: 'Indirect',
+const CATEGORY_LABEL_KEYS: Record<string, string> = {
+  personnel: 'projects.personnel',
+  travel: 'projects.travel',
+  subcontracting: 'projects.subcontracting',
+  other: 'budgetChart.other',
+  indirect: 'budgetChart.indirect',
 }
 
 
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export function BudgetConsumptionChart({ project, projectYears }: Props) {
+  const { t } = useTranslation()
   const { orgId } = useAuthStore()
   const [budgets, setBudgets] = useState<FinancialBudget[]>([])
   const [loading, setLoading] = useState(true)
@@ -65,7 +67,7 @@ export function BudgetConsumptionChart({ project, projectYears }: Props) {
       const budgeted = rows.reduce((sum, r) => sum + r.budgeted, 0)
       const actual = rows.reduce((sum, r) => sum + r.actual, 0)
       return {
-        category: CATEGORY_LABELS[cat] ?? cat,
+        category: t(CATEGORY_LABEL_KEYS[cat] ?? cat),
         key: cat,
         budgeted: Math.round(budgeted * 100) / 100,
         actual: Math.round(actual * 100) / 100,
@@ -92,7 +94,7 @@ export function BudgetConsumptionChart({ project, projectYears }: Props) {
   if (loading) {
     return (
       <Card>
-        <CardHeader><CardTitle>Budget Consumption</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t('budgetChart.title')}</CardTitle></CardHeader>
         <CardContent><Skeleton className="h-48 w-full" /></CardContent>
       </Card>
     )
@@ -101,10 +103,10 @@ export function BudgetConsumptionChart({ project, projectYears }: Props) {
   if (categoryData.length === 0) {
     return (
       <Card>
-        <CardHeader><CardTitle>Budget Consumption</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t('budgetChart.title')}</CardTitle></CardHeader>
         <CardContent>
           <div className="text-center py-8 text-sm text-muted-foreground">
-            No financial budget data yet. Budget data is auto-seeded from the Financial Budgets page.
+            {t('budgetChart.noData')}
           </div>
         </CardContent>
       </Card>
@@ -113,37 +115,37 @@ export function BudgetConsumptionChart({ project, projectYears }: Props) {
 
   return (
     <Card>
-      <CardHeader><CardTitle>Budget Consumption</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t('budgetChart.title')}</CardTitle></CardHeader>
       <CardContent className="space-y-6">
         {/* Overall progress indicators */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="rounded-lg border p-3">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total Budgeted</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('budgetChart.totalBudgeted')}</div>
             <div className="text-lg font-bold tabular-nums mt-0.5">
               {totalBudgeted.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </div>
           </div>
           <div className="rounded-lg border p-3">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Total Actual</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('budgetChart.totalActual')}</div>
             <div className="text-lg font-bold tabular-nums mt-0.5">
               {totalActual.toLocaleString(undefined, { maximumFractionDigits: 0 })}
             </div>
           </div>
           <div className="rounded-lg border p-3">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Budget Used</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('budgetChart.budgetUsed')}</div>
             <div className={cn('text-lg font-bold tabular-nums mt-0.5', overallPct > 90 ? 'text-red-500' : overallPct > 70 ? 'text-amber-500' : 'text-emerald-600')}>
               {overallPct}%
             </div>
           </div>
           <div className="rounded-lg border p-3">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Time Elapsed</div>
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('budgetChart.timeElapsed')}</div>
             <div className="text-lg font-bold tabular-nums mt-0.5">{timeProgress}%</div>
             <div className="text-[10px] text-muted-foreground">
               {overallPct > timeProgress + 15
-                ? 'Spending ahead of schedule'
+                ? t('budgetChart.spendingAhead')
                 : overallPct < timeProgress - 15
-                ? 'Under-spending vs. timeline'
-                : 'On track'}
+                ? t('budgetChart.underSpending')
+                : t('budgetChart.onTrack')}
             </div>
           </div>
         </div>
@@ -162,15 +164,15 @@ export function BudgetConsumptionChart({ project, projectYears }: Props) {
                 ]}
               />
               <Legend />
-              <Bar dataKey="budgeted" name="Budgeted" fill="#93c5fd" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="actual" name="Actual" fill="#2563eb" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="budgeted" name={t('budgetChart.budgeted')} fill="#93c5fd" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="actual" name={t('budgetChart.actual')} fill="#2563eb" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         {/* Per-category progress bars */}
         <div className="space-y-3">
-          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category Breakdown</div>
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('budgetChart.categoryBreakdown')}</div>
           {categoryData.map(d => (
             <div key={d.key} className="space-y-1">
               <div className="flex justify-between text-xs">

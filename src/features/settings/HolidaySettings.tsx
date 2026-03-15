@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { holidayService } from '@/services/holidayService'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
@@ -58,6 +59,7 @@ const HOLIDAY_COUNTRIES = [
 ]
 
 export function HolidaySettings() {
+  const { t } = useTranslation()
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
   const [holidays, setHolidays] = useState<Holiday[]>([])
@@ -83,19 +85,19 @@ export function HolidaySettings() {
       // Only import global (nationwide) holidays
       const globalHolidays = data.filter(h => h.global)
       if (globalHolidays.length === 0) {
-        toast({ title: 'No holidays found', description: `No national holidays found for ${importCountry} in ${globalYear}.` })
+        toast({ title: t('settings.noHolidaysFound'), description: t('settings.noHolidaysFoundDesc', { country: importCountry, year: globalYear }) })
         setImporting(false)
         return
       }
       const items = globalHolidays.map(h => ({ date: h.date, name: h.localName || h.name }))
       const count = await holidayService.bulkCreate(orgId, items, importCountry)
       const countryName = HOLIDAY_COUNTRIES.find(c => c.code === importCountry)?.name ?? importCountry
-      toast({ title: 'Imported', description: `${count} holidays imported for ${countryName} (${globalYear}).` })
+      toast({ title: t('settings.holidaysImported'), description: t('settings.holidaysImportedDesc', { count, country: countryName, year: globalYear }) })
       setImportCountry('')
       loadHolidays()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to import holidays'
-      toast({ title: 'Import failed', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('settings.importFailed'), description: message, variant: 'destructive' })
     } finally {
       setImporting(false)
     }
@@ -108,8 +110,8 @@ export function HolidaySettings() {
       const data = await holidayService.list(orgId, globalYear)
       setHolidays(data)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load holidays'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -124,11 +126,11 @@ export function HolidaySettings() {
       await holidayService.create(orgId, newDate, newName.trim())
       setNewDate('')
       setNewName('')
-      toast({ title: 'Added', description: 'Holiday added.' })
+      toast({ title: t('settings.holidayAdded') })
       loadHolidays()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to add holiday'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -138,11 +140,11 @@ export function HolidaySettings() {
     setDeleting(id)
     try {
       await holidayService.remove(id)
-      toast({ title: 'Removed', description: 'Holiday removed.' })
+      toast({ title: t('settings.holidayDeleted') })
       loadHolidays()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to remove'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToDelete')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setDeleting(null)
     }
@@ -156,15 +158,15 @@ export function HolidaySettings() {
     byMonth[m].push(h)
   }
 
-  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const MONTHS = [t('time.january'), t('time.february'), t('time.march'), t('time.april'), t('time.may'), t('time.june'), t('time.july'), t('time.august'), t('time.september'), t('time.october'), t('time.november'), t('time.december')]
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-lg font-semibold">National Holidays</h3>
+          <h3 className="text-lg font-semibold">{t('settings.holidays')}</h3>
           <p className="text-sm text-muted-foreground mt-1">
-            Define public/national holidays for your organisation. These dates will be excluded from timesheet entry.
+            {t('settings.holidaysDesc')}
           </p>
         </div>
         <YearSelector />
@@ -172,16 +174,16 @@ export function HolidaySettings() {
 
       {/* Import from country */}
       <div className="rounded-lg border bg-muted/20 p-4 space-y-2">
-        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Import National Holidays</div>
+        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('settings.importHolidays')}</div>
         <div className="flex gap-3 items-end flex-wrap">
           <div className="space-y-1 min-w-[200px]">
-            <label className="text-xs font-medium text-muted-foreground">Country</label>
+            <label className="text-xs font-medium text-muted-foreground">{t('staff.country')}</label>
             <select
               value={importCountry}
               onChange={(e) => setImportCountry(e.target.value)}
               className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <option value="">Select country...</option>
+              <option value="">{t('common.selectCountry')}</option>
               {HOLIDAY_COUNTRIES.map(c => (
                 <option key={c.code} value={c.code}>{c.name}</option>
               ))}
@@ -189,18 +191,18 @@ export function HolidaySettings() {
           </div>
           <Button onClick={handleImport} disabled={importing || !importCountry} variant="outline" className="gap-1.5">
             {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            {importing ? 'Importing...' : `Import ${globalYear} Holidays`}
+            {importing ? t('settings.importing') : t('settings.importYearHolidays', { year: globalYear })}
           </Button>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Fetches public holidays from Nager.Date (free API). Existing holidays on the same dates will be updated.
+          {t('settings.importHolidaysNote')}
         </p>
       </div>
 
       {/* Add form */}
       <div className="flex gap-3 items-end flex-wrap">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Date</label>
+          <label className="text-xs font-medium text-muted-foreground">{t('common.date')}</label>
           <Input
             type="date"
             value={newDate}
@@ -211,7 +213,7 @@ export function HolidaySettings() {
           />
         </div>
         <div className="space-y-1 flex-1 min-w-[200px]">
-          <label className="text-xs font-medium text-muted-foreground">Holiday Name</label>
+          <label className="text-xs font-medium text-muted-foreground">{t('settings.holidayName')}</label>
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -221,23 +223,23 @@ export function HolidaySettings() {
         </div>
         <Button onClick={handleAdd} disabled={saving || !newDate || !newName.trim()} className="gap-1.5">
           <Plus className="h-4 w-4" />
-          {saving ? 'Adding...' : 'Add Holiday'}
+          {saving ? t('common.adding') : t('settings.addHoliday')}
         </Button>
       </div>
 
       {/* Holiday list */}
       {loading ? (
-        <div className="text-sm text-muted-foreground">Loading holidays...</div>
+        <div className="text-sm text-muted-foreground">{t('common.loading')}...</div>
       ) : holidays.length === 0 ? (
         <div className="rounded-lg border bg-muted/30 p-6 text-center">
           <Calendar className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-          <div className="text-sm text-muted-foreground">No holidays defined for {globalYear}.</div>
-          <div className="text-xs text-muted-foreground mt-1">Add national holidays above — they'll be excluded from timesheet working days.</div>
+          <div className="text-sm text-muted-foreground">{t('settings.noHolidays', { year: globalYear })}</div>
+          <div className="text-xs text-muted-foreground mt-1">{t('settings.noHolidaysDesc2')}</div>
         </div>
       ) : (
         <div className="space-y-4">
           <div className="text-xs text-muted-foreground font-medium">
-            {holidays.length} holiday{holidays.length !== 1 ? 's' : ''} in {globalYear}
+            {holidays.length} {t('settings.holidaysIn', { year: globalYear })}
           </div>
 
           {Object.keys(byMonth).sort((a, b) => Number(a) - Number(b)).map(monthStr => {

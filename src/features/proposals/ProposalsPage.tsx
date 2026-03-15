@@ -135,8 +135,8 @@ export function ProposalsPage() {
       const data = await proposalService.list(orgId)
       setProposals(data)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load proposals'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -190,7 +190,7 @@ export function ProposalsPage() {
 
   const handleSave = async () => {
     if (!orgId || !form.project_name.trim()) {
-      toast({ title: 'Project name is required', variant: 'destructive' })
+      toast({ title: t('validation.projectNameRequired'), variant: 'destructive' })
       return
     }
     setSaving(true)
@@ -218,7 +218,7 @@ export function ProposalsPage() {
         const oldProposal = proposals.find(p => p.id === editingId)
         const oldStatus = oldProposal?.status
         await proposalService.update(editingId, payload)
-        toast({ title: 'Proposal updated' })
+        toast({ title: t('proposals.proposalUpdated') })
 
         // Fire-and-forget: notify admins if proposal status changed
         if (oldStatus && oldStatus !== form.status && orgId) {
@@ -250,13 +250,13 @@ export function ProposalsPage() {
         }
       } else {
         await proposalService.create(payload)
-        toast({ title: 'Proposal created' })
+        toast({ title: t('proposals.proposalCreated') })
       }
       setDialogOpen(false)
       fetchProposals()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -266,12 +266,12 @@ export function ProposalsPage() {
     if (!deleteTarget) return
     try {
       await proposalService.remove(deleteTarget.id)
-      toast({ title: 'Proposal deleted' })
+      toast({ title: t('proposals.proposalDeleted') })
       setDeleteTarget(null)
       fetchProposals()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToDelete')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     }
   }
 
@@ -280,12 +280,12 @@ export function ProposalsPage() {
     setConverting(true)
     try {
       const projectId = await proposalService.convertToProject(convertTarget, orgId, user.id)
-      toast({ title: 'Project created!', description: 'Redirecting to the new project...' })
+      toast({ title: t('proposals.projectCreated'), description: t('proposals.projectCreatedDesc') })
       setConvertTarget(null)
       navigate(`/projects/${projectId}`)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to convert'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setConverting(false)
     }

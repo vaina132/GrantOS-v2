@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import type { PermissionKey } from '@/lib/permissions'
 import type { ReactNode } from 'react'
@@ -11,6 +12,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
+  const { t } = useTranslation()
   const { user, isLoading, error, can, signOut } = useAuthStore()
 
   if (isLoading) {
@@ -32,10 +34,10 @@ export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
             <span className="text-destructive text-xl font-bold">!</span>
           </div>
-          <h2 className="text-lg font-semibold">Access Error</h2>
+          <h2 className="text-lg font-semibold">{t('auth.accessError')}</h2>
           <p className="text-sm text-muted-foreground">{error}</p>
           <Button variant="outline" onClick={() => signOut()}>
-            Sign out and try again
+            {t('auth.signOutAndRetry')}
           </Button>
         </div>
       </div>
@@ -53,9 +55,9 @@ export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
             <span className="text-amber-800 text-xl font-bold">!</span>
           </div>
-          <h2 className="text-lg font-semibold">Access Restricted</h2>
+          <h2 className="text-lg font-semibold">{t('auth.accessRestricted')}</h2>
           <p className="text-sm text-muted-foreground">
-            You don't have access to this section. Contact your administrator if you believe this is an error.
+            {t('auth.noAccessContact')}
           </p>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { deliverablesService } from '@/services/deliverablesService'
 import { useAuthStore } from '@/stores/authStore'
 import { ConfirmModal } from '@/components/common/ConfirmModal'
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCount }: Props) {
+  const { t } = useTranslation()
   const { orgId, can } = useAuthStore()
 
   const [periods, setPeriods] = useState<ReportingPeriod[]>([])
@@ -87,11 +89,11 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
         financial_report_due: addForm.financial_report_due || null,
         notes: addForm.notes.trim() || null,
       })
-      toast({ title: 'Added', description: `Reporting Period ${addForm.period_number} created.` })
+      toast({ title: t('reporting.periodAdded') })
       setShowAdd(false)
       loadPeriods()
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to create', variant: 'destructive' })
+      toast({ title: t('common.error'), description: err instanceof Error ? err.message : t('common.failedToSave'), variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -123,11 +125,11 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
         financial_report_due: editForm.financial_report_due_str || null,
         notes: editForm.notes || null,
       })
-      toast({ title: 'Updated', description: 'Reporting period updated.' })
+      toast({ title: t('reporting.periodUpdated') })
       setEditingId(null)
       loadPeriods()
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to update', variant: 'destructive' })
+      toast({ title: t('common.error'), description: err instanceof Error ? err.message : t('common.failedToSave'), variant: 'destructive' })
     } finally {
       setEditSaving(false)
     }
@@ -138,11 +140,11 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
     setDeleting(true)
     try {
       await deliverablesService.removeReportingPeriod(deleteTarget.id)
-      toast({ title: 'Deleted', description: `Reporting Period ${deleteTarget.period_number} removed.` })
+      toast({ title: t('reporting.periodDeleted') })
       setDeleteTarget(null)
       loadPeriods()
     } catch (err) {
-      toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to delete', variant: 'destructive' })
+      toast({ title: t('common.error'), description: err instanceof Error ? err.message : t('common.failedToDelete'), variant: 'destructive' })
     } finally {
       setDeleting(false)
     }
@@ -153,12 +155,12 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
       {/* Summary */}
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-lg border bg-card p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Periods</div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('reporting.title')}</div>
           <div className="text-xl font-bold tabular-nums mt-0.5">{periods.length}</div>
           <div className="text-[11px] text-muted-foreground">reporting periods defined</div>
         </div>
         <div className="rounded-lg border bg-card p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Project Duration</div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.overview')}</div>
           <div className="text-xl font-bold tabular-nums mt-0.5">{projectMonthCount}</div>
           <div className="text-[11px] text-muted-foreground">months total</div>
         </div>
@@ -169,11 +171,11 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-base">Reporting Periods</CardTitle>
+              <CardTitle className="text-base">{t('reporting.title')}</CardTitle>
             </div>
             {can('canManageProjects') && (
               <Button size="sm" onClick={() => setShowAdd(v => !v)}>
-                <Plus className="mr-1 h-4 w-4" /> Add Period
+                <Plus className="mr-1 h-4 w-4" /> {t('reporting.addPeriod')}
               </Button>
             )}
           </div>
@@ -189,11 +191,11 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
                     <thead>
                       <tr className="border-b bg-muted/50">
                         <th className="px-3 py-2 text-left font-medium w-12">RP</th>
-                        <th className="px-3 py-2 text-left font-medium">Period</th>
-                        <th className="px-3 py-2 text-left font-medium">Technical Report Due</th>
-                        <th className="px-3 py-2 text-left font-medium">Financial Report Due</th>
-                        <th className="px-3 py-2 text-left font-medium">Notes</th>
-                        {can('canManageProjects') && <th className="px-3 py-2 text-right font-medium">Actions</th>}
+                        <th className="px-3 py-2 text-left font-medium">{t('common.period')}</th>
+                        <th className="px-3 py-2 text-left font-medium">{t('reporting.technicalReportDue')}</th>
+                        <th className="px-3 py-2 text-left font-medium">{t('reporting.financialReportDue')}</th>
+                        <th className="px-3 py-2 text-left font-medium">{t('common.notes')}</th>
+                        {can('canManageProjects') && <th className="px-3 py-2 text-right font-medium">{t('common.actions')}</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -269,7 +271,7 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
                                   value={editForm.notes ?? ''}
                                   onChange={e => setEditForm(p => ({ ...p, notes: e.target.value }))}
                                   className="h-7 text-xs"
-                                  placeholder="Notes"
+                                  placeholder={t('common.notes')}
                                 />
                               ) : (rp.notes || '—')}
                             </td>
@@ -279,7 +281,7 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
                                   {isEditing ? (
                                     <>
                                       <Button variant="ghost" size="sm" onClick={handleSaveEdit} disabled={editSaving} className="h-7 text-xs">
-                                        <Save className="h-3 w-3 mr-1" />{editSaving ? '...' : 'Save'}
+                                        <Save className="h-3 w-3 mr-1" />{editSaving ? '...' : t('common.save')}
                                       </Button>
                                       <Button variant="ghost" size="sm" onClick={() => setEditingId(null)} className="h-7 text-xs"><X className="h-3 w-3" /></Button>
                                     </>
@@ -302,17 +304,17 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
 
               {periods.length === 0 && !showAdd && (
                 <div className="text-center py-8 text-sm text-muted-foreground">
-                  No reporting periods defined yet. Click "Add Period" to get started.
+                  {t('reporting.noPeriodsDesc')}
                 </div>
               )}
 
               {/* Add form */}
               {showAdd && can('canManageProjects') && (
                 <div className="space-y-3 rounded-lg border p-4 bg-muted/10">
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">New Reporting Period</div>
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('reporting.addPeriod')}</div>
                   <div className="flex gap-2 items-end flex-wrap">
                     <div className="space-y-1">
-                      <Label className="text-xs">Period # *</Label>
+                      <Label className="text-xs">{t('reporting.periodNumber')} *</Label>
                       <Input
                         type="number"
                         min={1}
@@ -322,7 +324,7 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Start Month</Label>
+                      <Label className="text-xs">{t('projects.startMonth')}</Label>
                       <select
                         value={addForm.start_month}
                         onChange={e => setAddForm(p => ({ ...p, start_month: Number(e.target.value) }))}
@@ -334,7 +336,7 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">End Month</Label>
+                      <Label className="text-xs">{t('projects.endMonth')}</Label>
                       <select
                         value={addForm.end_month}
                         onChange={e => setAddForm(p => ({ ...p, end_month: Number(e.target.value) }))}
@@ -348,7 +350,7 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
                   </div>
                   <div className="flex gap-2 items-end flex-wrap">
                     <div className="space-y-1">
-                      <Label className="text-xs">Technical Report Due</Label>
+                      <Label className="text-xs">{t('reporting.technicalReportDue')}</Label>
                       <Input
                         type="date"
                         value={addForm.technical_report_due}
@@ -357,7 +359,7 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Financial Report Due</Label>
+                      <Label className="text-xs">{t('reporting.financialReportDue')}</Label>
                       <Input
                         type="date"
                         value={addForm.financial_report_due}
@@ -366,15 +368,15 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
                       />
                     </div>
                     <div className="space-y-1 flex-1 min-w-[120px]">
-                      <Label className="text-xs">Notes</Label>
+                      <Label className="text-xs">{t('common.notes')}</Label>
                       <Input
                         value={addForm.notes}
                         onChange={e => setAddForm(p => ({ ...p, notes: e.target.value }))}
-                        placeholder="Optional notes"
+                        placeholder={t('common.optional')}
                       />
                     </div>
                     <Button onClick={handleAdd} disabled={saving}>
-                      <Plus className="mr-1 h-4 w-4" /> {saving ? 'Adding...' : 'Add Period'}
+                      <Plus className="mr-1 h-4 w-4" /> {saving ? t('common.adding') : t('reporting.addPeriod')}
                     </Button>
                   </div>
                 </div>
@@ -387,9 +389,9 @@ export function ReportingPeriodsTab({ project, projectMonthLabel, projectMonthCo
       <ConfirmModal
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete Reporting Period"
-        message={`Are you sure you want to delete Reporting Period ${deleteTarget?.period_number}?`}
-        confirmLabel="Delete"
+        title={t('reporting.deletePeriod')}
+        message={t('reporting.deletePeriodConfirm', { number: deleteTarget?.period_number ?? '' })}
+        confirmLabel={t('common.delete')}
         destructive
         loading={deleting}
         onConfirm={handleDelete}

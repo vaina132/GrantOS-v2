@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +15,7 @@ interface EditProjectDialogProps {
 }
 
 export function EditProjectDialog({ project, open, onClose, onSaved }: EditProjectDialogProps) {
+  const { t } = useTranslation()
   const [form, setForm] = useState({
     title: '',
     acronym: '',
@@ -66,11 +68,11 @@ export function EditProjectDialog({ project, open, onClose, onSaved }: EditProje
         deviation_personnel_costs: parseFloat(form.deviation_personnel_costs) || 0,
         deviation_pm_rate: parseFloat(form.deviation_pm_rate) || 0,
       })
-      toast({ title: 'Updated', description: 'Project details saved' })
+      toast({ title: t('common.updated'), description: t('collaboration.projectDetailsSaved') })
       onSaved()
       onClose()
     } catch {
-      toast({ title: 'Error', description: 'Failed to update project', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToUpdateProject'), variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -82,27 +84,27 @@ export function EditProjectDialog({ project, open, onClose, onSaved }: EditProje
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       <div className="relative z-50 bg-background border rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
-        <h2 className="text-lg font-semibold">Edit Project Details</h2>
+        <h2 className="text-lg font-semibold">{t('collaboration.editProjectDetails')}</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5 md:col-span-2">
-            <Label className="text-xs">Title *</Label>
+            <Label className="text-xs">{t('common.title')} *</Label>
             <Input value={form.title} onChange={e => set('title', e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Acronym *</Label>
+            <Label className="text-xs">{t('collaboration.acronym')} *</Label>
             <Input value={form.acronym} onChange={e => set('acronym', e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Grant Agreement Number</Label>
+            <Label className="text-xs">{t('collaboration.grantAgreementNumber')}</Label>
             <Input value={form.grant_number} onChange={e => set('grant_number', e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Funding Programme</Label>
+            <Label className="text-xs">{t('collaboration.fundingProgramme')}</Label>
             <Input value={form.funding_programme} onChange={e => set('funding_programme', e.target.value)} placeholder="e.g. Horizon Europe" className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Funding Scheme</Label>
+            <Label className="text-xs">{t('collaboration.fundingScheme')}</Label>
             <Input value={form.funding_scheme} onChange={e => set('funding_scheme', e.target.value)} placeholder="e.g. RIA, IA, CSA" className="h-9 text-sm" />
           </div>
         </div>
@@ -111,15 +113,15 @@ export function EditProjectDialog({ project, open, onClose, onSaved }: EditProje
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1.5">
-            <Label className="text-xs">Start Date</Label>
+            <Label className="text-xs">{t('common.startDate')}</Label>
             <Input type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">End Date</Label>
+            <Label className="text-xs">{t('common.endDate')}</Label>
             <Input type="date" value={form.end_date} onChange={e => set('end_date', e.target.value)} className="h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Duration (months)</Label>
+            <Label className="text-xs">{t('collaboration.durationMonths')}</Label>
             <Input type="number" value={form.duration_months} onChange={e => set('duration_months', e.target.value)} className="h-9 text-sm" />
           </div>
         </div>
@@ -127,30 +129,30 @@ export function EditProjectDialog({ project, open, onClose, onSaved }: EditProje
         <hr />
 
         <div>
-          <h3 className="text-sm font-medium mb-3">Deviation Thresholds (%)</h3>
+          <h3 className="text-sm font-medium mb-3">{t('collaboration.deviationThresholds')}</h3>
           <p className="text-xs text-muted-foreground mb-3">
-            Maximum allowed deviation before a justification is required from partners.
+            {t('collaboration.deviationThresholdsDesc')}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-xs">Personnel Effort</Label>
+              <Label className="text-xs">{t('collaboration.personnelEffort')}</Label>
               <Input type="number" value={form.deviation_personnel_effort} onChange={e => set('deviation_personnel_effort', e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Personnel Costs</Label>
+              <Label className="text-xs">{t('collaboration.personnelCosts')}</Label>
               <Input type="number" value={form.deviation_personnel_costs} onChange={e => set('deviation_personnel_costs', e.target.value)} className="h-9 text-sm" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">PM Rate</Label>
+              <Label className="text-xs">{t('collaboration.pmRate')}</Label>
               <Input type="number" value={form.deviation_pm_rate} onChange={e => set('deviation_pm_rate', e.target.value)} className="h-9 text-sm" />
             </div>
           </div>
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
           <Button onClick={handleSave} disabled={saving || !form.title.trim() || !form.acronym.trim()}>
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? t('common.saving') : t('common.saveChanges')}
           </Button>
         </div>
       </div>

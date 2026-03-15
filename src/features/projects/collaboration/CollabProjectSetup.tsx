@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft, ArrowRight, Check, Plus, Trash2, Upload, Sparkles, Loader2,
@@ -182,7 +183,7 @@ interface MilestoneFormData {
   verification_means: string
 }
 
-const STEPS = ['Project Identity', 'Partners', 'Work Plan', 'Deliverables & Milestones', 'Review & Create']
+const STEP_KEYS = ['setupStepIdentity', 'setupStepPartners', 'setupStepWorkPlan', 'setupStepDelMs', 'setupStepReview'] as const
 
 function emptyPartner(num: number): PartnerFormData {
   return {
@@ -290,6 +291,7 @@ function dateWarning(project: ProjectFormData): string | null {
 // ============================================================================
 
 export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-import' }) {
+  const { t } = useTranslation()
   const { id: editId } = useParams<{ id: string }>()
   const isEdit = !!editId
   const { orgId, user } = useAuthStore()
@@ -465,7 +467,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
         }
       } catch (err) {
         console.error('[CollabEdit] Failed to load project:', err)
-        toast({ title: 'Error', description: 'Failed to load project data', variant: 'destructive' })
+        toast({ title: t('common.error'), description: t('collaboration.failedToLoadProject'), variant: 'destructive' })
       } finally {
         setLoadingEdit(false)
       }
@@ -552,7 +554,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
       // Check for warning (AI returned empty/useless data)
       if (result.warning) {
         toast({
-          title: 'No Data Found',
+          title: t('collaboration.setupAiNoData'),
           description: result.warning,
           variant: 'destructive',
         })
@@ -562,7 +564,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
 
       const d = result.extraction
       if (!d) {
-        toast({ title: 'Import Error', description: 'AI returned no extraction data.', variant: 'destructive' })
+        toast({ title: t('collaboration.setupAiImportError'), description: t('collaboration.setupAiNoExtraction'), variant: 'destructive' })
         setAiParsing(false)
         return
       }
@@ -659,22 +661,22 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
         })))
       }
       const counts = [
-        d.partners?.length ? `${d.partners.length} partners` : '',
-        d.work_packages?.length ? `${d.work_packages.length} WPs` : '',
-        d.deliverables?.length ? `${d.deliverables.length} deliverables` : '',
-        d.milestones?.length ? `${d.milestones.length} milestones` : '',
+        d.partners?.length ? `${d.partners.length} ${t('collaboration.tabPartners').toLowerCase()}` : '',
+        d.work_packages?.length ? `${d.work_packages.length} ${t('collaboration.tabWps')}` : '',
+        d.deliverables?.length ? `${d.deliverables.length} ${t('collaboration.deliverables').toLowerCase()}` : '',
+        d.milestones?.length ? `${d.milestones.length} ${t('collaboration.milestones').toLowerCase()}` : '',
       ].filter(Boolean).join(', ')
-      const usageInfo = result.usage ? ` (${result.usage.input_tokens + result.usage.output_tokens} tokens used)` : ''
+      const usageInfo = result.usage ? ` (${result.usage.input_tokens + result.usage.output_tokens} tokens)` : ''
       toast({
-        title: 'AI Import Complete',
-        description: `Extracted: ${counts || 'project data'}. Review all fields before creating.${d.confidence_notes ? ` Notes: ${d.confidence_notes}` : ''}${usageInfo}`,
+        title: t('collaboration.setupAiComplete'),
+        description: `${t('collaboration.setupAiExtracted', { counts: counts || t('collaboration.setupAiProjectData') })}${d.confidence_notes ? ` ${d.confidence_notes}` : ''}${usageInfo}`,
       })
       setAiFile(null)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'AI import failed'
+      const msg = err instanceof Error ? err.message : t('collaboration.setupAiImportFailed')
       toast({
-        title: 'Import Error',
-        description: `${msg}. Try a different file format or add specific instructions about where the data is located.`,
+        title: t('collaboration.setupAiImportError'),
+        description: `${msg}. ${t('collaboration.setupAiTryDifferent')}`,
         variant: 'destructive',
       })
     } finally {
@@ -874,12 +876,12 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
       // Sync to My Projects
       await syncCollabToMyProjects(created.id, orgId)
 
-      toast({ title: 'Created', description: `Collaboration project "${project.acronym}" created successfully` })
+      toast({ title: t('common.created'), description: t('collaboration.setupProjectCreated', { acronym: project.acronym }) })
       navigate(`/projects/collaboration/${created.id}`)
     } catch (err) {
       console.error('[CollabCreate] FATAL ERROR:', err)
-      const msg = err instanceof Error ? err.message : 'Failed to create project'
-      toast({ title: 'Error', description: msg, variant: 'destructive' })
+      const msg = err instanceof Error ? err.message : t('collaboration.setupFailedToCreate')
+      toast({ title: t('common.error'), description: msg, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -1036,12 +1038,12 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
       // Sync to My Projects
       await syncCollabToMyProjects(editId, orgId)
 
-      toast({ title: 'Saved', description: `Project "${project.acronym}" updated successfully` })
+      toast({ title: t('common.saved'), description: t('collaboration.setupProjectUpdated', { acronym: project.acronym }) })
       navigate(`/projects/collaboration/${editId}`)
     } catch (err) {
       console.error('[CollabEdit] FATAL ERROR:', err)
-      const msg = err instanceof Error ? err.message : 'Failed to update project'
-      toast({ title: 'Error', description: msg, variant: 'destructive' })
+      const msg = err instanceof Error ? err.message : t('collaboration.setupFailedToUpdate')
+      toast({ title: t('common.error'), description: msg, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -1065,7 +1067,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
     return (
       <div className="max-w-4xl mx-auto py-20 text-center">
         <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
-        <p className="mt-3 text-sm text-muted-foreground">Loading project data…</p>
+        <p className="mt-3 text-sm text-muted-foreground">{t('collaboration.setupLoadingProject')}</p>
       </div>
     )
   }
@@ -1078,8 +1080,8 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-xl font-semibold">{isEdit ? `Edit: ${project.acronym || 'Project'}` : 'New Collaboration Project'}</h1>
-          <p className="text-sm text-muted-foreground">{isEdit ? 'Edit all project details, partners, work plan, deliverables and milestones' : 'Set up a multi-partner project with external reporting'}</p>
+          <h1 className="text-xl font-semibold">{isEdit ? `${t('common.edit')}: ${project.acronym || t('collaboration.projectLabel')}` : t('collaboration.setupNewProject')}</h1>
+          <p className="text-sm text-muted-foreground">{isEdit ? t('collaboration.setupEditDesc') : t('collaboration.setupNewDesc')}</p>
         </div>
       </div>
 
@@ -1090,27 +1092,27 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
             <Sparkles className="h-5 w-5 text-purple-500 mt-0.5 shrink-0" />
             <div className="flex-1 space-y-3">
               <div>
-                <h3 className="font-medium text-sm">Import from Grant Agreement (AI)</h3>
+                <h3 className="font-medium text-sm">{t('collaboration.setupAiTitle')}</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Upload your grant agreement PDF or a screenshot of the budget table. AI will extract project details, partners, work packages, tasks, deliverables, and milestones.
+                  {t('collaboration.setupAiDesc')}
                 </p>
               </div>
               <div className="rounded-md border border-purple-200 dark:border-purple-800 bg-background p-2 space-y-1.5">
                 <p className="text-[11px] font-medium text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
-                  <AlertTriangle className="h-3 w-3" /> Best documents to upload
+                  <AlertTriangle className="h-3 w-3" /> {t('collaboration.setupAiBestDocs')}
                 </p>
                 <ul className="text-[11px] text-muted-foreground space-y-0.5 ml-4 list-disc">
-                  <li><strong>Grant Agreement Annex</strong> — contains budget table, work packages, deliverables</li>
-                  <li><strong>Budget table screenshot</strong> — per-partner breakdown of costs</li>
-                  <li><strong>Work plan section</strong> — WP descriptions, tasks, Gantt chart</li>
-                  <li><strong>Deliverable / milestone table</strong> — list with due months</li>
+                  <li><strong>{t('collaboration.setupAiDoc1Title')}</strong> — {t('collaboration.setupAiDoc1Desc')}</li>
+                  <li><strong>{t('collaboration.setupAiDoc2Title')}</strong> — {t('collaboration.setupAiDoc2Desc')}</li>
+                  <li><strong>{t('collaboration.setupAiDoc3Title')}</strong> — {t('collaboration.setupAiDoc3Desc')}</li>
+                  <li><strong>{t('collaboration.setupAiDoc4Title')}</strong> — {t('collaboration.setupAiDoc4Desc')}</li>
                 </ul>
               </div>
               <div className="flex items-center gap-2">
                 <Input
                   value={aiInstructions}
                   onChange={e => setAiInstructions(e.target.value)}
-                  placeholder="Optional hints: e.g. 'Budget is in Annex 2, we are Partner 3'"
+                  placeholder={t('collaboration.setupAiHintsPlaceholder')}
                   className="h-8 text-xs flex-1"
                 />
               </div>
@@ -1138,9 +1140,9 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
               >
                 <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-1.5" />
                 <div className="text-xs font-medium">
-                  {aiFile ? aiFile.name : 'Drop PDF or image here, or click to browse'}
+                  {aiFile ? aiFile.name : t('collaboration.setupAiDropzone')}
                 </div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">PDF, PNG, JPG up to 25MB</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">{t('collaboration.setupAiFileTypes')}</div>
               </div>
               {aiFile && (
                 <div className="flex items-center gap-2">
@@ -1152,7 +1154,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
                   </Button>
                   <Button size="sm" className="h-7 gap-1.5" onClick={handleAIImport} disabled={aiParsing}>
                     {aiParsing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                    {aiParsing ? 'Analyzing...' : 'Extract Data'}
+                    {aiParsing ? t('collaboration.setupAiAnalyzing') : t('collaboration.setupAiExtractBtn')}
                   </Button>
                 </div>
               )}
@@ -1163,8 +1165,8 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
 
       {/* Stepper */}
       <div className="flex items-center gap-1">
-        {STEPS.map((label, i) => (
-          <div key={label} className="flex items-center gap-1 flex-1">
+        {STEP_KEYS.map((labelKey, i) => (
+          <div key={labelKey} className="flex items-center gap-1 flex-1">
             <button
               onClick={() => (isEdit || i < step) && setStep(i)}
               disabled={!isEdit && i > step}
@@ -1181,7 +1183,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
               }`}>
                 {i < step ? <Check className="h-3.5 w-3.5" /> : i + 1}
               </span>
-              <span className="hidden lg:inline truncate text-xs">{label}</span>
+              <span className="hidden lg:inline truncate text-xs">{t(`collaboration.${labelKey}`)}</span>
             </button>
           </div>
         ))}
@@ -1212,15 +1214,15 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
       <div className="flex justify-between pt-2">
         <Button variant="outline" onClick={() => step === 0 ? navigate(isEdit ? `/projects/collaboration/${editId}` : '/projects/collaboration') : setStep(step - 1)}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          {step === 0 ? 'Cancel' : 'Back'}
+          {step === 0 ? t('common.cancel') : t('common.back')}
         </Button>
-        {step < STEPS.length - 1 ? (
+        {step < STEP_KEYS.length - 1 ? (
           <Button onClick={() => setStep(step + 1)} disabled={!canNext()}>
-            Next <ArrowRight className="ml-2 h-4 w-4" />
+            {t('common.next')} <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         ) : (
           <Button onClick={isEdit ? handleUpdate : handleCreate} disabled={saving || !canNext()}>
-            {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Project'}
+            {saving ? t('common.saving') : isEdit ? t('collaboration.setupSaveChanges') : t('collaboration.setupCreateProject')}
             <Check className="ml-2 h-4 w-4" />
           </Button>
         )}
@@ -1239,45 +1241,46 @@ function StepProjectIdentity({ project, updateProject, schemeOptions, warn }: {
   schemeOptions: string[]
   warn: string | null
 }) {
+  const { t } = useTranslation()
   return (
     <Card>
-      <CardHeader><CardTitle>Project Identity</CardTitle></CardHeader>
+      <CardHeader><CardTitle>{t('collaboration.setupStepIdentity')}</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Project Title *</Label>
-            <Input value={project.title} onChange={e => updateProject('title', e.target.value)} placeholder="Full project title" />
+            <Label>{t('collaboration.setupProjectTitle')} *</Label>
+            <Input value={project.title} onChange={e => updateProject('title', e.target.value)} placeholder={t('collaboration.setupProjectTitlePh')} />
           </div>
           <div className="space-y-2">
-            <Label>Acronym *</Label>
-            <Input value={project.acronym} onChange={e => updateProject('acronym', e.target.value)} placeholder="e.g. ODEON, DataBridge" />
+            <Label>{t('collaboration.acronym')} *</Label>
+            <Input value={project.acronym} onChange={e => updateProject('acronym', e.target.value)} placeholder={t('collaboration.setupAcronymPh')} />
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Grant Agreement Number</Label>
-            <Input value={project.grant_number} onChange={e => updateProject('grant_number', e.target.value)} placeholder="e.g. 101136128" />
+            <Label>{t('collaboration.grantAgreement')}</Label>
+            <Input value={project.grant_number} onChange={e => updateProject('grant_number', e.target.value)} placeholder={t('collaboration.setupGrantNumberPh')} />
           </div>
           <div className="space-y-2">
-            <Label>Funding Programme</Label>
-            <AutocompleteInput value={project.funding_programme} onChange={v => updateProject('funding_programme', v)} options={FUNDING_PROGRAMMES} placeholder="e.g. Horizon Europe" />
+            <Label>{t('collaboration.programme')}</Label>
+            <AutocompleteInput value={project.funding_programme} onChange={v => updateProject('funding_programme', v)} options={FUNDING_PROGRAMMES} placeholder={t('collaboration.setupProgrammePh')} />
           </div>
         </div>
         <div className="space-y-2">
-          <Label>Funding Scheme <Tip text="The specific action type or instrument under the funding programme. For Horizon Europe: RIA, IA, CSA, ERC grants, MSCA actions, EIC instruments, etc." /></Label>
-          <AutocompleteInput value={project.funding_scheme} onChange={v => updateProject('funding_scheme', v)} options={schemeOptions} placeholder="e.g. Research and Innovation Action (RIA)" />
+          <Label>{t('collaboration.scheme')} <Tip text={t('collaboration.setupSchemeTip')} /></Label>
+          <AutocompleteInput value={project.funding_scheme} onChange={v => updateProject('funding_scheme', v)} options={schemeOptions} placeholder={t('collaboration.setupSchemePh')} />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
-            <Label>Start Date</Label>
+            <Label>{t('common.startDate')}</Label>
             <Input type="date" value={project.start_date} onChange={e => updateProject('start_date', e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Duration (months)</Label>
-            <Input type="number" value={project.duration_months} onChange={e => updateProject('duration_months', e.target.value)} placeholder="e.g. 36" />
+            <Label>{t('collaboration.duration')} ({t('collaboration.months')})</Label>
+            <Input type="number" value={project.duration_months} onChange={e => updateProject('duration_months', e.target.value)} placeholder={t('collaboration.setupDurationPh')} />
           </div>
           <div className="space-y-2">
-            <Label>End Date <span className="text-[10px] text-muted-foreground ml-1">(auto-calculated)</span></Label>
+            <Label>{t('common.endDate')} <span className="text-[10px] text-muted-foreground ml-1">({t('collaboration.setupAutoCalculated')})</span></Label>
             <Input type="date" value={project.end_date} onChange={e => updateProject('end_date', e.target.value)} />
           </div>
         </div>
@@ -1303,15 +1306,16 @@ function StepPartners({ partners, updatePartner, addPartner, removePartner, coun
   removePartner: (idx: number) => void
   countryOptions: string[]
 }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-medium">Consortium Partners</h3>
-          <p className="text-sm text-muted-foreground">Add all organisations including the coordinator</p>
+          <h3 className="font-medium">{t('collaboration.setupConsortiumPartners')}</h3>
+          <p className="text-sm text-muted-foreground">{t('collaboration.setupConsortiumDesc')}</p>
         </div>
         <Button variant="outline" size="sm" onClick={addPartner} className="gap-2">
-          <Plus className="h-4 w-4" /> Add Partner
+          <Plus className="h-4 w-4" /> {t('collaboration.setupAddPartner')}
         </Button>
       </div>
 
@@ -1321,7 +1325,7 @@ function StepPartners({ partners, updatePartner, addPartner, removePartner, coun
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Badge variant={p.role === 'coordinator' ? 'default' : 'secondary'}>
-                  {p.role === 'coordinator' ? 'Coordinator' : `Partner #${p.participant_number}`}
+                  {p.role === 'coordinator' ? t('collaboration.coordinator') : `${t('collaboration.partner')} #${p.participant_number}`}
                 </Badge>
                 {p.org_name && <span className="font-medium text-sm">{p.org_name}</span>}
               </div>
@@ -1334,56 +1338,56 @@ function StepPartners({ partners, updatePartner, addPartner, removePartner, coun
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs">Organisation Name *</Label>
-                <Input value={p.org_name} onChange={e => updatePartner(idx, 'org_name', e.target.value)} placeholder="Organisation name" className="h-9 text-sm" />
+                <Label className="text-xs">{t('collaboration.setupOrgName')} *</Label>
+                <Input value={p.org_name} onChange={e => updatePartner(idx, 'org_name', e.target.value)} placeholder={t('collaboration.setupOrgName')} className="h-9 text-sm" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Organisation Type <Tip text="Official EU participant type: HES = University, REC = Research Org, PRC = Private Company, PUB = Public Body, OTH = Other" /></Label>
+                <Label className="text-xs">{t('collaboration.setupOrgType')} <Tip text={t('collaboration.setupOrgTypeTip')} /></Label>
                 <select value={p.org_type} onChange={e => updatePartner(idx, 'org_type', e.target.value)} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="">Select...</option>
+                  <option value="">{t('collaboration.setupSelect')}</option>
                   {ORG_TYPES.map(ot => <option key={ot.code} value={ot.code}>{ot.code} — {ot.label}</option>)}
                 </select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Role</Label>
+                <Label className="text-xs">{t('collaboration.yourRole')}</Label>
                 <select value={p.role} onChange={e => updatePartner(idx, 'role', e.target.value)} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                  <option value="coordinator">Coordinator</option>
-                  <option value="partner">Partner</option>
+                  <option value="coordinator">{t('collaboration.coordinator')}</option>
+                  <option value="partner">{t('collaboration.partner')}</option>
                 </select>
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Participant #</Label>
+                <Label className="text-xs">{t('collaboration.setupParticipantNum')}</Label>
                 <Input type="number" value={p.participant_number} onChange={e => updatePartner(idx, 'participant_number', e.target.value)} className="h-9 text-sm" />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs">Country <Tip text="ISO 3166-1 alpha-2 country code as used in Horizon Europe (e.g. DE, FR, IT, ES)." /></Label>
+                <Label className="text-xs">{t('collaboration.country')} <Tip text={t('collaboration.setupCountryTip')} /></Label>
                 <AutocompleteInput value={p.country} onChange={v => updatePartner(idx, 'country', v.substring(0, 2))} options={countryOptions} placeholder="e.g. DE" className="h-9 text-sm" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Contact Name</Label>
-                <Input value={p.contact_name} onChange={e => updatePartner(idx, 'contact_name', e.target.value)} placeholder="Reporting contact" className="h-9 text-sm" />
+                <Label className="text-xs">{t('collaboration.setupContactName')}</Label>
+                <Input value={p.contact_name} onChange={e => updatePartner(idx, 'contact_name', e.target.value)} placeholder={t('collaboration.setupContactNamePh')} className="h-9 text-sm" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Contact Email</Label>
+                <Label className="text-xs">{t('collaboration.setupContactEmail')}</Label>
                 <Input type="email" value={p.contact_email} onChange={e => updatePartner(idx, 'contact_email', e.target.value)} placeholder="email@organisation.eu" className="h-9 text-sm" />
               </div>
             </div>
 
             <details className="group">
               <summary className="text-xs font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
-                Budget & Rates ▸
+                {t('collaboration.setupBudgetRates')} ▸
               </summary>
               <div className="mt-3 space-y-3">
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   {[
-                    ['budget_personnel', 'Personnel (€)'],
-                    ['budget_subcontracting', 'Subcontracting (€)'],
-                    ['budget_travel', 'Travel (€)'],
-                    ['budget_equipment', 'Equipment (€)'],
-                    ['budget_other_goods', 'Other Goods (€)'],
+                    ['budget_personnel', `${t('collaboration.personnel')} (€)`],
+                    ['budget_subcontracting', `${t('collaboration.subcontracting')} (€)`],
+                    ['budget_travel', `${t('collaboration.travel')} (€)`],
+                    ['budget_equipment', `${t('collaboration.equipment')} (€)`],
+                    ['budget_other_goods', `${t('collaboration.otherGoods')} (€)`],
                   ].map(([field, label]) => (
                     <div key={field} className="space-y-1">
                       <Label className="text-xs">{label} <Tip text={BUDGET_TOOLTIPS[field]} /></Label>
@@ -1393,23 +1397,23 @@ function StepPartners({ partners, updatePartner, addPartner, removePartner, coun
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs">Person-Months <Tip text={BUDGET_TOOLTIPS.total_person_months} /></Label>
+                    <Label className="text-xs">{t('collaboration.personMonths')} <Tip text={BUDGET_TOOLTIPS.total_person_months} /></Label>
                     <Input type="number" value={p.total_person_months} onChange={e => updatePartner(idx, 'total_person_months', e.target.value)} className="h-9 text-sm" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Funding Rate (%) <Tip text={BUDGET_TOOLTIPS.funding_rate} /></Label>
+                    <Label className="text-xs">{t('collaboration.fundingRate')} (%) <Tip text={BUDGET_TOOLTIPS.funding_rate} /></Label>
                     <Input type="number" value={p.funding_rate} onChange={e => updatePartner(idx, 'funding_rate', e.target.value)} className="h-9 text-sm" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Indirect Cost Rate (%) <Tip text={BUDGET_TOOLTIPS.indirect_cost_rate} /></Label>
+                    <Label className="text-xs">{t('collaboration.setupIndirectRate')} (%) <Tip text={BUDGET_TOOLTIPS.indirect_cost_rate} /></Label>
                     <Input type="number" value={p.indirect_cost_rate} onChange={e => updatePartner(idx, 'indirect_cost_rate', e.target.value)} className="h-9 text-sm" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Indirect Cost Base <Tip text={BUDGET_TOOLTIPS.indirect_cost_base} /></Label>
+                    <Label className="text-xs">{t('collaboration.setupIndirectBase')} <Tip text={BUDGET_TOOLTIPS.indirect_cost_base} /></Label>
                     <select value={p.indirect_cost_base} onChange={e => updatePartner(idx, 'indirect_cost_base', e.target.value)} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                      <option value="all_direct">All direct costs</option>
-                      <option value="personnel_only">Personnel only</option>
-                      <option value="all_except_subcontracting">All except subcontracting</option>
+                      <option value="all_direct">{t('collaboration.setupBaseAllDirect')}</option>
+                      <option value="personnel_only">{t('collaboration.setupBasePersonnelOnly')}</option>
+                      <option value="all_except_subcontracting">{t('collaboration.setupBaseAllExceptSub')}</option>
                     </select>
                   </div>
                 </div>
@@ -1437,9 +1441,10 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
   updateTaskEffort: (wpIdx: number, tIdx: number, partnerIdx: number, value: string) => void
   removeTask: (wpIdx: number, tIdx: number) => void
 }) {
+  const { t } = useTranslation()
   // Helper: compute task total PMs from effort
-  const taskTotal = (t: TaskFormData) =>
-    Object.values(t.effort).reduce((s, v) => s + (parseFloat(v) || 0), 0)
+  const taskTotal = (tk: TaskFormData) =>
+    Object.values(tk.effort).reduce((s, v) => s + (parseFloat(v) || 0), 0)
   // Helper: check if end < start
   const badRange = (s: string, e: string) => {
     const si = parseInt(s), ei = parseInt(e)
@@ -1447,7 +1452,7 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
   }
   // Helper: compute WP total PMs from its tasks
   const wpTotal = (wp: WpFormData) =>
-    wp.tasks.reduce((s, t) => s + taskTotal(t), 0)
+    wp.tasks.reduce((s, tk) => s + taskTotal(tk), 0)
   // Grand total
   const grandTotal = wps.reduce((s, w) => s + wpTotal(w), 0)
 
@@ -1455,10 +1460,10 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-medium">Work Packages & Tasks</h3>
-          <p className="text-sm text-muted-foreground">Define work packages, tasks, and allocate person-months per partner per task</p>
+          <h3 className="font-medium">{t('collaboration.setupWpAndTasks')}</h3>
+          <p className="text-sm text-muted-foreground">{t('collaboration.setupWpAndTasksDesc')}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={addWp} className="gap-2"><Plus className="h-4 w-4" /> Add WP</Button>
+        <Button variant="outline" size="sm" onClick={addWp} className="gap-2"><Plus className="h-4 w-4" /> {t('collaboration.setupAddWp')}</Button>
       </div>
 
       {wps.map((wp, idx) => {
@@ -1468,7 +1473,7 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">WP{wp.wp_number}</Badge>
-              <span className="font-medium text-sm flex-1 truncate">{wp.title || 'Untitled'}</span>
+              <span className="font-medium text-sm flex-1 truncate">{wp.title || t('collaboration.setupUntitled')}</span>
               <span className="text-xs text-muted-foreground">{wpPMs.toFixed(1)} PMs</span>
               {wps.length > 1 && (
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeWp(idx)}>
@@ -1478,27 +1483,27 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
             </div>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
               <div className="space-y-1">
-                <Label className="text-[10px]">WP #</Label>
+                <Label className="text-[10px]">{t('collaboration.wpNumber')}</Label>
                 <Input value={wp.wp_number} onChange={e => updateWp(idx, 'wp_number', e.target.value)} className="h-8 text-xs text-center" />
               </div>
               <div className="space-y-1 md:col-span-2">
-                <Label className="text-[10px]">Title *</Label>
-                <Input value={wp.title} onChange={e => updateWp(idx, 'title', e.target.value)} placeholder="Work package title" className="h-8 text-xs" />
+                <Label className="text-[10px]">{t('collaboration.setupTitle')} *</Label>
+                <Input value={wp.title} onChange={e => updateWp(idx, 'title', e.target.value)} placeholder={t('collaboration.setupWpTitlePh')} className="h-8 text-xs" />
               </div>
               <div className="space-y-1">
-                <Label className="text-[10px]">Start M</Label>
+                <Label className="text-[10px]">{t('collaboration.startM')}</Label>
                 <Input type="number" value={wp.start_month} onChange={e => updateWp(idx, 'start_month', e.target.value)} placeholder="M1" className="h-8 text-xs" />
               </div>
               <div className="space-y-1">
-                <Label className={`text-[10px] ${badRange(wp.start_month, wp.end_month) ? 'text-destructive' : ''}`}>End M</Label>
+                <Label className={`text-[10px] ${badRange(wp.start_month, wp.end_month) ? 'text-destructive' : ''}`}>{t('collaboration.endM')}</Label>
                 <Input type="number" value={wp.end_month} onChange={e => updateWp(idx, 'end_month', e.target.value)} placeholder="M36" className={`h-8 text-xs ${badRange(wp.start_month, wp.end_month) ? 'border-destructive' : ''}`} />
-                {badRange(wp.start_month, wp.end_month) && <p className="text-[9px] text-destructive">End must be ≥ Start</p>}
+                {badRange(wp.start_month, wp.end_month) && <p className="text-[9px] text-destructive">{t('collaboration.setupEndGteStart')}</p>}
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px]">WP Leader</Label>
+              <Label className="text-[10px]">{t('collaboration.setupWpLeader')}</Label>
               <select value={wp.leader_partner_idx} onChange={e => updateWp(idx, 'leader_partner_idx', e.target.value)} className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs">
-                <option value="">— Select partner —</option>
+                <option value="">— {t('collaboration.setupSelectPartner')} —</option>
                 {partners.map((p, pi) => <option key={p._key} value={String(pi)}>#{p.participant_number} {p.org_name}</option>)}
               </select>
             </div>
@@ -1506,45 +1511,45 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
             {/* Tasks */}
             <div className="mt-2 pt-3 border-t space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold">Tasks under WP{wp.wp_number}</span>
+                <span className="text-xs font-semibold">{t('collaboration.setupTasksUnderWp', { wp: wp.wp_number })}</span>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/5" onClick={() => addTaskToWp(idx)}>
-                  <Plus className="h-3.5 w-3.5" /> Add Task
+                  <Plus className="h-3.5 w-3.5" /> {t('collaboration.addTask')}
                 </Button>
               </div>
               {wp.tasks.length === 0 && (
                 <div className="rounded-md border border-dashed border-muted-foreground/25 py-4 text-center">
-                  <p className="text-xs text-muted-foreground">No tasks yet — click <strong>"Add Task"</strong> to break this WP into individual tasks</p>
+                  <p className="text-xs text-muted-foreground">{t('collaboration.setupNoTasksYet')}</p>
                 </div>
               )}
-                {wp.tasks.map((t, ti) => {
-                  const tTotal = taskTotal(t)
+                {wp.tasks.map((tk, ti) => {
+                  const tTotal = taskTotal(tk)
                   return (
-                  <div key={t._key} className="p-2 rounded border bg-muted/20 space-y-2">
+                  <div key={tk._key} className="p-2 rounded border bg-muted/20 space-y-2">
                     <div className="flex items-start gap-2">
                       <div className="grid gap-1.5 flex-1 grid-cols-2 md:grid-cols-6">
                         <div className="space-y-0.5">
-                          <Label className="text-[9px]">Task #</Label>
-                          <Input value={t.task_number} onChange={e => updateTask(idx, ti, 'task_number', e.target.value)} className="h-7 text-[11px]" />
+                          <Label className="text-[9px]">{t('collaboration.setupTaskNum')}</Label>
+                          <Input value={tk.task_number} onChange={e => updateTask(idx, ti, 'task_number', e.target.value)} className="h-7 text-[11px]" />
                         </div>
                         <div className="space-y-0.5 md:col-span-2">
-                          <Label className="text-[9px]">Title</Label>
-                          <Input value={t.title} onChange={e => updateTask(idx, ti, 'title', e.target.value)} className="h-7 text-[11px]" />
+                          <Label className="text-[9px]">{t('collaboration.setupTitle')}</Label>
+                          <Input value={tk.title} onChange={e => updateTask(idx, ti, 'title', e.target.value)} className="h-7 text-[11px]" />
                         </div>
                         <div className="space-y-0.5">
-                          <Label className="text-[9px]">Task Leader</Label>
-                          <select value={t.leader_partner_idx} onChange={e => updateTask(idx, ti, 'leader_partner_idx', e.target.value)} className="flex h-7 w-full rounded-md border border-input bg-background px-1 py-0.5 text-[11px]">
+                          <Label className="text-[9px]">{t('collaboration.setupTaskLeader')}</Label>
+                          <select value={tk.leader_partner_idx} onChange={e => updateTask(idx, ti, 'leader_partner_idx', e.target.value)} className="flex h-7 w-full rounded-md border border-input bg-background px-1 py-0.5 text-[11px]">
                             <option value="">—</option>
                             {partners.map((p, pi) => <option key={p._key} value={String(pi)}>{p.org_name || `#${p.participant_number}`}</option>)}
                           </select>
                         </div>
                         <div className="space-y-0.5">
-                          <Label className="text-[9px]">Start M</Label>
-                          <Input type="number" value={t.start_month} onChange={e => updateTask(idx, ti, 'start_month', e.target.value)} className="h-7 text-[11px]" />
+                          <Label className="text-[9px]">{t('collaboration.startM')}</Label>
+                          <Input type="number" value={tk.start_month} onChange={e => updateTask(idx, ti, 'start_month', e.target.value)} className="h-7 text-[11px]" />
                         </div>
                         <div className="space-y-0.5">
-                          <Label className={`text-[9px] ${badRange(t.start_month, t.end_month) ? 'text-destructive' : ''}`}>End M</Label>
-                          <Input type="number" value={t.end_month} onChange={e => updateTask(idx, ti, 'end_month', e.target.value)} className={`h-7 text-[11px] ${badRange(t.start_month, t.end_month) ? 'border-destructive' : ''}`} />
-                          {badRange(t.start_month, t.end_month) && <p className="text-[9px] text-destructive">End ≥ Start</p>}
+                          <Label className={`text-[9px] ${badRange(tk.start_month, tk.end_month) ? 'text-destructive' : ''}`}>{t('collaboration.endM')}</Label>
+                          <Input type="number" value={tk.end_month} onChange={e => updateTask(idx, ti, 'end_month', e.target.value)} className={`h-7 text-[11px] ${badRange(tk.start_month, tk.end_month) ? 'border-destructive' : ''}`} />
+                          {badRange(tk.start_month, tk.end_month) && <p className="text-[9px] text-destructive">{t('collaboration.setupEndGteStart')}</p>}
                         </div>
                       </div>
                       <div className="flex flex-col items-center gap-0.5 shrink-0 mt-3">
@@ -1557,7 +1562,7 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
                     {/* Per-partner effort allocation */}
                     {partners.length > 0 && (
                       <div className="pl-1">
-                        <Label className="text-[9px] text-muted-foreground mb-1 block">PMs per partner:</Label>
+                        <Label className="text-[9px] text-muted-foreground mb-1 block">{t('collaboration.setupPmsPerPartner')}:</Label>
                         <div className="flex flex-wrap gap-2">
                           {partners.map((p, pi) => (
                             <div key={p._key} className="flex items-center gap-1">
@@ -1568,7 +1573,7 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
                                 type="number"
                                 min="0"
                                 step="0.5"
-                                value={t.effort[String(pi)] ?? '0'}
+                                value={tk.effort[String(pi)] ?? '0'}
                                 onChange={e => updateTaskEffort(idx, ti, pi, e.target.value)}
                                 className="h-6 w-16 text-[11px] text-right"
                               />
@@ -1587,7 +1592,7 @@ function StepWorkPlan({ wps, updateWp, addWp, removeWp, partners, addTaskToWp, u
       })}
       {wps.length > 0 && (
         <div className="text-right text-sm text-muted-foreground">
-          Total: {grandTotal.toFixed(1)} PMs across {wps.length} WP{wps.length !== 1 ? 's' : ''}
+          {t('collaboration.setupTotalPMs', { pms: grandTotal.toFixed(1), count: wps.length })}
         </div>
       )}
     </div>
@@ -1614,44 +1619,45 @@ function StepDeliverablesAndMilestones({
   wps: WpFormData[]
   partners: PartnerFormData[]
 }) {
+  const { t } = useTranslation()
   return (
     <div className="space-y-6">
       {/* Deliverables */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-medium">Deliverables</h3>
-            <p className="text-sm text-muted-foreground">Project outputs to be submitted at specific months</p>
+            <h3 className="font-medium">{t('collaboration.deliverables')}</h3>
+            <p className="text-sm text-muted-foreground">{t('collaboration.setupDeliverablesDesc')}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={addDeliverable} className="gap-2"><Plus className="h-4 w-4" /> Add</Button>
+          <Button variant="outline" size="sm" onClick={addDeliverable} className="gap-2"><Plus className="h-4 w-4" /> {t('common.add')}</Button>
         </div>
-        {deliverables.length === 0 && <p className="text-xs text-muted-foreground italic">No deliverables added yet.</p>}
+        {deliverables.length === 0 && <p className="text-xs text-muted-foreground italic">{t('collaboration.setupNoDeliverablesAdded')}</p>}
         {deliverables.map((d, idx) => (
           <Card key={d._key}>
             <CardContent className="p-3">
               <div className="flex items-start gap-2">
                 <div className="grid gap-2 flex-1 grid-cols-2 md:grid-cols-4">
                   <div className="space-y-0.5">
-                    <Label className="text-[10px]"># (e.g. D1.1)</Label>
+                    <Label className="text-[10px]"># ({t('collaboration.setupEgD')})</Label>
                     <Input value={d.number} onChange={e => updateDeliverable(idx, 'number', e.target.value)} className="h-8 text-xs" />
                   </div>
                   <div className="space-y-0.5 md:col-span-2">
-                    <Label className="text-[10px]">Title *</Label>
+                    <Label className="text-[10px]">{t('collaboration.setupTitle')} *</Label>
                     <Input value={d.title} onChange={e => updateDeliverable(idx, 'title', e.target.value)} className="h-8 text-xs" />
                   </div>
                   <div className="space-y-0.5">
-                    <Label className="text-[10px]">Due M</Label>
+                    <Label className="text-[10px]">{t('collaboration.due')} M</Label>
                     <Input type="number" value={d.due_month} onChange={e => updateDeliverable(idx, 'due_month', e.target.value)} className="h-8 text-xs" />
                   </div>
                   <div className="space-y-0.5">
-                    <Label className="text-[10px]">WP</Label>
+                    <Label className="text-[10px]">{t('collaboration.wp')}</Label>
                     <select value={d.wp_number} onChange={e => updateDeliverable(idx, 'wp_number', e.target.value)} className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs">
                       <option value="">—</option>
                       {wps.map(w => <option key={w._key} value={w.wp_number}>WP{w.wp_number} {w.title ? `— ${w.title}` : ''}</option>)}
                     </select>
                   </div>
                   <div className="space-y-0.5">
-                    <Label className="text-[10px]">Task</Label>
+                    <Label className="text-[10px]">{t('collaboration.task')}</Label>
                     <select value={d.task_number} onChange={e => updateDeliverable(idx, 'task_number', e.target.value)} className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs">
                       <option value="">—</option>
                       {wps.flatMap(w => w.tasks.map(t => (
@@ -1660,21 +1666,21 @@ function StepDeliverablesAndMilestones({
                     </select>
                   </div>
                   <div className="space-y-0.5">
-                    <Label className="text-[10px]">Type</Label>
+                    <Label className="text-[10px]">{t('collaboration.type')}</Label>
                     <select value={d.type} onChange={e => updateDeliverable(idx, 'type', e.target.value)} className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs">
                       <option value="">—</option>
-                      <option value="report">Report</option>
-                      <option value="data">Data</option>
-                      <option value="software">Software</option>
-                      <option value="demonstrator">Demonstrator</option>
-                      <option value="other">Other</option>
+                      <option value="report">{t('collaboration.setupTypeReport')}</option>
+                      <option value="data">{t('collaboration.setupTypeData')}</option>
+                      <option value="software">{t('collaboration.setupTypeSoftware')}</option>
+                      <option value="demonstrator">{t('collaboration.setupTypeDemonstrator')}</option>
+                      <option value="other">{t('collaboration.setupTypeOther')}</option>
                     </select>
                   </div>
                   <div className="space-y-0.5">
-                    <Label className="text-[10px]">Lead Partner</Label>
+                    <Label className="text-[10px]">{t('collaboration.setupLeadPartner')}</Label>
                     <select value={d.leader_partner_idx} onChange={e => updateDeliverable(idx, 'leader_partner_idx', e.target.value)} className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs">
                       <option value="">—</option>
-                      {partners.map((p, pi) => <option key={p._key} value={String(pi)}>{p.org_name || `Partner #${p.participant_number}`}</option>)}
+                      {partners.map((p, pi) => <option key={p._key} value={String(pi)}>{p.org_name || `${t('collaboration.partner')} #${p.participant_number}`}</option>)}
                     </select>
                   </div>
                 </div>
@@ -1691,34 +1697,34 @@ function StepDeliverablesAndMilestones({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-medium">Milestones</h3>
-            <p className="text-sm text-muted-foreground">Key checkpoints to verify project progress</p>
+            <h3 className="font-medium">{t('collaboration.milestones')}</h3>
+            <p className="text-sm text-muted-foreground">{t('collaboration.setupMilestonesDesc')}</p>
           </div>
-          <Button variant="outline" size="sm" onClick={addMilestone} className="gap-2"><Plus className="h-4 w-4" /> Add</Button>
+          <Button variant="outline" size="sm" onClick={addMilestone} className="gap-2"><Plus className="h-4 w-4" /> {t('common.add')}</Button>
         </div>
-        {milestones.length === 0 && <p className="text-xs text-muted-foreground italic">No milestones added yet.</p>}
+        {milestones.length === 0 && <p className="text-xs text-muted-foreground italic">{t('collaboration.setupNoMilestonesAdded')}</p>}
         {milestones.map((m, idx) => (
           <Card key={m._key}>
             <CardContent className="p-3">
               <div className="flex items-start gap-2">
                 <div className="grid gap-2 flex-1 grid-cols-2 md:grid-cols-5">
                   <div className="space-y-0.5">
-                    <Label className="text-[10px]"># (e.g. MS1)</Label>
+                    <Label className="text-[10px]"># ({t('collaboration.setupEgMS')})</Label>
                     <Input value={m.number} onChange={e => updateMilestone(idx, 'number', e.target.value)} className="h-8 text-xs" />
                   </div>
                   <div className="space-y-0.5 md:col-span-2">
-                    <Label className="text-[10px]">Title *</Label>
+                    <Label className="text-[10px]">{t('collaboration.setupTitle')} *</Label>
                     <Input value={m.title} onChange={e => updateMilestone(idx, 'title', e.target.value)} className="h-8 text-xs" />
                   </div>
                   <div className="space-y-0.5">
-                    <Label className="text-[10px]">WP #</Label>
+                    <Label className="text-[10px]">{t('collaboration.wpNumber')}</Label>
                     <select value={m.wp_number} onChange={e => updateMilestone(idx, 'wp_number', e.target.value)} className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs">
                       <option value="">—</option>
                       {wps.map(w => <option key={w._key} value={w.wp_number}>WP{w.wp_number}</option>)}
                     </select>
                   </div>
                   <div className="space-y-0.5">
-                    <Label className="text-[10px]">Due M</Label>
+                    <Label className="text-[10px]">{t('collaboration.due')} M</Label>
                     <Input type="number" value={m.due_month} onChange={e => updateMilestone(idx, 'due_month', e.target.value)} className="h-8 text-xs" />
                   </div>
                 </div>
@@ -1727,8 +1733,8 @@ function StepDeliverablesAndMilestones({
                 </Button>
               </div>
               <div className="mt-2">
-                <Label className="text-[10px]">Verification Means</Label>
-                <Input value={m.verification_means} onChange={e => updateMilestone(idx, 'verification_means', e.target.value)} placeholder="How to verify this milestone is reached" className="h-8 text-xs" />
+                <Label className="text-[10px]">{t('collaboration.verificationMeans')}</Label>
+                <Input value={m.verification_means} onChange={e => updateMilestone(idx, 'verification_means', e.target.value)} placeholder={t('collaboration.setupVerificationPh')} className="h-8 text-xs" />
               </div>
             </CardContent>
           </Card>
@@ -1749,40 +1755,41 @@ function StepReview({ project, partners, wps, deliverables, milestones }: {
   deliverables: DeliverableFormData[]
   milestones: MilestoneFormData[]
 }) {
+  const { t } = useTranslation()
   const coordinator = partners.find(p => p.role === 'coordinator')
   const totalBudget = partners.reduce((sum, p) =>
     sum + (parseFloat(p.budget_personnel) || 0) + (parseFloat(p.budget_subcontracting) || 0)
         + (parseFloat(p.budget_travel) || 0) + (parseFloat(p.budget_equipment) || 0)
         + (parseFloat(p.budget_other_goods) || 0), 0)
   const totalTasks = wps.reduce((s, w) => s + w.tasks.length, 0)
-  const taskPMs = (t: TaskFormData) => Object.values(t.effort).reduce((s, v) => s + (parseFloat(v) || 0), 0)
-  const wpPMs = (w: WpFormData) => w.tasks.reduce((s, t) => s + taskPMs(t), 0)
+  const taskPMs = (tk: TaskFormData) => Object.values(tk.effort).reduce((s, v) => s + (parseFloat(v) || 0), 0)
+  const wpPMs = (w: WpFormData) => w.tasks.reduce((s, tk) => s + taskPMs(tk), 0)
 
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base">Project Summary</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base">{t('collaboration.setupReviewSummary')}</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-            <div><span className="text-muted-foreground">Title:</span> <strong>{project.title}</strong></div>
-            <div><span className="text-muted-foreground">Acronym:</span> <strong>{project.acronym}</strong></div>
-            {project.grant_number && <div><span className="text-muted-foreground">Grant #:</span> {project.grant_number}</div>}
-            {project.funding_programme && <div><span className="text-muted-foreground">Programme:</span> {project.funding_programme}</div>}
-            {project.funding_scheme && <div><span className="text-muted-foreground">Scheme:</span> {project.funding_scheme}</div>}
-            {project.start_date && <div><span className="text-muted-foreground">Start:</span> {project.start_date}</div>}
-            {project.end_date && <div><span className="text-muted-foreground">End:</span> {project.end_date}</div>}
-            {project.duration_months && <div><span className="text-muted-foreground">Duration:</span> {project.duration_months} months</div>}
+            <div><span className="text-muted-foreground">{t('collaboration.setupProjectTitle')}:</span> <strong>{project.title}</strong></div>
+            <div><span className="text-muted-foreground">{t('collaboration.acronym')}:</span> <strong>{project.acronym}</strong></div>
+            {project.grant_number && <div><span className="text-muted-foreground">{t('collaboration.grantAgreement')} #:</span> {project.grant_number}</div>}
+            {project.funding_programme && <div><span className="text-muted-foreground">{t('collaboration.programme')}:</span> {project.funding_programme}</div>}
+            {project.funding_scheme && <div><span className="text-muted-foreground">{t('collaboration.scheme')}:</span> {project.funding_scheme}</div>}
+            {project.start_date && <div><span className="text-muted-foreground">{t('common.startDate')}:</span> {project.start_date}</div>}
+            {project.end_date && <div><span className="text-muted-foreground">{t('common.endDate')}:</span> {project.end_date}</div>}
+            {project.duration_months && <div><span className="text-muted-foreground">{t('collaboration.duration')}:</span> {project.duration_months} {t('collaboration.months')}</div>}
           </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base">Consortium ({partners.length})</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base">{t('collaboration.setupConsortiumPartners')} ({partners.length})</CardTitle></CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
             {coordinator && (
               <div className="flex items-center gap-2">
-                <Badge>Coordinator</Badge>
+                <Badge>{t('collaboration.coordinator')}</Badge>
                 <span className="font-medium">{coordinator.org_name}</span>
                 {coordinator.country && <span className="text-muted-foreground">({coordinator.country})</span>}
                 {coordinator.org_type && <Badge variant="outline" className="text-[10px]">{coordinator.org_type}</Badge>}
@@ -1799,7 +1806,7 @@ function StepReview({ project, partners, wps, deliverables, milestones }: {
           </div>
           {totalBudget > 0 && (
             <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
-              Total budget: <strong className="text-foreground">&euro;{totalBudget.toLocaleString()}</strong>
+              {t('collaboration.totalBudget')}: <strong className="text-foreground">&euro;{totalBudget.toLocaleString()}</strong>
             </div>
           )}
         </CardContent>
@@ -1807,7 +1814,7 @@ function StepReview({ project, partners, wps, deliverables, milestones }: {
 
       {wps.filter(w => w.title.trim()).length > 0 && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Work Packages ({wps.filter(w => w.title.trim()).length}) &middot; Tasks ({totalTasks})</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base">{t('collaboration.workPackages')} ({wps.filter(w => w.title.trim()).length}) &middot; {t('collaboration.tasks')} ({totalTasks})</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-1.5 text-sm">
               {wps.filter(w => w.title.trim()).map(w => (
@@ -1816,10 +1823,10 @@ function StepReview({ project, partners, wps, deliverables, milestones }: {
                     <span>WP{w.wp_number}: {w.title} <span className="text-muted-foreground text-xs">(M{w.start_month}–M{w.end_month || '?'})</span></span>
                     <span className="text-muted-foreground">{wpPMs(w).toFixed(1)} PMs</span>
                   </div>
-                  {w.tasks.filter(t => t.title.trim()).map(t => (
-                    <div key={t._key} className="ml-6 text-xs text-muted-foreground flex justify-between">
-                      <span>{t.task_number}: {t.title}</span>
-                      <span>{taskPMs(t).toFixed(1)} PMs</span>
+                  {w.tasks.filter(tk => tk.title.trim()).map(tk => (
+                    <div key={tk._key} className="ml-6 text-xs text-muted-foreground flex justify-between">
+                      <span>{tk.task_number}: {tk.title}</span>
+                      <span>{taskPMs(tk).toFixed(1)} PMs</span>
                     </div>
                   ))}
                 </div>
@@ -1831,7 +1838,7 @@ function StepReview({ project, partners, wps, deliverables, milestones }: {
 
       {(deliverables.filter(d => d.title.trim()).length > 0 || milestones.filter(m => m.title.trim()).length > 0) && (
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Deliverables ({deliverables.filter(d => d.title.trim()).length}) &middot; Milestones ({milestones.filter(m => m.title.trim()).length})</CardTitle></CardHeader>
+          <CardHeader className="pb-3"><CardTitle className="text-base">{t('collaboration.deliverables')} ({deliverables.filter(d => d.title.trim()).length}) &middot; {t('collaboration.milestones')} ({milestones.filter(m => m.title.trim()).length})</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
             {deliverables.filter(d => d.title.trim()).map(d => (
               <div key={d._key} className="flex justify-between">
@@ -1850,10 +1857,9 @@ function StepReview({ project, partners, wps, deliverables, milestones }: {
       )}
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-4 text-sm">
-        <p className="font-medium text-amber-800 dark:text-amber-300">The project will be created in Draft status.</p>
+        <p className="font-medium text-amber-800 dark:text-amber-300">{t('collaboration.setupDraftNotice')}</p>
         <p className="text-amber-700 dark:text-amber-400 mt-1">
-          You can continue editing, add more details, and configure reporting periods.
-          When ready, launch the project to send invitations to all partners.
+          {t('collaboration.setupDraftDesc')}
         </p>
       </div>
     </div>

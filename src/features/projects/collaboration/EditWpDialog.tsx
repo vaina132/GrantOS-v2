@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +22,7 @@ interface EditWpDialogProps {
 }
 
 export function EditWpDialog({ projectId, existing, open, onClose, onSaved }: EditWpDialogProps) {
+  const { t } = useTranslation()
   const [rows, setRows] = useState<WpRow[]>([])
   const [saving, setSaving] = useState(false)
 
@@ -60,11 +62,11 @@ export function EditWpDialog({ projectId, existing, open, onClose, onSaved }: Ed
         title: r.title.trim(),
         total_person_months: r.total_person_months,
       })))
-      toast({ title: 'Saved', description: `${valid.length} work package(s) updated` })
+      toast({ title: t('common.saved'), description: t('collaboration.wpUpdatedCount', { count: valid.length }) })
       onSaved()
       onClose()
     } catch {
-      toast({ title: 'Error', description: 'Failed to save work packages', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToSaveWps'), variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -79,17 +81,17 @@ export function EditWpDialog({ projectId, existing, open, onClose, onSaved }: Ed
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       <div className="relative z-50 bg-background border rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Edit Work Packages</h2>
+          <h2 className="text-lg font-semibold">{t('collaboration.editWorkPackages')}</h2>
           <Button variant="outline" size="sm" onClick={addRow} className="gap-1.5">
-            <Plus className="h-3.5 w-3.5" /> Add WP
+            <Plus className="h-3.5 w-3.5" /> {t('collaboration.addWp')}
           </Button>
         </div>
 
         <div className="space-y-2">
           <div className="grid grid-cols-[60px_1fr_120px_40px] gap-2 text-xs font-medium text-muted-foreground px-1">
-            <span>WP #</span>
-            <span>Title</span>
-            <span>PMs</span>
+            <span>{t('collaboration.wpNumber')}</span>
+            <span>{t('common.title')}</span>
+            <span>{t('collaboration.pms')}</span>
             <span></span>
           </div>
           {rows.map((row, idx) => (
@@ -103,7 +105,7 @@ export function EditWpDialog({ projectId, existing, open, onClose, onSaved }: Ed
               <Input
                 value={row.title}
                 onChange={e => updateRow(idx, 'title', e.target.value)}
-                placeholder="Work package title"
+                placeholder={t('collaboration.wpTitlePlaceholder')}
                 className="h-9 text-sm"
               />
               <Input
@@ -122,7 +124,7 @@ export function EditWpDialog({ projectId, existing, open, onClose, onSaved }: Ed
           {rows.length > 0 && (
             <div className="grid grid-cols-[60px_1fr_120px_40px] gap-2 items-center pt-2 border-t">
               <span></span>
-              <span className="text-sm font-medium text-right pr-2">Total</span>
+              <span className="text-sm font-medium text-right pr-2">{t('common.total')}</span>
               <span className="text-sm font-medium pl-3">{totalPMs.toFixed(1)}</span>
               <span></span>
             </div>
@@ -130,9 +132,9 @@ export function EditWpDialog({ projectId, existing, open, onClose, onSaved }: Ed
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Work Packages'}
+            {saving ? t('common.saving') : t('collaboration.saveWorkPackages')}
           </Button>
         </div>
       </div>

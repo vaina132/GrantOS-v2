@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Download, ChevronDown, ChevronRight, Target, ListChecks, GanttChart as GanttIcon } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService, collabTaskService, collabDeliverableService, collabMilestoneService, collabTaskEffortService, syncCollabToMyProjects } from '@/services/collabProjectService'
@@ -32,18 +33,19 @@ const INVITE_STATUS_COLORS: Record<string, string> = {
   declined: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400',
 }
 
-const TAB_ITEMS = [
-  { value: 'general', label: 'General', icon: FileText },
-  { value: 'partners', label: 'Partners', icon: Users },
-  { value: 'wps', label: 'WPs', icon: LayoutGrid },
-  { value: 'periods', label: 'Periods', icon: Calendar },
-  { value: 'deliverables', label: 'Del. & MS', icon: ListChecks },
-  { value: 'budget', label: 'Budget', icon: DollarSign },
-  { value: 'effort', label: 'Effort', icon: Target },
-  { value: 'gantt', label: 'Timeline', icon: GanttIcon },
+const TAB_KEYS = [
+  { value: 'general', labelKey: 'collaboration.tabGeneral', icon: FileText },
+  { value: 'partners', labelKey: 'collaboration.tabPartners', icon: Users },
+  { value: 'wps', labelKey: 'collaboration.tabWps', icon: LayoutGrid },
+  { value: 'periods', labelKey: 'collaboration.tabPeriods', icon: Calendar },
+  { value: 'deliverables', labelKey: 'collaboration.tabDelMs', icon: ListChecks },
+  { value: 'budget', labelKey: 'collaboration.tabBudget', icon: DollarSign },
+  { value: 'effort', labelKey: 'collaboration.tabEffort', icon: Target },
+  { value: 'gantt', labelKey: 'collaboration.tabTimeline', icon: GanttIcon },
 ]
 
 export function CollabProjectDetail() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { orgId, orgName, user } = useAuthStore()
@@ -142,7 +144,7 @@ export function CollabProjectDetail() {
         setEffortData(eff.map(e => ({ task_id: e.task_id, partner_id: e.partner_id, person_months: e.person_months })))
       } catch { /* ignore — table may not exist yet */ }
     } catch {
-      toast({ title: 'Error', description: 'Failed to load project', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToLoadProject'), variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -151,40 +153,40 @@ export function CollabProjectDetail() {
   useEffect(() => { load() }, [id])
 
   const handleLaunch = async () => {
-    if (!id || !confirm('Launch this project? Status will change to Active.')) return
+    if (!id || !confirm(t('collaboration.confirmLaunchProject'))) return
     try {
       await collabProjectService.launch(id)
       if (orgId) await syncCollabToMyProjects(id, orgId)
-      toast({ title: 'Launched', description: 'Project is now active' })
+      toast({ title: t('collaboration.launched'), description: t('collaboration.projectNowActive') })
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to launch', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToLaunchProject'), variant: 'destructive' })
     }
   }
 
   const handleArchive = async () => {
     if (!id || !project) return
     const newStatus = project.status === 'archived' ? 'active' : 'archived'
-    const label = newStatus === 'archived' ? 'Archive' : 'Unarchive'
-    if (!confirm(`${label} this project?`)) return
+    const label = newStatus === 'archived' ? t('collaboration.archive') : t('collaboration.unarchive')
+    if (!confirm(`${label}?`)) return
     try {
       await collabProjectService.update(id, { status: newStatus } as any)
       if (orgId) await syncCollabToMyProjects(id, orgId)
-      toast({ title: `${label}d`, description: `Project ${newStatus === 'archived' ? 'archived' : 'restored to active'}` })
+      toast({ title: label, description: newStatus === 'archived' ? t('collaboration.projectArchived') : t('collaboration.projectRestoredActive') })
       load()
     } catch {
-      toast({ title: 'Error', description: `Failed to ${label.toLowerCase()} project`, variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToArchiveProject'), variant: 'destructive' })
     }
   }
 
   const handleDelete = async () => {
-    if (!id || !confirm('Delete this collaboration project? This cannot be undone.')) return
+    if (!id || !confirm(t('collaboration.confirmDeleteProject'))) return
     try {
       await collabProjectService.remove(id)
-      toast({ title: 'Deleted' })
+      toast({ title: t('common.deleted') })
       navigate('/projects/collaboration')
     } catch {
-      toast({ title: 'Error', description: 'Failed to delete', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToDeleteProject'), variant: 'destructive' })
     }
   }
 
@@ -207,9 +209,9 @@ export function CollabProjectDetail() {
         role: p.role,
         acceptUrl: getInviteUrl(p),
       })
-      toast({ title: 'Sent', description: `Invitation sent to ${p.contact_email}` })
+      toast({ title: t('common.sent'), description: t('collaboration.invitationSentTo', { email: p.contact_email }) })
     } catch {
-      toast({ title: 'Error', description: 'Failed to send invitation email', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToSendInvitation'), variant: 'destructive' })
     }
   }
 
@@ -217,7 +219,7 @@ export function CollabProjectDetail() {
     if (!project) return
     const pending = partners.filter(p => p.invite_status === 'pending' && p.contact_email)
     if (pending.length === 0) {
-      toast({ title: 'No pending invitations', description: 'All partners with emails have already been invited or accepted.' })
+      toast({ title: t('collaboration.noPendingInvitations'), description: t('collaboration.allPartnersInvited') })
       return
     }
     setSendingInvites(true)
@@ -241,7 +243,7 @@ export function CollabProjectDetail() {
       }
     }
     setSendingInvites(false)
-    toast({ title: 'Invitations sent', description: `Sent ${sent} of ${pending.length} invitation email(s)` })
+    toast({ title: t('collaboration.invitationsSent'), description: t('collaboration.sentCountInvitations', { sent, total: pending.length }) })
   }
 
   const handleAddPeriod = async () => {
@@ -255,26 +257,26 @@ export function CollabProjectDetail() {
         end_month: parseInt(newPeriod.end_month),
         due_date: newPeriod.due_date || undefined,
       })
-      toast({ title: 'Created', description: 'Reporting period added' })
+      toast({ title: t('common.created'), description: t('collaboration.periodAdded') })
       setShowAddPeriod(false)
       setNewPeriod({ title: '', period_type: 'informal', start_month: '', end_month: '', due_date: '' })
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to create period', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToCreatePeriod'), variant: 'destructive' })
     }
   }
 
   const handleGenerateReports = async (periodId: string) => {
-    if (!id || !confirm('Generate reports for all partners in this period?')) return
+    if (!id || !confirm(t('collaboration.confirmGenerateReports'))) return
     try {
       await collabPeriodService.generateReports(periodId, id)
-      toast({ title: 'Generated', description: 'Reports created for all partners' })
+      toast({ title: t('collaboration.generated'), description: t('collaboration.reportsCreatedForPartners') })
       load()
       // Auto-expand to show generated reports
       await loadPeriodReports(periodId)
       setExpandedPeriod(periodId)
     } catch {
-      toast({ title: 'Error', description: 'Failed to generate reports', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToGenerateReports'), variant: 'destructive' })
     }
   }
 
@@ -283,7 +285,7 @@ export function CollabProjectDetail() {
       const reports = await collabReportService.listForPeriod(periodId)
       setPeriodReports(prev => ({ ...prev, [periodId]: reports }))
     } catch {
-      toast({ title: 'Error', description: 'Failed to load reports', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToLoadReports'), variant: 'destructive' })
     }
   }
 
@@ -319,22 +321,22 @@ export function CollabProjectDetail() {
         end_month: parseInt(editPeriod.end_month),
         due_date: editPeriod.due_date || null,
       } as any)
-      toast({ title: 'Updated', description: 'Reporting period updated' })
+      toast({ title: t('common.updated'), description: t('collaboration.periodUpdated') })
       setEditPeriodId(null)
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to update period', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToUpdatePeriod'), variant: 'destructive' })
     }
   }
 
   const handleDeletePeriod = async (periodId: string, title: string) => {
-    if (!confirm(`Delete reporting period "${title}"? This cannot be undone.`)) return
+    if (!confirm(t('collaboration.confirmDeletePeriod', { title }))) return
     try {
       await collabPeriodService.remove(periodId)
-      toast({ title: 'Deleted', description: `Period "${title}" removed` })
+      toast({ title: t('common.deleted'), description: t('collaboration.periodRemoved', { title }) })
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to delete period', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToDeletePeriod'), variant: 'destructive' })
     }
   }
 
@@ -343,7 +345,7 @@ export function CollabProjectDetail() {
     const sm = parseInt(newTask.start_month) || undefined
     const em = parseInt(newTask.end_month) || undefined
     if (sm && em && em < sm) {
-      toast({ title: 'Invalid', description: 'End month must be ≥ start month', variant: 'destructive' })
+      toast({ title: t('common.invalid'), description: t('collaboration.endMonthMustBeGte'), variant: 'destructive' })
       return
     }
     try {
@@ -354,23 +356,23 @@ export function CollabProjectDetail() {
         end_month: em ?? null,
         leader_partner_id: newTask.leader_partner_id || null,
       }])
-      toast({ title: 'Added', description: 'Task created' })
+      toast({ title: t('common.added'), description: t('collaboration.taskCreated') })
       setAddTaskWpId(null)
       setNewTask(emptyNewTask)
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to add task', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToAddTask'), variant: 'destructive' })
     }
   }
 
   const handleDeleteTask = async (taskId: string, taskTitle: string) => {
-    if (!confirm(`Delete task "${taskTitle}"?`)) return
+    if (!confirm(t('collaboration.confirmDeleteTask', { title: taskTitle }))) return
     try {
       await collabTaskService.remove(taskId)
-      toast({ title: 'Deleted', description: `Task "${taskTitle}" removed` })
+      toast({ title: t('common.deleted'), description: t('collaboration.taskRemoved', { title: taskTitle }) })
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to delete task', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToDeleteTask'), variant: 'destructive' })
     }
   }
 
@@ -385,8 +387,8 @@ export function CollabProjectDetail() {
   if (!project) {
     return (
       <div className="text-center py-20 text-muted-foreground">
-        <p>Project not found</p>
-        <Button variant="link" onClick={() => navigate('/projects/collaboration')}>Back to list</Button>
+        <p>{t('collaboration.projectNotFound')}</p>
+        <Button variant="link" onClick={() => navigate('/projects/collaboration')}>{t('collaboration.backToList')}</Button>
       </div>
     )
   }
@@ -426,27 +428,27 @@ export function CollabProjectDetail() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" size="sm" onClick={() => navigate(`/projects/collaboration/${id}/edit`)} className="gap-2">
-            <Pencil className="h-4 w-4" /> Edit All
+            <Pencil className="h-4 w-4" /> {t('collaboration.editAll')}
           </Button>
           {pendingCount > 0 && (
             <Button variant="outline" onClick={handleSendAllInvites} disabled={sendingInvites} className="gap-2">
               <Send className="h-4 w-4" />
-              {sendingInvites ? 'Sending...' : `Invite All (${pendingCount})`}
+              {sendingInvites ? t('common.sending') : t('collaboration.inviteAll', { count: pendingCount })}
             </Button>
           )}
           {project.status === 'draft' && (
             <Button onClick={handleLaunch} className="gap-2">
-              <Rocket className="h-4 w-4" /> Launch
+              <Rocket className="h-4 w-4" /> {t('collaboration.launch')}
             </Button>
           )}
           {project.status === 'active' && (
             <Button variant="outline" size="sm" onClick={handleArchive} className="gap-2">
-              <Archive className="h-4 w-4" /> Archive
+              <Archive className="h-4 w-4" /> {t('collaboration.archive')}
             </Button>
           )}
           {project.status === 'archived' && (
             <Button variant="outline" size="sm" onClick={handleArchive} className="gap-2">
-              <ArchiveRestore className="h-4 w-4" /> Unarchive
+              <ArchiveRestore className="h-4 w-4" /> {t('collaboration.unarchive')}
             </Button>
           )}
           <Button variant="outline" size="icon" onClick={handleDelete}>
@@ -464,16 +466,16 @@ export function CollabProjectDetail() {
             onChange={e => setActiveTab(e.target.value)}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            {TAB_ITEMS.map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
+            {TAB_KEYS.map(tab => (
+              <option key={tab.value} value={tab.value}>{t(tab.labelKey)}</option>
             ))}
           </select>
         </div>
         {/* Desktop scrollable tabs (visible >= md) */}
         <TabsList className="hidden md:inline-flex w-full justify-start overflow-x-auto">
-          {TAB_ITEMS.map(t => (
-            <TabsTrigger key={t.value} value={t.value} className="gap-1.5 text-xs whitespace-nowrap">
-              <t.icon className="h-3.5 w-3.5" /> {t.label}
+          {TAB_KEYS.map(tab => (
+            <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 text-xs whitespace-nowrap">
+              <tab.icon className="h-3.5 w-3.5" /> {t(tab.labelKey)}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -485,49 +487,49 @@ export function CollabProjectDetail() {
               {/* Project identity */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Acronym</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('collaboration.acronym')}</p>
                   <p className="font-semibold">{project.acronym}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Status</p>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('common.status')}</p>
                   <Badge className={STATUS_COLORS[project.status] ?? ''} variant="secondary">
                     {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
                   </Badge>
                 </div>
                 {project.grant_number && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Grant Agreement</p>
+                    <p className="text-xs text-muted-foreground mb-0.5">{t('collaboration.grantAgreement')}</p>
                     <p className="font-medium">{project.grant_number}</p>
                   </div>
                 )}
                 {project.funding_programme && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Programme</p>
+                    <p className="text-xs text-muted-foreground mb-0.5">{t('collaboration.programme')}</p>
                     <p className="font-medium">{project.funding_programme}</p>
                   </div>
                 )}
                 {project.funding_scheme && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Scheme</p>
+                    <p className="text-xs text-muted-foreground mb-0.5">{t('collaboration.scheme')}</p>
                     <p className="font-medium">{project.funding_scheme}</p>
                   </div>
                 )}
                 {project.start_date && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Start Date</p>
+                    <p className="text-xs text-muted-foreground mb-0.5">{t('common.startDate')}</p>
                     <p className="font-medium">{project.start_date}</p>
                   </div>
                 )}
                 {project.end_date && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">End Date</p>
+                    <p className="text-xs text-muted-foreground mb-0.5">{t('common.endDate')}</p>
                     <p className="font-medium">{project.end_date}</p>
                   </div>
                 )}
                 {project.duration_months && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-0.5">Duration</p>
-                    <p className="font-medium">{project.duration_months} months</p>
+                    <p className="text-xs text-muted-foreground mb-0.5">{t('collaboration.duration')}</p>
+                    <p className="font-medium">{project.duration_months} {t('collaboration.months')}</p>
                   </div>
                 )}
               </div>
@@ -539,28 +541,28 @@ export function CollabProjectDetail() {
               <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
                 <div className="text-center">
                   <p className="text-xl font-bold">{partners.length}</p>
-                  <p className="text-[11px] text-muted-foreground">Partners</p>
-                  <p className="text-[10px] text-muted-foreground">{acceptedCount} accepted · {pendingCount} pending</p>
+                  <p className="text-[11px] text-muted-foreground">{t('collaboration.partners')}</p>
+                  <p className="text-[10px] text-muted-foreground">{acceptedCount} {t('collaboration.accepted')} · {pendingCount} {t('collaboration.pending')}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-xl font-bold">{wps.length}</p>
-                  <p className="text-[11px] text-muted-foreground">Work Packages</p>
+                  <p className="text-[11px] text-muted-foreground">{t('collaboration.workPackages')}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-xl font-bold">{deliverables.length}</p>
-                  <p className="text-[11px] text-muted-foreground">Deliverables</p>
+                  <p className="text-[11px] text-muted-foreground">{t('collaboration.deliverables')}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-xl font-bold">{milestones.length}</p>
-                  <p className="text-[11px] text-muted-foreground">Milestones</p>
+                  <p className="text-[11px] text-muted-foreground">{t('collaboration.milestones')}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-xl font-bold">{totalPMs.toFixed(1)}</p>
-                  <p className="text-[11px] text-muted-foreground">Person-Months</p>
+                  <p className="text-[11px] text-muted-foreground">{t('collaboration.personMonths')}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-xl font-bold">€{totalBudget.toLocaleString()}</p>
-                  <p className="text-[11px] text-muted-foreground">Total Budget</p>
+                  <p className="text-[11px] text-muted-foreground">{t('collaboration.totalBudget')}</p>
                 </div>
               </div>
 
@@ -572,7 +574,7 @@ export function CollabProjectDetail() {
                   <>
                     <div className="border-t" />
                     <div className="text-sm">
-                      <p className="text-xs text-muted-foreground mb-1">Coordinator</p>
+                      <p className="text-xs text-muted-foreground mb-1">{t('collaboration.coordinator')}</p>
                       <p className="font-medium">{coord.org_name}</p>
                       {coord.contact_name && <p className="text-xs text-muted-foreground">{coord.contact_name} {coord.contact_email && `· ${coord.contact_email}`}</p>}
                     </div>
@@ -587,11 +589,11 @@ export function CollabProjectDetail() {
         <TabsContent value="partners" className="space-y-4 mt-4">
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={() => { setEditPartner(null); setShowPartnerDialog(true) }} className="gap-2">
-              <Plus className="h-4 w-4" /> Add Partner
+              <Plus className="h-4 w-4" /> {t('collaboration.addPartner')}
             </Button>
           </div>
           {partners.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No partners added yet</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">{t('collaboration.noPartnersYet')}</p>
           ) : (
             <div className="space-y-3">
               {partners.map(p => (
@@ -601,7 +603,7 @@ export function CollabProjectDetail() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <Badge variant={p.role === 'coordinator' ? 'default' : 'secondary'}>
-                            {p.role === 'coordinator' ? 'Coordinator' : `#${p.participant_number}`}
+                            {p.role === 'coordinator' ? t('collaboration.coordinator') : `#${p.participant_number}`}
                           </Badge>
                           <span className="font-medium">{p.org_name}</span>
                           <Badge variant="outline" className={`text-[10px] ${INVITE_STATUS_COLORS[p.invite_status] ?? ''}`}>
@@ -614,17 +616,17 @@ export function CollabProjectDetail() {
                           {p.contact_email && <span>{p.contact_email}</span>}
                           <span>{p.total_person_months} PMs</span>
                           <span>€{(p.budget_personnel + p.budget_subcontracting + p.budget_travel + p.budget_equipment + p.budget_other_goods).toLocaleString()}</span>
-                          <span>Funding: {p.funding_rate}%</span>
-                          <span>Indirect: {p.indirect_cost_rate}%</span>
+                          <span>{t('collaboration.funding')}: {p.funding_rate}%</span>
+                          <span>{t('collaboration.indirect')}: {p.indirect_cost_rate}%</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setEditPartner(p); setShowPartnerDialog(true) }}>
-                          <Pencil className="h-3.5 w-3.5" /> Edit
+                          <Pencil className="h-3.5 w-3.5" /> {t('common.edit')}
                         </Button>
                         {p.invite_status === 'pending' && p.contact_email && (
                           <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => handleSendInvite(p)}>
-                            <Mail className="h-3.5 w-3.5" /> Email
+                            <Mail className="h-3.5 w-3.5" /> {t('common.email')}
                           </Button>
                         )}
                       </div>
@@ -640,26 +642,26 @@ export function CollabProjectDetail() {
         <TabsContent value="wps" className="mt-4 space-y-4">
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={() => setShowWpDialog(true)} className="gap-2">
-              <Pencil className="h-4 w-4" /> Edit Work Packages
+              <Pencil className="h-4 w-4" /> {t('collaboration.editWorkPackages')}
             </Button>
           </div>
           {wps.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No work packages defined</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">{t('collaboration.noWpsDefined')}</p>
           ) : (
             <Card>
               <CardContent className="p-0 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left">
-                      <th className="p-3 font-medium w-20">WP #</th>
-                      <th className="p-3 font-medium">Title</th>
-                      <th className="p-3 font-medium text-right w-28">Budgeted PMs</th>
+                      <th className="p-3 font-medium w-20">{t('collaboration.wpNumber')}</th>
+                      <th className="p-3 font-medium">{t('common.title')}</th>
+                      <th className="p-3 font-medium text-right w-28">{t('collaboration.budgetedPMs')}</th>
                       {partners.map(p => (
                         <th key={p.id} className="p-3 font-medium text-right text-xs" title={p.org_name}>
                           {p.role === 'coordinator' ? 'C' : `#${p.participant_number}`}
                         </th>
                       ))}
-                      <th className="p-3 font-medium text-right w-28">Allocated</th>
+                      <th className="p-3 font-medium text-right w-28">{t('collaboration.allocated')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -690,9 +692,9 @@ export function CollabProjectDetail() {
                             <td className="p-3">
                               <div>{wp.title}</div>
                               <div className="flex gap-3 text-[10px] text-muted-foreground mt-0.5">
-                                {leaderPartner && <span>Lead: {leaderPartner.org_name}</span>}
+                                {leaderPartner && <span>{t('collaboration.lead')}: {leaderPartner.org_name}</span>}
                                 {wp.start_month != null && wp.end_month != null && <span>M{wp.start_month}–M{wp.end_month}</span>}
-                                {wpTasks.length > 0 && <span>{wpTasks.length} task{wpTasks.length !== 1 ? 's' : ''}</span>}
+                                {wpTasks.length > 0 && <span>{t('collaboration.taskCount', { count: wpTasks.length })}</span>}
                               </div>
                             </td>
                             <td className="p-3 text-right">{wp.total_person_months}</td>
@@ -712,27 +714,27 @@ export function CollabProjectDetail() {
                               {totalAllocated.toFixed(1)}
                             </td>
                           </tr>
-                          {isExpWp && wpTasks.map(t => {
-                            const taskLeader = t.leader_partner_id ? partners.find(p => p.id === t.leader_partner_id) : null
-                            const taskEffortTotal = effortData.filter(e => e.task_id === t.id).reduce((s, e) => s + e.person_months, 0)
+                          {isExpWp && wpTasks.map(tk => {
+                            const taskLeader = tk.leader_partner_id ? partners.find(p => p.id === tk.leader_partner_id) : null
+                            const taskEffortTotal = effortData.filter(e => e.task_id === tk.id).reduce((s, e) => s + e.person_months, 0)
                             return (
-                              <tr key={t.id} className="border-b bg-muted/[0.04]">
-                                <td className="p-2 pl-8 font-mono text-xs text-muted-foreground">{t.task_number}</td>
+                              <tr key={tk.id} className="border-b bg-muted/[0.04]">
+                                <td className="p-2 pl-8 font-mono text-xs text-muted-foreground">{tk.task_number}</td>
                                 <td className="p-2 text-xs">
                                   <div className="flex items-center gap-1.5">
-                                    <span>{t.title}</span>
-                                    <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 opacity-50 hover:opacity-100" onClick={(e) => { e.stopPropagation(); handleDeleteTask(t.id, t.title) }}>
+                                    <span>{tk.title}</span>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0 opacity-50 hover:opacity-100" onClick={(e) => { e.stopPropagation(); handleDeleteTask(tk.id, tk.title) }}>
                                       <Trash2 className="h-3 w-3 text-destructive" />
                                     </Button>
                                   </div>
                                   <div className="flex gap-3 text-[10px] text-muted-foreground mt-0.5">
-                                    {taskLeader && <span>Lead: {taskLeader.org_name}</span>}
-                                    {t.start_month != null && t.end_month != null && <span>M{t.start_month}–M{t.end_month}</span>}
+                                    {taskLeader && <span>{t('collaboration.lead')}: {taskLeader.org_name}</span>}
+                                    {tk.start_month != null && tk.end_month != null && <span>M{tk.start_month}–M{tk.end_month}</span>}
                                   </div>
                                 </td>
-                                <td className="p-2 text-right text-xs text-muted-foreground">{taskEffortTotal > 0 ? taskEffortTotal.toFixed(1) : (t.person_months > 0 ? t.person_months : '—')}</td>
+                                <td className="p-2 text-right text-xs text-muted-foreground">{taskEffortTotal > 0 ? taskEffortTotal.toFixed(1) : (tk.person_months > 0 ? tk.person_months : '—')}</td>
                                 {partners.map(p => {
-                                  const eff = effortData.find(e => e.task_id === t.id && e.partner_id === p.id)
+                                  const eff = effortData.find(e => e.task_id === tk.id && e.partner_id === p.id)
                                   return (
                                     <td key={p.id} className="p-2 text-right tabular-nums text-[10px] text-muted-foreground">
                                       {eff && eff.person_months > 0 ? eff.person_months.toFixed(1) : ''}
@@ -751,19 +753,19 @@ export function CollabProjectDetail() {
                               </td>
                               <td className="p-2">
                                 <div className="flex gap-2">
-                                  <Input value={newTask.title} onChange={e => setNewTask(t => ({ ...t, title: e.target.value }))} placeholder="Task title" className="h-7 text-[11px] flex-1" />
+                                  <Input value={newTask.title} onChange={e => setNewTask(t => ({ ...t, title: e.target.value }))} placeholder={t('collaboration.taskTitle')} className="h-7 text-[11px] flex-1" />
                                   <select value={newTask.leader_partner_id} onChange={e => setNewTask(t => ({ ...t, leader_partner_id: e.target.value }))} className="flex h-7 rounded-md border border-input bg-background px-1 text-[11px] w-28">
-                                    <option value="">Leader…</option>
+                                    <option value="">{t('collaboration.leader')}…</option>
                                     {partners.map(p => <option key={p.id} value={p.id}>{p.org_name}</option>)}
                                   </select>
-                                  <Input type="number" value={newTask.start_month} onChange={e => setNewTask(t => ({ ...t, start_month: e.target.value }))} placeholder="Start M" className="h-7 w-16 text-[11px]" />
-                                  <Input type="number" value={newTask.end_month} onChange={e => setNewTask(t => ({ ...t, end_month: e.target.value }))} placeholder="End M" className="h-7 w-16 text-[11px]" />
+                                  <Input type="number" value={newTask.start_month} onChange={e => setNewTask(t => ({ ...t, start_month: e.target.value }))} placeholder={t('collaboration.startM')} className="h-7 w-16 text-[11px]" />
+                                  <Input type="number" value={newTask.end_month} onChange={e => setNewTask(t => ({ ...t, end_month: e.target.value }))} placeholder={t('collaboration.endM')} className="h-7 w-16 text-[11px]" />
                                 </div>
                               </td>
                               <td className="p-2" colSpan={partners.length + 2}>
                                 <div className="flex gap-1.5">
-                                  <Button size="sm" className="h-7 text-xs" onClick={() => handleAddTask(wp.id)} disabled={!newTask.title.trim()}>Add</Button>
-                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAddTaskWpId(null); setNewTask(emptyNewTask) }}>Cancel</Button>
+                                  <Button size="sm" className="h-7 text-xs" onClick={() => handleAddTask(wp.id)} disabled={!newTask.title.trim()}>{t('common.add')}</Button>
+                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAddTaskWpId(null); setNewTask(emptyNewTask) }}>{t('common.cancel')}</Button>
                                 </div>
                               </td>
                             </tr>
@@ -772,7 +774,7 @@ export function CollabProjectDetail() {
                             <tr className="border-b">
                               <td colSpan={3 + partners.length + 1} className="p-1.5 pl-8">
                                 <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-primary" onClick={(e) => { e.stopPropagation(); setAddTaskWpId(wp.id); setNewTask(emptyNewTask) }}>
-                                  <Plus className="h-3 w-3" /> Add Task
+                                  <Plus className="h-3 w-3" /> {t('collaboration.addTask')}
                                 </Button>
                               </td>
                             </tr>
@@ -781,7 +783,7 @@ export function CollabProjectDetail() {
                       )
                     })}
                     <tr className="bg-muted/50 font-medium">
-                      <td className="p-3" colSpan={2}>Total</td>
+                      <td className="p-3" colSpan={2}>{t('common.total')}</td>
                       <td className="p-3 text-right">
                         {wps.reduce((sum, w) => sum + w.total_person_months, 0).toFixed(1)}
                       </td>
@@ -808,10 +810,10 @@ export function CollabProjectDetail() {
         <TabsContent value="periods" className="space-y-4 mt-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              {periods.length} period{periods.length !== 1 ? 's' : ''} configured
+              {t('collaboration.periodsConfigured', { count: periods.length })}
             </p>
             <Button variant="outline" size="sm" onClick={() => setShowAddPeriod(!showAddPeriod)} className="gap-2">
-              <Plus className="h-4 w-4" /> Add Period
+              <Plus className="h-4 w-4" /> {t('collaboration.addPeriod')}
             </Button>
           </div>
 
@@ -820,36 +822,36 @@ export function CollabProjectDetail() {
               <CardContent className="p-4 space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs">Title *</Label>
+                    <Label className="text-xs">{t('common.title')} *</Label>
                     <Input value={newPeriod.title} onChange={e => setNewPeriod(p => ({ ...p, title: e.target.value }))} placeholder="e.g. RP1" className="h-9 text-sm" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Type</Label>
+                    <Label className="text-xs">{t('collaboration.type')}</Label>
                     <select value={newPeriod.period_type} onChange={e => setNewPeriod(p => ({ ...p, period_type: e.target.value as any }))} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                      <option value="informal">Informal</option>
-                      <option value="formal">Formal</option>
+                      <option value="informal">{t('collaboration.informal')}</option>
+                      <option value="formal">{t('collaboration.formal')}</option>
                     </select>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Start Month *</Label>
+                    <Label className="text-xs">{t('collaboration.startMonth')} *</Label>
                     <Input type="number" value={newPeriod.start_month} onChange={e => setNewPeriod(p => ({ ...p, start_month: e.target.value }))} placeholder="1" className="h-9 text-sm" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">End Month *</Label>
+                    <Label className="text-xs">{t('collaboration.endMonth')} *</Label>
                     <Input type="number" value={newPeriod.end_month} onChange={e => setNewPeriod(p => ({ ...p, end_month: e.target.value }))} placeholder="18" className="h-9 text-sm" />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs">Due Date</Label>
+                    <Label className="text-xs">{t('collaboration.dueDate')}</Label>
                     <Input type="date" value={newPeriod.due_date} onChange={e => setNewPeriod(p => ({ ...p, due_date: e.target.value }))} className="h-9 text-sm" />
                   </div>
                   <div className="col-span-3 flex items-end gap-2">
                     <Button size="sm" onClick={handleAddPeriod} disabled={!newPeriod.title || !newPeriod.start_month || !newPeriod.end_month}>
-                      Add Period
+                      {t('collaboration.addPeriod')}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setShowAddPeriod(false)}>
-                      Cancel
+                      {t('common.cancel')}
                     </Button>
                   </div>
                 </div>
@@ -859,9 +861,9 @@ export function CollabProjectDetail() {
 
           {periods.length === 0 && !showAddPeriod ? (
             <div className="text-center py-8">
-              <p className="text-sm text-muted-foreground mb-2">No reporting periods configured</p>
+              <p className="text-sm text-muted-foreground mb-2">{t('collaboration.noPeriodsConfigured')}</p>
               <p className="text-xs text-muted-foreground">
-                Add periods to start tracking partner financial reports.
+                {t('collaboration.addPeriodsDesc')}
               </p>
             </div>
           ) : (
@@ -887,10 +889,10 @@ export function CollabProjectDetail() {
                               return (
                                 <span className="flex items-center gap-1.5 text-[10px]">
                                   {isExpanded ? '▾' : '▸'}
-                                  {statusCounts.approved && <Badge variant="secondary" className="h-4 text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">{statusCounts.approved} approved</Badge>}
-                                  {statusCounts.submitted && <Badge variant="secondary" className="h-4 text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{statusCounts.submitted} submitted</Badge>}
-                                  {statusCounts.draft && <Badge variant="secondary" className="h-4 text-[10px] bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">{statusCounts.draft} draft</Badge>}
-                                  {statusCounts.rejected && <Badge variant="secondary" className="h-4 text-[10px] bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">{statusCounts.rejected} returned</Badge>}
+                                  {statusCounts.approved && <Badge variant="secondary" className="h-4 text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">{statusCounts.approved} {t('collaboration.approved')}</Badge>}
+                                  {statusCounts.submitted && <Badge variant="secondary" className="h-4 text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">{statusCounts.submitted} {t('collaboration.submitted')}</Badge>}
+                                  {statusCounts.draft && <Badge variant="secondary" className="h-4 text-[10px] bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">{statusCounts.draft} {t('collaboration.draft')}</Badge>}
+                                  {statusCounts.rejected && <Badge variant="secondary" className="h-4 text-[10px] bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">{statusCounts.rejected} {t('collaboration.returned')}</Badge>}
                                 </span>
                               )
                             })()}
@@ -908,12 +910,12 @@ export function CollabProjectDetail() {
                         <div className="flex items-center gap-2">
                           {p.reports_generated ? (
                             <Button size="sm" variant="ghost" onClick={() => togglePeriod(p.id)} className="gap-1.5 text-xs">
-                              <FileText className="h-3.5 w-3.5" /> {isExpanded ? 'Hide' : 'View'} Reports
+                              <FileText className="h-3.5 w-3.5" /> {isExpanded ? t('collaboration.hideReports') : t('collaboration.viewReports')}
                             </Button>
                           ) : (
                             <>
                               <Button size="sm" variant="outline" onClick={() => handleGenerateReports(p.id)} className="gap-1.5 text-xs">
-                                <FileText className="h-3.5 w-3.5" /> Generate Reports
+                                <FileText className="h-3.5 w-3.5" /> {t('collaboration.generateReports')}
                               </Button>
                               <Button size="sm" variant="ghost" onClick={() => startEditPeriod(p)} className="h-8 w-8 p-0">
                                 <Pencil className="h-3.5 w-3.5" />
@@ -930,36 +932,36 @@ export function CollabProjectDetail() {
                         <div className="mt-3 pt-3 border-t space-y-3">
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                             <div className="space-y-1">
-                              <Label className="text-xs">Title *</Label>
+                              <Label className="text-xs">{t('common.title')} *</Label>
                               <Input value={editPeriod.title} onChange={e => setEditPeriod(ep => ({ ...ep, title: e.target.value }))} className="h-9 text-sm" />
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">Type</Label>
+                              <Label className="text-xs">{t('collaboration.type')}</Label>
                               <select value={editPeriod.period_type} onChange={e => setEditPeriod(ep => ({ ...ep, period_type: e.target.value as any }))} className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm">
-                                <option value="informal">Informal</option>
-                                <option value="formal">Formal</option>
+                                <option value="informal">{t('collaboration.informal')}</option>
+                                <option value="formal">{t('collaboration.formal')}</option>
                               </select>
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">Start Month</Label>
+                              <Label className="text-xs">{t('collaboration.startMonth')}</Label>
                               <Input type="number" value={editPeriod.start_month} onChange={e => setEditPeriod(ep => ({ ...ep, start_month: e.target.value }))} className="h-9 text-sm" />
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">End Month</Label>
+                              <Label className="text-xs">{t('collaboration.endMonth')}</Label>
                               <Input type="number" value={editPeriod.end_month} onChange={e => setEditPeriod(ep => ({ ...ep, end_month: e.target.value }))} className="h-9 text-sm" />
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                             <div className="space-y-1">
-                              <Label className="text-xs">Due Date</Label>
+                              <Label className="text-xs">{t('collaboration.dueDate')}</Label>
                               <Input type="date" value={editPeriod.due_date} onChange={e => setEditPeriod(ep => ({ ...ep, due_date: e.target.value }))} className="h-9 text-sm" />
                             </div>
                             <div className="col-span-3 flex items-end gap-2">
                               <Button size="sm" onClick={handleUpdatePeriod} disabled={!editPeriod.title || !editPeriod.start_month || !editPeriod.end_month}>
-                                Save Changes
+                                {t('common.saveChanges')}
                               </Button>
                               <Button size="sm" variant="ghost" onClick={() => setEditPeriodId(null)}>
-                                Cancel
+                                {t('common.cancel')}
                               </Button>
                             </div>
                           </div>
@@ -969,7 +971,7 @@ export function CollabProjectDetail() {
                       {isExpanded && (
                         <div className="mt-3 pt-3 border-t space-y-1.5">
                           {reports.length === 0 ? (
-                            <p className="text-xs text-muted-foreground">Loading reports...</p>
+                            <p className="text-xs text-muted-foreground">{t('common.loading')}...</p>
                           ) : (
                             reports.map(r => {
                               const rPartner = (r as any).collab_partners
@@ -995,7 +997,7 @@ export function CollabProjectDetail() {
                                     className="h-7 text-xs gap-1"
                                     onClick={() => navigate(`/projects/collaboration/report/${r.id}`)}
                                   >
-                                    {r.status === 'submitted' ? 'Review' : 'Open'}
+                                    {r.status === 'submitted' ? t('collaboration.review') : t('collaboration.open')}
                                   </Button>
                                 </div>
                               )
@@ -1017,11 +1019,11 @@ export function CollabProjectDetail() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <ListChecks className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-medium">Deliverables</h3>
+              <h3 className="text-sm font-medium">{t('collaboration.deliverables')}</h3>
               <Badge variant="secondary" className="text-[10px]">{deliverables.length}</Badge>
             </div>
             {deliverables.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-4 text-center">No deliverables defined yet</p>
+              <p className="text-xs text-muted-foreground py-4 text-center">{t('collaboration.noDeliverablesYet')}</p>
             ) : (
               <Card>
                 <CardContent className="p-0 overflow-x-auto">
@@ -1029,12 +1031,12 @@ export function CollabProjectDetail() {
                     <thead>
                       <tr className="border-b bg-muted/50">
                         <th className="px-3 py-2 text-left font-medium text-xs w-20">#</th>
-                        <th className="px-3 py-2 text-left font-medium text-xs">Title</th>
-                        <th className="px-3 py-2 text-left font-medium text-xs w-16">WP</th>
-                        <th className="px-3 py-2 text-left font-medium text-xs w-20">Type</th>
-                        <th className="px-3 py-2 text-left font-medium text-xs w-24">Dissemination</th>
-                        <th className="px-3 py-2 text-left font-medium text-xs w-20">Due</th>
-                        <th className="px-3 py-2 text-left font-medium text-xs">Lead</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs">{t('common.title')}</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs w-16">{t('collaboration.wp')}</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs w-20">{t('collaboration.type')}</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs w-24">{t('collaboration.dissemination')}</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs w-20">{t('collaboration.due')}</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs">{t('collaboration.lead')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1068,11 +1070,11 @@ export function CollabProjectDetail() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-medium">Milestones</h3>
+              <h3 className="text-sm font-medium">{t('collaboration.milestones')}</h3>
               <Badge variant="secondary" className="text-[10px]">{milestones.length}</Badge>
             </div>
             {milestones.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-4 text-center">No milestones defined yet</p>
+              <p className="text-xs text-muted-foreground py-4 text-center">{t('collaboration.noMilestonesYet')}</p>
             ) : (
               <Card>
                 <CardContent className="p-0 overflow-x-auto">
@@ -1080,10 +1082,10 @@ export function CollabProjectDetail() {
                     <thead>
                       <tr className="border-b bg-muted/50">
                         <th className="px-3 py-2 text-left font-medium text-xs w-20">#</th>
-                        <th className="px-3 py-2 text-left font-medium text-xs">Title</th>
-                        <th className="px-3 py-2 text-left font-medium text-xs w-16">WP</th>
-                        <th className="px-3 py-2 text-left font-medium text-xs w-20">Due</th>
-                        <th className="px-3 py-2 text-left font-medium text-xs">Verification Means</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs">{t('common.title')}</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs w-16">{t('collaboration.wp')}</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs w-20">{t('collaboration.due')}</th>
+                        <th className="px-3 py-2 text-left font-medium text-xs">{t('collaboration.verificationMeans')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1123,11 +1125,11 @@ export function CollabProjectDetail() {
         {/* Budget Overview Tab */}
         <TabsContent value="budget" className="mt-4 space-y-4">
           {partners.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Add partners to see budget overview</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">{t('collaboration.addPartnersForBudget')}</p>
           ) : (<>
             <div className="flex justify-end">
               <Button variant="outline" size="sm" onClick={() => generateCollabBudgetPDF(project.acronym, partners, orgName || '')} className="gap-2">
-                <Download className="h-4 w-4" /> Export PDF
+                <Download className="h-4 w-4" /> {t('collaboration.exportPdf')}
               </Button>
             </div>
             <Card>
@@ -1135,18 +1137,18 @@ export function CollabProjectDetail() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left">
-                      <th className="p-3 font-medium sticky left-0 bg-background">Partner</th>
-                      <th className="p-3 font-medium">Country</th>
-                      <th className="p-3 font-medium text-right">Personnel</th>
-                      <th className="p-3 font-medium text-right">Subcontracting</th>
-                      <th className="p-3 font-medium text-right">Travel</th>
-                      <th className="p-3 font-medium text-right">Equipment</th>
-                      <th className="p-3 font-medium text-right">Other Goods</th>
-                      <th className="p-3 font-medium text-right">Total Direct</th>
-                      <th className="p-3 font-medium text-right">Indirect</th>
-                      <th className="p-3 font-medium text-right font-bold">Grand Total</th>
-                      <th className="p-3 font-medium text-right">Funding</th>
-                      <th className="p-3 font-medium text-right">PMs</th>
+                      <th className="p-3 font-medium sticky left-0 bg-background">{t('collaboration.partner')}</th>
+                      <th className="p-3 font-medium">{t('collaboration.country')}</th>
+                      <th className="p-3 font-medium text-right">{t('collaboration.personnel')}</th>
+                      <th className="p-3 font-medium text-right">{t('collaboration.subcontracting')}</th>
+                      <th className="p-3 font-medium text-right">{t('collaboration.travel')}</th>
+                      <th className="p-3 font-medium text-right">{t('collaboration.equipment')}</th>
+                      <th className="p-3 font-medium text-right">{t('collaboration.otherGoods')}</th>
+                      <th className="p-3 font-medium text-right">{t('collaboration.totalDirect')}</th>
+                      <th className="p-3 font-medium text-right">{t('collaboration.indirect')}</th>
+                      <th className="p-3 font-medium text-right font-bold">{t('collaboration.grandTotal')}</th>
+                      <th className="p-3 font-medium text-right">{t('collaboration.funding')}</th>
+                      <th className="p-3 font-medium text-right">{t('collaboration.pms')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1212,7 +1214,7 @@ export function CollabProjectDetail() {
                       }, { personnel: 0, subcontracting: 0, travel: 0, equipment: 0, other: 0, direct: 0, indirect: 0, grand: 0, funding: 0, pms: 0 })
                       return (
                         <tr className="bg-muted/50 font-medium border-t-2">
-                          <td className="p-3 sticky left-0 bg-muted/50">Total ({partners.length} partners)</td>
+                          <td className="p-3 sticky left-0 bg-muted/50">{t('common.total')} ({t('collaboration.partnerCount', { count: partners.length })})</td>
                           <td className="p-3"></td>
                           <td className="p-3 text-right tabular-nums">€{totals.personnel.toLocaleString()}</td>
                           <td className="p-3 text-right tabular-nums">€{totals.subcontracting.toLocaleString()}</td>
@@ -1237,21 +1239,21 @@ export function CollabProjectDetail() {
         {/* Effort Overview Tab */}
         <TabsContent value="effort" className="mt-4 space-y-4">
           {partners.length === 0 || wps.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Add partners and work packages to see the effort overview</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">{t('collaboration.addPartnersWpsForEffort')}</p>
           ) : (
             <Card>
               <CardContent className="p-0 overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b text-left bg-muted/50">
-                      <th className="p-3 font-medium sticky left-0 bg-muted/50">WP / Task</th>
+                      <th className="p-3 font-medium sticky left-0 bg-muted/50">{t('collaboration.wpTask')}</th>
                       {partners.map(p => (
                         <th key={p.id} className="p-3 font-medium text-right text-xs min-w-[80px]" title={p.org_name}>
                           <div className="truncate max-w-[80px]">{p.org_name}</div>
-                          <div className="text-[10px] text-muted-foreground font-normal">{p.role === 'coordinator' ? 'Coord' : `#${p.participant_number}`}</div>
+                          <div className="text-[10px] text-muted-foreground font-normal">{p.role === 'coordinator' ? t('collaboration.coord') : `#${p.participant_number}`}</div>
                         </th>
                       ))}
-                      <th className="p-3 font-medium text-right w-24">Total</th>
+                      <th className="p-3 font-medium text-right w-24">{t('common.total')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1259,8 +1261,8 @@ export function CollabProjectDetail() {
                       const wpTasks = tasksByWp[wp.id] ?? []
                       // Compute per-partner PMs for this WP (sum of task efforts)
                       const wpPartnerPMs = partners.map(p => {
-                        return wpTasks.reduce((s, t) => {
-                          const eff = effortData.find(e => e.task_id === t.id && e.partner_id === p.id)
+                        return wpTasks.reduce((s, tk) => {
+                          const eff = effortData.find(e => e.task_id === tk.id && e.partner_id === p.id)
                           return s + (eff?.person_months ?? 0)
                         }, 0)
                       })
@@ -1281,17 +1283,17 @@ export function CollabProjectDetail() {
                               {wpTotal > 0 ? wpTotal.toFixed(1) : '—'}
                             </td>
                           </tr>
-                          {wpTasks.map(t => {
+                          {wpTasks.map(tk => {
                             const taskPartnerPMs = partners.map(p => {
-                              const eff = effortData.find(e => e.task_id === t.id && e.partner_id === p.id)
+                              const eff = effortData.find(e => e.task_id === tk.id && e.partner_id === p.id)
                               return eff?.person_months ?? 0
                             })
                             const taskTotal = taskPartnerPMs.reduce((s, v) => s + v, 0)
                             return (
-                              <tr key={t.id} className="border-b">
+                              <tr key={tk.id} className="border-b">
                                 <td className="p-2 pl-8 sticky left-0 bg-background text-xs text-muted-foreground">
-                                  <span className="font-mono mr-1">{t.task_number}</span>
-                                  {t.title}
+                                  <span className="font-mono mr-1">{tk.task_number}</span>
+                                  {tk.title}
                                 </td>
                                 {taskPartnerPMs.map((pm, i) => (
                                   <td key={partners[i].id} className="p-2 text-right tabular-nums text-[11px] text-muted-foreground">
@@ -1299,7 +1301,7 @@ export function CollabProjectDetail() {
                                   </td>
                                 ))}
                                 <td className="p-2 text-right tabular-nums text-xs font-medium">
-                                  {taskTotal > 0 ? taskTotal.toFixed(1) : (t.person_months > 0 ? t.person_months.toFixed(1) : '')}
+                                  {taskTotal > 0 ? taskTotal.toFixed(1) : (tk.person_months > 0 ? tk.person_months.toFixed(1) : '')}
                                 </td>
                               </tr>
                             )
@@ -1310,7 +1312,7 @@ export function CollabProjectDetail() {
                   </tbody>
                   <tfoot>
                     <tr className="bg-muted/50 font-medium border-t-2">
-                      <td className="p-3 sticky left-0 bg-muted/50">Total</td>
+                      <td className="p-3 sticky left-0 bg-muted/50">{t('common.total')}</td>
                       {partners.map(p => {
                         const partnerTotal = effortData.filter(e => e.partner_id === p.id).reduce((s, e) => s + e.person_months, 0)
                         return (

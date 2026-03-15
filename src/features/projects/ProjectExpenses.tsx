@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useProjectExpenses } from '@/hooks/useExpenses'
 import { expenseService } from '@/services/expenseService'
 import { emailService } from '@/services/emailService'
@@ -23,11 +24,11 @@ import { Plus, Trash2, Receipt, Plane, Handshake, Package, TrendingDown, AlertTr
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import type { Project, ExpenseCategory, ProjectExpense } from '@/types'
 
-const EXPENSE_CATEGORIES: { key: ExpenseCategory; label: string; icon: typeof Plane }[] = [
-  { key: 'travel', label: 'Travel', icon: Plane },
-  { key: 'subcontracting', label: 'Subcontracting', icon: Handshake },
-  { key: 'other', label: 'Other Direct Costs', icon: Package },
-  { key: 'indirect', label: 'Indirect Costs', icon: TrendingDown },
+const EXPENSE_CATEGORIES: { key: ExpenseCategory; labelKey: string; icon: typeof Plane }[] = [
+  { key: 'travel', labelKey: 'projects.travel', icon: Plane },
+  { key: 'subcontracting', labelKey: 'projects.subcontracting', icon: Handshake },
+  { key: 'other', labelKey: 'projects.otherDirectCosts', icon: Package },
+  { key: 'indirect', labelKey: 'projects.indirectCosts', icon: TrendingDown },
 ]
 
 function getBudgetForCategory(project: Project, category: ExpenseCategory): number {
@@ -48,6 +49,7 @@ interface Props {
 }
 
 export function ProjectExpenses({ project }: Props) {
+  const { t } = useTranslation()
   const { orgId, orgName, user, can } = useAuthStore()
   const { expenses, isLoading, refetch, getTotalForCategory } = useProjectExpenses(project.id)
   const { staff } = useStaff({ is_active: true })
@@ -102,7 +104,7 @@ export function ProjectExpenses({ project }: Props) {
     if (!orgId || !description.trim() || !amount || !expenseDate) return
     const numAmount = Number(amount)
     if (isNaN(numAmount) || numAmount < 0) {
-      toast({ title: 'Invalid amount', variant: 'destructive' })
+      toast({ title: t('expenses.invalidAmount'), variant: 'destructive' })
       return
     }
 
@@ -119,7 +121,7 @@ export function ProjectExpenses({ project }: Props) {
           person_id: personId || null,
           notes: notes.trim() || null,
         })
-        toast({ title: 'Expense updated' })
+        toast({ title: t('expenses.expenseUpdated') })
       } else {
         await expenseService.create({
           org_id: orgId,
@@ -134,7 +136,7 @@ export function ProjectExpenses({ project }: Props) {
           notes: notes.trim() || null,
           recorded_by: user?.id ?? null,
         })
-        toast({ title: 'Expense recorded' })
+        toast({ title: t('expenses.expenseRecorded') })
 
         // Fire-and-forget: send budget alert if category > 80%
         const catBudget = getBudgetForCategory(project, category)
@@ -142,7 +144,7 @@ export function ProjectExpenses({ project }: Props) {
           const newSpent = getTotalForCategory(category) + numAmount
           const pctUsed = Math.round((newSpent / catBudget) * 100)
           if (pctUsed >= 80 && user?.email) {
-            const catLabel = EXPENSE_CATEGORIES.find(c => c.key === category)?.label ?? category
+            const catLabel = t(EXPENSE_CATEGORIES.find(c => c.key === category)?.labelKey ?? category)
             emailService.sendBudgetAlert({
               to: user.email,
               recipientName: user.email.split('@')[0],
@@ -159,8 +161,8 @@ export function ProjectExpenses({ project }: Props) {
       resetForm()
       refetch()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save expense'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -171,12 +173,12 @@ export function ProjectExpenses({ project }: Props) {
     setDeleting(true)
     try {
       await expenseService.remove(deleteTarget.id)
-      toast({ title: 'Expense deleted' })
+      toast({ title: t('expenses.expenseDeleted') })
       setDeleteTarget(null)
       refetch()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToDelete')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setDeleting(false)
     }
@@ -206,15 +208,15 @@ export function ProjectExpenses({ project }: Props) {
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                     <Icon className="h-4 w-4 text-primary" />
                   </div>
-                  <span className="text-sm font-medium">{cat.label}</span>
+                  <span className="text-sm font-medium">{t(cat.labelKey)}</span>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Budget</span>
+                    <span className="text-muted-foreground">{t('common.budget')}</span>
                     <span className="tabular-nums">{formatCurrency(budget)}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Spent</span>
+                    <span className="text-muted-foreground">{t('expenses.spent')}</span>
                     <span className="tabular-nums font-medium">{formatCurrency(spent)}</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
@@ -231,7 +233,7 @@ export function ProjectExpenses({ project }: Props) {
                       'font-medium',
                       remaining >= 0 ? 'text-emerald-600' : 'text-red-600',
                     )}>
-                      {remaining >= 0 ? 'Remaining' : 'Over budget'}
+                      {remaining >= 0 ? t('common.remaining') : t('common.overBudget')}
                     </span>
                     <span className={cn(
                       'tabular-nums font-semibold',
@@ -267,10 +269,10 @@ export function ProjectExpenses({ project }: Props) {
           // Alert if spend % is more than 20 points ahead of timeline %
           if (spentPct > timelinePct + 20 && spentPct > 30) {
             alerts.push({
-              category: cat.label,
+              category: t(cat.labelKey),
               spentPct: Math.round(spentPct),
               timelinePct: Math.round(timelinePct),
-              message: `${cat.label} budget is ${Math.round(spentPct)}% consumed but only ${Math.round(timelinePct)}% of the project timeline has passed.`,
+              message: t('expenses.budgetAlertMessage', { category: t(cat.labelKey), spentPct: Math.round(spentPct), timelinePct: Math.round(timelinePct) }),
             })
           }
         }
@@ -295,18 +297,18 @@ export function ProjectExpenses({ project }: Props) {
             onChange={(e) => setFilterCategory(e.target.value as ExpenseCategory | 'all')}
             className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <option value="all">All Categories</option>
+            <option value="all">{t('common.allCategories')}</option>
             {EXPENSE_CATEGORIES.map((cat) => (
-              <option key={cat.key} value={cat.key}>{cat.label}</option>
+              <option key={cat.key} value={cat.key}>{t(cat.labelKey)}</option>
             ))}
           </select>
           <span className="text-sm text-muted-foreground">
-            {filteredExpenses.length} expense{filteredExpenses.length !== 1 ? 's' : ''}
+            {filteredExpenses.length !== 1 ? t('expenses.expenseCountPlural', { count: filteredExpenses.length }) : t('expenses.expenseCount', { count: filteredExpenses.length })}
           </span>
         </div>
         {can('canManageBudgets') && (
           <Button size="sm" onClick={openNew} className="gap-1.5">
-            <Plus className="h-4 w-4" /> Record Expense
+            <Plus className="h-4 w-4" /> {t('expenses.recordExpense')}
           </Button>
         )}
       </div>
@@ -315,21 +317,21 @@ export function ProjectExpenses({ project }: Props) {
       {filteredExpenses.length === 0 ? (
         <EmptyState
           icon={Receipt}
-          title="No expenses recorded"
-          description="Record project expenses to track budget consumption against travel, subcontracting, and other cost categories."
+          title={t('expenses.noExpenses')}
+          description={t('expenses.noExpensesDesc')}
         />
       ) : (
         <div className="rounded-lg border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-2.5 text-left font-medium">Date</th>
-                <th className="px-4 py-2.5 text-left font-medium">Description</th>
-                <th className="px-4 py-2.5 text-left font-medium">Category</th>
-                <th className="px-4 py-2.5 text-left font-medium">Vendor</th>
-                <th className="px-4 py-2.5 text-right font-medium">Amount</th>
+                <th className="px-4 py-2.5 text-left font-medium">{t('common.date')}</th>
+                <th className="px-4 py-2.5 text-left font-medium">{t('common.description')}</th>
+                <th className="px-4 py-2.5 text-left font-medium">{t('common.category')}</th>
+                <th className="px-4 py-2.5 text-left font-medium">{t('common.vendor')}</th>
+                <th className="px-4 py-2.5 text-right font-medium">{t('common.amount')}</th>
                 {can('canManageBudgets') && (
-                  <th className="px-4 py-2.5 text-center font-medium w-20">Actions</th>
+                  <th className="px-4 py-2.5 text-center font-medium w-20">{t('common.actions')}</th>
                 )}
               </tr>
             </thead>
@@ -349,7 +351,7 @@ export function ProjectExpenses({ project }: Props) {
                       <div>
                         <span className="font-medium">{exp.description}</span>
                         {exp.reference && (
-                          <span className="ml-2 text-xs text-muted-foreground">Ref: {exp.reference}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">{t('common.ref', { ref: exp.reference })}</span>
                         )}
                       </div>
                       {exp.notes && (
@@ -358,7 +360,7 @@ export function ProjectExpenses({ project }: Props) {
                     </td>
                     <td className="px-4 py-2.5">
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full bg-muted">
-                        {catMeta?.label ?? exp.category}
+                        {catMeta ? t(catMeta.labelKey) : exp.category}
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">{exp.vendor ?? '—'}</td>
@@ -386,7 +388,7 @@ export function ProjectExpenses({ project }: Props) {
             </tbody>
             <tfoot>
               <tr className="border-t-2 bg-muted/50 font-semibold">
-                <td colSpan={4} className="px-4 py-2.5 text-right">Total</td>
+                <td colSpan={4} className="px-4 py-2.5 text-right">{t('common.total')}</td>
                 <td className="px-4 py-2.5 text-right tabular-nums">
                   {formatCurrency(filteredExpenses.reduce((sum, e) => sum + e.amount, 0))}
                 </td>
@@ -401,24 +403,24 @@ export function ProjectExpenses({ project }: Props) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingExpense ? 'Edit Expense' : 'Record Expense'}</DialogTitle>
+            <DialogTitle>{editingExpense ? t('expenses.editExpense') : t('expenses.recordExpense')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Category *</Label>
+                <Label>{t('common.category')} *</Label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value as ExpenseCategory)}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {EXPENSE_CATEGORIES.map((cat) => (
-                    <option key={cat.key} value={cat.key}>{cat.label}</option>
+                    <option key={cat.key} value={cat.key}>{t(cat.labelKey)}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-2">
-                <Label>Date *</Label>
+                <Label>{t('common.date')} *</Label>
                 <Input
                   type="date"
                   value={expenseDate}
@@ -429,9 +431,9 @@ export function ProjectExpenses({ project }: Props) {
             </div>
 
             <div className="space-y-2">
-              <Label>Description *</Label>
+              <Label>{t('common.description')} *</Label>
               <Input
-                placeholder="e.g. Flight to Brussels for consortium meeting"
+                placeholder={t('expenses.descriptionPlaceholder')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 required
@@ -441,7 +443,7 @@ export function ProjectExpenses({ project }: Props) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Amount *</Label>
+                <Label>{t('common.amount')} *</Label>
                 <Input
                   type="number"
                   step="0.01"
@@ -453,9 +455,9 @@ export function ProjectExpenses({ project }: Props) {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Vendor / Payee</Label>
+                <Label>{t('expenses.vendorPayee')}</Label>
                 <Input
-                  placeholder="e.g. Lufthansa, Hotel Berlin"
+                  placeholder={t('expenses.vendorPlaceholder')}
                   value={vendor}
                   onChange={(e) => setVendor(e.target.value)}
                 />
@@ -464,21 +466,21 @@ export function ProjectExpenses({ project }: Props) {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Reference / Invoice #</Label>
+                <Label>{t('expenses.referenceInvoice')}</Label>
                 <Input
-                  placeholder="e.g. INV-2026-001"
+                  placeholder={t('expenses.referencePlaceholder')}
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Person</Label>
+                <Label>{t('common.person')}</Label>
                 <select
                   value={personId}
                   onChange={(e) => setPersonId(e.target.value)}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <option value="">— None —</option>
+                  <option value="">{t('common.noneSelected')}</option>
                   {staff.map((s) => (
                     <option key={s.id} value={s.id}>{s.full_name}</option>
                   ))}
@@ -487,9 +489,9 @@ export function ProjectExpenses({ project }: Props) {
             </div>
 
             <div className="space-y-2">
-              <Label>Notes</Label>
+              <Label>{t('common.notes')}</Label>
               <Input
-                placeholder="Additional details..."
+                placeholder={t('expenses.additionalDetails')}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
@@ -509,13 +511,13 @@ export function ProjectExpenses({ project }: Props) {
                   remaining >= 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800',
                 )}>
                   <div className="flex justify-between">
-                    <span>Budget for {EXPENSE_CATEGORIES.find((c) => c.key === category)?.label}:</span>
+                    <span>{t('expenses.budgetForCategory', { category: t(EXPENSE_CATEGORIES.find((c) => c.key === category)?.labelKey ?? '') })}:</span>
                     <span className="font-medium tabular-nums">{formatCurrency(budget)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>After this expense:</span>
+                    <span>{t('expenses.afterThisExpense')}</span>
                     <span className="font-semibold tabular-nums">
-                      {remaining >= 0 ? `${formatCurrency(remaining)} remaining` : `${formatCurrency(Math.abs(remaining))} over budget`}
+                      {remaining >= 0 ? t('expenses.remainingAfter', { amount: formatCurrency(remaining) }) : t('expenses.overBudgetAfter', { amount: formatCurrency(Math.abs(remaining)) })}
                     </span>
                   </div>
                 </div>
@@ -523,9 +525,9 @@ export function ProjectExpenses({ project }: Props) {
             })()}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleSave} disabled={saving || !description.trim() || !amount || !expenseDate}>
-              {saving ? 'Saving...' : editingExpense ? 'Update' : 'Record Expense'}
+              {saving ? t('common.saving') : editingExpense ? t('common.update') : t('expenses.recordExpense')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -535,9 +537,9 @@ export function ProjectExpenses({ project }: Props) {
       <ConfirmModal
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete Expense"
-        message={`Delete "${deleteTarget?.description}" (${deleteTarget ? formatCurrency(deleteTarget.amount) : ''})?`}
-        confirmLabel="Delete"
+        title={t('expenses.deleteExpense')}
+        message={t('expenses.deleteExpenseConfirm', { name: deleteTarget?.description ?? '', amount: deleteTarget ? formatCurrency(deleteTarget.amount) : '' })}
+        confirmLabel={t('common.delete')}
         onConfirm={handleDelete}
         loading={deleting}
         destructive

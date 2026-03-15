@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ZoomIn, ZoomOut, RotateCcw, CalendarDays, FileText, Target, ClipboardList, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +22,7 @@ interface CollabGanttChartProps {
 export function CollabGanttChart({
   project, partners, wps, tasksByWp, deliverables, milestones, periods,
 }: CollabGanttChartProps) {
+  const { t } = useTranslation()
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -82,7 +84,7 @@ export function CollabGanttChart({
   if (!project.start_date || !project.duration_months) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <p className="text-sm">Set project start date and duration to see the Gantt chart.</p>
+        <p className="text-sm">{t('collaboration.setStartDateForGantt')}</p>
       </div>
     )
   }
@@ -90,7 +92,7 @@ export function CollabGanttChart({
   if (wps.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <p className="text-sm">Add work packages to see the Gantt chart.</p>
+        <p className="text-sm">{t('collaboration.addWpsForGantt')}</p>
       </div>
     )
   }
@@ -112,16 +114,16 @@ export function CollabGanttChart({
       {/* Controls */}
       <div className="flex items-center gap-2 flex-wrap">
         <Button variant="outline" size="sm" onClick={handleZoomOut} disabled={zoomIndex === 0} className="gap-1">
-          <ZoomOut className="h-3.5 w-3.5" /> Zoom Out
+          <ZoomOut className="h-3.5 w-3.5" /> {t('collaboration.zoomOut')}
         </Button>
         <div className="text-xs text-muted-foreground tabular-nums w-16 text-center">
           {Math.round((colWidth / ZOOM_LEVELS[DEFAULT_ZOOM_INDEX]) * 100)}%
         </div>
         <Button variant="outline" size="sm" onClick={handleZoomIn} disabled={zoomIndex === ZOOM_LEVELS.length - 1} className="gap-1">
-          <ZoomIn className="h-3.5 w-3.5" /> Zoom In
+          <ZoomIn className="h-3.5 w-3.5" /> {t('collaboration.zoomIn')}
         </Button>
         <Button variant="ghost" size="sm" onClick={handleZoomReset} disabled={zoomIndex === DEFAULT_ZOOM_INDEX} className="gap-1 text-muted-foreground">
-          <RotateCcw className="h-3.5 w-3.5" /> Reset
+          <RotateCcw className="h-3.5 w-3.5" /> {t('common.reset')}
         </Button>
         <div className="flex-1" />
 
@@ -129,26 +131,26 @@ export function CollabGanttChart({
         <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
           <input type="checkbox" checked={showTasks} onChange={e => setShowTasks(e.target.checked)} className="accent-blue-500" />
           <Layers className="h-3 w-3 text-blue-500" />
-          <span className="text-muted-foreground">Tasks</span>
+          <span className="text-muted-foreground">{t('collaboration.tasks')}</span>
         </label>
         <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
           <input type="checkbox" checked={showDeliverables} onChange={e => setShowDeliverables(e.target.checked)} className="accent-orange-500" />
           <FileText className="h-3 w-3 text-orange-500" />
-          <span className="text-muted-foreground">Deliverables</span>
+          <span className="text-muted-foreground">{t('collaboration.deliverables')}</span>
         </label>
         <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
           <input type="checkbox" checked={showMilestones} onChange={e => setShowMilestones(e.target.checked)} className="accent-violet-500" />
           <Target className="h-3 w-3 text-violet-500" />
-          <span className="text-muted-foreground">Milestones</span>
+          <span className="text-muted-foreground">{t('collaboration.milestones')}</span>
         </label>
         <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
           <input type="checkbox" checked={showReporting} onChange={e => setShowReporting(e.target.checked)} className="accent-cyan-500" />
           <ClipboardList className="h-3 w-3 text-cyan-500" />
-          <span className="text-muted-foreground">Reporting</span>
+          <span className="text-muted-foreground">{t('collaboration.reporting')}</span>
         </label>
 
         <Button variant="outline" size="sm" onClick={scrollToToday} className="gap-1">
-          <CalendarDays className="h-3.5 w-3.5" /> Today
+          <CalendarDays className="h-3.5 w-3.5" /> {t('collaboration.today')}
         </Button>
       </div>
 
@@ -158,7 +160,7 @@ export function CollabGanttChart({
           {/* Header row */}
           <div className="flex border-b bg-muted/50 sticky top-0 z-10">
             <div className="w-[240px] shrink-0 px-4 py-2 font-medium text-sm border-r bg-muted/50">
-              Work Packages
+              {t('collaboration.workPackages')}
             </div>
             <div className="flex relative">
               {monthHeaders.map((h, i) => (
@@ -178,7 +180,7 @@ export function CollabGanttChart({
           {showReporting && periods.length > 0 && (
             <div className="flex border-b bg-cyan-50/30 dark:bg-cyan-950/10">
               <div className="w-[240px] shrink-0 px-4 py-1.5 border-r text-xs text-cyan-700 dark:text-cyan-400 font-medium flex items-center gap-1.5">
-                <ClipboardList className="h-3 w-3" /> Reporting Periods
+                <ClipboardList className="h-3 w-3" /> {t('collaboration.reportingPeriods')}
               </div>
               <div className="relative flex-1" style={{ height: 28 }}>
                 {/* Grid */}
@@ -201,7 +203,7 @@ export function CollabGanttChart({
                         <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                           <div className="font-semibold text-cyan-600">{rp.title}</div>
                           <div className="text-muted-foreground">M{rp.start_month} – M{rp.end_month} ({rp.period_type})</div>
-                          {rp.due_date && <div className="text-muted-foreground">Due: {rp.due_date}</div>}
+                          {rp.due_date && <div className="text-muted-foreground">{t('collaboration.due')}: {rp.due_date}</div>}
                         </div>
                       </div>
                     </div>
@@ -236,8 +238,8 @@ export function CollabGanttChart({
                       <span className="font-medium text-xs truncate">{wp.title}</span>
                     </div>
                     <div className="flex gap-2 text-[10px] text-muted-foreground mt-0.5 pl-0.5">
-                      {leader && <span>Lead: {leader.org_name}</span>}
-                      <span>{wp.total_person_months} PMs</span>
+                      {leader && <span>{t('collaboration.lead')}: {leader.org_name}</span>}
+                      <span>{wp.total_person_months} {t('collaboration.pms')}</span>
                     </div>
                   </div>
                   <div className="relative flex-1" style={{ height: ROW_H }}>
@@ -269,8 +271,8 @@ export function CollabGanttChart({
                             <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                               <div className="font-semibold text-orange-600">{d.number}</div>
                               <div className="font-medium">{d.title}</div>
-                              <div className="text-muted-foreground">Due: M{d.due_month} · {d.type || 'N/A'}</div>
-                              {dLeader && <div className="text-muted-foreground">Lead: {dLeader.org_name}</div>}
+                              <div className="text-muted-foreground">{t('collaboration.due')}: M{d.due_month} · {d.type || 'N/A'}</div>
+                              {dLeader && <div className="text-muted-foreground">{t('collaboration.lead')}: {dLeader.org_name}</div>}
                             </div>
                           </div>
                         </div>
@@ -289,7 +291,7 @@ export function CollabGanttChart({
                             <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                               <div className="font-semibold text-violet-600">{m.number}</div>
                               <div className="font-medium">{m.title}</div>
-                              <div className="text-muted-foreground">Due: M{m.due_month}</div>
+                              <div className="text-muted-foreground">{t('collaboration.due')}: M{m.due_month}</div>
                               {m.verification_means && <div className="text-muted-foreground max-w-[200px] truncate">{m.verification_means}</div>}
                             </div>
                           </div>
@@ -305,17 +307,17 @@ export function CollabGanttChart({
                 </div>
 
                 {/* Task rows */}
-                {showTasks && tasks.map(t => {
-                  const taskLeader = t.leader_partner_id ? partners.find(p => p.id === t.leader_partner_id) : null
-                  const tStart = t.start_month ?? wpStart
-                  const tEnd = t.end_month ?? wpEnd
+                {showTasks && tasks.map(tk => {
+                  const taskLeader = tk.leader_partner_id ? partners.find(p => p.id === tk.leader_partner_id) : null
+                  const tkStart = tk.start_month ?? wpStart
+                  const tkEnd = tk.end_month ?? wpEnd
                   return (
-                    <div key={t.id} className="flex border-b bg-muted/[0.02] hover:bg-muted/10">
+                    <div key={tk.id} className="flex border-b bg-muted/[0.02] hover:bg-muted/10">
                       <div className="w-[240px] shrink-0 px-4 py-1.5 border-r pl-10">
-                        <div className="text-[11px] font-medium truncate">{t.task_number} — {t.title}</div>
+                        <div className="text-[11px] font-medium truncate">{tk.task_number} — {tk.title}</div>
                         <div className="flex gap-2 text-[10px] text-muted-foreground">
-                          {taskLeader && <span>Lead: {taskLeader.org_name}</span>}
-                          {t.person_months > 0 && <span>{t.person_months} PMs</span>}
+                          {taskLeader && <span>{t('collaboration.lead')}: {taskLeader.org_name}</span>}
+                          {tk.person_months > 0 && <span>{tk.person_months} {t('collaboration.pms')}</span>}
                         </div>
                       </div>
                       <div className="relative flex-1" style={{ height: TASK_ROW_H }}>
@@ -326,11 +328,11 @@ export function CollabGanttChart({
                         {/* Task bar */}
                         <div
                           className="absolute top-1.5 h-4 rounded-sm bg-blue-400/30 border border-blue-400/40"
-                          style={{ left: monthToLeft(tStart), width: monthToWidth(tStart, tEnd) }}
-                          title={`${t.task_number}: M${tStart}–M${tEnd}`}
+                          style={{ left: monthToLeft(tkStart), width: monthToWidth(tkStart, tkEnd) }}
+                          title={`${tk.task_number}: M${tkStart}–M${tkEnd}`}
                         >
                           <span className="px-1 text-[8px] text-blue-700 dark:text-blue-300 font-medium leading-4 truncate block">
-                            {t.task_number}
+                            {tk.task_number}
                           </span>
                         </div>
                         {/* Today line */}
@@ -353,7 +355,7 @@ export function CollabGanttChart({
             return (
               <div className="flex border-b bg-muted/[0.04]">
                 <div className="w-[240px] shrink-0 px-4 py-2 border-r">
-                  <span className="text-xs text-muted-foreground italic">Unassigned items</span>
+                  <span className="text-xs text-muted-foreground italic">{t('collaboration.unassignedItems')}</span>
                 </div>
                 <div className="relative flex-1" style={{ height: ROW_H }}>
                   {monthHeaders.map((_, i) => (
@@ -370,7 +372,7 @@ export function CollabGanttChart({
                           <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                             <div className="font-semibold text-orange-600">{d.number}</div>
                             <div className="font-medium">{d.title}</div>
-                            <div className="text-muted-foreground">Due: M{d.due_month}</div>
+                            <div className="text-muted-foreground">{t('collaboration.due')}: M{d.due_month}</div>
                           </div>
                         </div>
                       </div>
@@ -387,7 +389,7 @@ export function CollabGanttChart({
                           <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                             <div className="font-semibold text-violet-600">{m.number}</div>
                             <div className="font-medium">{m.title}</div>
-                            <div className="text-muted-foreground">Due: M{m.due_month}</div>
+                            <div className="text-muted-foreground">{t('collaboration.due')}: M{m.due_month}</div>
                           </div>
                         </div>
                       </div>
@@ -407,35 +409,35 @@ export function CollabGanttChart({
       <div className="flex gap-4 flex-wrap text-xs">
         <div className="flex items-center gap-1">
           <span className="inline-block w-4 h-3 rounded bg-primary/20 border border-primary/30" />
-          <span>Work Package</span>
+          <span>{t('collaboration.workPackage')}</span>
         </div>
         {showTasks && (
           <div className="flex items-center gap-1">
             <span className="inline-block w-4 h-2.5 rounded-sm bg-blue-400/30 border border-blue-400/40" />
-            <span>Task</span>
+            <span>{t('collaboration.task')}</span>
           </div>
         )}
         {showDeliverables && (
           <div className="flex items-center gap-1">
             <svg width="10" height="10" viewBox="0 0 10 10"><polygon points="5,0 10,5 5,10 0,5" className="fill-orange-500" /></svg>
-            <span>Deliverable</span>
+            <span>{t('collaboration.deliverable')}</span>
           </div>
         )}
         {showMilestones && (
           <div className="flex items-center gap-1">
             <svg width="10" height="10" viewBox="0 0 10 10"><polygon points="5,0 10,5 5,10 0,5" className="fill-violet-500" /></svg>
-            <span>Milestone</span>
+            <span>{t('collaboration.milestone')}</span>
           </div>
         )}
         {showReporting && (
           <div className="flex items-center gap-1">
             <span className="inline-block w-4 h-[8px] rounded-sm bg-cyan-400/20 border border-cyan-500/40" />
-            <span>Reporting Period</span>
+            <span>{t('collaboration.reportingPeriod')}</span>
           </div>
         )}
         <div className="flex items-center gap-1">
           <span className="inline-block w-0.5 h-3 bg-red-500/60" />
-          <span>Today</span>
+          <span>{t('collaboration.today')}</span>
         </div>
       </div>
     </div>

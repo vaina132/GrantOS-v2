@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { allocationsService } from '@/services/allocationsService'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
@@ -15,6 +16,7 @@ import { cn } from '@/lib/utils'
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export function PeriodLocking() {
+  const { t } = useTranslation()
   const { orgId, orgName, user } = useAuthStore()
   const { globalYear } = useUiStore()
   const { isLoading, isLocked, refetch } = usePeriodLocks()
@@ -26,8 +28,8 @@ export function PeriodLocking() {
     try {
       const result = await allocationsService.togglePeriodLock(orgId, globalYear, month, user.id)
       toast({
-        title: result.locked ? 'Period Locked' : 'Period Unlocked',
-        description: `${MONTH_LABELS[month - 1]} ${globalYear} has been ${result.locked ? 'locked' : 'unlocked'}.`,
+        title: result.locked ? t('allocations.periodLocked') : t('allocations.periodUnlocked'),
+        description: t('allocations.periodToggleDesc', { month: MONTH_LABELS[month - 1], year: globalYear, action: result.locked ? t('allocations.locked') : t('allocations.unlocked') }),
       })
 
       // Send period locked notification (fire-and-forget)
@@ -59,8 +61,8 @@ export function PeriodLocking() {
 
       refetch()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to toggle lock'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('allocations.failedToToggle')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setToggling(null)
     }
@@ -71,7 +73,7 @@ export function PeriodLocking() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Period Locks — {globalYear}</CardTitle>
+        <CardTitle className="text-base">{t('allocations.periodLocks')} — {globalYear}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">

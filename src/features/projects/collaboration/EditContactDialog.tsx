@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Trash2 } from 'lucide-react'
 import { collabContactService } from '@/services/collabProjectService'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,7 @@ interface ContactForm {
 const EMPTY: ContactForm = { name: '', email: '', role_note: '' }
 
 export function EditContactDialog({ partnerId, partnerName, open, onClose, onSaved }: Props) {
+  const { t } = useTranslation()
   const [contacts, setContacts] = useState<CollabContact[]>([])
   const [form, setForm] = useState<ContactForm>({ ...EMPTY })
   const [editing, setEditing] = useState(false)
@@ -37,7 +39,7 @@ export function EditContactDialog({ partnerId, partnerName, open, onClose, onSav
       const data = await collabContactService.list(partnerId)
       setContacts(data)
     } catch {
-      toast({ title: 'Error', description: 'Failed to load contacts', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToLoadContacts'), variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -61,7 +63,7 @@ export function EditContactDialog({ partnerId, partnerName, open, onClose, onSav
           email: form.email.trim(),
           role_note: form.role_note || null,
         })
-        toast({ title: 'Updated' })
+        toast({ title: t('common.updated') })
       } else {
         await collabContactService.create({
           partner_id: partnerId,
@@ -72,28 +74,28 @@ export function EditContactDialog({ partnerId, partnerName, open, onClose, onSav
           notify_approvals: true,
           notify_rejections: true,
         })
-        toast({ title: 'Added', description: `${form.name} added as contact` })
+        toast({ title: t('collaboration.contactAdded'), description: `${form.name}` })
       }
       setForm({ ...EMPTY })
       setEditing(false)
       load()
       onSaved()
     } catch {
-      toast({ title: 'Error', description: 'Failed to save contact', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToSaveContact'), variant: 'destructive' })
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async (c: CollabContact) => {
-    if (!confirm(`Remove ${c.name}?`)) return
+    if (!confirm(`${t('common.remove')} ${c.name}?`)) return
     try {
       await collabContactService.remove(c.id)
-      toast({ title: 'Removed' })
+      toast({ title: t('common.removed') })
       load()
       onSaved()
     } catch {
-      toast({ title: 'Error', description: 'Failed to remove contact', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToRemoveContact'), variant: 'destructive' })
     }
   }
 
@@ -109,8 +111,8 @@ export function EditContactDialog({ partnerId, partnerName, open, onClose, onSav
       <div className="bg-background rounded-lg shadow-lg w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="p-6 space-y-4">
           <div>
-            <h2 className="text-lg font-semibold">Contacts — {partnerName}</h2>
-            <p className="text-sm text-muted-foreground">Manage contact persons for this partner</p>
+            <h2 className="text-lg font-semibold">{t('collaboration.contacts')} — {partnerName}</h2>
+            <p className="text-sm text-muted-foreground">{t('collaboration.manageContacts')}</p>
           </div>
 
           {/* Existing contacts list */}
@@ -119,7 +121,7 @@ export function EditContactDialog({ partnerId, partnerName, open, onClose, onSav
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
             </div>
           ) : contacts.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No contacts added yet</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t('collaboration.noContactsYet')}</p>
           ) : (
             <div className="divide-y rounded-md border">
               {contacts.map(c => (
@@ -129,7 +131,7 @@ export function EditContactDialog({ partnerId, partnerName, open, onClose, onSav
                     <p className="text-xs text-muted-foreground">{c.email}{c.role_note ? ` · ${c.role_note}` : ''}</p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => startEdit(c)}>Edit</Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => startEdit(c)}>{t('common.edit')}</Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(c)}>
                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
@@ -141,19 +143,19 @@ export function EditContactDialog({ partnerId, partnerName, open, onClose, onSav
 
           {/* Add / Edit form */}
           <div className="border rounded-md p-3 space-y-3 bg-muted/30">
-            <p className="text-sm font-medium">{editing ? 'Edit Contact' : 'Add Contact'}</p>
+            <p className="text-sm font-medium">{editing ? t('collaboration.editContact') : t('collaboration.addContact')}</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Name *</Label>
+                <Label className="text-xs">{t('common.name')} *</Label>
                 <Input
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="Full name"
+                  placeholder={t('collaboration.fullName')}
                   className="h-8 text-sm"
                 />
               </div>
               <div>
-                <Label className="text-xs">Email *</Label>
+                <Label className="text-xs">{t('common.email')} *</Label>
                 <Input
                   type="email"
                   value={form.email}
@@ -164,28 +166,28 @@ export function EditContactDialog({ partnerId, partnerName, open, onClose, onSav
               </div>
             </div>
             <div>
-              <Label className="text-xs">Role / Note</Label>
+              <Label className="text-xs">{t('collaboration.roleNote')}</Label>
               <Input
                 value={form.role_note}
                 onChange={e => setForm(f => ({ ...f, role_note: e.target.value }))}
-                placeholder="e.g. Financial Officer, PI"
+                placeholder={t('collaboration.roleNotePlaceholder')}
                 className="h-8 text-sm"
               />
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={handleSave} disabled={saving || !form.name.trim() || !form.email.trim()}>
-                {saving ? 'Saving...' : editing ? 'Update' : 'Add'}
+                {saving ? t('common.saving') : editing ? t('common.update') : t('common.add')}
               </Button>
               {editing && (
                 <Button variant="ghost" size="sm" onClick={() => { setForm({ ...EMPTY }); setEditing(false) }}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
               )}
             </div>
           </div>
 
           <div className="flex justify-end pt-2">
-            <Button variant="outline" onClick={onClose}>Close</Button>
+            <Button variant="outline" onClick={onClose}>{t('common.close')}</Button>
           </div>
         </div>
       </div>

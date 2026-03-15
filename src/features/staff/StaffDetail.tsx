@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useStaffMember } from '@/hooks/useStaff'
 import { useAuthStore } from '@/stores/authStore'
@@ -24,6 +25,7 @@ interface PersonProject {
 }
 
 export function StaffDetail() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const { person, isLoading, refetch } = useStaffMember(id)
@@ -132,9 +134,9 @@ export function StaffDetail() {
   if (!person) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Person Not Found" />
+        <PageHeader title={t('staff.personNotFound')} />
         <Button variant="outline" onClick={() => navigate('/staff')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Staff
+          <ArrowLeft className="mr-2 h-4 w-4" /> {t('staff.backToStaff')}
         </Button>
       </div>
     )
@@ -152,7 +154,7 @@ export function StaffDetail() {
       {/* Top actions */}
       <div className="flex items-center justify-between">
         <Button variant="outline" size="sm" onClick={() => navigate('/staff')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Staff
+          <ArrowLeft className="mr-2 h-4 w-4" /> {t('staff.backToStaff')}
         </Button>
         <div className="flex gap-2">
           {/* Invite / Re-invite button */}
@@ -179,7 +181,7 @@ export function StaffDetail() {
                   })
                   const data = await res.json()
                   if (res.ok) {
-                    toast({ title: 'Invitation sent', description: `${person.email} will receive an invitation email.` })
+                    toast({ title: t('staff.invitationSent'), description: t('staff.invitationSentDesc', { email: person.email }) })
                     emailService.sendInvitation({
                       invitedEmail: person.email,
                       orgName: orgName ?? 'your organisation',
@@ -189,25 +191,25 @@ export function StaffDetail() {
                     }).catch(() => {})
                     refetch()
                   } else if (res.status === 409) {
-                    toast({ title: 'Already a member', description: data.error })
+                    toast({ title: t('settings.alreadyMember'), description: data.error })
                     refetch()
                   } else {
-                    toast({ title: 'Invitation failed', description: data.error ?? 'Could not send invitation', variant: 'destructive' })
+                    toast({ title: t('staff.invitationFailed'), description: data.error ?? t('staff.couldNotSendInvitation'), variant: 'destructive' })
                   }
                 } catch {
-                  toast({ title: 'Invitation failed', description: 'Could not reach the invitation service.', variant: 'destructive' })
+                  toast({ title: t('staff.invitationFailed'), description: t('staff.couldNotReachService'), variant: 'destructive' })
                 } finally {
                   setInviting(false)
                 }
               }}
             >
               <Send className="mr-2 h-4 w-4" />
-              {inviting ? 'Sending...' : person.invite_status === 'pending' ? 'Resend Invitation' : 'Invite to GrantLume'}
+              {inviting ? t('staff.sending') : person.invite_status === 'pending' ? t('staff.resendInvitation') : t('staff.inviteToGrantLume')}
             </Button>
           )}
           {can('canWrite') && (
             <Button size="sm" onClick={() => navigate(`/staff/${person.id}/edit`)}>
-              <Pencil className="mr-2 h-4 w-4" /> Edit
+              <Pencil className="mr-2 h-4 w-4" /> {t('common.edit')}
             </Button>
           )}
         </div>
@@ -226,12 +228,12 @@ export function StaffDetail() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <h1 className="text-2xl font-bold tracking-tight">{person.full_name}</h1>
                 <Badge variant={person.is_active ? 'default' : 'outline'} className="w-fit">
-                  {person.is_active ? 'Active' : 'Inactive'}
+                  {person.is_active ? t('staff.active') : t('staff.inactive')}
                 </Badge>
                 {person.user_id ? (
-                  <Badge className="w-fit bg-green-600 hover:bg-green-700 text-[10px]">Account Active</Badge>
+                  <Badge className="w-fit bg-green-600 hover:bg-green-700 text-[10px]">{t('staff.accountActive')}</Badge>
                 ) : person.invite_status === 'pending' ? (
-                  <Badge variant="secondary" className="w-fit bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px]">Invitation Pending</Badge>
+                  <Badge variant="secondary" className="w-fit bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px]">{t('staff.invitationPending')}</Badge>
                 ) : null}
               </div>
               {(person.role || person.department) && (
@@ -275,11 +277,11 @@ export function StaffDetail() {
               <div className="flex-1 grid grid-cols-3 gap-4">
                 <div>
                   <div className="text-2xl font-bold tabular-nums text-blue-600">{person.vacation_days_per_year}</div>
-                  <div className="text-xs text-muted-foreground">Entitlement / year</div>
+                  <div className="text-xs text-muted-foreground">{t('staff.entitlementPerYear')}</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold tabular-nums text-amber-600">{absenceDaysUsed}</div>
-                  <div className="text-xs text-muted-foreground">Used ({currentYear})</div>
+                  <div className="text-xs text-muted-foreground">{t('staff.used')} ({currentYear})</div>
                 </div>
                 <div>
                   <div className={cn(
@@ -289,7 +291,7 @@ export function StaffDetail() {
                   )}>
                     {person.vacation_days_per_year - absenceDaysUsed}
                   </div>
-                  <div className="text-xs text-muted-foreground">Remaining</div>
+                  <div className="text-xs text-muted-foreground">{t('common.remaining')}</div>
                 </div>
               </div>
               {/* Progress bar */}
@@ -305,7 +307,7 @@ export function StaffDetail() {
                   />
                 </div>
                 <div className="text-[10px] text-muted-foreground text-center mt-1">
-                  {Math.round((absenceDaysUsed / person.vacation_days_per_year) * 100)}% used
+                  {Math.round((absenceDaysUsed / person.vacation_days_per_year) * 100)}% {t('staff.used')}
                 </div>
               </div>
             </div>
@@ -320,16 +322,16 @@ export function StaffDetail() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Briefcase className="h-4 w-4 text-muted-foreground" />
-              Employment
+              {t('staff.employment')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="space-y-2.5 text-sm">
-              <InfoRow label="Type" value={person.employment_type} />
+              <InfoRow label={t('common.type')} value={person.employment_type} />
               <InfoRow label="FTE" value={person.fte.toFixed(2)} />
-              <InfoRow label="Department" value={person.department} />
-              <InfoRow label="Role" value={person.role} />
-              {countryName && <InfoRow label="Country" value={countryName} />}
+              <InfoRow label={t('staff.department')} value={person.department} />
+              <InfoRow label={t('staff.role')} value={person.role} />
+              {countryName && <InfoRow label={t('staff.country')} value={countryName} />}
             </dl>
           </CardContent>
         </Card>
@@ -339,16 +341,16 @@ export function StaffDetail() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
-              Dates
+              {t('staff.dates')}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="space-y-2.5 text-sm">
-              <InfoRow label="Start Date" value={person.start_date ? formatDate(person.start_date) : null} />
-              <InfoRow label="End Date" value={person.end_date ? formatDate(person.end_date) : null} />
+              <InfoRow label={t('staff.startDate')} value={person.start_date ? formatDate(person.start_date) : null} />
+              <InfoRow label={t('staff.endDate')} value={person.end_date ? formatDate(person.end_date) : null} />
               {person.start_date && (
                 <InfoRow
-                  label="Tenure"
+                  label={t('staff.tenure')}
                   value={getTenure(person.start_date, person.end_date)}
                 />
               )}
@@ -362,17 +364,17 @@ export function StaffDetail() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
-                Financial
+                {t('staff.financial')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <dl className="space-y-2.5 text-sm">
                 <InfoRow
-                  label="Annual Salary"
+                  label={t('staff.annualSalary')}
                   value={person.annual_salary != null ? formatCurrency(person.annual_salary) : null}
                 />
                 <InfoRow
-                  label="Overhead Rate"
+                  label={t('staff.overheadRate')}
                   value={person.overhead_rate != null ? `${person.overhead_rate}%` : null}
                 />
               </dl>
@@ -386,7 +388,7 @@ export function StaffDetail() {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <FolderKanban className="h-4 w-4 text-muted-foreground" />
-            Projects ({projects.length})
+            {t('common.projects')} ({projects.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -397,18 +399,18 @@ export function StaffDetail() {
             </div>
           ) : projects.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
-              No project involvement found.
+              {t('staff.noProjectInvolvement')}
             </p>
           ) : (
             <div className="rounded-lg border overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-3 py-2 text-left font-medium">Project</th>
-                    <th className="px-3 py-2 text-left font-medium hidden sm:table-cell">Period</th>
-                    <th className="px-3 py-2 text-left font-medium">Status</th>
+                    <th className="px-3 py-2 text-left font-medium">{t('common.project')}</th>
+                    <th className="px-3 py-2 text-left font-medium hidden sm:table-cell">{t('common.period')}</th>
+                    <th className="px-3 py-2 text-left font-medium">{t('common.status')}</th>
                     <th className="px-3 py-2 text-right font-medium">PMs</th>
-                    <th className="px-3 py-2 text-left font-medium">Role</th>
+                    <th className="px-3 py-2 text-left font-medium">{t('staff.role')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -438,7 +440,7 @@ export function StaffDetail() {
                       </td>
                       <td className="px-3 py-2">
                         {pp.isResponsible && (
-                          <Badge variant="secondary" className="text-xs">Lead</Badge>
+                          <Badge variant="secondary" className="text-xs">{t('common.lead')}</Badge>
                         )}
                       </td>
                     </tr>

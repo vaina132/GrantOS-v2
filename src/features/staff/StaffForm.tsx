@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -47,6 +48,7 @@ const staffSchema = z.object({
 type StaffFormData = z.infer<typeof staffSchema>
 
 export function StaffForm() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const isEdit = !!id && id !== 'new'
@@ -122,11 +124,11 @@ export function StaffForm() {
     const file = e.target.files?.[0]
     if (!file) return
     if (!file.type.startsWith('image/')) {
-      toast({ title: 'Invalid file', description: 'Please select an image file (JPG, PNG, etc.)', variant: 'destructive' })
+      toast({ title: t('staff.invalidFile'), description: t('staff.invalidFileDesc'), variant: 'destructive' })
       return
     }
     if (file.size > 2 * 1024 * 1024) {
-      toast({ title: 'File too large', description: 'Maximum file size is 2 MB.', variant: 'destructive' })
+      toast({ title: t('staff.fileTooLarge'), description: t('staff.fileTooLargeDesc'), variant: 'destructive' })
       return
     }
     setAvatarFile(file)
@@ -164,7 +166,7 @@ export function StaffForm() {
         const nowInactive = data.is_active === false
         await staffService.update(id, payload)
         savedPerson = { id }
-        toast({ title: 'Updated', description: `${data.full_name} has been updated.` })
+        toast({ title: t('common.updated'), description: t('common.hasBeenUpdated', { name: data.full_name }) })
 
         // Fire-and-forget: notify person if their account was just deactivated
         if (wasActive && nowInactive && data.email && orgId) {
@@ -178,7 +180,7 @@ export function StaffForm() {
       } else {
         const created = await staffService.create(payload as Parameters<typeof staffService.create>[0])
         savedPerson = created
-        toast({ title: 'Created', description: `${data.full_name} has been added.` })
+        toast({ title: t('common.created'), description: t('common.hasBeenCreated', { name: data.full_name }) })
 
         // Send invitation if requested
         if (inviteToSystem && data.email && orgId) {
@@ -196,7 +198,7 @@ export function StaffForm() {
             })
             const inviteData = await res.json()
             if (res.ok) {
-              toast({ title: 'Invitation sent', description: `${data.email} will receive an invitation email.` })
+              toast({ title: t('staff.invitationSent'), description: t('staff.invitationSentDesc', { email: data.email }) })
               // Send branded invitation email
               emailService.sendInvitation({
                 invitedEmail: data.email,
@@ -211,18 +213,18 @@ export function StaffForm() {
                   orgId,
                   userIds: adminIds.filter((uid) => uid !== user?.id),
                   type: 'invitation',
-                  title: 'Staff member invited',
+                  title: t('staff.staffMemberInvited'),
                   message: `${data.full_name} (${data.email}) was invited as ${inviteRole}.`,
                   link: '/staff',
                 }).catch(() => {})
               }).catch(() => {})
             } else if (res.status === 409) {
-              toast({ title: 'Already a member', description: inviteData.error, variant: 'destructive' })
+              toast({ title: t('settings.alreadyMember'), description: inviteData.error, variant: 'destructive' })
             } else {
-              toast({ title: 'Invitation failed', description: inviteData.error ?? 'Could not send invitation', variant: 'destructive' })
+              toast({ title: t('staff.invitationFailed'), description: inviteData.error ?? t('staff.couldNotSendInvitation'), variant: 'destructive' })
             }
           } catch {
-            toast({ title: 'Invitation failed', description: 'Could not reach the invitation service.', variant: 'destructive' })
+            toast({ title: t('staff.invitationFailed'), description: t('staff.couldNotReachService'), variant: 'destructive' })
           }
         }
       }
@@ -237,8 +239,8 @@ export function StaffForm() {
       }
       navigate('/staff')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -256,10 +258,10 @@ export function StaffForm() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={isEdit ? `Edit ${person?.full_name ?? 'Person'}` : 'Add New Person'}
+        title={isEdit ? `${t('common.edit')} ${person?.full_name ?? t('common.person')}` : t('staff.addNewPerson')}
         actions={
           <Button variant="outline" onClick={() => navigate('/staff')}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            <ArrowLeft className="mr-2 h-4 w-4" /> {t('common.back')}
           </Button>
         }
       />
@@ -268,11 +270,11 @@ export function StaffForm() {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
+              <CardTitle>{t('staff.basicInformation')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="full_name">Full Name *</Label>
+                <Label htmlFor="full_name">{t('staff.fullName')} *</Label>
                 <Input id="full_name" {...register('full_name')} />
                 {errors.full_name && (
                   <p className="text-sm text-destructive">{errors.full_name.message}</p>
@@ -280,38 +282,38 @@ export function StaffForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t('common.email')}</Label>
                 <Input id="email" type="email" {...register('email')} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="department">Department / Team</Label>
+                  <Label htmlFor="department">{t('staff.departmentTeam')}</Label>
                   <select
                     id="department"
                     {...register('department')}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <option value="">Select department</option>
+                    <option value="">{t('staff.selectDepartment')}</option>
                     {departments.map((d) => (
                       <option key={d} value={d}>{d}</option>
                     ))}
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="role">Role / Title</Label>
+                  <Label htmlFor="role">{t('staff.roleTitle')}</Label>
                   <Input id="role" {...register('role')} />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
+                <Label htmlFor="country">{t('staff.country')}</Label>
                 <select
                   id="country"
                   {...register('country')}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <option value="">Select country</option>
+                  <option value="">{t('common.selectCountry')}</option>
                   {COUNTRIES.map((c) => (
                     <option key={c.code} value={c.code}>{c.name}</option>
                   ))}
@@ -320,7 +322,7 @@ export function StaffForm() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="employment_type">Employment Type</Label>
+                  <Label htmlFor="employment_type">{t('staff.employmentType')}</Label>
                   <select
                     id="employment_type"
                     {...register('employment_type')}
@@ -341,7 +343,7 @@ export function StaffForm() {
               </div>
 
               <div className="space-y-2">
-                <Label>Photo <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Label>{t('staff.photo')} <span className="text-muted-foreground font-normal">({t('common.optional')})</span></Label>
                 <div className="flex items-center gap-4">
                   {/* Preview */}
                   {(avatarPreview || (existingAvatarUrl && !removeAvatar)) ? (
@@ -379,7 +381,7 @@ export function StaffForm() {
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <Upload className="mr-1.5 h-3.5 w-3.5" />
-                      {existingAvatarUrl && !removeAvatar ? 'Change photo' : 'Upload photo'}
+                      {existingAvatarUrl && !removeAvatar ? t('staff.changePhoto') : t('staff.uploadPhoto')}
                     </Button>
                     <p className="text-[11px] text-muted-foreground">JPG, PNG or GIF. Max 2 MB.</p>
                   </div>
@@ -393,29 +395,29 @@ export function StaffForm() {
                   {...register('is_active')}
                   className="h-4 w-4 rounded border-gray-300"
                 />
-                <Label htmlFor="is_active">Active</Label>
+                <Label htmlFor="is_active">{t('staff.active')}</Label>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Dates & Financial</CardTitle>
+              <CardTitle>{t('staff.datesFinancial')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="start_date">Start Date</Label>
+                  <Label htmlFor="start_date">{t('staff.startDate')}</Label>
                   <Input id="start_date" type="date" {...register('start_date')} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="end_date">End Date</Label>
+                  <Label htmlFor="end_date">{t('staff.endDate')}</Label>
                   <Input id="end_date" type="date" {...register('end_date')} />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="vacation_days_per_year">Vacation Days / Year</Label>
+                <Label htmlFor="vacation_days_per_year">{t('staff.vacationDaysYear')}</Label>
                 <Input
                   id="vacation_days_per_year"
                   type="number"
@@ -424,12 +426,12 @@ export function StaffForm() {
                   {...register('vacation_days_per_year')}
                   placeholder="e.g. 25"
                 />
-                <p className="text-[11px] text-muted-foreground">Annual leave entitlement in working days</p>
+                <p className="text-[11px] text-muted-foreground">{t('staff.vacationDaysDesc')}</p>
               </div>
 
               {can('canSeeSalary') && (
                 <div className="space-y-2">
-                  <Label htmlFor="annual_salary">Annual Salary</Label>
+                  <Label htmlFor="annual_salary">{t('staff.annualSalary')}</Label>
                   <Input
                     id="annual_salary"
                     type="number"
@@ -447,7 +449,7 @@ export function StaffForm() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <UserPlus className="h-4 w-4 text-blue-600" />
-                  System Access
+                  {t('staff.systemAccess')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -461,10 +463,10 @@ export function StaffForm() {
                   />
                   <div className="space-y-1">
                     <Label htmlFor="invite_to_system" className="font-medium">
-                      Invite to GrantLume
+                      {t('staff.inviteToGrantLume')}
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Send an invitation email so this person can create an account and access the system.
+                      {t('staff.inviteDesc')}
                     </p>
                   </div>
                 </div>
@@ -472,7 +474,7 @@ export function StaffForm() {
                 {inviteToSystem && (
                   <div className="ml-7 space-y-3">
                     <div className="space-y-2">
-                      <Label htmlFor="invite_role">System Role</Label>
+                      <Label htmlFor="invite_role">{t('staff.systemRole')}</Label>
                       <select
                         id="invite_role"
                         value={inviteRole}
@@ -484,13 +486,13 @@ export function StaffForm() {
                         ))}
                       </select>
                       <p className="text-xs text-muted-foreground">
-                        This determines what they can see and do in the system. You can change it later in Settings &gt; Users.
+                        {t('staff.systemRoleDesc')}
                       </p>
                     </div>
                     <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 px-3 py-2">
                       <p className="text-xs text-blue-700 dark:text-blue-400 flex items-center gap-1.5">
                         <Mail className="h-3.5 w-3.5 shrink-0" />
-                        An invitation email will be sent to <strong>{watchedEmail}</strong> after saving.
+                        {t('staff.invitationWillBeSent', { email: watchedEmail })}
                       </p>
                     </div>
                   </div>
@@ -505,24 +507,24 @@ export function StaffForm() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <UserPlus className="h-4 w-4" />
-                  System Access
+                  {t('staff.systemAccess')}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {person.user_id ? (
                   <div className="flex items-center gap-2">
                     <span className="inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/30 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
-                      Active Account
+                      {t('staff.accountActive')}
                     </span>
-                    <span className="text-sm text-muted-foreground">This person has a linked GrantLume account.</span>
+                    <span className="text-sm text-muted-foreground">{t('staff.hasLinkedAccount')}</span>
                   </div>
                 ) : person.invite_status === 'pending' ? (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-                        Invitation Pending
+                        {t('staff.invitationPending')}
                       </span>
-                      <span className="text-sm text-muted-foreground">Invited as {person.invite_role ?? 'Viewer'} — waiting for them to sign up.</span>
+                      <span className="text-sm text-muted-foreground">{t('staff.invitedAsWaiting', { role: person.invite_role ?? 'Viewer' })}</span>
                     </div>
                     {person.email && (
                       <Button
@@ -543,19 +545,19 @@ export function StaffForm() {
                             const d = await res.json()
                             if (res.ok || res.status === 409) {
                               emailService.sendInvitation({ invitedEmail: person.email, orgName: orgName ?? 'your organisation', role, invitedByName: user?.email ?? 'An administrator', signUpUrl: `${window.location.origin}/signup` }).catch(() => {})
-                              toast({ title: 'Invitation resent', description: `${person.email} will receive a new invitation email.` })
+                              toast({ title: t('staff.invitationResent'), description: t('staff.invitationSentDesc', { email: person.email }) })
                             } else {
-                              toast({ title: 'Failed', description: d.error ?? 'Could not resend invitation', variant: 'destructive' })
+                              toast({ title: t('common.error'), description: d.error ?? t('staff.couldNotSendInvitation'), variant: 'destructive' })
                             }
                           } catch {
-                            toast({ title: 'Failed', description: 'Could not reach the invitation service.', variant: 'destructive' })
+                            toast({ title: t('common.error'), description: t('staff.couldNotReachService'), variant: 'destructive' })
                           } finally {
                             setInviting(false)
                           }
                         }}
                       >
                         <Send className="mr-2 h-3.5 w-3.5" />
-                        {inviting ? 'Sending...' : 'Resend Invitation'}
+                        {inviting ? t('staff.sending') : t('staff.resendInvitation')}
                       </Button>
                     )}
                   </div>
@@ -563,15 +565,15 @@ export function StaffForm() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
-                        No Account
+                        {t('staff.noAccount')}
                       </span>
-                      <span className="text-sm text-muted-foreground">This person does not have system access.</span>
+                      <span className="text-sm text-muted-foreground">{t('staff.noSystemAccess')}</span>
                     </div>
                     {person.email && (
                       <div className="space-y-3">
                         <div className="flex items-center gap-3">
                           <div className="space-y-2 flex-1 max-w-xs">
-                            <Label htmlFor="edit_invite_role">Role</Label>
+                            <Label htmlFor="edit_invite_role">{t('staff.role')}</Label>
                             <select
                               id="edit_invite_role"
                               value={inviteRole}
@@ -601,23 +603,23 @@ export function StaffForm() {
                               const d = await res.json()
                               if (res.ok) {
                                 emailService.sendInvitation({ invitedEmail: person.email, orgName: orgName ?? 'your organisation', role: inviteRole, invitedByName: user?.email ?? 'An administrator', signUpUrl: `${window.location.origin}/signup` }).catch(() => {})
-                                toast({ title: 'Invitation sent', description: `${person.email} will receive an invitation email.` })
+                                toast({ title: t('staff.invitationSent'), description: t('staff.invitationSentDesc', { email: person.email }) })
                                 refetchPerson()
                               } else if (res.status === 409) {
-                                toast({ title: 'Already a member', description: d.error })
+                                toast({ title: t('settings.alreadyMember'), description: d.error })
                                 refetchPerson()
                               } else {
-                                toast({ title: 'Failed', description: d.error ?? 'Could not send invitation', variant: 'destructive' })
+                                toast({ title: t('common.error'), description: d.error ?? t('staff.couldNotSendInvitation'), variant: 'destructive' })
                               }
                             } catch {
-                              toast({ title: 'Failed', description: 'Could not reach the invitation service.', variant: 'destructive' })
+                              toast({ title: t('common.error'), description: t('staff.couldNotReachService'), variant: 'destructive' })
                             } finally {
                               setInviting(false)
                             }
                           }}
                         >
                           <Send className="mr-2 h-3.5 w-3.5" />
-                          {inviting ? 'Sending...' : 'Invite to GrantLume'}
+                          {inviting ? t('staff.sending') : t('staff.inviteToGrantLume')}
                         </Button>
                       </div>
                     )}
@@ -630,11 +632,11 @@ export function StaffForm() {
 
         <div className="mt-6 flex justify-end gap-4">
           <Button type="button" variant="outline" onClick={() => navigate('/staff')}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" disabled={saving}>
             <Save className="mr-2 h-4 w-4" />
-            {saving ? 'Saving...' : isEdit ? 'Update Person' : 'Create Person'}
+            {saving ? t('common.saving') : isEdit ? t('staff.updatePerson') : t('staff.createPerson')}
           </Button>
         </div>
       </form>

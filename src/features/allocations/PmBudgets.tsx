@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { allocationsService } from '@/services/allocationsService'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
@@ -12,6 +13,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { toast } from '@/components/ui/use-toast'
 import { Save, Target } from 'lucide-react'
 export function PmBudgets() {
+  const { t } = useTranslation()
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
   const { projects, isLoading: loadingProjects } = useProjects()
@@ -48,12 +50,12 @@ export function PmBudgets() {
           type: 'actual',
         })
       }
-      toast({ title: 'Saved', description: 'PM budgets have been saved.' })
+      toast({ title: t('allocations.saved'), description: t('allocations.pmBudgetsSaved') })
       setDirty(false)
       refetch()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -67,8 +69,8 @@ export function PmBudgets() {
     return (
       <EmptyState
         icon={Target}
-        title="No projects"
-        description="Create projects first to set PM budgets."
+        title={t('allocations.noProjects')}
+        description={t('allocations.noProjectsDesc')}
       />
     )
   }
@@ -76,10 +78,10 @@ export function PmBudgets() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base">PM Budgets ({globalYear})</CardTitle>
+        <CardTitle className="text-base">{t('allocations.pmBudgets')} ({globalYear})</CardTitle>
         <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
           <Save className="mr-1 h-4 w-4" />
-          {saving ? 'Saving...' : 'Save'}
+          {saving ? t('common.saving') : t('common.save')}
         </Button>
       </CardHeader>
       <CardContent>
@@ -87,8 +89,8 @@ export function PmBudgets() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="px-4 py-2 text-left font-medium">Project</th>
-                <th className="px-4 py-2 text-right font-medium w-32">Target PMs</th>
+                <th className="px-4 py-2 text-left font-medium">{t('common.project')}</th>
+                <th className="px-4 py-2 text-right font-medium w-32">{t('allocations.targetPMs')}</th>
               </tr>
             </thead>
             <tbody>

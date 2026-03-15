@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Send, CheckCircle, XCircle, RotateCcw, Clock, Plus, Trash2, Save } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabReportService, collabLineService, collabWpService, collabPartnerService, collabAllocService, collabProjectService } from '@/services/collabProjectService'
@@ -20,16 +21,17 @@ const REPORT_STATUS_COLORS: Record<string, string> = {
   rejected: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
 }
 
-const SECTIONS: { key: CollabReportSection; label: string }[] = [
-  { key: 'personnel_effort', label: 'Personnel Effort (PMs)' },
-  { key: 'personnel_costs', label: 'Personnel Costs' },
-  { key: 'subcontracting', label: 'Subcontracting' },
-  { key: 'travel', label: 'Travel & Subsistence' },
-  { key: 'equipment', label: 'Equipment' },
-  { key: 'other_goods', label: 'Other Goods & Services' },
+const SECTIONS: { key: CollabReportSection; labelKey: string }[] = [
+  { key: 'personnel_effort', labelKey: 'collaboration.sectionPersonnelEffort' },
+  { key: 'personnel_costs', labelKey: 'collaboration.sectionPersonnelCosts' },
+  { key: 'subcontracting', labelKey: 'collaboration.sectionSubcontracting' },
+  { key: 'travel', labelKey: 'collaboration.sectionTravel' },
+  { key: 'equipment', labelKey: 'collaboration.sectionEquipment' },
+  { key: 'other_goods', labelKey: 'collaboration.sectionOtherGoods' },
 ]
 
 export function CollabReportPage() {
+  const { t } = useTranslation()
   const { reportId } = useParams<{ reportId: string }>()
   const navigate = useNavigate()
   const { user } = useAuthStore()
@@ -93,7 +95,7 @@ export function CollabReportPage() {
       }
       setEditData(ed)
     } catch {
-      toast({ title: 'Error', description: 'Failed to load report', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToLoadReport'), variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -117,9 +119,9 @@ export function CollabReportPage() {
         data: { amount: parseFloat(ed.amount) || 0 },
         justification: ed.justification || null,
       })
-      toast({ title: 'Saved' })
+      toast({ title: t('common.saved') })
     } catch {
-      toast({ title: 'Error', description: 'Failed to save', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToSave'), variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -156,55 +158,55 @@ export function CollabReportPage() {
         saved++
       }
       setNewLines([])
-      toast({ title: 'Saved', description: `${saved} line(s) saved` })
+      toast({ title: t('common.saved'), description: t('collaboration.linesSaved', { count: saved }) })
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to save lines', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToSaveLines'), variant: 'destructive' })
     } finally {
       setSaving(false)
     }
   }
 
   const handleDeleteLine = async (lineId: string) => {
-    if (!confirm('Remove this line?')) return
+    if (!confirm(t('collaboration.confirmRemoveLine'))) return
     try {
       await collabLineService.remove(lineId)
-      toast({ title: 'Removed' })
+      toast({ title: t('common.removed') })
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to remove', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToRemove'), variant: 'destructive' })
     }
   }
 
   const handleSubmit = async () => {
-    if (!reportId || !confirm('Submit this report for review? You can still make changes if it is returned.')) return
+    if (!reportId || !confirm(t('collaboration.confirmSubmitReport'))) return
     try {
       await handleSaveAll()
       await collabReportService.submit(reportId, user?.email || 'Partner')
-      toast({ title: 'Submitted', description: 'Report sent for coordinator review' })
+      toast({ title: t('collaboration.submitted'), description: t('collaboration.reportSentForReview') })
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to submit', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToSubmit'), variant: 'destructive' })
     }
   }
 
   const handleResubmit = async () => {
-    if (!reportId || !confirm('Resubmit this report?')) return
+    if (!reportId || !confirm(t('collaboration.confirmResubmitReport'))) return
     try {
       await handleSaveAll()
       await collabReportService.resubmit(reportId, user?.email || 'Partner')
-      toast({ title: 'Resubmitted', description: 'Report sent back for review' })
+      toast({ title: t('collaboration.resubmitted'), description: t('collaboration.reportSentForReview') })
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to resubmit', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToResubmit'), variant: 'destructive' })
     }
   }
 
   const handleApprove = async () => {
-    if (!reportId || !user || !confirm('Approve this report?')) return
+    if (!reportId || !user || !confirm(t('collaboration.confirmApproveReport'))) return
     try {
       await collabReportService.approve(reportId, user.id, user.email || 'Coordinator')
-      toast({ title: 'Approved' })
+      toast({ title: t('collaboration.approved') })
       // Send status email to partner
       const contactEmail = partner?.contact_email || report?.partner?.contact_email
       if (contactEmail) {
@@ -221,7 +223,7 @@ export function CollabReportPage() {
       }
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to approve', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToApprove'), variant: 'destructive' })
     }
   }
 
@@ -229,7 +231,7 @@ export function CollabReportPage() {
     if (!reportId || !user || !rejectionNote.trim()) return
     try {
       await collabReportService.reject(reportId, user.id, user.email || 'Coordinator', rejectionNote.trim())
-      toast({ title: 'Returned', description: 'Report returned to partner for corrections' })
+      toast({ title: t('collaboration.returned'), description: t('collaboration.reportReturnedForCorrections') })
       // Send status email to partner
       const contactEmail = partner?.contact_email || report?.partner?.contact_email
       if (contactEmail) {
@@ -249,7 +251,7 @@ export function CollabReportPage() {
       setRejectionNote('')
       load()
     } catch {
-      toast({ title: 'Error', description: 'Failed to reject', variant: 'destructive' })
+      toast({ title: t('common.error'), description: t('collaboration.failedToReject'), variant: 'destructive' })
     }
   }
 
@@ -268,8 +270,8 @@ export function CollabReportPage() {
   if (!report) {
     return (
       <div className="text-center py-20 text-muted-foreground">
-        <p>Report not found</p>
-        <Button variant="link" onClick={() => navigate(-1)}>Go back</Button>
+        <p>{t('collaboration.reportNotFound')}</p>
+        <Button variant="link" onClick={() => navigate(-1)}>{t('collaboration.goBack')}</Button>
       </div>
     )
   }
@@ -310,11 +312,11 @@ export function CollabReportPage() {
               </Badge>
             </div>
             <p className="text-muted-foreground mt-1">
-              Financial Report — {periodTitle}
+              {t('collaboration.financialReport')} — {periodTitle}
             </p>
             <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground mt-2">
-              {report.submitted_at && <span>Submitted: {new Date(report.submitted_at).toLocaleDateString()}</span>}
-              {report.reviewed_at && <span>Reviewed: {new Date(report.reviewed_at).toLocaleDateString()}</span>}
+              {report.submitted_at && <span>{t('collaboration.submitted')}: {new Date(report.submitted_at).toLocaleDateString()}</span>}
+              {report.reviewed_at && <span>{t('collaboration.reviewed')}: {new Date(report.reviewed_at).toLocaleDateString()}</span>}
             </div>
           </div>
         </div>
@@ -322,16 +324,16 @@ export function CollabReportPage() {
           {canEdit && (
             <>
               <Button variant="outline" onClick={handleSaveAll} disabled={saving} className="gap-2">
-                <Save className="h-4 w-4" /> {saving ? 'Saving...' : 'Save All'}
+                <Save className="h-4 w-4" /> {saving ? t('common.saving') : t('collaboration.saveAll')}
               </Button>
               {report.status === 'draft' && canSubmit && (
                 <Button onClick={handleSubmit} className="gap-2">
-                  <Send className="h-4 w-4" /> Submit
+                  <Send className="h-4 w-4" /> {t('collaboration.submit')}
                 </Button>
               )}
               {report.status === 'rejected' && (
                 <Button onClick={handleResubmit} className="gap-2">
-                  <RotateCcw className="h-4 w-4" /> Resubmit
+                  <RotateCcw className="h-4 w-4" /> {t('collaboration.resubmit')}
                 </Button>
               )}
             </>
@@ -339,10 +341,10 @@ export function CollabReportPage() {
           {canReview && (
             <>
               <Button variant="outline" onClick={() => setShowRejectForm(!showRejectForm)} className="gap-2 text-destructive border-destructive/30">
-                <XCircle className="h-4 w-4" /> Return
+                <XCircle className="h-4 w-4" /> {t('collaboration.return')}
               </Button>
               <Button onClick={handleApprove} className="gap-2">
-                <CheckCircle className="h-4 w-4" /> Approve
+                <CheckCircle className="h-4 w-4" /> {t('collaboration.approve')}
               </Button>
             </>
           )}
@@ -353,7 +355,7 @@ export function CollabReportPage() {
       {report.rejection_note && (
         <Card className="border-destructive/30 bg-destructive/5">
           <CardContent className="p-4">
-            <p className="text-sm font-medium text-destructive mb-1">Corrections Requested</p>
+            <p className="text-sm font-medium text-destructive mb-1">{t('collaboration.correctionsRequested')}</p>
             <p className="text-sm">{report.rejection_note}</p>
           </CardContent>
         </Card>
@@ -363,19 +365,19 @@ export function CollabReportPage() {
       {showRejectForm && (
         <Card className="border-destructive/30">
           <CardContent className="p-4 space-y-3">
-            <Label className="text-sm font-medium">Reason for returning report</Label>
+            <Label className="text-sm font-medium">{t('collaboration.reasonForReturning')}</Label>
             <textarea
               value={rejectionNote}
               onChange={e => setRejectionNote(e.target.value)}
               className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm min-h-[80px]"
-              placeholder="Describe what needs to be corrected..."
+              placeholder={t('collaboration.describeCorrections')}
             />
             <div className="flex gap-2">
               <Button variant="destructive" size="sm" onClick={handleReject} disabled={!rejectionNote.trim()}>
-                Return Report
+                {t('collaboration.returnReport')}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => { setShowRejectForm(false); setRejectionNote('') }}>
-                Cancel
+                {t('common.cancel')}
               </Button>
             </div>
           </CardContent>
@@ -412,13 +414,13 @@ export function CollabReportPage() {
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <p className="text-sm font-medium capitalize">{report.status}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{lines.length} cost line{lines.length !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t('collaboration.costLineCount', { count: lines.length })}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-lg font-bold">{reportedPMs.toFixed(1)}</p>
-                  <p className="text-xs text-muted-foreground">Reported PMs</p>
+                  <p className="text-xs text-muted-foreground">{t('collaboration.reportedPMs')}</p>
                   {plannedPMs > 0 && (
                     <p className={`text-[10px] font-medium mt-0.5 ${devColor(deviationPMs)}`}>
                       of {plannedPMs} planned ({deviationPMs >= 0 ? '+' : ''}{deviationPMs.toFixed(1)}%)
@@ -429,7 +431,7 @@ export function CollabReportPage() {
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-lg font-bold">€{grandTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                  <p className="text-xs text-muted-foreground">Total Reported</p>
+                  <p className="text-xs text-muted-foreground">{t('collaboration.totalReported')}</p>
                   {plannedBudget > 0 && (
                     <p className={`text-[10px] font-medium mt-0.5 ${devColor(deviationBudget)}`}>
                       of €{plannedBudget.toLocaleString()} planned ({deviationBudget >= 0 ? '+' : ''}{deviationBudget.toFixed(1)}%)
@@ -440,13 +442,13 @@ export function CollabReportPage() {
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-lg font-bold">{allocs.length > 0 ? allocs.reduce((s, a) => s + a.person_months, 0).toFixed(1) : '—'}</p>
-                  <p className="text-xs text-muted-foreground">WP Allocations (PMs)</p>
+                  <p className="text-xs text-muted-foreground">{t('collaboration.wpAllocationsPMs')}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-lg font-bold">{partner?.funding_rate ?? '—'}%</p>
-                  <p className="text-xs text-muted-foreground">Funding Rate</p>
+                  <p className="text-xs text-muted-foreground">{t('collaboration.fundingRate')}</p>
                 </CardContent>
               </Card>
             </div>
@@ -455,17 +457,17 @@ export function CollabReportPage() {
             {partner && (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Planned vs Reported Budget</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t('collaboration.plannedVsReported')}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left bg-muted/50">
-                        <th className="p-3 font-medium text-xs">Category</th>
-                        <th className="p-3 font-medium text-xs text-right">Planned</th>
-                        <th className="p-3 font-medium text-xs text-right">Reported</th>
-                        <th className="p-3 font-medium text-xs text-right">Deviation</th>
-                        <th className="p-3 font-medium text-xs w-32">Progress</th>
+                        <th className="p-3 font-medium text-xs">{t('collaboration.category')}</th>
+                        <th className="p-3 font-medium text-xs text-right">{t('collaboration.planned')}</th>
+                        <th className="p-3 font-medium text-xs text-right">{t('collaboration.reported')}</th>
+                        <th className="p-3 font-medium text-xs text-right">{t('collaboration.deviation')}</th>
+                        <th className="p-3 font-medium text-xs w-32">{t('collaboration.progress')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -479,7 +481,7 @@ export function CollabReportPage() {
                         const fmt = (v: number) => isMonetary ? `${prefix}${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : v.toFixed(1)
                         return (
                           <tr key={s.key} className="border-b last:border-0">
-                            <td className="p-3 text-xs font-medium">{s.label}</td>
+                            <td className="p-3 text-xs font-medium">{t(s.labelKey)}</td>
                             <td className="p-3 text-xs text-right tabular-nums text-muted-foreground">{planned > 0 ? fmt(planned) : '—'}</td>
                             <td className="p-3 text-xs text-right tabular-nums font-medium">{fmt(reported)}</td>
                             <td className={`p-3 text-xs text-right tabular-nums font-medium ${planned > 0 ? devColor(dev) : 'text-muted-foreground'}`}>
@@ -508,16 +510,16 @@ export function CollabReportPage() {
             {allocs.length > 0 && (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Effort by Work Package (PMs)</CardTitle>
+                  <CardTitle className="text-sm font-medium">{t('collaboration.effortByWp')}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b text-left bg-muted/50">
-                        <th className="p-3 font-medium text-xs">Work Package</th>
-                        <th className="p-3 font-medium text-xs text-right">Allocated PMs</th>
-                        <th className="p-3 font-medium text-xs text-right">Reported PMs</th>
-                        <th className="p-3 font-medium text-xs text-right">Deviation</th>
+                        <th className="p-3 font-medium text-xs">{t('collaboration.workPackage')}</th>
+                        <th className="p-3 font-medium text-xs text-right">{t('collaboration.allocatedPMs')}</th>
+                        <th className="p-3 font-medium text-xs text-right">{t('collaboration.reportedPMs')}</th>
+                        <th className="p-3 font-medium text-xs text-right">{t('collaboration.deviation')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -555,7 +557,7 @@ export function CollabReportPage() {
         <TabsList className="flex-wrap h-auto gap-1">
           {SECTIONS.map(s => (
             <TabsTrigger key={s.key} value={s.key} className="text-xs">
-              {s.label}
+              {t(s.labelKey)}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -568,20 +570,20 @@ export function CollabReportPage() {
             <TabsContent key={s.key} value={s.key} className="space-y-4 mt-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium">{s.label}</p>
+                  <p className="font-medium">{t(s.labelKey)}</p>
                   <p className="text-sm text-muted-foreground">
-                    Subtotal: €{sectionTotals[s.key]?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
+                    {t('collaboration.subtotal')}: €{sectionTotals[s.key]?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}
                   </p>
                 </div>
                 {canEdit && (
                   <Button variant="outline" size="sm" onClick={() => addNewLine(s.key)} className="gap-1.5">
-                    <Plus className="h-3.5 w-3.5" /> Add Line
+                    <Plus className="h-3.5 w-3.5" /> {t('collaboration.addLine')}
                   </Button>
                 )}
               </div>
 
               {sectionLines.length === 0 && sectionNewLines.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">No entries yet</p>
+                <p className="text-sm text-muted-foreground py-4 text-center">{t('collaboration.noEntriesYet')}</p>
               ) : (
                 <Card>
                   <CardContent className="p-0">
@@ -589,9 +591,9 @@ export function CollabReportPage() {
                       <thead>
                         <tr className="border-b text-left">
                           <th className="p-3 font-medium w-16">#</th>
-                          <th className="p-3 font-medium">WP</th>
-                          <th className="p-3 font-medium w-40">Amount (€)</th>
-                          <th className="p-3 font-medium">Justification</th>
+                          <th className="p-3 font-medium">{t('collaboration.wp')}</th>
+                          <th className="p-3 font-medium w-40">{t('collaboration.amount')} (€)</th>
+                          <th className="p-3 font-medium">{t('collaboration.justification')}</th>
                           {canEdit && <th className="p-3 font-medium w-20"></th>}
                         </tr>
                       </thead>
@@ -625,7 +627,7 @@ export function CollabReportPage() {
                                     value={ed.justification}
                                     onChange={e => setEditData(d => ({ ...d, [line.id]: { ...ed, justification: e.target.value } }))}
                                     className="h-8 text-sm w-full"
-                                    placeholder="Optional note"
+                                    placeholder={t('collaboration.optionalNote')}
                                   />
                                 ) : (
                                   <span className="text-xs text-muted-foreground">{ed.justification || '—'}</span>
@@ -661,7 +663,7 @@ export function CollabReportPage() {
                                   }}
                                   className="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
                                 >
-                                  <option value="">— Select WP —</option>
+                                  <option value="">— {t('collaboration.selectWp')} —</option>
                                   {wps.map(wp => (
                                     <option key={wp.id} value={wp.id}>WP{wp.wp_number}: {wp.title}</option>
                                   ))}
@@ -690,7 +692,7 @@ export function CollabReportPage() {
                                     setNewLines(updated)
                                   }}
                                   className="h-8 text-sm w-full"
-                                  placeholder="Justification"
+                                  placeholder={t('collaboration.justification')}
                                 />
                               </td>
                               {canEdit && (
@@ -717,7 +719,7 @@ export function CollabReportPage() {
       {report.events && report.events.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Activity Log</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('collaboration.activityLog')}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y">

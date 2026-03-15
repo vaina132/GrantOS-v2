@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,7 @@ interface OrgMember {
 const ROLES: OrgRole[] = ['Admin', 'Project Manager', 'Finance Officer', 'Viewer', 'External Participant']
 
 export function UsersSettings() {
+  const { t } = useTranslation()
   const { orgId, orgName, user } = useAuthStore()
   const [members, setMembers] = useState<OrgMember[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,8 +100,8 @@ export function UsersSettings() {
 
       setMembers(rows)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load members'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -131,8 +133,8 @@ export function UsersSettings() {
       if (!res.ok) {
         const detail = data.detail ? ` (${data.detail})` : ''
         toast({
-          title: res.status === 409 ? 'Already a member' : 'Error',
-          description: (data.error ?? 'Failed to invite member') + detail,
+          title: res.status === 409 ? t('settings.alreadyMember') : t('common.error'),
+          description: (data.error ?? t('common.failedToSave')) + detail,
           variant: 'destructive',
         })
         setSaving(false)
@@ -141,10 +143,10 @@ export function UsersSettings() {
 
       const isNew = data.isNewUser
       toast({
-        title: isNew ? 'Invitation sent' : 'Member added',
+        title: isNew ? t('settings.memberInvited') : t('settings.memberAdded'),
         description: isNew
-          ? `An invitation email has been sent to ${inviteEmail}.`
-          : `${inviteEmail} added as ${inviteRole}.`,
+          ? t('settings.invitationSentTo', { email: inviteEmail })
+          : t('settings.memberAddedAs', { email: inviteEmail, role: inviteRole }),
       })
 
       // Send GrantLume-branded invitation email (fire-and-forget)
@@ -164,7 +166,7 @@ export function UsersSettings() {
             orgId,
             userIds: adminIds.filter((id) => id !== user?.id),
             type: 'invitation',
-            title: 'New member invited',
+            title: t('settings.memberInvited'),
             message: `${inviteEmail} has been invited as ${inviteRole}.`,
             link: '/settings',
           }).catch(() => {})
@@ -175,8 +177,8 @@ export function UsersSettings() {
       setInviteEmail('')
       fetchMembers()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to invite member'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -190,7 +192,7 @@ export function UsersSettings() {
         .eq('id', member.id)
 
       if (error) throw error
-      toast({ title: 'Role updated' })
+      toast({ title: t('settings.memberRoleUpdated') })
 
       // Send role change notification email (fire-and-forget)
       if (member.user_email) {
@@ -211,16 +213,16 @@ export function UsersSettings() {
           orgId,
           userId: member.user_id,
           type: 'info',
-          title: 'Your role has changed',
-          message: `Your role was changed from ${member.role} to ${newRole}.`,
+          title: t('settings.yourRoleHasBeenUpdated'),
+          message: t('settings.yourRoleHasBeenUpdatedTo', { role: newRole }),
           link: '/dashboard',
         }).catch(() => {})
       }
 
       fetchMembers()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update role'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     }
   }
 
@@ -237,7 +239,7 @@ export function UsersSettings() {
         .eq('id', deleteTarget.id)
 
       if (error) throw error
-      toast({ title: 'Member removed' })
+      toast({ title: t('settings.memberRemoved') })
       setDeleteTarget(null)
       fetchMembers()
 
@@ -250,8 +252,8 @@ export function UsersSettings() {
         }).catch(() => {})
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to remove member'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToDelete')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setDeleting(false)
     }
@@ -263,23 +265,23 @@ export function UsersSettings() {
     <>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Organisation Members</CardTitle>
+          <CardTitle className="text-base">{t('settings.members')}</CardTitle>
           <Button size="sm" onClick={() => setInviteOpen(true)}>
-            <Plus className="mr-1 h-4 w-4" /> Add Member
+            <Plus className="mr-1 h-4 w-4" /> {t('settings.addMember')}
           </Button>
         </CardHeader>
         <CardContent>
           {members.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No members found.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">{t('common.noResults')}</p>
           ) : (
             <div className="rounded-lg border overflow-x-auto">
               <table className="w-full text-sm min-w-[640px]">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-2 text-left font-medium">Member</th>
-                    <th className="px-4 py-2 text-left font-medium">Role</th>
-                    <th className="px-4 py-2 text-left font-medium">Joined</th>
-                    <th className="px-4 py-2 text-right font-medium">Actions</th>
+                    <th className="px-4 py-2 text-left font-medium">{t('common.member')}</th>
+                    <th className="px-4 py-2 text-left font-medium">{t('common.role')}</th>
+                    <th className="px-4 py-2 text-left font-medium">{t('settings.joined')}</th>
+                    <th className="px-4 py-2 text-right font-medium">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -296,7 +298,7 @@ export function UsersSettings() {
                             </span>
                           </div>
                           {m.user_id === user?.id && (
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">You</Badge>
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{t('settings.you')}</Badge>
                           )}
                         </div>
                       </td>
@@ -334,11 +336,11 @@ export function UsersSettings() {
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Member</DialogTitle>
+            <DialogTitle>{t('settings.addMember')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Email</Label>
+              <Label>{t('common.email')}</Label>
               <Input
                 type="email"
                 value={inviteEmail}
@@ -347,7 +349,7 @@ export function UsersSettings() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Role</Label>
+              <Label>{t('common.role')}</Label>
               <select
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value as OrgRole)}
@@ -360,9 +362,9 @@ export function UsersSettings() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setInviteOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleInvite} disabled={saving || !inviteEmail}>
-              {saving ? 'Adding...' : 'Add Member'}
+              {saving ? t('common.adding') : t('settings.addMember')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -371,9 +373,9 @@ export function UsersSettings() {
       <ConfirmModal
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Remove Member"
-        message="Are you sure you want to remove this member from the organisation?"
-        confirmLabel="Remove"
+        title={t('settings.removeMember')}
+        message={t('settings.removeMemberConfirm')}
+        confirmLabel={t('common.remove')}
         destructive
         loading={deleting}
         onConfirm={handleDelete}

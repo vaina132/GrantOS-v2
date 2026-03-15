@@ -57,22 +57,22 @@ export function SignUpPage() {
     e.preventDefault()
 
     if (!firstName.trim() || !lastName.trim()) {
-      toast({ title: 'Name required', description: 'Please enter your first and last name.', variant: 'destructive' })
+      toast({ title: t('auth.nameRequired'), description: t('auth.nameRequiredDesc'), variant: 'destructive' })
       return
     }
 
     if (password.length < 8) {
-      toast({ title: 'Weak password', description: 'Password must be at least 8 characters.', variant: 'destructive' })
+      toast({ title: t('auth.weakPassword'), description: t('auth.passwordMinLength'), variant: 'destructive' })
       return
     }
 
     if (password !== confirmPassword) {
-      toast({ title: 'Passwords do not match', description: 'Please re-enter your password.', variant: 'destructive' })
+      toast({ title: t('auth.passwordsDoNotMatch'), description: t('auth.reenterPassword'), variant: 'destructive' })
       return
     }
 
     if (!agreedTerms) {
-      toast({ title: 'Terms required', description: 'You must agree to the Terms of Use and Privacy Policy.', variant: 'destructive' })
+      toast({ title: t('auth.termsRequired'), description: t('auth.termsRequiredDesc'), variant: 'destructive' })
       return
     }
 
@@ -97,13 +97,13 @@ export function SignUpPage() {
 
       // Supabase returns a user with empty identities when the email already exists
       if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
-        throw new Error('An account with this email already exists. Please sign in instead.')
+        throw new Error(t('auth.accountAlreadyExists'))
       }
 
       setSuccess(true)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Sign up failed.'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('auth.signUpFailed')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -117,10 +117,10 @@ export function SignUpPage() {
         options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
       })
       if (error) throw error
-      toast({ title: 'Email sent', description: 'A new confirmation email has been sent.' })
+      toast({ title: t('auth.emailSent'), description: t('auth.confirmationResent') })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to resend email'
-      toast({ title: 'Error', description: msg, variant: 'destructive' })
+      const msg = err instanceof Error ? err.message : t('auth.failedToResend')
+      toast({ title: t('common.error'), description: msg, variant: 'destructive' })
     }
   }
 

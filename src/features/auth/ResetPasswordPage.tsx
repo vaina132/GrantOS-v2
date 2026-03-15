@@ -41,12 +41,12 @@ export function ResetPasswordPage() {
     e.preventDefault()
 
     if (password.length < 8) {
-      toast({ title: 'Weak password', description: 'Password must be at least 8 characters.', variant: 'destructive' })
+      toast({ title: t('auth.weakPassword'), description: t('auth.passwordMinLength'), variant: 'destructive' })
       return
     }
 
     if (password !== confirmPassword) {
-      toast({ title: 'Passwords do not match', description: 'Please re-enter your password.', variant: 'destructive' })
+      toast({ title: t('auth.passwordsDoNotMatch'), description: t('auth.reenterPassword'), variant: 'destructive' })
       return
     }
 
@@ -55,10 +55,10 @@ export function ResetPasswordPage() {
       const { error } = await supabase.auth.updateUser({ password })
       if (error) throw error
       setSuccess(true)
-      toast({ title: 'Password updated', description: 'Your password has been reset successfully.' })
+      toast({ title: t('auth.passwordUpdated'), description: t('auth.passwordResetSuccess') })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update password.'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('auth.failedToUpdatePassword')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -110,12 +110,12 @@ export function ResetPasswordPage() {
             </div>
           ) : !hasSession ? (
             <div className="space-y-6 text-center">
-              <h2 className="text-2xl font-bold tracking-tight">Link expired</h2>
+              <h2 className="text-2xl font-bold tracking-tight">{t('auth.linkExpired')}</h2>
               <p className="text-sm text-muted-foreground">
-                This reset link may have expired or is invalid. Please request a new one.
+                {t('auth.linkExpiredDesc')}
               </p>
               <Button variant="outline" className="w-full h-11" onClick={() => navigate('/forgot-password')}>
-                Request new reset link
+                {t('auth.requestNewResetLink')}
               </Button>
             </div>
           ) : (

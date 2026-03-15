@@ -97,7 +97,7 @@ export function LoginPage() {
 
     // Verify challenge if shown
     if (showChallenge && Number(challengeAnswer) !== challenge.answer) {
-      toast({ title: 'Incorrect answer', description: 'Please solve the security challenge to continue.', variant: 'destructive' })
+      toast({ title: t('auth.incorrectAnswer'), description: t('auth.solveChallengeDesc'), variant: 'destructive' })
       return
     }
 
@@ -116,8 +116,8 @@ export function LoginPage() {
       navigate('/dashboard')
     } catch (err) {
       recordFailure()
-      const message = err instanceof Error ? err.message : 'Sign in failed. Please try again.'
-      toast({ title: 'Sign in failed', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('auth.signInFailed')
+      toast({ title: t('auth.signInFailed'), description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -137,23 +137,23 @@ export function LoginPage() {
             <span className="text-2xl font-bold tracking-tight">GrantLume</span>
           </div>
           <h1 className="text-4xl font-bold leading-tight">
-            Manage your grant projects with confidence
+            {t('auth.heroTitle')}
           </h1>
           <p className="text-blue-100 text-lg leading-relaxed">
-            Track allocations, timesheets, budgets, and reporting — all in one place. Trusted by research organisations across Europe.
+            {t('auth.heroSubtitle')}
           </p>
           <div className="flex flex-col gap-3 text-sm text-blue-100">
             <div className="flex items-center gap-2">
               <svg className="h-5 w-5 text-green-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-              <span>No credit card required</span>
+              <span>{t('auth.noCreditCard')}</span>
             </div>
             <div className="flex items-center gap-2">
               <svg className="h-5 w-5 text-green-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-              <span>14-day free trial</span>
+              <span>{t('auth.freeTrial14')}</span>
             </div>
             <div className="flex items-center gap-2">
               <svg className="h-5 w-5 text-green-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-              <span>Cancel anytime</span>
+              <span>{t('auth.cancelAnytime')}</span>
             </div>
           </div>
         </div>
@@ -262,17 +262,17 @@ export function LoginPage() {
             {isLockedOut && (
               <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-700 p-3 space-y-1">
                 <div className="text-sm font-medium text-red-800 dark:text-red-300">
-                  Account temporarily locked
+                  {t('auth.accountLocked')}
                 </div>
                 <p className="text-xs text-red-700 dark:text-red-400">
-                  Too many failed login attempts. Please try again in{' '}
+                  {t('auth.tooManyAttempts')}{' '}
                   <span className="font-bold tabular-nums">{lockCountdown}s</span>.
                 </p>
               </div>
             )}
 
             <Button type="submit" className="w-full h-11 font-semibold text-base" disabled={loading || isLockedOut}>
-              {loading ? t('common.loading') : isLockedOut ? `Locked (${lockCountdown}s)` : t('auth.login')}
+              {loading ? t('common.loading') : isLockedOut ? `${t('auth.locked')} (${lockCountdown}s)` : t('auth.login')}
             </Button>
           </form>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { absenceService } from '@/services/absenceService'
 import { absenceApproverService } from '@/services/absenceApproverService'
 import { notificationService } from '@/services/notificationService'
@@ -36,6 +37,7 @@ const STATUS_BADGE: Record<AbsenceStatus, { label: string; className: string }> 
 }
 
 export function AbsenceList() {
+  const { t } = useTranslation()
   const { orgId, user, can } = useAuthStore()
   const { staff } = useStaff({ is_active: true })
   const [typeFilter, setTypeFilter] = useState<AbsenceType | undefined>(undefined)
@@ -129,10 +131,10 @@ export function AbsenceList() {
       }
       if (editTarget) {
         await absenceService.update(editTarget.id, payload)
-        toast({ title: 'Updated', description: 'Absence updated.' })
+        toast({ title: t('common.updated'), description: t('absences.absenceUpdated') })
       } else {
         await absenceService.create(payload as any)
-        toast({ title: 'Created', description: hasApprovers ? 'Absence request submitted for approval.' : 'Absence recorded.' })
+        toast({ title: t('common.created'), description: hasApprovers ? t('absences.absenceSubmitted') : t('absences.absenceRecorded') })
 
         // Notify approvers if any
         if (hasApprovers && orgId) {
@@ -143,7 +145,7 @@ export function AbsenceList() {
               orgId,
               userIds: approverUserIds,
               type: 'approval',
-              title: 'Absence Request',
+              title: t('absences.absenceRequest'),
               message: `${personName} requested ${absenceType}: ${startDate} – ${endDate ?? startDate} (${days || '?'} days)`,
               link: '/absences',
             }).catch(() => {})
@@ -167,8 +169,8 @@ export function AbsenceList() {
       setDialogOpen(false)
       refetch()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -179,7 +181,7 @@ export function AbsenceList() {
     setApproving(absence.id)
     try {
       await absenceService.approve(absence.id, user.id)
-      toast({ title: 'Approved', description: 'Absence request approved.' })
+      toast({ title: t('absences.approved'), description: t('absences.absenceApproved') })
       refetch()
 
       // Notify the requester
@@ -189,7 +191,7 @@ export function AbsenceList() {
           orgId,
           userId: absence.requested_by,
           type: 'success',
-          title: 'Absence Approved',
+          title: t('absences.absenceApprovedTitle'),
           message: `Your absence request for ${personName} (${absence.type}: ${formatDate(absence.start_date)} – ${formatDate(absence.end_date)}) has been approved.`,
           link: '/absences',
         }).catch(() => {})
@@ -230,15 +232,15 @@ export function AbsenceList() {
             orgId,
             userId: substitute.user_id,
             type: 'info',
-            title: 'Substitute Coverage',
+            title: t('absences.substituteCoverage'),
             message: `You have been nominated as substitute for ${absenteeName} (${absence.type}: ${formatDate(absence.start_date)} – ${formatDate(absence.end_date)}).`,
             link: '/absences',
           }).catch(() => {})
         }
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to approve'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('absences.failedToApprove')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setApproving(null)
     }
@@ -249,7 +251,7 @@ export function AbsenceList() {
     setApproving(absence.id)
     try {
       await absenceService.reject(absence.id, user.id)
-      toast({ title: 'Rejected', description: 'Absence request rejected.' })
+      toast({ title: t('absences.rejected'), description: t('absences.absenceRejected') })
       refetch()
 
       // Notify the requester
@@ -259,7 +261,7 @@ export function AbsenceList() {
           orgId,
           userId: absence.requested_by,
           type: 'warning',
-          title: 'Absence Rejected',
+          title: t('absences.absenceRejectedTitle'),
           message: `Your absence request for ${personName} (${absence.type}: ${formatDate(absence.start_date)} – ${formatDate(absence.end_date)}) has been rejected.`,
           link: '/absences',
         }).catch(() => {})
@@ -278,8 +280,8 @@ export function AbsenceList() {
         }).catch(() => {})
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to reject'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('absences.failedToReject')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setApproving(null)
     }
@@ -292,7 +294,7 @@ export function AbsenceList() {
       const absence = deleteTarget
       const absStatus = (absence as any).status as AbsenceStatus | undefined
       await absenceService.remove(deleteTarget.id)
-      toast({ title: 'Deleted', description: 'Absence removed.' })
+      toast({ title: t('common.deleted'), description: t('absences.absenceRemoved') })
       setDeleteTarget(null)
       refetch()
 
@@ -317,8 +319,8 @@ export function AbsenceList() {
         }).catch(() => {})
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('absences.failedToDelete')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setDeleting(false)
     }
@@ -334,7 +336,7 @@ export function AbsenceList() {
       {can('canManageAllocations') && (
         <div className="flex justify-end">
           <Button onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" /> Record Absence
+            <Plus className="mr-2 h-4 w-4" /> {t('absences.recordAbsence')}
           </Button>
         </div>
       )}
@@ -347,16 +349,16 @@ export function AbsenceList() {
             size="sm"
             onClick={() => setTypeFilter(undefined)}
           >
-            All Types
+            {t('absences.allTypes')}
           </Button>
-          {ABSENCE_TYPES.map((t) => (
+          {ABSENCE_TYPES.map((aType) => (
             <Button
-              key={t}
-              variant={typeFilter === t ? 'default' : 'outline'}
+              key={aType}
+              variant={typeFilter === aType ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setTypeFilter(t)}
+              onClick={() => setTypeFilter(aType)}
             >
-              {t}
+              {aType}
             </Button>
           ))}
         </div>
@@ -366,7 +368,7 @@ export function AbsenceList() {
             size="sm"
             onClick={() => setStatusFilter(undefined)}
           >
-            All Status
+            {t('absences.allStatus')}
           </Button>
           {(['pending', 'approved', 'rejected', 'cancelled'] as AbsenceStatus[]).map((s) => (
             <Button
@@ -387,12 +389,12 @@ export function AbsenceList() {
       ) : filteredAbsences.length === 0 ? (
         <EmptyState
           icon={CalendarOff}
-          title="No absences recorded"
-          description="Record staff absences to track leave and compute available capacity."
+          title={t('absences.noAbsences')}
+          description={t('absences.noAbsencesDesc')}
           action={
             can('canManageAllocations') ? (
               <Button onClick={openCreate}>
-                <Plus className="mr-2 h-4 w-4" /> Record Absence
+                <Plus className="mr-2 h-4 w-4" /> {t('absences.recordAbsence')}
               </Button>
             ) : undefined
           }
@@ -403,16 +405,16 @@ export function AbsenceList() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-2 text-left font-medium">Person</th>
-                  <th className="px-4 py-2 text-left font-medium">Type</th>
-                  <th className="px-4 py-2 text-left font-medium">Start</th>
-                  <th className="px-4 py-2 text-left font-medium">End</th>
-                  <th className="px-4 py-2 text-right font-medium">Days</th>
-                  <th className="px-4 py-2 text-center font-medium">Status</th>
-                  <th className="px-4 py-2 text-left font-medium">Substitute</th>
-                  <th className="px-4 py-2 text-left font-medium">Notes</th>
+                  <th className="px-4 py-2 text-left font-medium">{t('common.person')}</th>
+                  <th className="px-4 py-2 text-left font-medium">{t('common.type')}</th>
+                  <th className="px-4 py-2 text-left font-medium">{t('common.start')}</th>
+                  <th className="px-4 py-2 text-left font-medium">{t('common.end')}</th>
+                  <th className="px-4 py-2 text-right font-medium">{t('absences.days')}</th>
+                  <th className="px-4 py-2 text-center font-medium">{t('common.status')}</th>
+                  <th className="px-4 py-2 text-left font-medium">{t('absences.substitute')}</th>
+                  <th className="px-4 py-2 text-left font-medium">{t('common.notes')}</th>
                   {can('canManageAllocations') && (
-                    <th className="px-4 py-2 text-right font-medium">Actions</th>
+                    <th className="px-4 py-2 text-right font-medium">{t('common.actions')}</th>
                   )}
                 </tr>
               </thead>
@@ -497,58 +499,58 @@ export function AbsenceList() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editTarget ? 'Edit Absence' : 'Record Absence'}</DialogTitle>
+            <DialogTitle>{editTarget ? t('absences.editAbsence') : t('absences.recordAbsence')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Person *</Label>
+              <Label>{t('common.person')} *</Label>
               <select
                 value={personId}
                 onChange={(e) => setPersonId(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 disabled={!!editTarget}
               >
-                <option value="">Select person...</option>
+                <option value="">{t('allocations.selectPerson')}</option>
                 {staff.map((p) => (
                   <option key={p.id} value={p.id}>{p.full_name}</option>
                 ))}
               </select>
             </div>
             <div className="space-y-2">
-              <Label>Type</Label>
+              <Label>{t('common.type')}</Label>
               <select
                 value={absenceType}
                 onChange={(e) => setAbsenceType(e.target.value as AbsenceType)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                {ABSENCE_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                {ABSENCE_TYPES.map((aType) => (
+                  <option key={aType} value={aType}>{aType}</option>
                 ))}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Start Date</Label>
+                <Label>{t('common.start')}</Label>
                 <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>End Date</Label>
+                <Label>{t('common.end')}</Label>
                 <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Days</Label>
+              <Label>{t('absences.days')}</Label>
               <Input type="number" step="0.5" min="0" value={days} onChange={(e) => setDays(e.target.value)} placeholder="e.g. 5" />
             </div>
             {/* Substitute dropdown */}
             <div className="space-y-2">
-              <Label>Substitute <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Label>{t('absences.substitute')} <span className="text-muted-foreground font-normal">({t('common.optional')})</span></Label>
               <select
                 value={substitutePersonId ?? ''}
                 onChange={(e) => setSubstitutePersonId(e.target.value || null)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <option value="">No substitute</option>
+                <option value="">{t('absences.noSubstitute')}</option>
                 {staff
                   .filter((p) => p.id !== personId)
                   .map((p) => (
@@ -558,14 +560,14 @@ export function AbsenceList() {
               {substituteOverlap && (
                 <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
                   <AlertTriangle className="h-3.5 w-3.5" />
-                  This person has an approved or pending absence overlapping these dates.
+                  {t('absences.substituteOverlap')}
                 </div>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label>Notes</Label>
-              <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes" />
+              <Label>{t('common.notes')}</Label>
+              <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t('absences.optionalNotes')} />
             </div>
 
             {/* Conflict panel — shows colleagues absent during same period */}
@@ -577,9 +579,9 @@ export function AbsenceList() {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>{t('common.cancel')}</Button>
             <Button onClick={handleSave} disabled={saving || !personId}>
-              {saving ? 'Saving...' : editTarget ? 'Update' : 'Save'}
+              {saving ? t('common.saving') : editTarget ? t('common.update') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -588,9 +590,9 @@ export function AbsenceList() {
       <ConfirmModal
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete Absence"
-        message="Are you sure you want to delete this absence record?"
-        confirmLabel="Delete"
+        title={t('absences.deleteAbsence')}
+        message={t('absences.deleteAbsenceConfirm')}
+        confirmLabel={t('common.delete')}
         destructive
         loading={deleting}
         onConfirm={handleDelete}

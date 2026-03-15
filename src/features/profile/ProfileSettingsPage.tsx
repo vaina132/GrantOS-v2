@@ -49,7 +49,7 @@ export function ProfileSettingsPage() {
     setSaving(true)
     try {
       if (!isPersisted) {
-        toast({ title: 'Note', description: 'Preferences table not yet available. Run the SQL migration first.', variant: 'destructive' })
+        toast({ title: t('common.warning'), description: t('profile.prefsNotAvailable'), variant: 'destructive' })
         return
       }
       const updated = await preferencesService.update(prefs.id, {
@@ -57,13 +57,13 @@ export function ProfileSettingsPage() {
       })
       if (updated) {
         setPrefs(updated)
-        toast({ title: 'Profile saved' })
+        toast({ title: t('profile.profileSaved') })
       } else {
-        toast({ title: 'Note', description: 'Could not save — preferences table may not be set up yet.' })
+        toast({ title: t('common.warning'), description: t('profile.couldNotSave') })
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -72,7 +72,7 @@ export function ProfileSettingsPage() {
   const handleToggleEmail = async (key: keyof UserPreferences, value: boolean) => {
     if (!prefs) return
     if (!isPersisted) {
-      toast({ title: 'Note', description: 'Preferences table not yet available. Run the SQL migration first.' })
+      toast({ title: t('common.warning'), description: t('profile.prefsNotAvailable') })
       return
     }
     const prev = prefs[key]
@@ -82,29 +82,29 @@ export function ProfileSettingsPage() {
     if (!result) {
       // Revert
       setPrefs({ ...prefs, [key]: prev })
-      toast({ title: 'Note', description: 'Could not save preference — table may not be set up yet.' })
+      toast({ title: t('common.warning'), description: t('profile.couldNotSavePref') })
     }
   }
 
   const handleChangePassword = async () => {
     if (!newPassword || newPassword.length < 6) {
-      toast({ title: 'Password too short', description: 'Must be at least 6 characters.', variant: 'destructive' })
+      toast({ title: t('profile.passwordTooShort'), variant: 'destructive' })
       return
     }
     if (newPassword !== confirmPassword) {
-      toast({ title: 'Passwords do not match', variant: 'destructive' })
+      toast({ title: t('profile.passwordMismatch'), variant: 'destructive' })
       return
     }
     setSavingPassword(true)
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword })
       if (error) throw error
-      toast({ title: 'Password updated successfully' })
+      toast({ title: t('profile.passwordUpdated') })
       setNewPassword('')
       setConfirmPassword('')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to change password'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSavingPassword(false)
     }

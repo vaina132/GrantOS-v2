@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { settingsService } from '@/services/settingsService'
 import { useAuthStore } from '@/stores/authStore'
 import { ConfirmModal } from '@/components/common/ConfirmModal'
@@ -44,6 +45,7 @@ const FUNDING_PRESETS: { name: string; type: string; overhead_rate: number }[] =
 ]
 
 export function FundingSchemes() {
+  const { t } = useTranslation()
   const { orgId } = useAuthStore()
   const [schemes, setSchemes] = useState<FundingScheme[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -65,7 +67,7 @@ export function FundingSchemes() {
       const existingNames = new Set(schemes.map(s => s.name.toLowerCase()))
       const toCreate = FUNDING_PRESETS.filter(p => !existingNames.has(p.name.toLowerCase()))
       if (toCreate.length === 0) {
-        toast({ title: 'All presets already exist', description: 'No new funding schemes to add.' })
+        toast({ title: t('settings.presetsExist') })
         setLoadingPresets(false)
         return
       }
@@ -77,11 +79,11 @@ export function FundingSchemes() {
           overhead_rate: preset.overhead_rate,
         })
       }
-      toast({ title: 'Presets loaded', description: `${toCreate.length} funding scheme${toCreate.length > 1 ? 's' : ''} added.` })
+      toast({ title: t('settings.presetsLoaded'), description: `${toCreate.length} ${t('settings.schemesAdded')}` })
       fetch()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load presets'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setLoadingPresets(false)
     }
@@ -93,8 +95,8 @@ export function FundingSchemes() {
       const data = await settingsService.listFundingSchemes(orgId)
       setSchemes(data)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load funding schemes'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setIsLoading(false)
     }
@@ -130,7 +132,7 @@ export function FundingSchemes() {
           type: type.trim(),
           overhead_rate: Number(overheadRate) || 0,
         })
-        toast({ title: 'Updated', description: `${name} has been updated.` })
+        toast({ title: t('common.updated'), description: t('common.hasBeenUpdated', { name }) })
       } else {
         await settingsService.createFundingScheme({
           org_id: orgId ?? '',
@@ -138,13 +140,13 @@ export function FundingSchemes() {
           type: type.trim(),
           overhead_rate: Number(overheadRate) || 0,
         })
-        toast({ title: 'Created', description: `${name} has been created.` })
+        toast({ title: t('common.created'), description: t('common.hasBeenCreated', { name }) })
       }
       setDialogOpen(false)
       fetch()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -155,12 +157,12 @@ export function FundingSchemes() {
     setDeleting(true)
     try {
       await settingsService.removeFundingScheme(deleteTarget.id)
-      toast({ title: 'Deleted', description: `${deleteTarget.name} has been removed.` })
+      toast({ title: t('common.deleted'), description: t('common.hasBeenRemoved', { name: deleteTarget.name }) })
       setDeleteTarget(null)
       fetch()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToDelete')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setDeleting(false)
     }
@@ -169,14 +171,14 @@ export function FundingSchemes() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Funding Schemes</CardTitle>
+        <CardTitle>{t('settings.fundingSchemes')}</CardTitle>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={handleLoadPresets} disabled={loadingPresets}>
             {loadingPresets ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-            {loadingPresets ? 'Loading...' : 'Load Presets'}
+            {loadingPresets ? t('common.loading') : t('settings.loadPresets')}
           </Button>
           <Button size="sm" onClick={openCreate}>
-            <Plus className="mr-2 h-4 w-4" /> Add Scheme
+            <Plus className="mr-2 h-4 w-4" /> {t('settings.addScheme')}
           </Button>
         </div>
       </CardHeader>
@@ -190,18 +192,18 @@ export function FundingSchemes() {
         ) : schemes.length === 0 ? (
           <EmptyState
             icon={Layers}
-            title="No funding schemes"
-            description="Add funding schemes to categorise your projects (e.g. Horizon Europe, ERC, national)."
+            title={t('settings.noSchemes')}
+            description={t('settings.noSchemesDesc')}
           />
         ) : (
           <div className="rounded-lg border overflow-x-auto">
             <table className="w-full text-sm min-w-[480px]">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-2 text-left font-medium">Name</th>
-                  <th className="px-4 py-2 text-left font-medium">Type</th>
-                  <th className="px-4 py-2 text-right font-medium">Overhead %</th>
-                  <th className="px-4 py-2 text-right font-medium">Actions</th>
+                  <th className="px-4 py-2 text-left font-medium">{t('common.name')}</th>
+                  <th className="px-4 py-2 text-left font-medium">{t('common.type')}</th>
+                  <th className="px-4 py-2 text-right font-medium">{t('settings.overheadPercent')}</th>
+                  <th className="px-4 py-2 text-right font-medium">{t('common.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -231,11 +233,11 @@ export function FundingSchemes() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editTarget ? 'Edit Funding Scheme' : 'New Funding Scheme'}</DialogTitle>
+            <DialogTitle>{editTarget ? t('settings.editScheme') : t('settings.newScheme')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="scheme-name">Name *</Label>
+              <Label htmlFor="scheme-name">{t('common.name')} *</Label>
               <Input
                 id="scheme-name"
                 value={name}
@@ -244,7 +246,7 @@ export function FundingSchemes() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="scheme-type">Type</Label>
+              <Label htmlFor="scheme-type">{t('common.type')}</Label>
               <Input
                 id="scheme-type"
                 value={type}
@@ -253,7 +255,7 @@ export function FundingSchemes() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="scheme-overhead">Default Overhead Rate (%)</Label>
+              <Label htmlFor="scheme-overhead">{t('settings.defaultOverheadRate')}</Label>
               <Input
                 id="scheme-overhead"
                 type="number"
@@ -266,10 +268,10 @@ export function FundingSchemes() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button onClick={handleSave} disabled={saving || !name.trim()}>
-              {saving ? 'Saving...' : editTarget ? 'Update' : 'Create'}
+              {saving ? t('common.saving') : editTarget ? t('common.update') : t('common.create')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -278,9 +280,9 @@ export function FundingSchemes() {
       <ConfirmModal
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete Funding Scheme"
-        message={`Are you sure you want to delete "${deleteTarget?.name}"? Projects using this scheme will keep their current settings.`}
-        confirmLabel="Delete"
+        title={t('settings.deleteScheme')}
+        message={t('settings.deleteSchemeConfirm', { name: deleteTarget?.name ?? '' })}
+        confirmLabel={t('common.delete')}
         destructive
         loading={deleting}
         onConfirm={handleDelete}

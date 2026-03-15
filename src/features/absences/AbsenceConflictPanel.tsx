@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { absenceService } from '@/services/absenceService'
 import { settingsService } from '@/services/settingsService'
 import { useAuthStore } from '@/stores/authStore'
@@ -27,6 +28,7 @@ export function AbsenceConflictPanel({
   excludePersonId,
   substitutePersonId,
 }: AbsenceConflictPanelProps) {
+  const { t } = useTranslation()
   const { orgId } = useAuthStore()
   const [conflicts, setConflicts] = useState<Absence[]>([])
   const [privateTypes, setPrivateTypes] = useState<string[]>(DEFAULT_PRIVATE)
@@ -80,7 +82,7 @@ export function AbsenceConflictPanel({
     return (
       <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground flex items-center gap-2">
         <Users className="h-3.5 w-3.5 animate-pulse" />
-        Checking for overlapping absences…
+        {t('absences.checkingOverlaps')}
       </div>
     )
   }
@@ -88,7 +90,7 @@ export function AbsenceConflictPanel({
   if (error) {
     return (
       <div className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
-        Could not check for overlapping absences.
+        {t('absences.couldNotCheckOverlaps')}
       </div>
     )
   }
@@ -97,7 +99,7 @@ export function AbsenceConflictPanel({
     return (
       <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-950/20 p-3 text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
         <CheckCircle2 className="h-3.5 w-3.5" />
-        No colleagues absent in this period.
+        {t('absences.noColleaguesAbsent')}
       </div>
     )
   }
@@ -109,7 +111,7 @@ export function AbsenceConflictPanel({
     <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/20 p-3 space-y-2">
       <div className="flex items-center gap-2 text-xs font-medium text-amber-800 dark:text-amber-400">
         <AlertTriangle className="h-3.5 w-3.5" />
-        {conflicts.length} colleague{conflicts.length !== 1 ? 's' : ''} also absent during this period
+        {t('absences.colleaguesAbsent', { count: conflicts.length })}
       </div>
 
       <div className="space-y-1.5">
@@ -118,7 +120,7 @@ export function AbsenceConflictPanel({
           const isSubstitute = substitutePersonId && c.person_id === substitutePersonId
           const status = (c.status as AbsenceStatus) || 'approved'
           const isPrivate = privateTypes.includes(c.type)
-          const displayType = isPrivate ? 'Absence' : c.type
+          const displayType = isPrivate ? t('absences.title') : c.type
 
           return (
             <div
@@ -151,7 +153,7 @@ export function AbsenceConflictPanel({
                         : 'border-amber-300 text-amber-700 dark:text-amber-400',
                     )}
                   >
-                    {status === 'approved' ? 'Approved' : 'Pending'}
+                    {status === 'approved' ? t('common.approved') : t('common.pending')}
                   </Badge>
                 </div>
                 <div className="text-muted-foreground">
@@ -161,7 +163,7 @@ export function AbsenceConflictPanel({
 
               {isSubstitute && (
                 <span className="shrink-0 text-[10px] font-semibold text-red-700 dark:text-red-400">
-                  ⚠ Your substitute
+                  ⚠ {t('absences.yourSubstitute')}
                 </span>
               )}
             </div>
@@ -176,7 +178,7 @@ export function AbsenceConflictPanel({
           className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400 hover:underline"
         >
           <ChevronDown className="h-3 w-3" />
-          Show {conflicts.length - INITIAL_SHOW} more
+          {t('absences.showMore', { count: conflicts.length - INITIAL_SHOW })}
         </button>
       )}
     </div>

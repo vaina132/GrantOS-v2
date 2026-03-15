@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useStaff } from '@/hooks/useStaff'
 import type { StaffFilters } from '@/services/staffService'
@@ -19,6 +20,7 @@ import { PersonAvatar } from '@/components/common/PersonAvatar'
 import type { Person } from '@/types'
 
 export function StaffList() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { can } = useAuthStore()
   const [search, setSearch] = useState('')
@@ -56,12 +58,12 @@ export function StaffList() {
     setDeleting(true)
     try {
       await staffService.remove(deleteTarget.id)
-      toast({ title: 'Deleted', description: `${deleteTarget.full_name} has been removed.` })
+      toast({ title: t('common.deleted'), description: t('common.hasBeenRemoved', { name: deleteTarget.full_name }) })
       setDeleteTarget(null)
       refetch()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToDelete')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setDeleting(false)
     }
@@ -70,12 +72,12 @@ export function StaffList() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Staff"
-        description="Manage your organisation's staff members"
+        title={t('staff.title')}
+        description={t('staff.description')}
         actions={
           can('canWrite') ? (
             <Button onClick={() => navigate('/staff/new')}>
-              <Plus className="mr-2 h-4 w-4" /> Add Person
+              <Plus className="mr-2 h-4 w-4" /> {t('staff.addPerson')}
             </Button>
           ) : undefined
         }
@@ -85,7 +87,7 @@ export function StaffList() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by name..."
+            placeholder={t('staff.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -93,9 +95,9 @@ export function StaffList() {
         </div>
         <div className="flex gap-2">
           {[
-            { label: 'Active', value: true },
-            { label: 'Inactive', value: false },
-            { label: 'All', value: undefined },
+            { label: t('common.active'), value: true },
+            { label: t('common.inactive'), value: false },
+            { label: t('common.all'), value: undefined },
           ].map((opt) => (
             <Button
               key={String(opt.value)}
@@ -114,12 +116,12 @@ export function StaffList() {
       ) : staff.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No staff members found"
-          description={search ? 'Try adjusting your search.' : 'Add your first team member to get started.'}
+          title={t('staff.noStaff')}
+          description={search ? t('common.tryAdjusting') : t('staff.noStaffDesc')}
           action={
             can('canWrite') ? (
               <Button onClick={() => navigate('/staff/new')}>
-                <Plus className="mr-2 h-4 w-4" /> Add Person
+                <Plus className="mr-2 h-4 w-4" /> {t('staff.addPerson')}
               </Button>
             ) : undefined
           }
@@ -127,22 +129,22 @@ export function StaffList() {
       ) : (
         <>
         <div className="text-xs text-muted-foreground mb-2">
-          Showing {staff.length} member{staff.length !== 1 ? 's' : ''}
+          {t('common.showing')} {staff.length} {t('common.items')}
         </div>
         <div className="rounded-lg border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Name</th>
-                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Department</th>
-                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Role</th>
-                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Type</th>
-                  <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">FTE</th>
-                  <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Leave Balance</th>
-                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Account</th>
-                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Status</th>
-                  {can('canWrite') && <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Actions</th>}
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">{t('common.name')}</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">{t('staff.department')}</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">{t('common.role')}</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">{t('common.type')}</th>
+                  <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">{t('staff.fte')}</th>
+                  <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">{t('staff.leaveBalance')}</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">{t('common.account')}</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">{t('common.status')}</th>
+                  {can('canWrite') && <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">{t('common.actions')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -194,16 +196,16 @@ export function StaffList() {
                     </td>
                     <td className="px-4 py-3">
                       {person.user_id ? (
-                        <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-[10px]">Active</Badge>
+                        <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-[10px]">{t('common.active')}</Badge>
                       ) : person.invite_status === 'pending' ? (
-                        <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px]">Invited</Badge>
+                        <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px]">{t('common.invited')}</Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant={person.is_active ? 'default' : 'outline'}>
-                        {person.is_active ? 'Active' : 'Inactive'}
+                        {person.is_active ? t('common.active') : t('common.inactive')}
                       </Badge>
                     </td>
                     {can('canWrite') && (
@@ -238,9 +240,9 @@ export function StaffList() {
       <ConfirmModal
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete Staff Member"
-        message={`Are you sure you want to delete "${deleteTarget?.full_name}"? This action cannot be undone.`}
-        confirmLabel="Delete"
+        title={t('staff.deletePerson')}
+        message={t('staff.deletePersonConfirm', { name: deleteTarget?.full_name ?? '' })}
+        confirmLabel={t('common.delete')}
         destructive
         loading={deleting}
         onConfirm={handleDelete}
