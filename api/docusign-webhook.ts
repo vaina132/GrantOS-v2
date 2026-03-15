@@ -113,7 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 async function processEnvelopeUpdate(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   entry: any,
   envelopeStatus: string | undefined,
   appUrl: string,

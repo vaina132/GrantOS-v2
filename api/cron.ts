@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Missing environment variables' })
   }
 
-  const supabase = createClient(supabaseUrl, supabaseKey)
+  const supabase: any = createClient(supabaseUrl, supabaseKey)
   const resend = new Resend(resendKey)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.grantlume.com'
   const from = 'GrantLume <notifications@grantlume.com>'
@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 // Job 1: Timesheet Reminders (weekly, Monday 9am)
 // ════════════════════════════════════════════════════════════════════════════
 async function runTimesheetReminders(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   resend: InstanceType<typeof Resend>,
   from: string,
   appUrl: string,
@@ -133,7 +133,7 @@ async function runTimesheetReminders(
 // Job 2: Project Alerts — ending soon + trial expiring (daily 8am)
 // ════════════════════════════════════════════════════════════════════════════
 async function runProjectAlerts(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   resend: InstanceType<typeof Resend>,
   from: string,
   appUrl: string,
@@ -272,7 +272,7 @@ function reminderToDays(leadTime: number, unit: string): number {
 }
 
 async function runCollabReminders(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   resend: InstanceType<typeof Resend>,
   from: string,
   appUrl: string,
