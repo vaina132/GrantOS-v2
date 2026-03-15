@@ -75,7 +75,7 @@ export function ProjectList() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="My Projects"
+        title="Our Projects"
         description="Your organisation's share of each project"
         actions={
           can('canManageProjects') ? (

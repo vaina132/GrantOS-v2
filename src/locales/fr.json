@@ -4,7 +4,7 @@
     "operations": "Opérations",
     "administration": "Administration",
     "dashboard": "Tableau de bord",
-    "projects": "Mes Projets",
+    "projects": "Nos Projets",
     "proposals": "Propositions",
     "staff": "Personnel",
     "allocations": "Allocations",
@@ -173,7 +173,7 @@
     "projectStatus": "État du projet"
   },
   "projects": {
-    "title": "Mes Projets",
+    "title": "Nos Projets",
     "newProject": "Nouveau projet",
     "editProject": "Modifier le projet",
     "projectDetails": "Détails du projet",

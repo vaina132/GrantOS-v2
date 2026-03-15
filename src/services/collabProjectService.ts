@@ -183,17 +183,51 @@ export async function syncCollabToMyProjects(
       .eq('org_id', orgId)
       .maybeSingle()
 
+    let projectId: string | null = null
+
     if (existing?.id) {
       // Update existing
       await supabase
         .from('projects')
         .update(projectData as any)
         .eq('id', existing.id)
+      projectId = existing.id
     } else {
       // Create new
-      await supabase
+      const { data: created } = await supabase
         .from('projects')
         .insert(projectData as any)
+        .select('id')
+        .single()
+      projectId = created?.id ?? null
+    }
+
+    // 5. Auto-seed financial_budgets for the current year so the project
+    //    appears in Financials immediately (no manual "Sync Budgets" needed)
+    if (projectId) {
+      const currentYear = new Date().getFullYear()
+      const pStart = new Date(projectData.start_date).getFullYear()
+      const pEnd = new Date(projectData.end_date).getFullYear()
+      if (currentYear >= pStart && currentYear <= pEnd) {
+        const projectYears = pEnd - pStart + 1
+        const categories = [
+          { cat: 'personnel', amount: (projectData.budget_personnel ?? 0) / projectYears },
+          { cat: 'travel', amount: (projectData.budget_travel ?? 0) / projectYears },
+          { cat: 'subcontracting', amount: (projectData.budget_subcontracting ?? 0) / projectYears },
+          { cat: 'other', amount: (projectData.budget_other ?? 0) / projectYears },
+          { cat: 'indirect', amount: (indirect / projectYears) },
+        ]
+        for (const { cat, amount } of categories) {
+          const budgeted = Math.round(amount * 100) / 100
+          // Use upsert to avoid duplicates
+          await supabase
+            .from('financial_budgets')
+            .upsert(
+              { org_id: orgId, project_id: projectId, category: cat, year: currentYear, budgeted, actual: 0, updated_at: new Date().toISOString() } as any,
+              { onConflict: 'project_id,category,year' },
+            )
+        }
+      }
     }
   } catch (err) {
     console.warn('[syncCollabToMyProjects] Sync failed (non-fatal):', err)

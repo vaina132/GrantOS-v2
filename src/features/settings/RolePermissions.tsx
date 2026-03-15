@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { computePermissions } from '@/lib/permissions'
 import type { OrgRole, RolePermission } from '@/types'
 
-const CONFIGURABLE_ROLES: OrgRole[] = ['Project Manager', 'Finance Officer', 'Viewer', 'External Participant']
+const CONFIGURABLE_ROLES: OrgRole[] = ['Project Manager', 'Finance Officer', 'Viewer']
 
 /** DB column names grouped by category for the UI */
 interface PermissionItem {
@@ -21,7 +21,7 @@ interface PermissionItem {
 
 const MODULE_PERMISSIONS: PermissionItem[] = [
   { key: 'can_see_dashboard', label: 'Dashboard', description: 'Organisation overview and KPIs' },
-  { key: 'can_see_projects', label: 'Projects', description: 'Project list, details, work packages' },
+  { key: 'can_see_projects', label: 'Our Projects', description: 'Project list, details, work packages' },
   { key: 'can_see_staff', label: 'Staff', description: 'Personnel directory and profiles' },
   { key: 'can_see_allocations', label: 'Allocations', description: 'Person-month allocation grid and matrices' },
   { key: 'can_see_timesheets', label: 'Timesheets', description: 'Time tracking and approval' },
@@ -32,6 +32,7 @@ const MODULE_PERMISSIONS: PermissionItem[] = [
   { key: 'can_see_import', label: 'Import', description: 'Data import tools' },
   { key: 'can_see_audit', label: 'Audit Log', description: 'Activity and change history' },
   { key: 'can_see_proposals', label: 'Proposals', description: 'View and manage grant proposals pipeline' },
+  { key: 'can_see_collaboration' as any, label: 'Collaboration', description: 'Multi-partner collaboration projects' },
 ]
 
 const DATA_PRIVACY_PERMISSIONS: PermissionItem[] = [
@@ -107,6 +108,7 @@ export function RolePermissions() {
       can_see_import: 'canSeeImport',
       can_see_audit: 'canSeeAudit',
       can_see_proposals: 'canSeeProposals',
+      can_see_collaboration: 'canSeeCollaboration',
       can_see_salary_info: 'canSeeSalary',
       can_see_financial_details: 'canSeeFinancialDetails',
       can_see_personnel_rates: 'canSeePersonnelRates',
@@ -202,6 +204,7 @@ export function RolePermissions() {
       canSeeImport: 'can_see_import',
       canSeeAudit: 'can_see_audit',
       canSeeProposals: 'can_see_proposals',
+      canSeeCollaboration: 'can_see_collaboration',
       canSeeSalary: 'can_see_salary_info',
       canSeeFinancialDetails: 'can_see_financial_details',
       canSeePersonnelRates: 'can_see_personnel_rates',
@@ -271,6 +274,7 @@ export function RolePermissions() {
           </CardTitle>
           <CardDescription>
             Configure what each role can see and do. Administrators always have full access.
+            External Participants can only access projects they are invited to and are not configurable here.
           </CardDescription>
         </div>
         <div className="flex gap-2">

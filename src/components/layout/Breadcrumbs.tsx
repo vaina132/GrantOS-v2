@@ -3,7 +3,7 @@ import { ChevronRight, Home } from 'lucide-react'
 
 const LABEL_MAP: Record<string, string> = {
   dashboard: 'Dashboard',
-  projects: 'My Projects',
+  projects: 'Our Projects',
   proposals: 'Proposals',
   collaboration: 'Collaboration',
   staff: 'Staff',

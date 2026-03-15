@@ -46,7 +46,7 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/staff', labelKey: 'nav.staff', icon: Users },
       { path: '/proposals', labelKey: 'nav.proposals', icon: Lightbulb, permission: 'canSeeProposals' },
       { path: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
-      { path: '/projects/collaboration', labelKey: 'nav.collaboration', icon: Globe },
+      { path: '/projects/collaboration', labelKey: 'nav.collaboration', icon: Globe, permission: 'canSeeCollaboration' },
     ],
   },
   {
