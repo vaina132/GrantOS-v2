@@ -175,7 +175,7 @@ export const timesheetService = {
           .from('org_members')
           .select('user_id')
           .eq('org_id', orgId)
-          .in('role', ['Admin', 'Project Manager'])
+          .in('role', ['Admin', 'Finance Officer'])
       ).then(({ data: admins }) => {
         if (!admins) return
         for (const a of admins) {

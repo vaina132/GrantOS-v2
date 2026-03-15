@@ -119,13 +119,13 @@ export const notificationService = {
     }
   },
 
-  /** Helper: get all admin/PM user IDs for an org */
+  /** Helper: get all admin/finance officer user IDs for an org */
   async getAdminUserIds(orgId: string): Promise<string[]> {
     const { data, error } = await supabase
       .from('org_members')
       .select('user_id')
       .eq('org_id', orgId)
-      .in('role', ['Admin', 'Project Manager'])
+      .in('role', ['Admin', 'Finance Officer'])
 
     if (error) return []
     return (data ?? []).map((m) => m.user_id)

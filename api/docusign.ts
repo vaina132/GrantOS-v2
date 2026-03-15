@@ -493,7 +493,7 @@ async function processEnvelopeUpdate(
       .from('org_members')
       .select('user_id')
       .eq('org_id', entry.org_id)
-      .in('role', ['Admin', 'Project Manager'])
+      .in('role', ['Admin', 'Finance Officer'])
 
     const personName = entry.persons?.full_name || 'A team member'
     const period = `${MONTHS[entry.month - 1]} ${entry.year}`
