@@ -34,6 +34,8 @@ type EmailTemplate =
   | 'collabReportReminder'
   | 'collabReportStatus'
   | 'collabDeliverableReminder'
+  | 'timesheetReadyToSign'
+  | 'timesheetSigned'
 
 interface SendEmailOptions {
   template: EmailTemplate
@@ -247,10 +249,10 @@ export const emailService = {
     return sendEmail({ template: 'absenceRejected', to: params.to, params })
   },
 
-  /** #18 — Notify employee their timesheet was approved */
+  /** Notify employee their timesheet was approved */
   async sendTimesheetApproved(params: {
     to: string
-    employeeName: string
+    personName: string
     period: string
     approverName: string
     timesheetUrl: string
@@ -258,16 +260,40 @@ export const emailService = {
     return sendEmail({ template: 'timesheetApproved', to: params.to, params })
   },
 
-  /** #19 — Notify employee their timesheet was rejected */
+  /** Notify employee their timesheet was rejected */
   async sendTimesheetRejected(params: {
     to: string
-    employeeName: string
+    personName: string
     period: string
     approverName: string
     reason?: string
     timesheetUrl: string
   }) {
     return sendEmail({ template: 'timesheetRejected', to: params.to, params })
+  },
+
+  /** Notify employee their timesheet is ready to sign via DocuSign */
+  async sendTimesheetReadyToSign(params: {
+    to: string
+    personName: string
+    period: string
+    totalHours: string
+    signingUrl: string
+    orgName: string
+  }) {
+    return sendEmail({ template: 'timesheetReadyToSign', to: params.to, params })
+  },
+
+  /** Notify admins that a timesheet has been e-signed */
+  async sendTimesheetSigned(params: {
+    to: string | string[]
+    approverName: string
+    personName: string
+    period: string
+    totalHours: string
+    timesheetUrl: string
+  }) {
+    return sendEmail({ template: 'timesheetSigned', to: params.to, params })
   },
 
   /** #20 — Notify approvers that an employee cancelled their absence */

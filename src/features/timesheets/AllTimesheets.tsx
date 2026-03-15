@@ -9,11 +9,11 @@ import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
-import { ClipboardCheck, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ClipboardCheck, ChevronLeft, ChevronRight, CheckCircle2, Undo2, Send, PenTool, FileSignature, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
 import { hoursToPm, formatPm } from '@/lib/pmUtils'
-import type { TimesheetEntry, Person } from '@/types'
+import type { TimesheetEntry, TimesheetStatus, Person } from '@/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -23,8 +23,17 @@ interface PersonSummary {
   totalHours: number
 }
 
+const STATUS_CONFIG: Record<TimesheetStatus, { label: string; color: string; icon: typeof Clock }> = {
+  Draft: { label: 'Draft', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400', icon: Clock },
+  Submitted: { label: 'Submitted', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400', icon: Send },
+  Signing: { label: 'Signing', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400', icon: PenTool },
+  Signed: { label: 'Signed', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400', icon: FileSignature },
+  Approved: { label: 'Approved', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400', icon: CheckCircle2 },
+  Rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400', icon: Undo2 },
+}
+
 export function AllTimesheets() {
-  const { orgId } = useAuthStore()
+  const { orgId, user } = useAuthStore()
   const { globalYear } = useUiStore()
   const { staff, isLoading: staffLoading } = useStaff({ is_active: true })
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
@@ -189,6 +198,63 @@ export function AllTimesheets() {
                           style={{ width: `${Math.min(pct, 100)}%` }}
                         />
                       </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Status badge + actions */}
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const status = pe.envelope?.status ?? 'Draft'
+                    const cfg = STATUS_CONFIG[status]
+                    const Icon = cfg.icon
+                    return (
+                      <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold', cfg.color)}>
+                        <Icon className="h-3 w-3" />
+                        {cfg.label}
+                      </span>
+                    )
+                  })()}
+
+                  {/* Approve / Reject for Signed timesheets */}
+                  {pe.envelope?.status === 'Signed' && (
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px] gap-1 text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                        onClick={async () => {
+                          if (!orgId || !user?.id) return
+                          try {
+                            await timesheetService.updateEnvelopeStatus(orgId, pe.person.id, globalYear, selectedMonth, 'Approved', user.id)
+                            toast({ title: 'Approved', description: `${pe.person.full_name}'s timesheet approved.` })
+                            await loadEnvelopes()
+                          } catch (err) {
+                            toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' })
+                          }
+                        }}
+                      >
+                        <CheckCircle2 className="h-3 w-3" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px] gap-1 text-red-600 border-red-300 hover:bg-red-50"
+                        onClick={async () => {
+                          if (!orgId || !user?.id) return
+                          try {
+                            await timesheetService.updateEnvelopeStatus(orgId, pe.person.id, globalYear, selectedMonth, 'Rejected', user.id)
+                            toast({ title: 'Rejected', description: `${pe.person.full_name}'s timesheet rejected.` })
+                            await loadEnvelopes()
+                          } catch (err) {
+                            toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' })
+                          }
+                        }}
+                      >
+                        <Undo2 className="h-3 w-3" />
+                        Reject
+                      </Button>
                     </div>
                   )}
                 </div>

@@ -419,46 +419,6 @@ export function absenceRejectedEmail(params: {
 
 // ── NEW templates ───────────────────────────────────────
 
-/** #18 — Notify employee their timesheet was approved */
-export function timesheetApprovedEmail(params: {
-  employeeName: string; period: string; approverName: string; timesheetUrl: string
-}): EmailTemplate {
-  return {
-    subject: `Timesheet Approved — ${params.period}`,
-    html: layout('Timesheet Approved', [
-      heading('Timesheet Approved'),
-      paragraph(`Hi ${params.employeeName},`),
-      paragraph(`Your timesheet for <strong>${params.period}</strong> has been ${statusBadge('Approved', SUCCESS, '#ecfdf5')} by <strong>${params.approverName}</strong>.`),
-      detailTable(
-        detailRow('Period', params.period) +
-        detailRow('Reviewed By', params.approverName)
-      ),
-      button('View Timesheet', params.timesheetUrl),
-    ].join('')),
-  }
-}
-
-/** #19 — Notify employee their timesheet was rejected */
-export function timesheetRejectedEmail(params: {
-  employeeName: string; period: string; approverName: string; reason?: string; timesheetUrl: string
-}): EmailTemplate {
-  return {
-    subject: `Timesheet Rejected — ${params.period}`,
-    html: layout('Timesheet Rejected', [
-      heading('Timesheet Rejected'),
-      paragraph(`Hi ${params.employeeName},`),
-      paragraph(`Your timesheet for <strong>${params.period}</strong> has been ${statusBadge('Rejected', DANGER, '#fef2f2')} by <strong>${params.approverName}</strong>.`),
-      detailTable(
-        detailRow('Period', params.period) +
-        detailRow('Reviewed By', params.approverName) +
-        (params.reason ? detailRow('Reason', params.reason) : '')
-      ),
-      paragraph('Please review and correct your timesheet, then resubmit.'),
-      button('Edit Timesheet', params.timesheetUrl),
-    ].join('')),
-  }
-}
-
 /** #20 — Notify approvers that an employee cancelled their absence */
 export function absenceCancelledEmail(params: {
   approverName: string; employeeName: string; absenceType: string; startDate: string; endDate: string; days: string; absencesUrl: string
@@ -682,6 +642,91 @@ export function collabMilestoneReminderEmail(params: {
       ),
       button('View Project', params.projectUrl),
       paragraph(`<span style="font-size:13px;color:${MUTED};">You can manage your notification preferences in your GrantLume profile settings.</span>`),
+    ].join('')),
+  }
+}
+
+// ── Timesheet Signing Flow ──────────────────────────────
+
+export function timesheetReadyToSignEmail(params: {
+  personName: string; period: string; totalHours: string;
+  signingUrl: string; orgName: string
+}): EmailTemplate {
+  return {
+    subject: `Timesheet ready for signing: ${params.period}`,
+    html: layout('Sign Your Timesheet', [
+      heading('Your Timesheet Is Ready to Sign'),
+      paragraph(`Hi ${params.personName},`),
+      paragraph(`Your timesheet for <strong>${params.period}</strong> has been submitted and is now ready for your e-signature.`),
+      detailTable(
+        detailRow('Period', params.period) +
+        detailRow('Total Hours', params.totalHours) +
+        detailRow('Organisation', params.orgName)
+      ),
+      paragraph('Please review your timesheet and sign it using DocuSign by clicking the button below.'),
+      button('Sign Timesheet', params.signingUrl, WARNING),
+      paragraph(`<span style="font-size:13px;color:${MUTED};">If the button doesn't work, copy and paste this URL into your browser:<br/><a href="${params.signingUrl}" style="color:${BRAND};word-break:break-all;">${params.signingUrl}</a></span>`),
+    ].join('')),
+  }
+}
+
+export function timesheetSignedEmail(params: {
+  approverName: string; personName: string; period: string;
+  totalHours: string; timesheetUrl: string
+}): EmailTemplate {
+  return {
+    subject: `Timesheet signed: ${params.personName} — ${params.period}`,
+    html: layout('Timesheet Signed', [
+      heading('Timesheet Signed — Ready for Approval'),
+      paragraph(`Hi ${params.approverName},`),
+      paragraph(`<strong>${params.personName}</strong> has signed their timesheet for <strong>${params.period}</strong>. It is now ready for your review and approval.`),
+      detailTable(
+        detailRow('Employee', params.personName) +
+        detailRow('Period', params.period) +
+        detailRow('Total Hours', params.totalHours)
+      ),
+      button('Review Timesheets', params.timesheetUrl),
+    ].join('')),
+  }
+}
+
+export function timesheetApprovedEmail(params: {
+  personName: string; period: string; approverName: string;
+  timesheetUrl: string
+}): EmailTemplate {
+  return {
+    subject: `Timesheet approved: ${params.period}`,
+    html: layout('Timesheet Approved', [
+      heading('Your Timesheet Has Been Approved'),
+      paragraph(`Hi ${params.personName},`),
+      paragraph(`Great news! Your timesheet for <strong>${params.period}</strong> has been <strong style="color:${SUCCESS};">approved</strong> by ${params.approverName}.`),
+      detailTable(
+        detailRow('Period', params.period) +
+        detailRow('Status', `<span style="color:${SUCCESS};font-weight:700;">✓ Approved</span>`) +
+        detailRow('Approved by', params.approverName)
+      ),
+      button('View Timesheet', params.timesheetUrl),
+    ].join('')),
+  }
+}
+
+export function timesheetRejectedEmail(params: {
+  personName: string; period: string; approverName: string;
+  reason?: string; timesheetUrl: string
+}): EmailTemplate {
+  return {
+    subject: `Timesheet rejected: ${params.period}`,
+    html: layout('Timesheet Rejected', [
+      heading('Your Timesheet Needs Revision'),
+      paragraph(`Hi ${params.personName},`),
+      paragraph(`Your timesheet for <strong>${params.period}</strong> has been <strong style="color:${DANGER};">rejected</strong> by ${params.approverName}. Please review and resubmit.`),
+      detailTable(
+        detailRow('Period', params.period) +
+        detailRow('Status', `<span style="color:${DANGER};font-weight:700;">✗ Rejected</span>`) +
+        detailRow('Reviewed by', params.approverName)
+      ),
+      params.reason ? infoBox(`<strong>Reason:</strong> ${params.reason}`, DANGER, '#fef2f2') : '',
+      button('Revise Timesheet', params.timesheetUrl),
     ].join('')),
   }
 }

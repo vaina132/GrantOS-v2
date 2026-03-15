@@ -4,7 +4,8 @@ export type OrgPlan = 'trial' | 'starter' | 'growth' | 'enterprise'
 
 export type ProjectStatus = 'Upcoming' | 'Active' | 'Completed' | 'Suspended'
 export type AssignmentType = 'actual' | 'official'
-export type TimesheetStatus = 'Draft' | 'Submitted' | 'Approved' | 'Rejected'
+export type TimesheetStatus = 'Draft' | 'Submitted' | 'Signing' | 'Signed' | 'Approved' | 'Rejected'
+export type SignatureStatus = 'pending' | 'sent' | 'signed' | 'declined' | 'voided'
 export type EmploymentType = 'Full-time' | 'Part-time' | 'Contractor'
 export type AbsenceType = 'Annual Leave' | 'Sick Leave' | 'Training' | 'Public Holiday' | 'Other'
 export type AbsencePeriod = 'full' | 'am' | 'pm'
@@ -195,6 +196,11 @@ export interface TimesheetEntry {
   approved_at: string | null
   approved_by: string | null
   notes: string | null
+  signature_status: SignatureStatus | null
+  signature_envelope_id: string | null
+  signature_url: string | null
+  signed_at: string | null
+  signed_document_url: string | null
   created_at: string
   updated_at: string
 }

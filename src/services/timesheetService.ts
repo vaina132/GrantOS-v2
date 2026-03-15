@@ -248,6 +248,56 @@ export const timesheetService = {
       .eq('month', month)
 
     if (error) throw error
+
+    // Fire-and-forget: notify the employee on approve/reject
+    if (status === 'Approved' || status === 'Rejected') {
+      const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+      const period = `${MONTHS[month - 1]} ${year}`
+      const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
+
+      Promise.all([
+        supabase.from('persons').select('full_name, email, user_id').eq('id', personId).single(),
+        supabase.from('org_members').select('user_id').eq('org_id', orgId).eq('user_id', userId).single(),
+      ]).then(([{ data: person }, { data: member }]) => {
+        const personName = (person as any)?.full_name ?? 'Team member'
+        const personEmail = (person as any)?.email
+        const personUserId = (person as any)?.user_id
+        const approverName = 'Your manager' // Best effort
+
+        // In-app notification to the employee
+        if (personUserId) {
+          notificationService.notify({
+            orgId,
+            userId: personUserId,
+            type: status === 'Approved' ? 'success' : 'warning',
+            title: status === 'Approved' ? 'Timesheet approved' : 'Timesheet rejected',
+            message: `Your timesheet for ${period} has been ${status.toLowerCase()}.`,
+            link: '/timesheets',
+          }).catch(() => {})
+        }
+
+        // Email notification
+        if (personEmail) {
+          if (status === 'Approved') {
+            emailService.sendTimesheetApproved({
+              to: personEmail,
+              personName,
+              period,
+              approverName,
+              timesheetUrl: `${appUrl}/timesheets`,
+            }).catch(() => {})
+          } else {
+            emailService.sendTimesheetRejected({
+              to: personEmail,
+              personName,
+              period,
+              approverName,
+              timesheetUrl: `${appUrl}/timesheets`,
+            }).catch(() => {})
+          }
+        }
+      }).catch(() => {})
+    }
   },
 
   // ───────────────────────────────────────────────
@@ -708,7 +758,7 @@ export const timesheetService = {
               if (!person?.email) return
               const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.grantlume.com'
               const params = {
-                employeeName: (person as any).full_name ?? person.email.split('@')[0],
+                personName: (person as any).full_name ?? person.email.split('@')[0],
                 period,
                 approverName,
                 timesheetUrl: `${origin}/timesheets`,

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { timesheetService, toDateStr } from '@/services/timesheetService'
+import { docusignService } from '@/services/docusignService'
 import { holidayService } from '@/services/holidayService'
 import { absenceService } from '@/services/absenceService'
 import { settingsService } from '@/services/settingsService'
@@ -11,10 +12,10 @@ import { useProjects } from '@/hooks/useProjects'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
-import { Copy, Sparkles, ChevronLeft, ChevronRight, Trash2, Plus, RotateCcw, CalendarDays, X } from 'lucide-react'
+import { Copy, Sparkles, ChevronLeft, ChevronRight, Trash2, Plus, RotateCcw, CalendarDays, X, Send, PenTool, CheckCircle2, Clock, Undo2, FileSignature, Loader2, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { hoursToPm, formatPm, pmToHours } from '@/lib/pmUtils'
-import type { Holiday, Absence, Assignment, TimesheetDay } from '@/types'
+import type { Holiday, Absence, Assignment, TimesheetDay, TimesheetEntry } from '@/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -68,6 +69,11 @@ export function TimesheetGrid() {
   const [manualProjectIds, setManualProjectIds] = useState<string[]>([])
   const [removedProjectIds, setRemovedProjectIds] = useState<string[]>([])
 
+  // Envelope (approval + signing) state
+  const [envelope, setEnvelope] = useState<TimesheetEntry | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [signing, setSigning] = useState(false)
+
   // Fill Month Full state
   const [fillFullOpen, setFillFullOpen] = useState(false)
   const [fillFullSelectedIds, setFillFullSelectedIds] = useState<string[]>([])
@@ -115,8 +121,11 @@ export function TimesheetGrid() {
       }
       setGrid(g)
 
-      // Ensure envelope exists (don't block on failure)
-      timesheetService.ensureEnvelope(orgId, currentPersonId, globalYear, selectedMonth).catch(() => {})
+      // Ensure envelope exists and load it for status
+      try {
+        const env = await timesheetService.ensureEnvelope(orgId, currentPersonId, globalYear, selectedMonth)
+        setEnvelope(env)
+      } catch { setEnvelope(null) }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load timesheet data'
       toast({ title: 'Error', description: message, variant: 'destructive' })
@@ -494,6 +503,73 @@ export function TimesheetGrid() {
     }
   }
 
+  // ── Submit timesheet ──
+  const handleSubmit = async () => {
+    if (!orgId || !currentPersonId || !user?.id) return
+    if (grandTotal <= 0) {
+      toast({ title: 'Cannot submit', description: 'Please enter hours before submitting.', variant: 'destructive' })
+      return
+    }
+    const proceed = window.confirm(`Submit your timesheet for ${MONTHS[selectedMonth - 1]} ${globalYear}? You won't be able to edit hours after submission.`)
+    if (!proceed) return
+    setSubmitting(true)
+    try {
+      await timesheetService.submit(orgId, currentPersonId, globalYear, selectedMonth, user.id)
+      toast({ title: 'Submitted', description: 'Timesheet submitted. You can now sign it.' })
+      await loadData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to submit'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // ── Request DocuSign e-signature ──
+  const handleSign = async () => {
+    if (!orgId || !currentPersonId || !user?.id) return
+    setSigning(true)
+    try {
+      const result = await docusignService.requestSigning({
+        orgId,
+        personId: currentPersonId,
+        year: globalYear,
+        month: selectedMonth,
+        userId: user.id,
+      })
+      toast({ title: 'Signing initiated', description: 'Opening DocuSign for your signature…' })
+      // Redirect to DocuSign signing ceremony
+      if (result.signingUrl) {
+        window.location.href = result.signingUrl
+      }
+      await loadData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to initiate signing'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
+    } finally {
+      setSigning(false)
+    }
+  }
+
+  // ── Recall (revert to Draft) — only admin or own timesheet before signing ──
+  const handleRecall = async () => {
+    if (!orgId || !currentPersonId || !user?.id) return
+    const proceed = window.confirm('Recall this timesheet to Draft? This will cancel the current submission.')
+    if (!proceed) return
+    try {
+      await timesheetService.updateEnvelopeStatus(orgId, currentPersonId, globalYear, selectedMonth, 'Draft', user.id)
+      toast({ title: 'Recalled', description: 'Timesheet reverted to Draft. You can edit hours again.' })
+      await loadData()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to recall'
+      toast({ title: 'Error', description: message, variant: 'destructive' })
+    }
+  }
+
+  // Is the grid locked for editing? (anything beyond Draft is locked)
+  const envelopeStatus = envelope?.status ?? 'Draft'
+  const isLocked = envelopeStatus !== 'Draft' && envelopeStatus !== 'Rejected'
+
   const prevMonth = () => setSelectedMonth(m => m > 1 ? m - 1 : 12)
   const nextMonth = () => setSelectedMonth(m => m < 12 ? m + 1 : 1)
   const prevMonthName = MONTHS[(selectedMonth - 2 + 12) % 12]
@@ -559,24 +635,127 @@ export function TimesheetGrid() {
           </div>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={handleAutoFill} disabled={autoFilling || projectRows.length === 0} className="gap-1.5">
-            <Sparkles className="h-3.5 w-3.5" />
-            {autoFilling ? 'Filling...' : 'Fill from Plan'}
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleCopyPrevMonth} disabled={copying} className="gap-1.5">
-            <Copy className="h-3.5 w-3.5" />
-            {copying ? 'Copying...' : `Copy ${prevMonthName}`}
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => { setFillFullOpen(true); setFillFullSelectedIds([]) }} disabled={allProjects.length === 0} className="gap-1.5">
-            <CalendarDays className="h-3.5 w-3.5" />
-            Fill Month Full
-          </Button>
-          {grandTotal > 0 && (
-            <Button variant="outline" size="sm" onClick={handleClearAll} disabled={clearing} className="gap-1.5 text-destructive hover:text-destructive">
-              <RotateCcw className="h-3.5 w-3.5" />
-              {clearing ? 'Clearing...' : 'Clear All'}
+        {!isLocked && (
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={handleAutoFill} disabled={autoFilling || projectRows.length === 0} className="gap-1.5">
+              <Sparkles className="h-3.5 w-3.5" />
+              {autoFilling ? 'Filling...' : 'Fill from Plan'}
             </Button>
+            <Button variant="outline" size="sm" onClick={handleCopyPrevMonth} disabled={copying} className="gap-1.5">
+              <Copy className="h-3.5 w-3.5" />
+              {copying ? 'Copying...' : `Copy ${prevMonthName}`}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { setFillFullOpen(true); setFillFullSelectedIds([]) }} disabled={allProjects.length === 0} className="gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Fill Month Full
+            </Button>
+            {grandTotal > 0 && (
+              <Button variant="outline" size="sm" onClick={handleClearAll} disabled={clearing} className="gap-1.5 text-destructive hover:text-destructive">
+                <RotateCcw className="h-3.5 w-3.5" />
+                {clearing ? 'Clearing...' : 'Clear All'}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Status banner + action buttons ── */}
+      <div className={cn(
+        'flex items-center justify-between rounded-lg border px-4 py-3',
+        envelopeStatus === 'Draft' && 'border-muted bg-muted/20',
+        envelopeStatus === 'Submitted' && 'border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30',
+        envelopeStatus === 'Signing' && 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30',
+        envelopeStatus === 'Signed' && 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30',
+        envelopeStatus === 'Approved' && 'border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40',
+        envelopeStatus === 'Rejected' && 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30',
+      )}>
+        <div className="flex items-center gap-2.5">
+          {envelopeStatus === 'Draft' && <Clock className="h-4 w-4 text-muted-foreground" />}
+          {envelopeStatus === 'Submitted' && <Send className="h-4 w-4 text-blue-600" />}
+          {envelopeStatus === 'Signing' && <PenTool className="h-4 w-4 text-amber-600" />}
+          {envelopeStatus === 'Signed' && <FileSignature className="h-4 w-4 text-emerald-600" />}
+          {envelopeStatus === 'Approved' && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+          {envelopeStatus === 'Rejected' && <Undo2 className="h-4 w-4 text-red-600" />}
+          <div>
+            <div className="text-sm font-semibold">
+              {envelopeStatus === 'Draft' && 'Draft — Fill in your hours and submit'}
+              {envelopeStatus === 'Submitted' && 'Submitted — Ready for signing'}
+              {envelopeStatus === 'Signing' && 'Signing in progress — Waiting for e-signature'}
+              {envelopeStatus === 'Signed' && 'Signed — Awaiting approval'}
+              {envelopeStatus === 'Approved' && 'Approved ✓'}
+              {envelopeStatus === 'Rejected' && 'Rejected — Please review and resubmit'}
+            </div>
+            {envelope?.submitted_at && envelopeStatus !== 'Draft' && (
+              <div className="text-[11px] text-muted-foreground">
+                Submitted {new Date(envelope.submitted_at).toLocaleDateString()}
+                {envelope.signed_at && ` · Signed ${new Date(envelope.signed_at).toLocaleDateString()}`}
+                {envelope.approved_at && ` · Approved ${new Date(envelope.approved_at).toLocaleDateString()}`}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          {/* Draft → Submit */}
+          {(envelopeStatus === 'Draft' || envelopeStatus === 'Rejected') && grandTotal > 0 && (
+            <Button size="sm" onClick={handleSubmit} disabled={submitting} className="gap-1.5">
+              {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+              {submitting ? 'Submitting…' : 'Submit'}
+            </Button>
+          )}
+
+          {/* Submitted → Sign */}
+          {envelopeStatus === 'Submitted' && (
+            <>
+              <Button variant="outline" size="sm" onClick={handleRecall} className="gap-1.5">
+                <Undo2 className="h-3.5 w-3.5" />
+                Recall
+              </Button>
+              <Button size="sm" onClick={handleSign} disabled={signing} className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white">
+                {signing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenTool className="h-3.5 w-3.5" />}
+                {signing ? 'Initiating…' : 'Sign with DocuSign'}
+              </Button>
+            </>
+          )}
+
+          {/* Signing → waiting */}
+          {envelopeStatus === 'Signing' && envelope?.signature_url && (
+            <Button size="sm" variant="outline" onClick={() => window.open(envelope.signature_url!, '_blank')} className="gap-1.5">
+              <PenTool className="h-3.5 w-3.5" />
+              Open Signing
+            </Button>
+          )}
+
+          {/* Signed → admin can approve/reject */}
+          {envelopeStatus === 'Signed' && isAdmin && (
+            <>
+              <Button size="sm" variant="outline" onClick={async () => {
+                if (!orgId || !currentPersonId || !user?.id) return
+                await timesheetService.updateEnvelopeStatus(orgId, currentPersonId, globalYear, selectedMonth, 'Approved', user.id)
+                toast({ title: 'Approved', description: 'Timesheet approved.' })
+                await loadData()
+              }} className="gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Approve
+              </Button>
+              <Button size="sm" variant="outline" onClick={async () => {
+                if (!orgId || !currentPersonId || !user?.id) return
+                await timesheetService.updateEnvelopeStatus(orgId, currentPersonId, globalYear, selectedMonth, 'Rejected', user.id)
+                toast({ title: 'Rejected', description: 'Timesheet rejected. The person can revise and resubmit.' })
+                await loadData()
+              }} className="gap-1.5 text-red-600 border-red-300 hover:bg-red-50">
+                <Undo2 className="h-3.5 w-3.5" />
+                Reject
+              </Button>
+            </>
+          )}
+
+          {/* Approved → locked indicator */}
+          {envelopeStatus === 'Approved' && (
+            <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+              <Shield className="h-3.5 w-3.5" />
+              Locked
+            </div>
           )}
         </div>
       </div>
@@ -616,7 +795,7 @@ export function TimesheetGrid() {
       </div>
 
       {/* Add project to timesheet */}
-      {availableProjects.length > 0 && (
+      {availableProjects.length > 0 && !isLocked && (
         <div className="flex items-center gap-2">
           <select
             value={addProjectId}
@@ -721,7 +900,7 @@ export function TimesheetGrid() {
                       {calendarDays.map(d => {
                         const cellKey = `${row.project_id}:${row.work_package_id ?? ''}:${d.dateStr}`
                         const value = grid[cellKey] || 0
-                        const editable = d.isAvailable
+                        const editable = d.isAvailable && !isLocked
 
                         return (
                           <td
