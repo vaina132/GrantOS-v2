@@ -1166,12 +1166,12 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
         {STEPS.map((label, i) => (
           <div key={label} className="flex items-center gap-1 flex-1">
             <button
-              onClick={() => i < step && setStep(i)}
-              disabled={i > step}
+              onClick={() => (isEdit || i < step) && setStep(i)}
+              disabled={!isEdit && i > step}
               className={`flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition-colors w-full ${
                 i === step
                   ? 'bg-primary text-primary-foreground'
-                  : i < step
+                  : (isEdit || i < step)
                   ? 'bg-primary/10 text-primary cursor-pointer hover:bg-primary/20'
                   : 'bg-muted text-muted-foreground'
               }`}

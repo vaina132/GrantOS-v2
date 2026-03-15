@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Copy, Check, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Contact, Download, ChevronDown, ChevronRight, Target, ListChecks, GanttChart as GanttIcon } from 'lucide-react'
+import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Download, ChevronDown, ChevronRight, Target, ListChecks, GanttChart as GanttIcon } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService, collabTaskService, collabDeliverableService, collabMilestoneService, collabTaskEffortService, syncCollabToMyProjects } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
@@ -33,12 +33,13 @@ const INVITE_STATUS_COLORS: Record<string, string> = {
 }
 
 const TAB_ITEMS = [
+  { value: 'general', label: 'General', icon: FileText },
   { value: 'partners', label: 'Partners', icon: Users },
-  { value: 'wps', label: 'Work Packages', icon: FileText },
+  { value: 'wps', label: 'WPs', icon: LayoutGrid },
   { value: 'periods', label: 'Periods', icon: Calendar },
-  { value: 'deliverables', label: 'Deliverables', icon: ListChecks },
+  { value: 'deliverables', label: 'Del. & MS', icon: ListChecks },
   { value: 'budget', label: 'Budget', icon: DollarSign },
-  { value: 'effort', label: 'Effort', icon: LayoutGrid },
+  { value: 'effort', label: 'Effort', icon: Target },
   { value: 'gantt', label: 'Timeline', icon: GanttIcon },
 ]
 
@@ -56,9 +57,8 @@ export function CollabProjectDetail() {
   const [milestones, setMilestones] = useState<CollabMilestone[]>([])
   const [expandedWps, setExpandedWps] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('partners')
+  const [activeTab, setActiveTab] = useState('general')
   const [sendingInvites, setSendingInvites] = useState(false)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   // Edit dialogs
   const [editPartner, setEditPartner] = useState<CollabPartner | null>(null)
@@ -191,17 +191,6 @@ export function CollabProjectDetail() {
   const getInviteUrl = (p: CollabPartner) => {
     const base = window.location.origin
     return `${base}/collab/accept?token=${p.invite_token}`
-  }
-
-  const handleCopyLink = async (p: CollabPartner) => {
-    try {
-      await navigator.clipboard.writeText(getInviteUrl(p))
-      setCopiedId(p.id)
-      setTimeout(() => setCopiedId(null), 2000)
-      toast({ title: 'Copied', description: `Invite link for ${p.org_name} copied to clipboard` })
-    } catch {
-      toast({ title: 'Error', description: 'Failed to copy', variant: 'destructive' })
-    }
   }
 
   const handleSendInvite = async (p: CollabPartner) => {
@@ -466,47 +455,6 @@ export function CollabProjectDetail() {
         </div>
       </div>
 
-      {/* KPI row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{partners.length}</p>
-            <p className="text-xs text-muted-foreground">Partners</p>
-            <p className="text-[10px] text-muted-foreground">{acceptedCount} accepted · {pendingCount} pending</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{wps.length}</p>
-            <p className="text-xs text-muted-foreground">Work Packages</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{deliverables.length}</p>
-            <p className="text-xs text-muted-foreground">Deliverables</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{milestones.length}</p>
-            <p className="text-xs text-muted-foreground">Milestones</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">{totalPMs.toFixed(1)}</p>
-            <p className="text-xs text-muted-foreground">Person-Months</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold">€{totalBudget.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">Total Budget</p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         {/* Mobile dropdown (visible < md) */}
@@ -529,6 +477,111 @@ export function CollabProjectDetail() {
             </TabsTrigger>
           ))}
         </TabsList>
+
+        {/* General Tab */}
+        <TabsContent value="general" className="mt-4 space-y-4">
+          <Card>
+            <CardContent className="p-5 space-y-5">
+              {/* Project identity */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Acronym</p>
+                  <p className="font-semibold">{project.acronym}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Status</p>
+                  <Badge className={STATUS_COLORS[project.status] ?? ''} variant="secondary">
+                    {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+                  </Badge>
+                </div>
+                {project.grant_number && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Grant Agreement</p>
+                    <p className="font-medium">{project.grant_number}</p>
+                  </div>
+                )}
+                {project.funding_programme && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Programme</p>
+                    <p className="font-medium">{project.funding_programme}</p>
+                  </div>
+                )}
+                {project.funding_scheme && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Scheme</p>
+                    <p className="font-medium">{project.funding_scheme}</p>
+                  </div>
+                )}
+                {project.start_date && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Start Date</p>
+                    <p className="font-medium">{project.start_date}</p>
+                  </div>
+                )}
+                {project.end_date && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">End Date</p>
+                    <p className="font-medium">{project.end_date}</p>
+                  </div>
+                )}
+                {project.duration_months && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">Duration</p>
+                    <p className="font-medium">{project.duration_months} months</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="border-t" />
+
+              {/* Summary numbers */}
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+                <div className="text-center">
+                  <p className="text-xl font-bold">{partners.length}</p>
+                  <p className="text-[11px] text-muted-foreground">Partners</p>
+                  <p className="text-[10px] text-muted-foreground">{acceptedCount} accepted · {pendingCount} pending</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold">{wps.length}</p>
+                  <p className="text-[11px] text-muted-foreground">Work Packages</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold">{deliverables.length}</p>
+                  <p className="text-[11px] text-muted-foreground">Deliverables</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold">{milestones.length}</p>
+                  <p className="text-[11px] text-muted-foreground">Milestones</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold">{totalPMs.toFixed(1)}</p>
+                  <p className="text-[11px] text-muted-foreground">Person-Months</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold">€{totalBudget.toLocaleString()}</p>
+                  <p className="text-[11px] text-muted-foreground">Total Budget</p>
+                </div>
+              </div>
+
+              {/* Coordinator info */}
+              {(() => {
+                const coord = partners.find(p => p.role === 'coordinator')
+                if (!coord) return null
+                return (
+                  <>
+                    <div className="border-t" />
+                    <div className="text-sm">
+                      <p className="text-xs text-muted-foreground mb-1">Coordinator</p>
+                      <p className="font-medium">{coord.org_name}</p>
+                      {coord.contact_name && <p className="text-xs text-muted-foreground">{coord.contact_name} {coord.contact_email && `· ${coord.contact_email}`}</p>}
+                    </div>
+                  </>
+                )
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Partners Tab */}
         <TabsContent value="partners" className="space-y-4 mt-4">
@@ -569,23 +622,9 @@ export function CollabProjectDetail() {
                         <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setEditPartner(p); setShowPartnerDialog(true) }}>
                           <Pencil className="h-3.5 w-3.5" /> Edit
                         </Button>
-                        {wps.length > 0 && (
-                          <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setAllocPartner(p)}>
-                            <LayoutGrid className="h-3.5 w-3.5" /> WPs
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setContactPartner(p)}>
-                          <Contact className="h-3.5 w-3.5" /> Contacts
-                        </Button>
                         {p.invite_status === 'pending' && p.contact_email && (
                           <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => handleSendInvite(p)}>
                             <Mail className="h-3.5 w-3.5" /> Email
-                          </Button>
-                        )}
-                        {p.invite_token && (
-                          <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => handleCopyLink(p)}>
-                            {copiedId === p.id ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
-                            {copiedId === p.id ? 'Copied' : 'Link'}
                           </Button>
                         )}
                       </div>
