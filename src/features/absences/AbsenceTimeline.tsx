@@ -182,13 +182,13 @@ export function AbsenceTimeline() {
   const [absenceType, setAbsenceType] = useState<AbsenceType>('Annual Leave')
   const [substitutePersonId, setSubstitutePersonId] = useState<string | null>(null)
   const [substituteOverlap, setSubstituteOverlap] = useState(false)
-  const [allOrgHolidays, setAllOrgHolidays] = useState<{ date: string; name: string; country_code: string | null }[]>([])
+  const [allOrgHolidays, setAllOrgHolidays] = useState<{ date: string; name: string; country_code: string | null; region_code: string | null }[]>([])
 
-  // Load ALL org holidays for the current month (includes country_code)
+  // Load ALL org holidays for the current month (includes country_code + region_code)
   useEffect(() => {
     if (!orgId) return
     holidayService.listForMonth(orgId, globalYear, month + 1)
-      .then((hols) => setAllOrgHolidays(hols.map(h => ({ date: h.date, name: h.name, country_code: h.country_code ?? null }))))
+      .then((hols) => setAllOrgHolidays(hols.map(h => ({ date: h.date, name: h.name, country_code: h.country_code ?? null, region_code: h.region_code ?? null }))))
       .catch(() => setAllOrgHolidays([]))
   }, [orgId, globalYear, month])
 

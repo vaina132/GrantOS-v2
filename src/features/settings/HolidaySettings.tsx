@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { holidayService } from '@/services/holidayService'
 import { useAuthStore } from '@/stores/authStore'
@@ -7,8 +7,9 @@ import { YearSelector } from '@/components/common/YearSelector'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/use-toast'
-import { Plus, Trash2, Calendar, Download, Loader2 } from 'lucide-react'
+import { Plus, Trash2, Calendar, Download, Loader2, MapPin } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { HOLIDAY_REGIONS } from '@/data/holidayRegions'
 import type { Holiday } from '@/types'
 
 // Countries supported by Nager.Date API — European countries + Turkey
@@ -71,9 +72,32 @@ export function HolidaySettings() {
   const [newDate, setNewDate] = useState('')
   const [newName, setNewName] = useState('')
 
-  // Import from country
+  // Import from country + optional region
   const [importCountry, setImportCountry] = useState('')
+  const [importRegion, setImportRegion] = useState('')
   const [importing, setImporting] = useState(false)
+
+  // Available regions for the selected country (empty if country has no regional holidays)
+  const availableRegions = useMemo(() => {
+    if (!importCountry || !HOLIDAY_REGIONS[importCountry]) return []
+    return Object.entries(HOLIDAY_REGIONS[importCountry])
+      .sort(([, a], [, b]) => a.localeCompare(b))
+  }, [importCountry])
+
+  // Reset region when country changes
+  const handleCountryChange = (code: string) => {
+    setImportCountry(code)
+    setImportRegion('')
+  }
+
+  interface NagerHoliday {
+    date: string
+    localName: string
+    name: string
+    global: boolean
+    counties: string[] | null
+    types: string[]
+  }
 
   const handleImport = async () => {
     if (!orgId || !importCountry) return
@@ -81,19 +105,42 @@ export function HolidaySettings() {
     try {
       const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${globalYear}/${importCountry}`)
       if (!res.ok) throw new Error(`API returned ${res.status}`)
-      const data: { date: string; localName: string; name: string; global: boolean }[] = await res.json()
-      // Only import global (nationwide) holidays
-      const globalHolidays = data.filter(h => h.global)
-      if (globalHolidays.length === 0) {
-        toast({ title: t('settings.noHolidaysFound'), description: t('settings.noHolidaysFoundDesc', { country: importCountry, year: globalYear }) })
-        setImporting(false)
-        return
+      const data: NagerHoliday[] = await res.json()
+
+      // Filter to Public type only
+      const publicOnly = data.filter(h => h.types.includes('Public'))
+
+      if (importRegion) {
+        // Regional import: nationwide holidays + holidays for selected region
+        const regionHols = publicOnly.filter(h =>
+          h.global || (h.counties && h.counties.includes(importRegion))
+        )
+        if (regionHols.length === 0) {
+          toast({ title: t('settings.noHolidaysFound'), description: t('settings.noHolidaysFoundDesc', { country: importCountry, year: globalYear }) })
+          setImporting(false)
+          return
+        }
+        const items = regionHols.map(h => ({ date: h.date, name: h.localName || h.name }))
+        const count = await holidayService.bulkCreate(orgId, items, importCountry, importRegion)
+        const regionName = HOLIDAY_REGIONS[importCountry]?.[importRegion] ?? importRegion
+        const countryName = HOLIDAY_COUNTRIES.find(c => c.code === importCountry)?.name ?? importCountry
+        toast({ title: t('settings.holidaysImported'), description: t('settings.holidaysImportedRegionDesc', { count, region: regionName, country: countryName, year: globalYear }) })
+      } else {
+        // National-only import: just global holidays (no region selected)
+        const globalHolidays = publicOnly.filter(h => h.global)
+        if (globalHolidays.length === 0) {
+          toast({ title: t('settings.noHolidaysFound'), description: t('settings.noHolidaysFoundDesc', { country: importCountry, year: globalYear }) })
+          setImporting(false)
+          return
+        }
+        const items = globalHolidays.map(h => ({ date: h.date, name: h.localName || h.name }))
+        const count = await holidayService.bulkCreate(orgId, items, importCountry)
+        const countryName = HOLIDAY_COUNTRIES.find(c => c.code === importCountry)?.name ?? importCountry
+        toast({ title: t('settings.holidaysImported'), description: t('settings.holidaysImportedDesc', { count, country: countryName, year: globalYear }) })
       }
-      const items = globalHolidays.map(h => ({ date: h.date, name: h.localName || h.name }))
-      const count = await holidayService.bulkCreate(orgId, items, importCountry)
-      const countryName = HOLIDAY_COUNTRIES.find(c => c.code === importCountry)?.name ?? importCountry
-      toast({ title: t('settings.holidaysImported'), description: t('settings.holidaysImportedDesc', { count, country: countryName, year: globalYear }) })
+
       setImportCountry('')
+      setImportRegion('')
       loadHolidays()
     } catch (err) {
       const message = err instanceof Error ? err.message : t('common.failedToSave')
@@ -172,30 +219,52 @@ export function HolidaySettings() {
         <YearSelector />
       </div>
 
-      {/* Import from country */}
-      <div className="rounded-lg border bg-muted/20 p-4 space-y-2">
+      {/* Import from country + optional region */}
+      <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('settings.importHolidays')}</div>
         <div className="flex gap-3 items-end flex-wrap">
           <div className="space-y-1 min-w-[200px]">
             <label className="text-xs font-medium text-muted-foreground">{t('staff.country')}</label>
             <select
               value={importCountry}
-              onChange={(e) => setImportCountry(e.target.value)}
+              onChange={(e) => handleCountryChange(e.target.value)}
               className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="">{t('common.selectCountry')}</option>
               {HOLIDAY_COUNTRIES.map(c => (
-                <option key={c.code} value={c.code}>{c.name}</option>
+                <option key={c.code} value={c.code}>
+                  {c.name}{HOLIDAY_REGIONS[c.code] ? ` ★` : ''}
+                </option>
               ))}
             </select>
           </div>
+          {availableRegions.length > 0 && (
+            <div className="space-y-1 min-w-[240px]">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {t('settings.region')}
+              </label>
+              <select
+                value={importRegion}
+                onChange={(e) => setImportRegion(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">{t('settings.nationalOnly')}</option>
+                {availableRegions.map(([code, name]) => (
+                  <option key={code} value={code}>{name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <Button onClick={handleImport} disabled={importing || !importCountry} variant="outline" className="gap-1.5">
             {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             {importing ? t('settings.importing') : t('settings.importYearHolidays', { year: globalYear })}
           </Button>
         </div>
         <p className="text-[11px] text-muted-foreground">
-          {t('settings.importHolidaysNote')}
+          {importRegion
+            ? t('settings.importRegionNote', { region: HOLIDAY_REGIONS[importCountry]?.[importRegion] ?? importRegion })
+            : t('settings.importHolidaysNote')}
         </p>
       </div>
 
@@ -264,6 +333,12 @@ export function HolidaySettings() {
                         {h.country_code && (
                           <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                             {HOLIDAY_COUNTRIES.find(c => c.code === h.country_code)?.name ?? h.country_code}
+                          </span>
+                        )}
+                        {h.region_code && (
+                          <span className="text-[10px] font-medium text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                            <MapPin className="h-2.5 w-2.5" />
+                            {(h.country_code && HOLIDAY_REGIONS[h.country_code]?.[h.region_code]) ?? h.region_code}
                           </span>
                         )}
                       </div>

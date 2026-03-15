@@ -216,6 +216,7 @@ export interface Holiday {
   date: string
   name: string
   country_code: string | null
+  region_code: string | null
   created_at: string
 }
 
