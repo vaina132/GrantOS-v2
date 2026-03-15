@@ -47,10 +47,11 @@ export function CollabProjectList() {
   useEffect(() => { load() }, [orgId])
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t('collaboration.confirmDeleteProject'))) return
+    const name = projects.find(p => p.id === id)?.acronym ?? ''
+    if (!confirm(t('collaboration.confirmDeleteFromList', { name }))) return
     try {
       await collabProjectService.remove(id)
-      toast({ title: t('common.deleted'), description: t('collaboration.projectDeleted') })
+      toast({ title: t('common.deleted'), description: t('collaboration.deletedProject', { name }) })
       load()
     } catch {
       toast({ title: t('common.error'), description: t('collaboration.failedToDeleteProject'), variant: 'destructive' })
@@ -135,9 +136,9 @@ export function CollabProjectList() {
           <div className="flex items-center gap-3">
             <Sparkles className="h-5 w-5 text-purple-500 shrink-0" />
             <div className="flex-1">
-              <h3 className="font-medium text-sm">{t('collaboration.quickImportAI')}</h3>
+              <h3 className="font-medium text-sm">{t('collaboration.quickImportAi')}</h3>
               <p className="text-xs text-muted-foreground">
-                {t('collaboration.quickImportAIDesc')}
+                {t('collaboration.quickImportAiDesc')}
               </p>
             </div>
             <Button size="sm" variant="outline" className="shrink-0 gap-1.5 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40" onClick={() => navigate('/projects/collaboration/new/ai-import')}>
@@ -162,7 +163,7 @@ export function CollabProjectList() {
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {t(`collaboration.status_${s}`)} ({counts[s]})
+                {t(`collaboration.filter${s.charAt(0).toUpperCase() + s.slice(1)}`)} ({counts[s]})
               </button>
             ))}
           </div>
@@ -193,14 +194,14 @@ export function CollabProjectList() {
               </Button>
               <Button variant="outline" onClick={() => navigate('/projects/collaboration/new/ai-import')} className="gap-2 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40">
                 <Sparkles className="h-4 w-4 text-purple-500" />
-                {t('collaboration.importWithAI')}
+                {t('collaboration.importWithAi')}
               </Button>
             </div>
           </CardContent>
         </Card>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-sm text-muted-foreground">{t('collaboration.noProjectsMatchFilters')}</p>
+          <p className="text-sm text-muted-foreground">{t('collaboration.noCollabProjectsFiltered')}</p>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -246,7 +247,7 @@ export function CollabProjectList() {
                       {p.status === 'draft' && (
                         <DropdownMenuItem onClick={() => handleLaunch(p.id)}>
                           <Rocket className="mr-2 h-4 w-4" />
-                          {t('collaboration.launchProject')}
+                          {t('collaboration.launch')}
                         </DropdownMenuItem>
                       )}
                       {p.status === 'active' && (
