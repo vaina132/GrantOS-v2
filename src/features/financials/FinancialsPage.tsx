@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { BudgetVsActuals } from './BudgetVsActuals'
 import { EnterActuals } from './EnterActuals'
@@ -15,6 +16,7 @@ import { cn } from '@/lib/utils'
 type Tab = 'overview' | 'actuals'
 
 export function FinancialsPage() {
+  const { t } = useTranslation()
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
   const { projects } = useProjects()
@@ -29,17 +31,17 @@ export function FinancialsPage() {
     try {
       const result = await financialService.seedFromProjects(orgId, projects, globalYear)
       if (result.created === 0 && result.updated === 0) {
-        toast({ title: 'Up to date', description: 'All budget rows already exist and are in sync with project data.' })
+        toast({ title: t('common.upToDate'), description: t('financials.budgetRowsUpToDate') })
       } else {
         const parts: string[] = []
-        if (result.created > 0) parts.push(`${result.created} created`)
-        if (result.updated > 0) parts.push(`${result.updated} updated`)
-        toast({ title: 'Synced', description: `Budget rows: ${parts.join(', ')}.` })
+        if (result.created > 0) parts.push(`${result.created} ${t('financials.created')}`)
+        if (result.updated > 0) parts.push(`${result.updated} ${t('financials.updated')}`)
+        toast({ title: t('common.synced'), description: t('financials.budgetRowsSynced', { details: parts.join(', ') }) })
       }
       setRefreshKey((k) => k + 1)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to seed'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.error')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSeeding(false)
     }
@@ -51,14 +53,14 @@ export function FinancialsPage() {
     try {
       const count = await financialService.syncPersonnelActuals(orgId, globalYear)
       if (count === 0) {
-        toast({ title: 'Up to date', description: 'Personnel actuals already match allocation data.' })
+        toast({ title: t('common.upToDate'), description: t('financials.personnelUpToDate') })
       } else {
-        toast({ title: 'Synced', description: `${count} personnel actual(s) updated from allocation data.` })
+        toast({ title: t('common.synced'), description: t('financials.personnelSynced', { count }) })
       }
       setRefreshKey((k) => k + 1)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to sync'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.error')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSyncing(false)
     }
@@ -70,44 +72,44 @@ export function FinancialsPage() {
     try {
       const count = await financialService.syncExpenseActuals(orgId, globalYear)
       if (count === 0) {
-        toast({ title: 'Up to date', description: 'Non-personnel actuals already match expense records.' })
+        toast({ title: t('common.upToDate'), description: t('financials.expensesUpToDate') })
       } else {
-        toast({ title: 'Synced', description: `${count} budget actual(s) updated from expense records.` })
+        toast({ title: t('common.synced'), description: t('financials.expensesSynced', { count }) })
       }
       setRefreshKey((k) => k + 1)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to sync expenses'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.error')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSyncingExpenses(false)
     }
   }
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'overview', label: 'Budget Overview' },
-    { key: 'actuals', label: 'Enter Actuals' },
+    { key: 'overview', label: t('financials.budgetOverview') },
+    { key: 'actuals', label: t('financials.enterActuals') },
   ]
 
   return (
     <div className="space-y-0">
       <PageHeader
-        title="Financials"
-        description={`Budget vs. actuals tracking for ${globalYear}`}
+        title={t('financials.title')}
+        description={t('financials.description', { year: globalYear })}
         actions={
           <div className="flex items-center gap-2">
             <YearSelector />
             <div className="h-6 w-px bg-border" />
             <Button variant="outline" size="sm" onClick={handleSeed} disabled={seeding} className="gap-1.5">
               <RefreshCw className={cn('h-3.5 w-3.5', seeding && 'animate-spin')} />
-              {seeding ? 'Syncing...' : 'Sync Budgets from Projects'}
+              {seeding ? t('common.syncing') : t('financials.syncBudgets')}
             </Button>
             <Button variant="outline" size="sm" onClick={handleSyncPersonnel} disabled={syncing} className="gap-1.5">
               <Calculator className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
-              {syncing ? 'Computing...' : 'Compute Personnel Actuals'}
+              {syncing ? t('common.computing') : t('financials.computePersonnel')}
             </Button>
             <Button variant="outline" size="sm" onClick={handleSyncExpenses} disabled={syncingExpenses} className="gap-1.5">
               <Receipt className={cn('h-3.5 w-3.5', syncingExpenses && 'animate-spin')} />
-              {syncingExpenses ? 'Syncing...' : 'Sync Expense Actuals'}
+              {syncingExpenses ? t('common.syncing') : t('financials.syncExpenses')}
             </Button>
           </div>
         }

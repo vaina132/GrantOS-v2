@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -55,6 +56,7 @@ const ACTION_PERMISSIONS: PermissionItem[] = [
 type RolePermissionMap = Record<string, Partial<RolePermission>>
 
 export function RolePermissions() {
+  const { t } = useTranslation()
   const { orgId } = useAuthStore()
   const [permissions, setPermissions] = useState<RolePermissionMap>({})
   const [loading, setLoading] = useState(true)
@@ -80,7 +82,7 @@ export function RolePermissions() {
       setPermissions(map)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load role permissions'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
     }
@@ -173,12 +175,12 @@ export function RolePermissions() {
         }
       }
 
-      toast({ title: 'Saved', description: 'Role permissions have been updated. Users will see changes on next login.' })
+      toast({ title: t('common.success'), description: t('settings.permissionsSaved') })
       setDirty(false)
       fetchPermissions()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.error')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setSaving(false)
     }
@@ -186,7 +188,7 @@ export function RolePermissions() {
 
   const handleResetToDefaults = () => {
     const proceed = window.confirm(
-      `Reset "${selectedRole}" permissions to defaults?\n\nThis will discard any customizations for this role.`
+      t('settings.resetConfirm', { role: selectedRole })
     )
     if (!proceed) return
 
@@ -270,21 +272,20 @@ export function RolePermissions() {
         <div>
           <CardTitle className="flex items-center gap-2 text-base">
             <Shield className="h-4 w-4" />
-            Role Permissions
+            {t('settings.rolePermissions')}
           </CardTitle>
           <CardDescription>
-            Configure what each role can see and do. Administrators always have full access.
-            External Participants can only access projects they are invited to and are not configurable here.
+            {t('settings.rolePermDesc')}
           </CardDescription>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleResetToDefaults} className="gap-1.5">
             <RotateCcw className="h-3.5 w-3.5" />
-            Reset to Defaults
+            {t('settings.resetToDefaults')}
           </Button>
           <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="gap-1.5">
             <Save className="h-3.5 w-3.5" />
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? t('common.saving') : t('settings.saveChanges')}
           </Button>
         </div>
       </CardHeader>
@@ -310,29 +311,29 @@ export function RolePermissions() {
         {/* Admin note */}
         <div className="rounded-md border border-blue-200 bg-blue-50 dark:border-blue-900/50 dark:bg-blue-950/30 px-3 py-2">
           <p className="text-xs text-blue-700 dark:text-blue-300">
-            <strong>Note:</strong> Administrator role always has full access to all modules and data. Changes below apply to <strong>{selectedRole}</strong> users only.
+            <span dangerouslySetInnerHTML={{ __html: t('settings.adminNote', { role: selectedRole }) }} />
           </p>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">
           <div>
             {renderPermissionGroup(
-              'Module Visibility',
-              'Which sections appear in the sidebar',
+              t('settings.moduleVisibility'),
+              t('settings.whichSections'),
               MODULE_PERMISSIONS,
             )}
           </div>
           <div>
             {renderPermissionGroup(
-              'Sensitive Data',
-              'Access to confidential information',
+              t('settings.sensitiveData'),
+              t('settings.accessConfidential'),
               DATA_PRIVACY_PERMISSIONS,
             )}
           </div>
           <div>
             {renderPermissionGroup(
-              'Actions',
-              'What this role can create, edit, or manage',
+              t('settings.actionsLabel'),
+              t('settings.whatRoleCanDo'),
               ACTION_PERMISSIONS,
             )}
           </div>

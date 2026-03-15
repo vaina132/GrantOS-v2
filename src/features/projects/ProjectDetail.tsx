@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useProject, useWorkPackages } from '@/hooks/useProjects'
 import { projectsService } from '@/services/projectsService'
@@ -26,6 +27,7 @@ import type { WorkPackage, PmBudget, Assignment } from '@/types'
 type DetailTab = 'overview' | 'budget' | 'expenses' | 'workpackages' | 'deliverables' | 'reporting' | 'documents'
 
 export function ProjectDetail() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const { project, isLoading } = useProject(id)
@@ -145,12 +147,12 @@ export function ProjectDetail() {
           type: 'actual',
         })
       }
-      toast({ title: 'Saved', description: 'PM budgets updated.' })
+      toast({ title: t('common.success'), description: t('projects.pmBudgetsUpdated') })
       setPmBudgetDirty(false)
       loadPmBudgets()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save PM budgets'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.error')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setPmBudgetSaving(false)
     }
@@ -203,12 +205,12 @@ export function ProjectDetail() {
           type: 'actual',
         })
       }
-      toast({ title: 'Saved', description: 'WP PM budgets updated.' })
+      toast({ title: t('common.success'), description: t('projects.wpPmBudgetsUpdated') })
       setWpPmBudgetDirty(false)
       loadPmBudgets()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save WP budgets'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.error')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setWpPmBudgetSaving(false)
     }
@@ -235,11 +237,11 @@ export function ProjectDetail() {
       setWpDesc('')
       setWpStartMonth(1)
       setWpEndMonth(projectMonthCount || 1)
-      toast({ title: 'Work package added' })
+      toast({ title: t('projects.wpAdded') })
       refetchWPs()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to add work package'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.error')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setWpSaving(false)
     }
@@ -250,13 +252,13 @@ export function ProjectDetail() {
     setWpDeleting(true)
     try {
       await projectsService.removeWorkPackage(wpDeleteTarget.id)
-      toast({ title: 'Work package deleted' })
+      toast({ title: t('projects.wpDeleted') })
       setWpDeleteTarget(null)
       refetchWPs()
       loadPmBudgets()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.error')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setWpDeleting(false)
     }
@@ -284,12 +286,12 @@ export function ProjectDetail() {
         start_date: projectMonthToDate(editWpStartMonth, false),
         end_date: projectMonthToDate(editWpEndMonth, true),
       })
-      toast({ title: 'Updated', description: 'Work package updated.' })
+      toast({ title: t('common.success'), description: t('projects.wpUpdated') })
       setEditingWpId(null)
       refetchWPs()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.error')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setEditWpSaving(false)
     }
@@ -310,22 +312,22 @@ export function ProjectDetail() {
   if (!project) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Project Not Found" />
+        <PageHeader title={t('projects.notFound')} />
         <Button variant="outline" onClick={() => navigate('/projects')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Projects
+          <ArrowLeft className="mr-2 h-4 w-4" /> {t('projects.backToProjects')}
         </Button>
       </div>
     )
   }
 
   const detailTabs: { key: DetailTab; label: string; show: boolean }[] = [
-    { key: 'overview', label: 'Overview', show: true },
-    { key: 'budget', label: 'Budget', show: can('canSeeFinancialDetails') },
-    { key: 'expenses', label: 'Expenses', show: can('canSeeFinancialDetails') },
-    { key: 'workpackages', label: 'Work Packages', show: true },
-    { key: 'deliverables', label: 'Deliverables', show: true },
-    { key: 'reporting', label: 'Reporting', show: true },
-    { key: 'documents', label: 'Documents', show: true },
+    { key: 'overview', label: t('projects.overview'), show: true },
+    { key: 'budget', label: t('projects.budget'), show: can('canSeeFinancialDetails') },
+    { key: 'expenses', label: t('projects.expenses'), show: can('canSeeFinancialDetails') },
+    { key: 'workpackages', label: t('projects.workPackages'), show: true },
+    { key: 'deliverables', label: t('projects.deliverables'), show: true },
+    { key: 'reporting', label: t('projects.reporting'), show: true },
+    { key: 'documents', label: t('projects.documents'), show: true },
   ]
 
   return (
@@ -336,11 +338,11 @@ export function ProjectDetail() {
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => navigate('/projects')}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              <ArrowLeft className="mr-2 h-4 w-4" /> {t('common.back')}
             </Button>
             {can('canManageProjects') && (
               <Button onClick={() => navigate(`/projects/${project.id}/edit`)}>
-                <Pencil className="mr-2 h-4 w-4" /> Edit
+                <Pencil className="mr-2 h-4 w-4" /> {t('common.edit')}
               </Button>
             )}
           </div>
@@ -373,45 +375,45 @@ export function ProjectDetail() {
         {/* Overview Tab */}
         {detailTab === 'overview' && (
           <Card>
-            <CardHeader><CardTitle>Project Details</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t('projects.projectDetails')}</CardTitle></CardHeader>
             <CardContent>
               <dl className="space-y-3">
                 <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">Grant Number</dt>
+                  <dt className="text-sm text-muted-foreground">{t('projects.grantNumber')}</dt>
                   <dd className="text-sm font-medium">{project.grant_number ?? '—'}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">Funding Scheme</dt>
+                  <dt className="text-sm text-muted-foreground">{t('projects.fundingScheme')}</dt>
                   <dd className="text-sm font-medium">{project.funding_schemes?.name ?? '—'}</dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">Status</dt>
+                  <dt className="text-sm text-muted-foreground">{t('common.status')}</dt>
                   <dd><StatusBadge status={project.status} /></dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">Period</dt>
+                  <dt className="text-sm text-muted-foreground">{t('common.period')}</dt>
                   <dd className="text-sm font-medium">
                     {formatDate(project.start_date)} – {formatDate(project.end_date)}
                   </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">Work Packages</dt>
+                  <dt className="text-sm text-muted-foreground">{t('projects.workPackages')}</dt>
                   <dd>
                     <Badge variant={project.has_wps ? 'default' : 'secondary'}>
-                      {project.has_wps ? 'Yes' : 'No'}
+                      {project.has_wps ? t('common.yes') : t('common.no')}
                     </Badge>
                   </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">Led by Our Organisation</dt>
+                  <dt className="text-sm text-muted-foreground">{t('projects.ledByOurOrg')}</dt>
                   <dd>
                     <Badge variant={project.is_lead_organisation ? 'default' : 'secondary'}>
-                      {project.is_lead_organisation ? 'Yes' : 'No'}
+                      {project.is_lead_organisation ? t('common.yes') : t('common.no')}
                     </Badge>
                   </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">Responsible Person</dt>
+                  <dt className="text-sm text-muted-foreground">{t('projects.responsiblePerson')}</dt>
                   <dd className="text-sm font-medium">{project.responsible_person?.full_name ?? '—'}</dd>
                 </div>
               </dl>
@@ -423,48 +425,48 @@ export function ProjectDetail() {
         {detailTab === 'budget' && (
           <div className="space-y-6">
             <Card>
-              <CardHeader><CardTitle>Budget Breakdown</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('projects.budgetBreakdown')}</CardTitle></CardHeader>
               <CardContent>
                 <dl className="space-y-3">
                   <div className="flex justify-between">
-                    <dt className="text-sm text-muted-foreground">Total Budget</dt>
+                    <dt className="text-sm text-muted-foreground">{t('projects.totalBudget')}</dt>
                     <dd className="text-sm font-medium tabular-nums">
                       {project.total_budget != null ? formatCurrency(project.total_budget) : '—'}
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-sm text-muted-foreground">Personnel</dt>
+                    <dt className="text-sm text-muted-foreground">{t('financials.personnelBudget')}</dt>
                     <dd className="text-sm font-medium tabular-nums">
                       {project.budget_personnel != null ? formatCurrency(project.budget_personnel) : '—'}
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-sm text-muted-foreground">Travel</dt>
+                    <dt className="text-sm text-muted-foreground">{t('projects.travel')}</dt>
                     <dd className="text-sm font-medium tabular-nums">
                       {project.budget_travel != null ? formatCurrency(project.budget_travel) : '—'}
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-sm text-muted-foreground">Subcontracting</dt>
+                    <dt className="text-sm text-muted-foreground">{t('projects.subcontracting')}</dt>
                     <dd className="text-sm font-medium tabular-nums">
                       {project.budget_subcontracting != null ? formatCurrency(project.budget_subcontracting) : '—'}
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-sm text-muted-foreground">Other</dt>
+                    <dt className="text-sm text-muted-foreground">{t('projects.other')}</dt>
                     <dd className="text-sm font-medium tabular-nums">
                       {project.budget_other != null ? formatCurrency(project.budget_other) : '—'}
                     </dd>
                   </div>
                   <div className="flex justify-between">
-                    <dt className="text-sm text-muted-foreground">Overhead Rate</dt>
+                    <dt className="text-sm text-muted-foreground">{t('projects.overheadRate')}</dt>
                     <dd className="text-sm font-medium tabular-nums">
                       {project.overhead_rate != null ? `${project.overhead_rate}%` : '—'}
                     </dd>
                   </div>
                   {can('canSeePersonnelRates') && (
                     <div className="flex justify-between">
-                      <dt className="text-sm text-muted-foreground">Our PM Rate</dt>
+                      <dt className="text-sm text-muted-foreground">{t('projects.ourPmRate')}</dt>
                       <dd className="text-sm font-medium tabular-nums">
                         {project.our_pm_rate != null ? formatCurrency(project.our_pm_rate) : '—'}
                       </dd>
@@ -478,11 +480,11 @@ export function ProjectDetail() {
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle>Person-Months per Year</CardTitle>
+                    <CardTitle>{t('projects.personMonthsPerYear')}</CardTitle>
                     {can('canManageProjects') && pmBudgetDirty && (
                       <Button size="sm" onClick={handleSavePmBudgets} disabled={pmBudgetSaving}>
                         <Save className="mr-1 h-4 w-4" />
-                        {pmBudgetSaving ? 'Saving...' : 'Save'}
+                        {pmBudgetSaving ? t('common.saving') : t('common.save')}
                       </Button>
                     )}
                   </div>
@@ -510,7 +512,7 @@ export function ProjectDetail() {
                   </div>
                   {projectYears.length > 0 && (
                     <div className="mt-3 text-sm text-muted-foreground">
-                      Total: <span className="font-semibold text-foreground">{Object.values(pmBudgetValues).reduce((a, b) => a + b, 0).toFixed(1)} PM</span>
+                      {t('common.total')}: <span className="font-semibold text-foreground">{Object.values(pmBudgetValues).reduce((a, b) => a + b, 0).toFixed(1)} PM</span>
                     </div>
                   )}
                 </CardContent>
@@ -533,32 +535,32 @@ export function ProjectDetail() {
             {/* Summary card: project PM budget vs WP allocation vs allocated */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="rounded-lg border bg-card p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Project Budget</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.projectBudget')}</div>
                 <div className="text-xl font-bold tabular-nums mt-0.5">{totalProjectBudgetPm.toFixed(1)} PM</div>
-                <div className="text-[11px] text-muted-foreground">Total across all years</div>
+                <div className="text-[11px] text-muted-foreground">{t('projects.totalAcrossYears')}</div>
               </div>
               <div className="rounded-lg border bg-card p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Assigned to WPs</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.assignedToWPs')}</div>
                 <div className={cn('text-xl font-bold tabular-nums mt-0.5', totalWpBudgetPm > totalProjectBudgetPm + 0.01 ? 'text-red-500' : 'text-foreground')}>
                   {totalWpBudgetPm.toFixed(1)} PM
                 </div>
                 <div className="text-[11px] text-muted-foreground">
-                  {totalProjectBudgetPm > 0 ? `${Math.round((totalWpBudgetPm / totalProjectBudgetPm) * 100)}%` : '—'} of budget
+                  {totalProjectBudgetPm > 0 ? `${Math.round((totalWpBudgetPm / totalProjectBudgetPm) * 100)}%` : '—'} {t('projects.ofBudget')}
                 </div>
               </div>
               <div className="rounded-lg border bg-card p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Allocated</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.allocated')}</div>
                 <div className={cn('text-xl font-bold tabular-nums mt-0.5', totalAllocatedPm > totalProjectBudgetPm + 0.01 ? 'text-amber-500' : 'text-primary')}>
                   {totalAllocatedPm.toFixed(1)} PM
                 </div>
-                <div className="text-[11px] text-muted-foreground">People allocated to project</div>
+                <div className="text-[11px] text-muted-foreground">{t('projects.peopleAllocated')}</div>
               </div>
               <div className="rounded-lg border bg-card p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Remaining</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.remaining')}</div>
                 <div className={cn('text-xl font-bold tabular-nums mt-0.5', (totalProjectBudgetPm - totalAllocatedPm) < 0 ? 'text-red-500' : 'text-emerald-500')}>
                   {(totalProjectBudgetPm - totalAllocatedPm).toFixed(1)} PM
                 </div>
-                <div className="text-[11px] text-muted-foreground">Budget minus allocated</div>
+                <div className="text-[11px] text-muted-foreground">{t('projects.budgetMinusAllocated')}</div>
               </div>
             </div>
 
@@ -566,11 +568,11 @@ export function ProjectDetail() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>Work Packages</CardTitle>
+                  <CardTitle>{t('projects.workPackages')}</CardTitle>
                   {can('canManageProjects') && wpPmBudgetDirty && (
                     <Button size="sm" onClick={handleSaveWpPmBudgets} disabled={wpPmBudgetSaving}>
                       <Save className="mr-1 h-4 w-4" />
-                      {wpPmBudgetSaving ? 'Saving...' : 'Save PM Budgets'}
+                      {wpPmBudgetSaving ? t('common.saving') : t('projects.savePmBudgets')}
                     </Button>
                   )}
                 </div>
@@ -589,13 +591,13 @@ export function ProjectDetail() {
                           <thead>
                             <tr className="border-b bg-muted/50">
                               <th className="px-4 py-2 text-left font-medium w-12">#</th>
-                              <th className="px-4 py-2 text-left font-medium">Name</th>
-                              <th className="px-4 py-2 text-left font-medium">Period</th>
-                              <th className="px-4 py-2 text-right font-medium">Budget PM</th>
-                              <th className="px-4 py-2 text-right font-medium">Allocated</th>
-                              <th className="px-4 py-2 text-right font-medium">Remaining</th>
+                              <th className="px-4 py-2 text-left font-medium">{t('common.name')}</th>
+                              <th className="px-4 py-2 text-left font-medium">{t('common.period')}</th>
+                              <th className="px-4 py-2 text-right font-medium">{t('projects.budgetPM')}</th>
+                              <th className="px-4 py-2 text-right font-medium">{t('projects.allocated')}</th>
+                              <th className="px-4 py-2 text-right font-medium">{t('projects.remaining')}</th>
                               {can('canManageProjects') && (
-                                <th className="px-4 py-2 text-right font-medium">Actions</th>
+                                <th className="px-4 py-2 text-right font-medium">{t('common.actions')}</th>
                               )}
                             </tr>
                           </thead>
@@ -702,9 +704,9 @@ export function ProjectDetail() {
                                           <>
                                             <Button variant="ghost" size="sm" onClick={handleSaveEditWp} disabled={editWpSaving} className="h-7 text-xs">
                                               <Save className="h-3 w-3 mr-1" />
-                                              {editWpSaving ? '...' : 'Save'}
+                                              {editWpSaving ? '...' : t('common.save')}
                                             </Button>
-                                            <Button variant="ghost" size="sm" onClick={() => setEditingWpId(null)} className="h-7 text-xs">Cancel</Button>
+                                            <Button variant="ghost" size="sm" onClick={() => setEditingWpId(null)} className="h-7 text-xs">{t('common.cancel')}</Button>
                                           </>
                                         ) : (
                                           <>
@@ -724,7 +726,7 @@ export function ProjectDetail() {
                             })}
                             {/* Totals row */}
                             <tr className="bg-muted/30 font-semibold text-xs">
-                              <td className="px-4 py-2" colSpan={3}>Total</td>
+                              <td className="px-4 py-2" colSpan={3}>{t('common.total')}</td>
                               <td className="px-4 py-2 text-right tabular-nums">{totalWpBudgetPm.toFixed(1)} PM</td>
                               <td className="px-4 py-2 text-right tabular-nums">{totalAllocatedPm.toFixed(2)}</td>
                               <td className="px-4 py-2 text-right tabular-nums">
@@ -742,7 +744,7 @@ export function ProjectDetail() {
                     {/* Budget distribution bar */}
                     {workPackages.length > 0 && totalProjectBudgetPm > 0 && (
                       <div className="mb-4 space-y-1.5">
-                        <div className="text-xs text-muted-foreground">PM Budget Distribution</div>
+                        <div className="text-xs text-muted-foreground">{t('projects.pmBudgetDistribution')}</div>
                         <div className="h-3 rounded-full bg-muted overflow-hidden flex">
                           {workPackages.map((wp, i) => {
                             const wpBudget = wpPmBudgets[wp.id] ?? 0
@@ -771,7 +773,7 @@ export function ProjectDetail() {
                           })}
                           {totalProjectBudgetPm - totalWpBudgetPm > 0.01 && (
                             <span className="flex items-center gap-1 text-amber-600">
-                              Unassigned: {(totalProjectBudgetPm - totalWpBudgetPm).toFixed(1)} PM
+                              {t('projects.unassigned')}: {(totalProjectBudgetPm - totalWpBudgetPm).toFixed(1)} PM
                             </span>
                           )}
                         </div>
@@ -781,10 +783,10 @@ export function ProjectDetail() {
                     {/* Add new WP form */}
                     {can('canManageProjects') && (
                       <div className="space-y-3 rounded-lg border p-4 bg-muted/10">
-                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Add Work Package</div>
+                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('projects.addWorkPackage')}</div>
                         <div className="flex gap-2 items-end flex-wrap">
                           <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">WP #</Label>
+                            <Label className="text-xs text-muted-foreground">{t('projects.wpNumber')}</Label>
                             <select
                               value={wpNumber}
                               onChange={(e) => setWpNumber(Number(e.target.value))}
@@ -796,7 +798,7 @@ export function ProjectDetail() {
                             </select>
                           </div>
                           <div className="space-y-1 flex-1 min-w-[120px]">
-                            <Label className="text-xs text-muted-foreground">Name *</Label>
+                            <Label className="text-xs text-muted-foreground">{t('projects.wpName')} *</Label>
                             <Input
                               placeholder="WP name"
                               value={wpName}
@@ -804,7 +806,7 @@ export function ProjectDetail() {
                             />
                           </div>
                           <div className="space-y-1 flex-1 min-w-[120px]">
-                            <Label className="text-xs text-muted-foreground">Description</Label>
+                            <Label className="text-xs text-muted-foreground">{t('projects.wpDescription')}</Label>
                             <Input
                               placeholder="Optional"
                               value={wpDesc}
@@ -814,7 +816,7 @@ export function ProjectDetail() {
                         </div>
                         <div className="flex gap-2 items-end flex-wrap">
                           <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Start Month</Label>
+                            <Label className="text-xs text-muted-foreground">{t('projects.startMonth')}</Label>
                             <select
                               value={wpStartMonth}
                               onChange={(e) => setWpStartMonth(Number(e.target.value))}
@@ -826,7 +828,7 @@ export function ProjectDetail() {
                             </select>
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">End Month</Label>
+                            <Label className="text-xs text-muted-foreground">{t('projects.endMonth')}</Label>
                             <select
                               value={wpEndMonth}
                               onChange={(e) => setWpEndMonth(Number(e.target.value))}
@@ -839,12 +841,12 @@ export function ProjectDetail() {
                           </div>
                           <Button onClick={handleAddWP} disabled={wpSaving || !wpName.trim()}>
                             <Plus className="mr-1 h-4 w-4" />
-                            {wpSaving ? 'Adding...' : 'Add WP'}
+                            {wpSaving ? t('common.adding') : t('projects.addWP')}
                           </Button>
                         </div>
                         {projectMonthCount > 0 && (
                           <div className="text-[11px] text-muted-foreground">
-                            Project duration: {projectMonthCount} months ({formatDate(project!.start_date)} – {formatDate(project!.end_date)})
+                            {t('projects.projectDuration', { months: projectMonthCount, start: formatDate(project!.start_date), end: formatDate(project!.end_date) })}
                           </div>
                         )}
                       </div>
@@ -882,9 +884,9 @@ export function ProjectDetail() {
       <ConfirmModal
         open={!!wpDeleteTarget}
         onOpenChange={(open) => !open && setWpDeleteTarget(null)}
-        title="Delete Work Package"
-        message={`Are you sure you want to delete "${wpDeleteTarget?.name}"?`}
-        confirmLabel="Delete"
+        title={t('projects.deleteWP')}
+        message={t('projects.deleteWPConfirm', { name: wpDeleteTarget?.name })}
+        confirmLabel={t('common.delete')}
         destructive
         loading={wpDeleting}
         onConfirm={handleDeleteWP}

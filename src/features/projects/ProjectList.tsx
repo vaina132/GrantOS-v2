@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useProjects } from '@/hooks/useProjects'
 import type { ProjectFilters } from '@/services/projectsService'
@@ -21,6 +22,7 @@ import type { Project, ProjectStatus, CollabProject } from '@/types'
 const STATUS_OPTIONS: (ProjectStatus | 'All')[] = ['All', 'Upcoming', 'Active', 'Completed', 'Suspended']
 
 export function ProjectList() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { can } = useAuthStore()
   const [search, setSearch] = useState('')
@@ -61,12 +63,12 @@ export function ProjectList() {
     setDeleting(true)
     try {
       await projectsService.remove(deleteTarget.id)
-      toast({ title: 'Deleted', description: `${deleteTarget.acronym} has been removed.` })
+      toast({ title: t('common.deleted'), description: t('common.hasBeenRemoved', { name: deleteTarget.acronym }) })
       setDeleteTarget(null)
       refetch()
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
+      const message = err instanceof Error ? err.message : t('common.failedToDelete')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
       setDeleting(false)
     }
@@ -75,19 +77,19 @@ export function ProjectList() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Our Projects"
-        description="Your organisation's share of each project"
+        title={t('projects.title')}
+        description={t('projects.description')}
         actions={
           can('canManageProjects') ? (
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => navigate('/projects/collaboration')}>
-                <Globe className="mr-2 h-4 w-4" /> Collaboration
+                <Globe className="mr-2 h-4 w-4" /> {t('projects.collaboration')}
               </Button>
               <Button variant="outline" onClick={() => navigate('/projects/import-ai')}>
-                <Sparkles className="mr-2 h-4 w-4" /> Import with AI
+                <Sparkles className="mr-2 h-4 w-4" /> {t('projects.importWithAI')}
               </Button>
               <Button onClick={() => navigate('/projects/new')}>
-                <Plus className="mr-2 h-4 w-4" /> New Project
+                <Plus className="mr-2 h-4 w-4" /> {t('projects.newProject')}
               </Button>
             </div>
           ) : undefined
@@ -98,7 +100,7 @@ export function ProjectList() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by acronym or title..."
+            placeholder={t('common.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -123,12 +125,12 @@ export function ProjectList() {
       ) : projects.length === 0 ? (
         <EmptyState
           icon={FolderKanban}
-          title="No projects found"
-          description={search ? 'Try adjusting your search.' : 'Create your first project to get started.'}
+          title={t('common.noProjectsFound')}
+          description={search ? t('common.tryAdjusting') : t('common.createFirstProject')}
           action={
             can('canManageProjects') ? (
               <Button onClick={() => navigate('/projects/new')}>
-                <Plus className="mr-2 h-4 w-4" /> New Project
+                <Plus className="mr-2 h-4 w-4" /> {t('projects.newProject')}
               </Button>
             ) : undefined
           }
@@ -136,21 +138,21 @@ export function ProjectList() {
       ) : (
         <>
         <div className="text-xs text-muted-foreground mb-2">
-          Showing {projects.length} project{projects.length !== 1 ? 's' : ''}
+          {t('common.showingCount', { count: projects.length })}
         </div>
         <div className="rounded-lg border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Acronym</th>
-                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Title</th>
-                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Scheme</th>
-                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Lead</th>
-                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Status</th>
-                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">Period</th>
-                  {can('canSeeFinancialDetails') && <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Budget</th>}
-                  {can('canManageProjects') && <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">Actions</th>}
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">{t('common.acronym')}</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">{t('common.title')}</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">{t('common.scheme')}</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">{t('common.lead')}</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">{t('common.status')}</th>
+                  <th className="px-4 py-3 text-left font-medium sticky top-0 bg-muted/50">{t('common.period')}</th>
+                  {can('canSeeFinancialDetails') && <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">{t('common.budget')}</th>}
+                  {can('canManageProjects') && <th className="px-4 py-3 text-right font-medium sticky top-0 bg-muted/50">{t('common.actions')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -218,7 +220,7 @@ export function ProjectList() {
         <div className="space-y-2 mt-4">
           <div className="flex items-center gap-2">
             <Globe className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-medium">Collaboration Projects</h3>
+            <h3 className="text-sm font-medium">{t('projects.collaborationProjects')}</h3>
             <Badge variant="secondary" className="text-[10px]">{filteredCollab.length}</Badge>
           </div>
           <div className="rounded-lg border">
@@ -226,12 +228,12 @@ export function ProjectList() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-2 text-left font-medium text-xs">Acronym</th>
-                    <th className="px-4 py-2 text-left font-medium text-xs">Title</th>
-                    <th className="px-4 py-2 text-left font-medium text-xs">Programme</th>
-                    <th className="px-4 py-2 text-left font-medium text-xs">Partners</th>
-                    <th className="px-4 py-2 text-left font-medium text-xs">Status</th>
-                    <th className="px-4 py-2 text-left font-medium text-xs">Period</th>
+                    <th className="px-4 py-2 text-left font-medium text-xs">{t('common.acronym')}</th>
+                    <th className="px-4 py-2 text-left font-medium text-xs">{t('common.title')}</th>
+                    <th className="px-4 py-2 text-left font-medium text-xs">{t('common.programme')}</th>
+                    <th className="px-4 py-2 text-left font-medium text-xs">{t('common.partners')}</th>
+                    <th className="px-4 py-2 text-left font-medium text-xs">{t('common.status')}</th>
+                    <th className="px-4 py-2 text-left font-medium text-xs">{t('common.period')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -275,9 +277,9 @@ export function ProjectList() {
       <ConfirmModal
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title="Delete Project"
-        message={`Are you sure you want to delete "${deleteTarget?.acronym}"? This will also delete all associated work packages, allocations, and timesheets.`}
-        confirmLabel="Delete"
+        title={t('common.deleteProject')}
+        message={t('common.deleteProjectConfirm', { name: deleteTarget?.acronym })}
+        confirmLabel={t('common.delete')}
         destructive
         loading={deleting}
         onConfirm={handleDelete}

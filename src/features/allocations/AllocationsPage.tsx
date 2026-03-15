@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { YearSelector } from '@/components/common/YearSelector'
 import { AllocationGrid } from './AllocationGrid'
@@ -12,22 +13,23 @@ import { cn } from '@/lib/utils'
 type Tab = 'grid' | 'matrix-personnel' | 'matrix-projects' | 'budgets' | 'locks'
 
 export function AllocationsPage() {
+  const { t } = useTranslation()
   const { can } = useAuthStore()
   const [tab, setTab] = useState<Tab>('grid')
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'grid', label: 'Allocation Grid' },
-    { key: 'matrix-personnel', label: 'Personnel Overview' },
-    { key: 'matrix-projects', label: 'Project Overview' },
-    { key: 'budgets', label: 'PM Budgets' },
-    { key: 'locks', label: 'Period Locks' },
+    { key: 'grid', label: t('allocations.allocationGrid') },
+    { key: 'matrix-personnel', label: t('allocations.personnelOverview') },
+    { key: 'matrix-projects', label: t('allocations.projectOverview') },
+    { key: 'budgets', label: t('allocations.pmBudgets') },
+    { key: 'locks', label: t('allocations.periodLocks') },
   ]
 
   return (
     <div className="space-y-0">
       <PageHeader
-        title="Allocations"
-        description="Manage person-month allocations across projects"
+        title={t('allocations.title')}
+        description={t('allocations.description')}
         actions={<YearSelector />}
       />
 

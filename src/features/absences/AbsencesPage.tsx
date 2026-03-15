@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { AbsenceList } from './AbsenceList'
 import { AbsenceTimeline } from './AbsenceTimeline'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -7,18 +8,19 @@ import { cn } from '@/lib/utils'
 type View = 'timeline' | 'list'
 
 export function AbsencesPage() {
+  const { t } = useTranslation()
   const [view, setView] = useState<View>('timeline')
 
   const tabs: { key: View; label: string }[] = [
-    { key: 'timeline', label: 'Timeline' },
-    { key: 'list', label: 'List View' },
+    { key: 'timeline', label: t('absences.timeline') },
+    { key: 'list', label: t('absences.listView') },
   ]
 
   return (
     <div className="space-y-0">
       <PageHeader
-        title="Absences"
-        description="Track staff absences and leave"
+        title={t('absences.title')}
+        description={t('absences.description')}
       />
 
       <div className="border-b mt-4">

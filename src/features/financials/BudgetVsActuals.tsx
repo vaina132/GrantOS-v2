@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useBudgetSummary } from '@/hooks/useFinancials'
 import { useProjects } from '@/hooks/useProjects'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
@@ -8,12 +9,12 @@ import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import type { BudgetCategory } from '@/services/financialService'
 
-const CATEGORIES: { key: BudgetCategory; label: string }[] = [
-  { key: 'personnel', label: 'Personnel' },
-  { key: 'travel', label: 'Travel' },
-  { key: 'subcontracting', label: 'Subcontracting' },
-  { key: 'other', label: 'Other Direct' },
-  { key: 'indirect', label: 'Indirect Costs' },
+const CATEGORY_KEYS: { key: BudgetCategory; labelKey: string }[] = [
+  { key: 'personnel', labelKey: 'financials.personnelBudget' },
+  { key: 'travel', labelKey: 'financials.travelBudget' },
+  { key: 'subcontracting', labelKey: 'financials.subcontractingBudget' },
+  { key: 'other', labelKey: 'financials.otherBudget' },
+  { key: 'indirect', labelKey: 'financials.indirectCosts' },
 ]
 
 interface ProjectBudget {
@@ -25,6 +26,7 @@ interface ProjectBudget {
 }
 
 export function BudgetVsActuals() {
+  const { t } = useTranslation()
   const { rows, isLoading: loadingBudgets } = useBudgetSummary()
   const { projects, isLoading: loadingProjects } = useProjects()
   const isLoading = loadingBudgets || loadingProjects
@@ -93,7 +95,7 @@ export function BudgetVsActuals() {
     let totalActual = 0
 
     for (const pb of projectBudgets) {
-      for (const cat of CATEGORIES) {
+      for (const cat of CATEGORY_KEYS) {
         totals[cat.key].budgeted += pb.categories[cat.key].budgeted
         totals[cat.key].actual += pb.categories[cat.key].actual
       }
@@ -110,8 +112,8 @@ export function BudgetVsActuals() {
     return (
       <EmptyState
         icon={DollarSign}
-        title="No financial data"
-        description="Add projects and budget entries to see the budget vs actuals overview."
+        title={t('financials.noFinancialData')}
+        description={t('financials.noFinancialDataDesc')}
       />
     )
   }
@@ -122,18 +124,18 @@ export function BudgetVsActuals() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="px-4 py-2.5 text-left font-medium sticky left-0 bg-muted/50">Project</th>
-              {CATEGORIES.map((cat) => (
-                <th key={cat.key} className="px-3 py-2.5 text-center font-medium border-l text-xs">{cat.label}</th>
+              <th className="px-4 py-2.5 text-left font-medium sticky left-0 bg-muted/50">{t('common.project')}</th>
+              {CATEGORY_KEYS.map((cat) => (
+                <th key={cat.key} className="px-3 py-2.5 text-center font-medium border-l text-xs">{t(cat.labelKey)}</th>
               ))}
-              <th className="px-4 py-2.5 text-center font-semibold border-l">Total</th>
+              <th className="px-4 py-2.5 text-center font-semibold border-l">{t('common.total')}</th>
             </tr>
           </thead>
           <tbody>
             {projectBudgets.map((pb, idx) => (
               <tr key={pb.projectId} className={cn('border-b last:border-0 hover:bg-muted/20', idx % 2 === 1 && 'bg-muted/[0.03]')}>
                 <td className="px-4 py-2.5 font-semibold text-primary sticky left-0 bg-background">{pb.acronym}</td>
-                {CATEGORIES.map((cat) => {
+                {CATEGORY_KEYS.map((cat) => {
                   const { budgeted, actual } = pb.categories[cat.key]
                   const pct = budgeted > 0 ? Math.min((actual / budgeted) * 100, 150) : 0
                   const variance = budgeted - actual
@@ -141,11 +143,11 @@ export function BudgetVsActuals() {
                     <td key={cat.key} className="px-3 py-2.5 border-l">
                       <div className="flex flex-col gap-1 min-w-[100px]">
                         <div className="flex justify-between items-baseline">
-                          <span className="text-[10px] text-muted-foreground">Budget</span>
+                          <span className="text-[10px] text-muted-foreground">{t('common.budget')}</span>
                           <span className="text-xs text-muted-foreground tabular-nums">{formatCurrency(budgeted)}</span>
                         </div>
                         <div className="flex justify-between items-baseline">
-                          <span className="text-[10px] text-muted-foreground">Actual</span>
+                          <span className="text-[10px] text-muted-foreground">{t('common.actual')}</span>
                           <span className="text-xs font-medium tabular-nums">{formatCurrency(actual)}</span>
                         </div>
                         {budgeted > 0 && (
@@ -157,7 +159,7 @@ export function BudgetVsActuals() {
                               />
                             </div>
                             <span className={cn('text-[10px] text-right tabular-nums', variance >= 0 ? 'text-emerald-600' : 'text-red-600')}>
-                              {variance >= 0 ? 'Remaining: ' : 'Over: '}{formatCurrency(Math.abs(variance))}
+                              {variance >= 0 ? `${t('common.remaining')}: ` : `${t('common.over')}: `}{formatCurrency(Math.abs(variance))}
                             </span>
                           </>
                         )}
@@ -168,11 +170,11 @@ export function BudgetVsActuals() {
                 <td className="px-4 py-2.5 border-l">
                   <div className="flex flex-col gap-1 min-w-[100px]">
                     <div className="flex justify-between items-baseline">
-                      <span className="text-[10px] text-muted-foreground">Budget</span>
+                      <span className="text-[10px] text-muted-foreground">{t('common.budget')}</span>
                       <span className="text-xs text-muted-foreground tabular-nums">{formatCurrency(pb.totalBudgeted)}</span>
                     </div>
                     <div className="flex justify-between items-baseline">
-                      <span className="text-[10px] font-semibold">Actual</span>
+                      <span className="text-[10px] font-semibold">{t('common.actual')}</span>
                       <span className="text-xs font-semibold tabular-nums">{formatCurrency(pb.totalActual)}</span>
                     </div>
                     {pb.totalBudgeted > 0 && (
@@ -184,7 +186,7 @@ export function BudgetVsActuals() {
                           />
                         </div>
                         <span className={cn('text-[10px] text-right tabular-nums', (pb.totalBudgeted - pb.totalActual) >= 0 ? 'text-emerald-600' : 'text-red-600')}>
-                          {(pb.totalBudgeted - pb.totalActual) >= 0 ? 'Remaining: ' : 'Over: '}{formatCurrency(Math.abs(pb.totalBudgeted - pb.totalActual))}
+                          {(pb.totalBudgeted - pb.totalActual) >= 0 ? `${t('common.remaining')}: ` : `${t('common.over')}: `}{formatCurrency(Math.abs(pb.totalBudgeted - pb.totalActual))}
                         </span>
                       </>
                     )}
@@ -194,18 +196,18 @@ export function BudgetVsActuals() {
             ))}
             {/* Grand total row */}
             <tr className="border-t-2 border-primary/20 bg-muted/50 font-semibold">
-              <td className="px-4 py-3 sticky left-0 bg-muted/50 text-sm">TOTAL</td>
-              {CATEGORIES.map((cat) => {
+              <td className="px-4 py-3 sticky left-0 bg-muted/50 text-sm">{t('financials.grandTotal')}</td>
+              {CATEGORY_KEYS.map((cat) => {
                 const { budgeted, actual } = grandTotals.categories[cat.key]
                 return (
                   <td key={cat.key} className="px-3 py-3 border-l">
                     <div className="flex flex-col gap-0.5 min-w-[100px]">
                       <div className="flex justify-between items-baseline">
-                        <span className="text-[10px]">Budget</span>
+                        <span className="text-[10px]">{t('common.budget')}</span>
                         <span className="text-xs tabular-nums">{formatCurrency(budgeted)}</span>
                       </div>
                       <div className="flex justify-between items-baseline">
-                        <span className="text-[10px]">Actual</span>
+                        <span className="text-[10px]">{t('common.actual')}</span>
                         <span className="text-xs tabular-nums font-bold">{formatCurrency(actual)}</span>
                       </div>
                     </div>
@@ -215,11 +217,11 @@ export function BudgetVsActuals() {
               <td className="px-4 py-3 border-l">
                 <div className="flex flex-col gap-0.5 min-w-[100px]">
                   <div className="flex justify-between items-baseline">
-                    <span className="text-[10px]">Budget</span>
+                    <span className="text-[10px]">{t('common.budget')}</span>
                     <span className="text-xs tabular-nums">{formatCurrency(grandTotals.totalBudgeted)}</span>
                   </div>
                   <div className="flex justify-between items-baseline">
-                    <span className="text-[10px]">Actual</span>
+                    <span className="text-[10px]">{t('common.actual')}</span>
                     <span className="text-xs tabular-nums font-bold">{formatCurrency(grandTotals.totalActual)}</span>
                   </div>
                 </div>
@@ -230,9 +232,9 @@ export function BudgetVsActuals() {
       </div>
 
       <div className="flex items-center gap-6 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5"><span className="h-2 w-6 rounded-full bg-emerald-500" /> Under 80%</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-6 rounded-full bg-amber-500" /> 80–100%</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-6 rounded-full bg-red-500" /> Over budget</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-6 rounded-full bg-emerald-500" /> {t('financials.under80')}</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-6 rounded-full bg-amber-500" /> {t('financials.between80and100')}</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-6 rounded-full bg-red-500" /> {t('financials.overBudget')}</span>
       </div>
     </div>
   )

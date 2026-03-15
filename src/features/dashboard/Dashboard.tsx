@@ -95,7 +95,7 @@ export function Dashboard() {
 
   // Monthly allocation bar chart
   const monthlyData = useMemo(() => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const months = [t('time.jan'), t('time.feb'), t('time.mar'), t('time.apr'), t('time.may'), t('time.jun'), t('time.jul'), t('time.aug'), t('time.sep'), t('time.oct'), t('time.nov'), t('time.dec')]
     const data = months.map((name) => ({
       name,
       pms: 0,
@@ -117,7 +117,7 @@ export function Dashboard() {
     const endingSoon = projects.filter((p) => p.status === 'Active' && new Date(p.end_date) <= sixMonthsFromNow)
     if (endingSoon.length > 0) {
       items.push({
-        message: `${endingSoon.length} project${endingSoon.length > 1 ? 's' : ''} ending soon: ${endingSoon.map((p) => p.acronym).join(', ')}`,
+        message: t('dashboard.projectsEndingSoon', { count: endingSoon.length, names: endingSoon.map((p) => p.acronym).join(', ') }),
         type: 'warning',
       })
     }
@@ -133,7 +133,7 @@ export function Dashboard() {
     })
     if (overAllocated.length > 0) {
       items.push({
-        message: `${overAllocated.length} staff member${overAllocated.length > 1 ? 's' : ''} over-allocated this year`,
+        message: t('dashboard.staffOverAllocated', { count: overAllocated.length }),
         type: 'warning',
       })
     }
@@ -143,17 +143,17 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t('dashboard.title')} description={`Portfolio overview — ${globalYear}`} actions={<YearSelector />} />
+      <PageHeader title={t('dashboard.title')} description={t('dashboard.portfolioOverview', { year: globalYear })} actions={<YearSelector />} />
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: 'Projects', value: kpis.totalProjects, sub: `${kpis.activeProjects} active`, icon: FolderKanban, color: 'text-blue-600', href: '/projects' },
-          { label: 'Staff', value: kpis.totalStaff, sub: `${kpis.activeStaff} active`, icon: Users, color: 'text-emerald-600', href: '/staff' },
-          ...(can('canSeeFinancialDetails') ? [{ label: 'Total Budget', value: formatCurrency(kpis.totalBudget), sub: 'across all projects', icon: DollarSign, color: 'text-amber-600', href: '/financials' }] : []),
-          { label: 'Person-Months', value: kpis.totalPms, sub: kpis.hasActualPms ? `actual in ${globalYear}` : `planned in ${globalYear}`, icon: CalendarDays, color: 'text-purple-600', href: '/allocations' },
-          ...(can('canSeeProposals') ? [{ label: 'Proposals', value: proposals.length, sub: `${proposals.filter(p => p.status === 'Submitted').length} submitted`, icon: Lightbulb, color: 'text-orange-500', href: '/proposals' }] : []),
-          ...(collabProjects.length > 0 ? [{ label: 'Collaborations', value: collabProjects.length, sub: `${collabProjects.filter(p => p.status === 'active').length} active`, icon: Globe, color: 'text-sky-600', href: '/projects/collaboration' }] : []),
+          { label: t('dashboard.kpiProjects'), value: kpis.totalProjects, sub: t('dashboard.activeCount', { count: kpis.activeProjects }), icon: FolderKanban, color: 'text-blue-600', href: '/projects' },
+          { label: t('dashboard.kpiStaff'), value: kpis.totalStaff, sub: t('dashboard.activeCount', { count: kpis.activeStaff }), icon: Users, color: 'text-emerald-600', href: '/staff' },
+          ...(can('canSeeFinancialDetails') ? [{ label: t('dashboard.kpiTotalBudget'), value: formatCurrency(kpis.totalBudget), sub: t('dashboard.acrossAllProjects'), icon: DollarSign, color: 'text-amber-600', href: '/financials' }] : []),
+          { label: t('dashboard.kpiPersonMonths'), value: kpis.totalPms, sub: kpis.hasActualPms ? t('dashboard.actualIn', { year: globalYear }) : t('dashboard.plannedIn', { year: globalYear }), icon: CalendarDays, color: 'text-purple-600', href: '/allocations' },
+          ...(can('canSeeProposals') ? [{ label: t('dashboard.kpiProposals'), value: proposals.length, sub: t('dashboard.submittedCount', { count: proposals.filter(p => p.status === 'Submitted').length }), icon: Lightbulb, color: 'text-orange-500', href: '/proposals' }] : []),
+          ...(collabProjects.length > 0 ? [{ label: t('dashboard.kpiCollaborations'), value: collabProjects.length, sub: t('dashboard.activeCount', { count: collabProjects.filter(p => p.status === 'active').length }), icon: Globe, color: 'text-sky-600', href: '/projects/collaboration' }] : []),
         ].map((kpi) => (
           <Card
             key={kpi.label}
@@ -197,7 +197,7 @@ export function Dashboard() {
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Monthly Allocations (PMs)</CardTitle>
+              <CardTitle className="text-base">{t('dashboard.monthlyAllocations')}</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
@@ -214,11 +214,11 @@ export function Dashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Project Status Distribution</CardTitle>
+              <CardTitle className="text-base">{t('dashboard.projectStatusDistribution')}</CardTitle>
             </CardHeader>
             <CardContent>
               {statusData.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-10">No projects yet</p>
+                <p className="text-sm text-muted-foreground text-center py-10">{t('dashboard.noProjectsYet')}</p>
               ) : (
                 <div className="space-y-4">
                   {/* Stacked bar */}
@@ -262,18 +262,18 @@ export function Dashboard() {
       {!isLoading && projects.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Projects Overview</CardTitle>
+            <CardTitle className="text-base">{t('dashboard.projectsOverview')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="rounded-lg border overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="px-4 py-2 text-left font-medium">Acronym</th>
-                    <th className="px-4 py-2 text-left font-medium">Title</th>
-                    <th className="px-4 py-2 text-left font-medium">Status</th>
-                    {can('canSeeFinancialDetails') && <th className="px-4 py-2 text-right font-medium">Budget</th>}
-                    <th className="px-4 py-2 text-right font-medium">PMs ({globalYear})</th>
+                    <th className="px-4 py-2 text-left font-medium">{t('common.acronym')}</th>
+                    <th className="px-4 py-2 text-left font-medium">{t('common.title')}</th>
+                    <th className="px-4 py-2 text-left font-medium">{t('common.status')}</th>
+                    {can('canSeeFinancialDetails') && <th className="px-4 py-2 text-right font-medium">{t('common.budget')}</th>}
+                    <th className="px-4 py-2 text-right font-medium">{t('dashboard.pmsYear', { year: globalYear })}</th>
                   </tr>
                 </thead>
                 <tbody>
