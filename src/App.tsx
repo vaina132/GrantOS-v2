@@ -48,7 +48,7 @@ function LoadingScreen() {
 }
 
 export default function App() {
-  const { initialize, isLoading, user, orgId, signOut } = useAuthStore()
+  const { initialize, isLoading, user, orgId, accessType, signOut } = useAuthStore()
 
   useEffect(() => {
     initialize()
@@ -79,7 +79,10 @@ export default function App() {
   }
 
   // User is authenticated but has no organisation — show onboarding
-  const needsOnboarding = user && !orgId
+  // Collab-only users (accessType === 'collab_partner') skip onboarding
+  const isCollabOnly = accessType === 'collab_partner'
+  const needsOnboarding = user && !orgId && !isCollabOnly
+  const userHome = isCollabOnly ? '/projects/collaboration' : '/dashboard'
 
   // Detect whether we're on the app subdomain (app.grantlume.com) or the marketing domain
   const hostname = window.location.hostname
@@ -90,21 +93,21 @@ export default function App() {
       <Routes>
         <Route path="/" element={
           user
-            ? <Navigate to="/dashboard" replace />
+            ? <Navigate to={userHome} replace />
             : isAppDomain
               ? <Navigate to="/login" replace />
               : <LandingPage />
         } />
-        <Route path="/home" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
-        <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
-        <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <SignUpPage />} />
+        <Route path="/home" element={user ? <Navigate to={userHome} replace /> : <LandingPage />} />
+        <Route path="/login" element={user ? <Navigate to={userHome} replace /> : <LoginPage />} />
+        <Route path="/signup" element={user ? <Navigate to={userHome} replace /> : <SignUpPage />} />
         <Route path="/forgot-password" element={user ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/collab/accept" element={<CollabAcceptInvite />} />
-        <Route path="/invite/accept" element={user ? <Navigate to="/dashboard" replace /> : <InviteSignupPage />} />
+        <Route path="/invite/accept" element={user ? <Navigate to={userHome} replace /> : <InviteSignupPage />} />
 
         <Route
           path="/*"

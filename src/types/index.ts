@@ -2,7 +2,7 @@ export type OrgRole = 'Admin' | 'Project Manager' | 'Finance Officer' | 'Externa
 
 /** Roles that can be selected when inviting internal org members */
 export type InvitableRole = 'Admin' | 'Project Manager' | 'Finance Officer'
-export type AccessType = 'member'
+export type AccessType = 'member' | 'collab_partner'
 export type OrgPlan = 'trial' | 'starter' | 'growth' | 'enterprise'
 
 export type ProjectStatus = 'Upcoming' | 'Active' | 'Completed' | 'Suspended'

@@ -436,7 +436,7 @@ export function CollabProjectDetail() {
     sum + p.budget_personnel + p.budget_subcontracting + p.budget_travel + p.budget_equipment + p.budget_other_goods
   , 0)
   const totalPMs = partners.reduce((sum, p) => sum + p.total_person_months, 0)
-  const pendingCount = partners.filter(p => p.invite_status === 'pending').length
+  const pendingCount = partners.filter(p => p.invite_status === 'pending' && p.contact_email).length
   const acceptedCount = partners.filter(p => p.invite_status === 'accepted').length
 
   return (

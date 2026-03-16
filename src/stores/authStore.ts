@@ -272,7 +272,33 @@ async function loadUserContext(
     return
   }
 
-  // No membership found — user needs to create an org (onboarding wizard)
+  // No org membership — check if user is a collab partner
+  const { data: collabPartner } = await supabase
+    .from('collab_partners')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('invite_status', 'accepted')
+    .limit(1)
+    .maybeSingle()
+
+  if (collabPartner) {
+    // Collab-only user — skip onboarding, give limited access
+    set({
+      user,
+      orgId: null,
+      orgName: null,
+      role: 'External Participant',
+      permissions: computePermissions('External Participant'),
+      accessType: 'collab_partner',
+      orgPlan: null,
+      trialEndsAt: null,
+      isLoading: false,
+      error: null,
+    })
+    return
+  }
+
+  // No membership and not a collab partner — user needs to create an org (onboarding wizard)
   set({
     user,
     orgId: null,
