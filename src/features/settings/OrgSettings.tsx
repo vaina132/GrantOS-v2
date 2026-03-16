@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
-import { Save, Download } from 'lucide-react'
+import { Save, Download, X, Plus } from 'lucide-react'
 import { exportService } from '@/services/exportService'
 import { COUNTRIES } from '@/data/countries'
 import { CURRENCIES, currencyForCountry } from '@/data/currencies'
@@ -25,7 +25,8 @@ export function OrgSettings() {
   const [workingHoursPerDay, setWorkingHoursPerDay] = useState('8')
   const [workingDaysPerYear, setWorkingDaysPerYear] = useState('220')
   const [defaultOverheadRate, setDefaultOverheadRate] = useState('25')
-  const [departments, setDepartments] = useState('')
+  const [departments, setDepartments] = useState<string[]>([])
+  const [newDept, setNewDept] = useState('')
   const [timesheetsDriveAllocations, setTimesheetsDriveAllocations] = useState(false)
 
   useEffect(() => {
@@ -39,7 +40,7 @@ export function OrgSettings() {
         setWorkingHoursPerDay(String(org.working_hours_per_day ?? 8))
         setWorkingDaysPerYear(String(org.working_days_per_year ?? 220))
         setDefaultOverheadRate(String(org.default_overhead_rate ?? 25))
-        setDepartments((org.departments ?? []).join(', '))
+        setDepartments(org.departments ?? [])
         setTimesheetsDriveAllocations(org.timesheets_drive_allocations ?? false)
       }
     }).catch(() => {}).finally(() => setLoading(false))
@@ -56,7 +57,7 @@ export function OrgSettings() {
         working_hours_per_day: Number(workingHoursPerDay),
         working_days_per_year: Number(workingDaysPerYear),
         default_overhead_rate: Number(defaultOverheadRate),
-        departments: departments.split(',').map((d) => d.trim()).filter(Boolean),
+        departments,
         timesheets_drive_allocations: timesheetsDriveAllocations,
       })
       toast({ title: t('settings.settingsSaved') })
@@ -122,9 +123,60 @@ export function OrgSettings() {
             <Label>{t('settings.defaultOverheadRate')}</Label>
             <Input type="number" value={defaultOverheadRate} onChange={(e) => setDefaultOverheadRate(e.target.value)} />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 sm:col-span-2">
             <Label>{t('settings.departments')}</Label>
-            <Input value={departments} onChange={(e) => setDepartments(e.target.value)} placeholder="e.g. CS, EE, Physics" />
+            <div className="flex flex-wrap gap-2 min-h-[2.5rem] rounded-md border border-input bg-background px-3 py-2">
+              {departments.map((dept) => (
+                <span
+                  key={dept}
+                  className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium"
+                >
+                  {dept}
+                  <button
+                    type="button"
+                    onClick={() => setDepartments((prev) => prev.filter((d) => d !== dept))}
+                    className="rounded-full p-0.5 hover:bg-primary/20 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+              <input
+                value={newDept}
+                onChange={(e) => setNewDept(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault()
+                    const val = newDept.trim()
+                    if (val && !departments.includes(val)) {
+                      setDepartments((prev) => [...prev, val])
+                    }
+                    setNewDept('')
+                  }
+                }}
+                placeholder={departments.length === 0 ? 'e.g. CS, EE, Physics' : 'Add department...'}
+                className="flex-1 min-w-[120px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+            </div>
+            {newDept.trim() && !departments.includes(newDept.trim()) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => {
+                  const val = newDept.trim()
+                  if (val && !departments.includes(val)) {
+                    setDepartments((prev) => [...prev, val])
+                  }
+                  setNewDept('')
+                }}
+              >
+                <Plus className="h-3 w-3" />
+                Add "{newDept.trim()}"
+              </Button>
+            )}
+            <p className="text-xs text-muted-foreground">{t('settings.departmentsHint') ?? 'Press Enter or comma to add a department'}</p>
           </div>
         </div>
 

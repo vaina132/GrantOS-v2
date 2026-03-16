@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { computePermissions } from '@/lib/permissions'
 import type { OrgRole, RolePermission } from '@/types'
 
-const CONFIGURABLE_ROLES: OrgRole[] = ['Project Manager', 'Finance Officer', 'Viewer']
+const CONFIGURABLE_ROLES: OrgRole[] = ['Project Manager', 'Finance Officer']
 
 /** DB column names grouped by category for the UI */
 interface PermissionItem {

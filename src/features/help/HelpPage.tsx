@@ -64,11 +64,11 @@ After signing up, you'll be guided through the onboarding wizard to set up your 
 2. **Add staff members** — Import or manually add your team with their FTE (Full-Time Equivalent), contract dates, and roles.
 3. **Create projects** — Add your grant projects with start/end dates, acronyms, funding schemes, and budgets.
 4. **Set up allocations** — Assign staff to projects with monthly person-month (PM) allocations.
-5. **Invite team members** — Add colleagues as users with appropriate roles (Admin, Project Manager, Finance Officer, Viewer, External Participant).
+5. **Invite team members** — Add colleagues as users with appropriate roles (Administrator, Project Manager, Finance Officer).
 6. **Configure permissions** — Fine-tune what each role can see and do in the Role Permissions settings.`,
   faqs: [
     { q: 'How do I invite team members?', a: 'Go to Settings → Users, click "Add User", enter their email and select a role. They\'ll receive a branded invitation email with a link to join your organisation.' },
-    { q: 'What roles are available?', a: 'GrantLume has five roles: **Admin** (full access), **Project Manager** (manages projects and allocations), **Finance Officer** (manages budgets and financials), **Viewer** (read-only access), and **External Participant** (limited access for external collaborators). Admins can customise permissions for each role in Settings → Role Permissions.' },
+    { q: 'What roles are available?', a: 'GrantLume has three internal roles: **Administrator** (full access to everything), **Project Manager** (manages projects, allocations, timesheets, and reports), and **Finance Officer** (manages budgets, financials, approves timesheets, and tracks expenses). External partners are invited via the Collaboration module. Admins can customise permissions for each role in Settings → Role Permissions.' },
     { q: 'Can I change my organisation name later?', a: 'Yes. Go to Settings → Organisation and update the name, working hours, or other settings at any time.' },
     { q: 'Is there a free trial?', a: 'Yes! GrantLume offers a 14-day free trial with full access to all features. No credit card required.' },
     { q: 'What browsers are supported?', a: 'GrantLume works in all modern browsers: Chrome, Firefox, Safari, Edge. We recommend keeping your browser updated to the latest version.' },
@@ -250,7 +250,7 @@ When enabled in Settings, timesheet data automatically populates the allocation 
       { q: 'What happens if my timesheet is rejected?', a: 'It returns to Draft status. You\'ll receive an email notification explaining why it was rejected. Make the necessary corrections and resubmit.' },
       { q: 'Can I edit a submitted timesheet?', a: 'No. Once submitted, it\'s locked until an Admin or Project Manager approves or rejects it. If you need changes, ask your manager to reject it first.' },
       { q: 'Do I get reminders?', a: 'Yes. GrantLume sends automatic email reminders every Monday at 9:00 UTC to staff who haven\'t submitted their timesheet for the current period.' },
-      { q: 'Can guest users submit timesheets?', a: 'Yes. Guest users (external participants) can access the Timesheets module to log their hours.' },
+      { q: 'Can external partners submit reports?', a: 'Yes. External partners invited via the Collaboration module can submit financial reports and effort data for their projects.' },
     ],
   },
   {
@@ -406,20 +406,20 @@ Upload a grant call document (PDF, DOCX, or image) and GrantLume's AI will:
     icon: UserCheck,
     title: 'Guest Access',
     description: 'External collaborator access with limited permissions',
-    content: `Guest Access allows you to invite external participants (e.g., project partners from other organisations) to access specific parts of GrantLume.
+    content: `The Collaboration module allows you to invite external project partners to access specific collaboration projects within GrantLume.
 
-**Guest capabilities:**
-- View project overviews.
-- Submit timesheets for their allocated hours.
-- Limited navigation — only the Project Overview and Timesheets modules are visible.
+**External partner capabilities:**
+- View collaboration project details, work packages, and deliverables.
+- Submit financial reports and effort data per reporting period.
+- See partner-level budget and deviation information.
 
-**How to invite a guest:**
-1. Go to Guest Access page.
-2. Click "Add Guest".
-3. Enter the guest's email address.
-4. They receive a branded invitation email with login instructions.
+**How to invite an external partner:**
+1. Go to Collaboration → select a project.
+2. Click on a partner and send an invitation.
+3. They receive a branded invitation email with login instructions.
+4. Partners only see the projects they are invited to.
 
-Guests do not have access to financial data, staff details, allocations, settings, or any administrative functions.`,
+External partners do not have access to your organisation's internal data, staff, financials, or settings.`,
     faqs: [
       { q: 'Can guests see financial data?', a: 'No. Guests have a severely restricted view — only project overviews and their own timesheets.' },
       { q: 'How many guests can I add?', a: 'There is no limit on the number of guests. Each guest receives a separate login.' },
@@ -579,8 +579,8 @@ For more information, see our [Privacy Policy](/privacy) and [Terms of Use](/ter
 
 **Access Control:**
 - **Row Level Security (RLS)** — Every database query is filtered by organisation ID at the database level. Users can never access data from another organisation, even through direct API calls.
-- **Role-Based Access Control (RBAC)** — 5 roles with 23 configurable permissions controlling module visibility, data privacy, and action capabilities.
-- **Guest isolation** — External participants see only project overviews and their own timesheets.
+- **Role-Based Access Control (RBAC)** — 3 internal roles with 23 configurable permissions controlling module visibility, data privacy, and action capabilities.
+- **Partner isolation** — External collaboration partners see only the projects they are invited to.
 
 **Infrastructure Security:**
 - All traffic encrypted via TLS 1.2+.

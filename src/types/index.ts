@@ -1,4 +1,7 @@
-export type OrgRole = 'Admin' | 'Project Manager' | 'Finance Officer' | 'Viewer' | 'External Participant'
+export type OrgRole = 'Admin' | 'Project Manager' | 'Finance Officer' | 'External Participant'
+
+/** Roles that can be selected when inviting internal org members */
+export type InvitableRole = 'Admin' | 'Project Manager' | 'Finance Officer'
 export type AccessType = 'member'
 export type OrgPlan = 'trial' | 'starter' | 'growth' | 'enterprise'
 
@@ -259,6 +262,15 @@ export interface Absence {
 }
 
 export interface AbsenceApprover {
+  id: string
+  org_id: string
+  person_id: string
+  user_id: string | null
+  created_at: string
+  person?: Person
+}
+
+export interface TimesheetApprover {
   id: string
   org_id: string
   person_id: string

@@ -1,0 +1,156 @@
+import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { timesheetApproverService } from '@/services/timesheetApproverService'
+import { useAuthStore } from '@/stores/authStore'
+import { useStaff } from '@/hooks/useStaff'
+import { PersonAvatar } from '@/components/common/PersonAvatar'
+import { Button } from '@/components/ui/button'
+import { toast } from '@/components/ui/use-toast'
+import { Plus, Trash2, ClipboardCheck, Info } from 'lucide-react'
+import type { TimesheetApprover } from '@/types'
+
+export function TimesheetApprovers() {
+  const { t } = useTranslation()
+  const { orgId } = useAuthStore()
+  const { staff } = useStaff({ is_active: true })
+  const [approvers, setApprovers] = useState<TimesheetApprover[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [selectedPersonId, setSelectedPersonId] = useState('')
+
+  const load = useCallback(async () => {
+    if (!orgId) return
+    setLoading(true)
+    try {
+      const data = await timesheetApproverService.list(orgId)
+      setApprovers(data)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }, [orgId])
+
+  useEffect(() => { load() }, [load])
+
+  const handleAdd = async () => {
+    if (!orgId || !selectedPersonId) return
+    setSaving(true)
+    try {
+      const person = staff.find(p => p.id === selectedPersonId)
+      await timesheetApproverService.add(orgId, selectedPersonId, null)
+      toast({ title: t('settings.approverAdded'), description: `${person?.full_name ?? ''} can now approve timesheets.` })
+      setSelectedPersonId('')
+      load()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('common.failedToSave')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleRemove = async (approver: TimesheetApprover) => {
+    try {
+      await timesheetApproverService.remove(approver.id)
+      toast({ title: t('settings.approverRemoved'), description: t('common.hasBeenRemoved', { name: approver.person?.full_name ?? '' }) })
+      load()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('common.failedToDelete')
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
+    }
+  }
+
+  // Filter out people who are already approvers
+  const approverPersonIds = new Set(approvers.map(a => a.person_id))
+  const availableStaff = staff.filter(p => !approverPersonIds.has(p.id))
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold">{t('settings.timesheetApprovers')}</h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          {t('settings.timesheetApproversDesc')}
+        </p>
+      </div>
+
+      {/* Info callout */}
+      <div className="rounded-lg border bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800 p-4 flex gap-3">
+        <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+        <div className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
+          <p className="font-medium">{t('settings.howTimesheetApprovalsWork')}</p>
+          <ul className="list-disc list-inside text-xs space-y-0.5 text-blue-700 dark:text-blue-400">
+            <li>{t('settings.tsApprovalStep1')}</li>
+            <li>{t('settings.tsApprovalStep2')}</li>
+            <li>{t('settings.tsApprovalStep3')}</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Add approver */}
+      <div className="flex gap-3 items-end flex-wrap">
+        <div className="space-y-1 flex-1 min-w-[200px]">
+          <label className="text-xs font-medium text-muted-foreground">{t('settings.staffMember')}</label>
+          <select
+            value={selectedPersonId}
+            onChange={(e) => setSelectedPersonId(e.target.value)}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="">{t('common.selectPerson')}</option>
+            {availableStaff.map(p => (
+              <option key={p.id} value={p.id}>{p.full_name}{p.role ? ` — ${p.role}` : ''}</option>
+            ))}
+          </select>
+        </div>
+        <Button onClick={handleAdd} disabled={saving || !selectedPersonId} className="gap-1.5">
+          <Plus className="h-4 w-4" />
+          {saving ? t('common.adding') : t('settings.addApprover')}
+        </Button>
+      </div>
+
+      {/* Current approvers list */}
+      {loading ? (
+        <div className="text-sm text-muted-foreground">{t('common.loading')}...</div>
+      ) : approvers.length === 0 ? (
+        <div className="rounded-lg border bg-muted/30 p-6 text-center">
+          <ClipboardCheck className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <div className="text-sm text-muted-foreground">{t('settings.noTimesheetApprovers')}</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {t('settings.noTimesheetApproversDesc')}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="text-xs text-muted-foreground font-medium">
+            {approvers.length} {t('settings.approversCount')}
+          </div>
+          {approvers.map(approver => (
+            <div
+              key={approver.id}
+              className="flex items-center justify-between rounded-lg border px-4 py-3 hover:bg-muted/30 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <PersonAvatar name={approver.person?.full_name ?? '?'} size="sm" />
+                <div>
+                  <div className="text-sm font-medium">{approver.person?.full_name ?? 'Unknown'}</div>
+                  {(approver.person as any)?.email && (
+                    <div className="text-xs text-muted-foreground">{(approver.person as any).email}</div>
+                  )}
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                onClick={() => handleRemove(approver)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

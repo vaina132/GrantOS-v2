@@ -938,7 +938,16 @@
     "private": "Private",
     "public": "Public",
     "howItWorks": "How it works",
-    "absencePrivacyExplanation": "When a colleague checks for leave conflicts before submitting their own absence, private absence types will show the person as 'Absent' without revealing the specific reason (e.g. sick leave or parental leave)."
+    "absencePrivacyExplanation": "When a colleague checks for leave conflicts before submitting their own absence, private absence types will show the person as 'Absent' without revealing the specific reason (e.g. sick leave or parental leave).",
+    "departmentsHint": "Press Enter or comma to add a department",
+    "timesheetApprovers": "Timesheet Approvers",
+    "timesheetApproversDesc": "Designate staff members who can approve or reject submitted timesheets. When a timesheet is submitted, all approvers will be notified via in-app notification and email.",
+    "howTimesheetApprovalsWork": "How timesheet approvals work",
+    "tsApprovalStep1": "When a staff member submits a timesheet, all timesheet approvers are notified",
+    "tsApprovalStep2": "Approvers can approve or reject timesheets from the Timesheets page",
+    "tsApprovalStep3": "If no timesheet approvers are set, only Administrators can approve timesheets",
+    "noTimesheetApprovers": "No timesheet approvers configured.",
+    "noTimesheetApproversDesc": "Only Administrators will be able to approve timesheets until you assign at least one approver."
   },
   "profile": {
     "title": "My Settings",

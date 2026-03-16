@@ -22,9 +22,9 @@ import { toast } from '@/components/ui/use-toast'
 import { ArrowLeft, Save, Upload, X, Mail, UserPlus, Send } from 'lucide-react'
 import { COUNTRIES } from '@/data/countries'
 import { HOLIDAY_REGIONS } from '@/data/holidayRegions'
-import type { OrgRole } from '@/types'
+import type { InvitableRole } from '@/types'
 
-const ORG_ROLES: OrgRole[] = ['Admin', 'Project Manager', 'Finance Officer', 'Viewer', 'External Participant']
+const INVITABLE_ROLES: InvitableRole[] = ['Admin', 'Project Manager', 'Finance Officer']
 
 const staffSchema = z.object({
   full_name: z.string().min(1, 'Name is required').max(100, 'Max 100 characters'),
@@ -65,7 +65,7 @@ export function StaffForm() {
   const [removeAvatar, setRemoveAvatar] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [inviteToSystem, setInviteToSystem] = useState(false)
-  const [inviteRole, setInviteRole] = useState<OrgRole>('Viewer')
+  const [inviteRole, setInviteRole] = useState<InvitableRole>('Project Manager')
 
   useEffect(() => {
     if (!orgId) return
@@ -517,10 +517,10 @@ export function StaffForm() {
                       <select
                         id="invite_role"
                         value={inviteRole}
-                        onChange={(e) => setInviteRole(e.target.value as OrgRole)}
+                        onChange={(e) => setInviteRole(e.target.value as InvitableRole)}
                         className="flex h-10 w-full max-w-xs rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
-                        {ORG_ROLES.map((r) => (
+                        {INVITABLE_ROLES.map((r) => (
                           <option key={r} value={r}>{r}</option>
                         ))}
                       </select>
@@ -563,7 +563,7 @@ export function StaffForm() {
                       <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-900/30 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
                         {t('staff.invitationPending')}
                       </span>
-                      <span className="text-sm text-muted-foreground">{t('staff.invitedAsWaiting', { role: person.invite_role ?? 'Viewer' })}</span>
+                      <span className="text-sm text-muted-foreground">{t('staff.invitedAsWaiting', { role: person.invite_role ?? 'Project Manager' })}</span>
                     </div>
                     {person.email && (
                       <Button
@@ -575,7 +575,7 @@ export function StaffForm() {
                           if (!orgId || !person.email) return
                           setInviting(true)
                           try {
-                            const role: OrgRole = (person.invite_role as OrgRole) ?? 'Viewer'
+                            const role: InvitableRole = (person.invite_role as InvitableRole) ?? 'Project Manager'
                             const res = await fetch('/api/members?action=invite-member', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
@@ -616,10 +616,10 @@ export function StaffForm() {
                             <select
                               id="edit_invite_role"
                               value={inviteRole}
-                              onChange={(e) => setInviteRole(e.target.value as OrgRole)}
+                              onChange={(e) => setInviteRole(e.target.value as InvitableRole)}
                               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
-                              {ORG_ROLES.map((r) => (
+                              {INVITABLE_ROLES.map((r) => (
                                 <option key={r} value={r}>{r}</option>
                               ))}
                             </select>

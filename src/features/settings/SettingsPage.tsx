@@ -11,8 +11,9 @@ import { RolePermissions } from './RolePermissions'
 import { AbsenceApprovers } from './AbsenceApprovers'
 import { AbsenceTypeSettings } from './AbsenceTypeSettings'
 import { IntegrationsSettings } from './IntegrationsSettings'
+import { TimesheetApprovers } from './TimesheetApprovers'
 
-type SettingsTab = 'org' | 'users' | 'roles' | 'funding' | 'locks' | 'holidays' | 'approvers' | 'absence-types' | 'integrations'
+type SettingsTab = 'org' | 'users' | 'roles' | 'funding' | 'locks' | 'holidays' | 'approvers' | 'ts-approvers' | 'absence-types' | 'integrations'
 
 export function SettingsPage() {
   const { t } = useTranslation()
@@ -31,6 +32,7 @@ export function SettingsPage() {
           { key: 'locks', label: 'Period Locks' },
           { key: 'holidays', label: 'Holidays' },
           { key: 'approvers', label: 'Absence Approvers' },
+          { key: 'ts-approvers', label: 'Timesheet Approvers' },
           { key: 'absence-types', label: 'Absence Types' },
           { key: 'integrations', label: 'Integrations' },
         ] as { key: SettingsTab; label: string }[]).map((item) => (
@@ -52,6 +54,7 @@ export function SettingsPage() {
       {tab === 'locks' && <PeriodLocking />}
       {tab === 'holidays' && <HolidaySettings />}
       {tab === 'approvers' && <AbsenceApprovers />}
+      {tab === 'ts-approvers' && <TimesheetApprovers />}
       {tab === 'absence-types' && <AbsenceTypeSettings />}
       {tab === 'integrations' && <IntegrationsSettings />}
     </div>

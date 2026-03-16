@@ -35,45 +35,30 @@ describe('computePermissions', () => {
     expect(p.canManageOrg).toBe(true)
   })
 
-  it('Viewer has minimal permissions', () => {
-    const p = computePermissions('Viewer')
-    expect(p.canSeeDashboard).toBe(true)
-    expect(p.canSeeProjects).toBe(true)
-    expect(p.canSeeStaff).toBe(true)
-    expect(p.canSeeTimeline).toBe(true)
-    // Should NOT have write/admin permissions
-    expect(p.canWrite).toBe(false)
-    expect(p.canManageOrg).toBe(false)
-    expect(p.canManageUsers).toBe(false)
-    expect(p.canSeeFinancials).toBe(false)
-    expect(p.canSeeReports).toBe(false)
-    expect(p.canSeeImport).toBe(false)
-    expect(p.canSeeAudit).toBe(false)
-    expect(p.canSeeSalary).toBe(false)
-    expect(p.canApproveTimesheets).toBe(false)
-    expect(p.canSubmitTimesheets).toBe(false)
-  })
-
   it('Project Manager can manage projects but not org', () => {
     const p = computePermissions('Project Manager')
     expect(p.canManageProjects).toBe(true)
     expect(p.canManageAllocations).toBe(true)
-    expect(p.canApproveTimesheets).toBe(true)
+    expect(p.canSeeImport).toBe(true)
+    expect(p.canApproveTimesheets).toBe(false)
+    expect(p.canSubmitTimesheets).toBe(true)
     expect(p.canWrite).toBe(true)
     expect(p.canManageOrg).toBe(false)
     expect(p.canManageUsers).toBe(false)
     expect(p.canSeeSalary).toBe(false)
   })
 
-  it('Finance Officer can see salary but not manage projects', () => {
+  it('Finance Officer can see salary, approve timesheets, manage allocations and budgets', () => {
     const p = computePermissions('Finance Officer')
     expect(p.canSeeSalary).toBe(true)
     expect(p.canSeeFinancialDetails).toBe(true)
     expect(p.canSeePersonnelRates).toBe(true)
     expect(p.canApproveTimesheets).toBe(true)
+    expect(p.canManageAllocations).toBe(true)
+    expect(p.canManageBudgets).toBe(true)
+    expect(p.canWrite).toBe(true)
     expect(p.canManageProjects).toBe(false)
-    expect(p.canManageAllocations).toBe(false)
-    expect(p.canWrite).toBe(false)
+    expect(p.canManageOrg).toBe(false)
   })
 
   it('External Participant can only submit timesheets and see projects', () => {
@@ -144,7 +129,7 @@ describe('rolePermissionToPermissions', () => {
     const rp = {
       id: 'test',
       org_id: 'org',
-      role: 'Viewer' as const,
+      role: 'Project Manager' as const,
       created_at: '2024-01-01',
       updated_at: '2024-01-01',
       can_see_dashboard: true,

@@ -20,7 +20,7 @@ import { toast } from '@/components/ui/use-toast'
 import { Plus, Trash2 } from 'lucide-react'
 import { emailService } from '@/services/emailService'
 import { notificationService } from '@/services/notificationService'
-import type { OrgRole } from '@/types'
+import type { OrgRole, InvitableRole } from '@/types'
 
 interface OrgMember {
   id: string
@@ -31,7 +31,8 @@ interface OrgMember {
   person_name?: string
 }
 
-const ROLES: OrgRole[] = ['Admin', 'Project Manager', 'Finance Officer', 'Viewer', 'External Participant']
+const INVITABLE_ROLES: InvitableRole[] = ['Admin', 'Project Manager', 'Finance Officer']
+const ALL_ROLES: OrgRole[] = ['Admin', 'Project Manager', 'Finance Officer', 'External Participant']
 
 export function UsersSettings() {
   const { t } = useTranslation()
@@ -40,7 +41,7 @@ export function UsersSettings() {
   const [loading, setLoading] = useState(true)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState<OrgRole>('Viewer')
+  const [inviteRole, setInviteRole] = useState<InvitableRole>('Project Manager')
   const [saving, setSaving] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<OrgMember | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -309,7 +310,7 @@ export function UsersSettings() {
                           disabled={m.user_id === user?.id}
                           className="h-8 rounded-md border border-input bg-background px-2 text-xs"
                         >
-                          {ROLES.map((r) => (
+                          {ALL_ROLES.map((r) => (
                             <option key={r} value={r}>{r}</option>
                           ))}
                         </select>
@@ -352,10 +353,10 @@ export function UsersSettings() {
               <Label>{t('common.role')}</Label>
               <select
                 value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value as OrgRole)}
+                onChange={(e) => setInviteRole(e.target.value as InvitableRole)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
-                {ROLES.map((r) => (
+                {INVITABLE_ROLES.map((r) => (
                   <option key={r} value={r}>{r}</option>
                 ))}
               </select>

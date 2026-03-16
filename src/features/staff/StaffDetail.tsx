@@ -17,7 +17,7 @@ import { ArrowLeft, Pencil, Mail, Briefcase, Calendar, DollarSign, MapPin, Folde
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { COUNTRIES } from '@/data/countries'
 import { HOLIDAY_REGIONS } from '@/data/holidayRegions'
-import type { OrgRole } from '@/types'
+import type { InvitableRole } from '@/types'
 
 interface PersonProject {
   project: { id: string; acronym: string; title: string; status: string; start_date: string; end_date: string }
@@ -172,7 +172,7 @@ export function StaffDetail() {
                 if (!orgId || !person.email) return
                 setInviting(true)
                 try {
-                  const role: OrgRole = (person.invite_role as OrgRole) ?? 'Viewer'
+                  const role: InvitableRole = (person.invite_role as InvitableRole) ?? 'Project Manager'
                   const res = await fetch('/api/members?action=invite-member', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
