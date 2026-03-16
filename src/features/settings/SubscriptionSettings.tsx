@@ -17,7 +17,6 @@ import {
   AlertTriangle,
   ExternalLink,
   CreditCard,
-  CalendarClock,
   ArrowRight,
   Shield,
   Users,
@@ -28,7 +27,7 @@ import {
   Lock,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { differenceInDays, format } from 'date-fns'
+import { differenceInDays } from 'date-fns'
 import type { OrgPlan, AiUsage } from '@/types'
 import { AI_PLAN_LIMITS } from '@/types'
 
@@ -170,7 +169,7 @@ function formatTokens(n: number): string {
 
 export function SubscriptionSettings() {
   const { t } = useTranslation()
-  const { orgId, orgPlan, trialEndsAt } = useAuthStore()
+  const { orgId, trialEndsAt } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [currentPlan, setCurrentPlan] = useState<OrgPlan>('trial')
   const [trialEnd, setTrialEnd] = useState<string | null>(null)
