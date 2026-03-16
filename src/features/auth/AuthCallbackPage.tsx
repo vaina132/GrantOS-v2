@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, XCircle, Loader2, ArrowRight, Sparkles } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, ArrowRight, Sparkles, Building2, Globe } from 'lucide-react'
 import { GrantLumeWordmark } from '@/components/common/GrantLumeLogo'
 
 /**
@@ -13,10 +13,19 @@ import { GrantLumeWordmark } from '@/components/common/GrantLumeLogo'
  * - Magic link login
  * - Password reset redirect (?type=recovery)
  */
+interface InviteContext {
+  type: 'org' | 'collab'
+  orgId?: string
+  token?: string
+  role?: string
+}
+
 export function AuthCallbackPage() {
   const navigate = useNavigate()
   const [status, setStatus] = useState<'loading' | 'confirmed' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
+  const [inviteAccepted, setInviteAccepted] = useState(false)
+  const [inviteContext, setInviteContext] = useState<InviteContext | null>(null)
   const handled = useRef(false)
   const { t } = useTranslation()
 
@@ -137,9 +146,46 @@ export function AuthCallbackPage() {
       }
     }
 
-    const onSuccess = (type: string | null) => {
-      // For signup confirmations, show the "Email Confirmed" interstitial page
+    const processInviteContext = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        const ctx = user?.user_metadata?.invite_context as InviteContext | undefined
+        if (!ctx) return
+
+        setInviteContext(ctx)
+        console.log('[AuthCallback] Found invite context:', ctx)
+
+        if (ctx.type === 'collab' && ctx.token) {
+          // Accept collab invitation
+          const res = await fetch('/api/members?action=collab-accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: ctx.token, userId: user?.id }),
+          })
+          if (res.ok) {
+            setInviteAccepted(true)
+            console.log('[AuthCallback] Collab invite accepted')
+          }
+        } else if (ctx.type === 'org' && ctx.orgId) {
+          // The org member row was already created by invite-member API when the admin invited.
+          // Just mark invite as accepted.
+          setInviteAccepted(true)
+          console.log('[AuthCallback] Org invite — member row already exists')
+        }
+
+        // Clear invite_context from user metadata to prevent re-processing
+        await supabase.auth.updateUser({
+          data: { invite_context: null },
+        })
+      } catch (err) {
+        console.error('[AuthCallback] Failed to process invite:', err)
+      }
+    }
+
+    const onSuccess = async (type: string | null) => {
+      // For signup confirmations, process invite then show interstitial
       if (type === 'signup') {
+        await processInviteContext()
         setStatus('confirmed')
         setMessage(t('auth.emailConfirmedSuccess'))
       } else {
@@ -154,7 +200,12 @@ export function AuthCallbackPage() {
   }, [navigate])
 
   const handleContinue = () => {
-    navigate('/dashboard', { replace: true })
+    // If collab invite was accepted, go to the collaboration page
+    if (inviteContext?.type === 'collab') {
+      navigate('/projects/collaboration', { replace: true })
+    } else {
+      navigate('/dashboard', { replace: true })
+    }
   }
 
   return (
@@ -193,32 +244,52 @@ export function AuthCallbackPage() {
               </p>
             </div>
 
-            <div className="rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 p-5 text-left space-y-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-blue-900">
-                <Sparkles className="h-4 w-4 text-blue-600" />
-                {t('callback.whatsNext')}
+            {/* Show invite acceptance confirmation */}
+            {inviteAccepted && inviteContext && (
+              <div className="rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 p-5 text-left space-y-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-green-900">
+                  {inviteContext.type === 'collab' ? <Globe className="h-4 w-4 text-green-600" /> : <Building2 className="h-4 w-4 text-green-600" />}
+                  {inviteContext.type === 'collab' ? t('invite.collabInviteAccepted') : t('invite.orgInviteAccepted')}
+                </div>
+                <p className="text-sm text-green-800">
+                  {inviteContext.type === 'collab'
+                    ? t('invite.collabInviteAcceptedDesc')
+                    : t('invite.orgInviteAcceptedDesc')}
+                </p>
               </div>
-              <ol className="text-sm text-blue-800 space-y-2 pl-1">
-                <li className="flex items-start gap-2">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white mt-0.5">1</span>
-                  <span>{t('callback.step1')}</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white mt-0.5">2</span>
-                  <span>{t('callback.step2')}</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white mt-0.5">3</span>
-                  <span>{t('callback.step3')}</span>
-                </li>
-              </ol>
-            </div>
+            )}
+
+            {/* Show onboarding steps only for non-invite signups */}
+            {!inviteAccepted && (
+              <div className="rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 p-5 text-left space-y-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-blue-900">
+                  <Sparkles className="h-4 w-4 text-blue-600" />
+                  {t('callback.whatsNext')}
+                </div>
+                <ol className="text-sm text-blue-800 space-y-2 pl-1">
+                  <li className="flex items-start gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white mt-0.5">1</span>
+                    <span>{t('callback.step1')}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white mt-0.5">2</span>
+                    <span>{t('callback.step2')}</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-bold text-white mt-0.5">3</span>
+                    <span>{t('callback.step3')}</span>
+                  </li>
+                </ol>
+              </div>
+            )}
 
             <Button
               className="w-full h-12 font-semibold text-base gap-2"
               onClick={handleContinue}
             >
-              {t('callback.continueToSetup')}
+              {inviteAccepted
+                ? (inviteContext?.type === 'collab' ? t('invite.goToCollaboration') : t('invite.goToDashboard'))
+                : t('callback.continueToSetup')}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </>

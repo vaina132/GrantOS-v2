@@ -219,7 +219,19 @@ export function CollabProjectDetail() {
 
   const getInviteUrl = (p: CollabPartner) => {
     const base = window.location.origin
-    return `${base}/collab/accept?token=${p.invite_token}`
+    const params = new URLSearchParams({
+      type: 'collab',
+      token: p.invite_token || '',
+      org: p.org_name,
+      role: p.role === 'coordinator' ? 'Coordinator' : 'Partner',
+    })
+    if (p.contact_email) params.set('email', p.contact_email)
+    if (project) {
+      params.set('project', project.acronym)
+      params.set('projectTitle', project.title)
+    }
+    if (user?.email) params.set('invitedBy', user.email)
+    return `${base}/invite/accept?${params.toString()}`
   }
 
   const handleSendInvite = async (p: CollabPartner) => {

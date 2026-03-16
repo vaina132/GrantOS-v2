@@ -220,12 +220,20 @@ export function StaffForm() {
             if (res.ok) {
               toast({ title: t('staff.invitationSent'), description: t('staff.invitationSentDesc', { email: data.email }) })
               // Send branded invitation email
+              const inviteParams = new URLSearchParams({
+                type: 'org',
+                email: data.email,
+                org: orgName ?? 'your organisation',
+                role: inviteRole,
+                invitedBy: user?.email ?? 'An administrator',
+                orgId,
+              })
               emailService.sendInvitation({
                 invitedEmail: data.email,
                 orgName: orgName ?? 'your organisation',
                 role: inviteRole,
                 invitedByName: user?.email ?? 'An administrator',
-                signUpUrl: `${window.location.origin}/signup`,
+                signUpUrl: `${window.location.origin}/invite/accept?${inviteParams.toString()}`,
               }).catch(() => {})
               // Notify admins
               notificationService.getAdminUserIds(orgId).then((adminIds) => {

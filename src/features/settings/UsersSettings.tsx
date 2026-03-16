@@ -152,12 +152,20 @@ export function UsersSettings() {
 
       // Send GrantLume-branded invitation email (fire-and-forget)
       const baseUrl = window.location.origin
+      const inviteParams = new URLSearchParams({
+        type: 'org',
+        email: inviteEmail,
+        org: orgName ?? 'your organisation',
+        role: inviteRole,
+        invitedBy: user?.email ?? 'An administrator',
+        orgId: orgId,
+      })
       emailService.sendInvitation({
         invitedEmail: inviteEmail,
         orgName: orgName ?? 'your organisation',
         role: inviteRole,
         invitedByName: user?.email ?? 'An administrator',
-        signUpUrl: `${baseUrl}/signup`,
+        signUpUrl: `${baseUrl}/invite/accept?${inviteParams.toString()}`,
       }).catch(() => { /* non-blocking */ })
 
       // In-app notification to admins about the new member

@@ -29,6 +29,7 @@ import { PrivacyPage } from '@/features/legal/PrivacyPage'
 import { LandingPage } from '@/features/landing/LandingPage'
 import { HelpPage } from '@/features/help/HelpPage'
 import { CollabAcceptInvite } from '@/features/projects/collaboration/CollabAcceptInvite'
+import { InviteSignupPage } from '@/features/auth/InviteSignupPage'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -103,6 +104,7 @@ export default function App() {
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/collab/accept" element={<CollabAcceptInvite />} />
+        <Route path="/invite/accept" element={user ? <Navigate to="/dashboard" replace /> : <InviteSignupPage />} />
 
         <Route
           path="/*"
