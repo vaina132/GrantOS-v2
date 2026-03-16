@@ -3,6 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { toast } from '@/components/ui/use-toast'
+import { useAuthStore } from '@/stores/authStore'
+import { useOrgStore } from '@/stores/orgStore'
+import { emailService } from '@/services/emailService'
 import {
   Search,
   LayoutDashboard,
@@ -29,6 +34,9 @@ import {
   ShieldCheck,
   KeyRound,
   UserCog,
+  Send,
+  MessageSquare,
+  Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { LucideIcon } from 'lucide-react'
@@ -550,7 +558,7 @@ For more information, see our [Privacy Policy](/privacy) and [Terms of Use](/ter
       { q: 'Where is my data stored?', a: 'All data is stored in EU-based data centres (Frankfurt, Germany) on infrastructure operated by Supabase (AWS eu-central-1). No data leaves the EEA.' },
       { q: 'Is GrantLume GDPR compliant?', a: 'Yes. GrantLume implements all GDPR requirements including data minimisation, purpose limitation, access controls, right to erasure, data portability, breach notification procedures, and complete audit trails.' },
       { q: 'Does GrantLume use cookies?', a: 'GrantLume uses only strictly necessary local storage for authentication tokens and language preference. We do not use tracking cookies, analytics cookies, or any third-party advertising scripts.' },
-      { q: 'Can I request deletion of my data?', a: 'Yes. Contact your organisation Admin to delete your account, or contact us directly at privacy@grantlume.com. All personal data will be removed within 30 days.' },
+      { q: 'Can I request deletion of my data?', a: 'Yes. Contact your organisation Admin to delete your account, or contact us directly at hello@grantlume.com. All personal data will be removed within 30 days.' },
       { q: 'Who are your sub-processors?', a: 'Supabase (database & authentication, EU data centre), Vercel (application hosting, edge network), and Resend (transactional email delivery). All maintain GDPR-compliant data processing agreements.' },
       { q: 'How is AI used in GrantLume?', a: 'AI is only used in the optional Import module for document parsing. Documents are processed ephemerally by Anthropic\'s Claude AI, are not stored, and are not used for model training. Users are clearly informed before any AI processing occurs.' },
       { q: 'What happens if there is a data breach?', a: 'We follow GDPR Art. 33 procedures: the supervisory authority is notified within 72 hours, and affected organisations are informed without undue delay with details of the breach, its impact, and remediation steps.' },
@@ -845,13 +853,115 @@ export function HelpPage() {
         ))}
       </div>
 
-      {/* Footer */}
-      <div className="rounded-lg border bg-muted/30 p-6 text-center space-y-2">
-        <p className="text-sm font-medium">Still have questions?</p>
-        <p className="text-sm text-muted-foreground">
-          Contact us at <a href="mailto:support@grantlume.com" className="text-primary hover:underline font-medium">support@grantlume.com</a> — we typically respond within 24 hours.
-        </p>
+      {/* Support Contact Form */}
+      <SupportContactForm />
+    </div>
+  )
+}
+
+// ─── Support Contact Form ────────────────────────────────────
+
+function SupportContactForm() {
+  const { t } = useTranslation()
+  const { user } = useAuthStore()
+  const { org } = useOrgStore()
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+
+  const userName = user?.user_metadata?.first_name
+    ? `${user.user_metadata.first_name} ${user.user_metadata.last_name ?? ''}`.trim()
+    : user?.email ?? ''
+  const userEmail = user?.email ?? ''
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!subject.trim() || !message.trim()) return
+    setSending(true)
+    try {
+      await emailService.sendSupportRequest({
+        senderName: userName,
+        senderEmail: userEmail,
+        orgName: org?.name ?? '',
+        subject: subject.trim(),
+        message: message.trim(),
+      })
+      setSent(true)
+      toast({ title: t('help.messageSent'), description: t('help.messageSentDesc') })
+    } catch {
+      toast({ title: t('common.error'), description: t('help.messageSendFailed'), variant: 'destructive' })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  if (sent) {
+    return (
+      <div className="rounded-lg border bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800 p-8 text-center space-y-3">
+        <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto">
+          <Send className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+        </div>
+        <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">{t('help.messageSent')}</p>
+        <p className="text-xs text-emerald-700 dark:text-emerald-400">{t('help.messageSentDesc')}</p>
+        <button
+          onClick={() => { setSent(false); setSubject(''); setMessage('') }}
+          className="text-xs text-primary hover:underline mt-2"
+        >
+          {t('help.sendAnother')}
+        </button>
       </div>
+    )
+  }
+
+  return (
+    <div className="rounded-lg border bg-muted/30 p-6 space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+          <MessageSquare className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold">{t('help.cantFindAnswer')}</p>
+          <p className="text-xs text-muted-foreground">
+            {t('help.contactFormDesc')}{' '}
+            <a href="mailto:hello@grantlume.com" className="text-primary hover:underline">hello@grantlume.com</a>
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">{t('help.subjectLabel')}</label>
+          <Input
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder={t('help.subjectPlaceholder')}
+            required
+            maxLength={200}
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-muted-foreground">{t('help.messageLabel')}</label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder={t('help.messagePlaceholder')}
+            required
+            rows={4}
+            maxLength={5000}
+            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y min-h-[100px]"
+          />
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-[11px] text-muted-foreground">
+            {t('help.replyNote', { email: userEmail || 'your account email' })}
+          </p>
+          <Button type="submit" disabled={sending || !subject.trim() || !message.trim()} className="gap-1.5 shrink-0">
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {sending ? t('help.sending') : t('help.sendMessage')}
+          </Button>
+        </div>
+      </form>
     </div>
   )
 }

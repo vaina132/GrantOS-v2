@@ -36,19 +36,21 @@ type EmailTemplate =
   | 'collabDeliverableReminder'
   | 'timesheetReadyToSign'
   | 'timesheetSigned'
+  | 'supportRequest'
 
 interface SendEmailOptions {
   template: EmailTemplate
   to: string | string[]
   params: Record<string, any>
+  replyTo?: string
 }
 
-async function sendEmail({ template, to, params }: SendEmailOptions): Promise<{ success: boolean; id?: string; error?: string }> {
+async function sendEmail({ template, to, params, replyTo }: SendEmailOptions): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
     const res = await fetch(EMAIL_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ template, to, params }),
+      body: JSON.stringify({ template, to, params, replyTo }),
     })
 
     const data = await res.json()
@@ -439,5 +441,21 @@ export const emailService = {
     reportUrl: string
   }) {
     return sendEmail({ template: 'collabReportStatus', to: params.to, params })
+  },
+
+  /** Send support request form to hello@grantlume.com */
+  async sendSupportRequest(params: {
+    senderName: string
+    senderEmail: string
+    orgName: string
+    subject: string
+    message: string
+  }) {
+    return sendEmail({
+      template: 'supportRequest',
+      to: 'hello@grantlume.com',
+      params,
+      replyTo: params.senderEmail,
+    })
   },
 }

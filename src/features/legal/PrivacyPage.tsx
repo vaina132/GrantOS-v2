@@ -39,7 +39,7 @@ export function PrivacyPage() {
             <h2 className="text-xl font-semibold mt-8 mb-3">2. Data Controller</h2>
             <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-4">
               <p className="font-medium text-foreground">GrantLume Ltd.</p>
-              <p>Email: privacy@grantlume.com</p>
+              <p>Email: hello@grantlume.com</p>
               <p>Website: www.grantlume.com</p>
             </div>
           </section>
@@ -168,7 +168,7 @@ export function PrivacyPage() {
               <li><strong>Right to withdraw consent (Art. 7(3))</strong> — Withdraw consent at any time where processing is based on consent</li>
             </ul>
             <p className="text-sm leading-relaxed text-muted-foreground mt-2">
-              To exercise any of these rights, contact us at privacy@grantlume.com. We will respond
+              To exercise any of these rights, contact us at hello@grantlume.com. We will respond
               within 30 days. You also have the right to lodge a complaint with your local data
               protection authority.
             </p>
@@ -219,7 +219,7 @@ export function PrivacyPage() {
             </p>
             <div className="text-sm text-muted-foreground mt-2 bg-muted/30 rounded-lg p-4">
               <p className="font-medium text-foreground">GrantLume Ltd. — Data Protection</p>
-              <p>Email: privacy@grantlume.com</p>
+              <p>Email: hello@grantlume.com</p>
               <p>Website: www.grantlume.com</p>
             </div>
           </section>

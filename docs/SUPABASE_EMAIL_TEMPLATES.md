@@ -96,7 +96,7 @@ Paste these templates into **Supabase Dashboard → Authentication → Email Tem
     <div style="text-align:center;margin:24px 0;">
       <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:12px 32px;background:#2563eb;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;border-radius:8px;">Confirm Email Change</a>
     </div>
-    <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">If you didn't request this change, please contact support immediately at support@grantlume.com.</p>
+    <p style="margin:16px 0 0;font-size:13px;color:#6b7280;">If you didn't request this change, please contact support immediately at hello@grantlume.com.</p>
   </div>
   <p style="margin:16px 0 0;text-align:center;font-size:11px;color:#9ca3af;">GrantLume Ltd. — Grant project management made simple</p>
 </div>

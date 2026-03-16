@@ -34,6 +34,7 @@ import {
   collabMilestoneReminderEmail,
   timesheetReadyToSignEmail,
   timesheetSignedEmail,
+  supportRequestEmail,
 } from './emails/templates.js'
 import type { EmailTemplate } from './emails/templates.js'
 
@@ -70,6 +71,7 @@ const TEMPLATE_MAP: Record<string, (params: any) => EmailTemplate> = {
   collabMilestoneReminder: collabMilestoneReminderEmail,
   timesheetReadyToSign: timesheetReadyToSignEmail,
   timesheetSigned: timesheetSignedEmail,
+  supportRequest: supportRequestEmail,
 }
 
 /** Maps template name → user_preferences column that controls it */
@@ -158,7 +160,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'RESEND_API_KEY not configured on server' })
   }
 
-  const { template, to, params } = req.body ?? {}
+  const { template, to, params, replyTo } = req.body ?? {}
 
   if (!template || !to) {
     return res.status(400).json({ error: 'Missing required fields: template, to' })
@@ -191,6 +193,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       to: allowedRecipients,
       subject,
       html,
+      ...(replyTo ? { reply_to: replyTo } : {}),
     })
 
     if (error) {

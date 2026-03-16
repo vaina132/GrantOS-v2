@@ -994,6 +994,21 @@
     "reportGenerated": "Report generated",
     "generating": "Generating..."
   },
+  "help": {
+    "cantFindAnswer": "Can't find what you're looking for?",
+    "contactFormDesc": "Send us a message and we'll get back to you within 24 hours. Or email us directly at",
+    "subjectLabel": "Subject",
+    "subjectPlaceholder": "Briefly describe your question or issue",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Tell us more about what you need help with...",
+    "replyNote": "We'll reply to {{email}}",
+    "sendMessage": "Send Message",
+    "sending": "Sending...",
+    "sendAnother": "Send another message",
+    "messageSent": "Message sent!",
+    "messageSentDesc": "Thanks for reaching out. We'll get back to you within 24 hours.",
+    "messageSendFailed": "Failed to send your message. Please try again or email us directly."
+  },
   "guests": {
     "title": "Guest Access",
     "inviteGuest": "Invite Guest",

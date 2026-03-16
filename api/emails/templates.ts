@@ -267,7 +267,7 @@ export function trialExpiringEmail(params: {
         ? infoBox('Upgrade now to avoid any interruption. Your data will be preserved.', WARNING, '#fffbeb')
         : paragraph('Upgrade now to keep your data and continue using all features without interruption.'),
       button('Upgrade Now', params.upgradeUrl, urgent ? WARNING : BRAND),
-      paragraph(`<span style="font-size:13px;color:${MUTED};">Questions about pricing? Contact us at support@grantlume.com.</span>`),
+      paragraph(`<span style="font-size:13px;color:${MUTED};">Questions about pricing? Contact us at hello@grantlume.com.</span>`),
     ].join('')),
   }
 }
@@ -338,7 +338,7 @@ export function emailChangedEmail(params: {
     html: layout('Email Changed', [
       heading('Email Address Changed'),
       paragraph(`Hi ${params.firstName}, your GrantLume account email has been updated to <strong>${params.newEmail}</strong>.`),
-      infoBox(`If you did not make this change, please contact us immediately at <strong>support@grantlume.com</strong> to secure your account.`, DANGER, '#fef2f2'),
+      infoBox(`If you did not make this change, please contact us immediately at <strong>hello@grantlume.com</strong> to secure your account.`, DANGER, '#fef2f2'),
     ].join('')),
   }
 }
@@ -351,7 +351,7 @@ export function passwordChangedEmail(params: {
     html: layout('Password Changed', [
       heading('Password Changed'),
       paragraph(`Hi ${params.firstName}, your GrantLume account password was successfully changed.`),
-      infoBox(`If you did not make this change, please reset your password immediately or contact us at <strong>support@grantlume.com</strong>.`, DANGER, '#fef2f2'),
+      infoBox(`If you did not make this change, please reset your password immediately or contact us at <strong>hello@grantlume.com</strong>.`, DANGER, '#fef2f2'),
       button('Reset Password', 'https://app.grantlume.com/forgot-password', DANGER),
     ].join('')),
   }
@@ -755,6 +755,25 @@ export function collabReportStatusEmail(params: {
         ? infoBox(`<strong>Reviewer note:</strong> ${params.rejectionNote}`, DANGER, '#fef2f2')
         : '',
       button(approved ? 'View Report' : 'Revise Report', params.reportUrl),
+    ].join('')),
+  }
+}
+
+// ── Support Request (sent to hello@grantlume.com) ────────────
+export function supportRequestEmail(params: {
+  senderName: string; senderEmail: string; orgName: string; subject: string; message: string
+}): EmailTemplate {
+  return {
+    subject: `[Support] ${params.subject}`,
+    html: layout('Support Request', [
+      heading('New Support Request'),
+      detailTable(
+        detailRow('From', `${params.senderName} &lt;${params.senderEmail}&gt;`) +
+        detailRow('Organisation', params.orgName || '—') +
+        detailRow('Subject', params.subject)
+      ),
+      paragraph(params.message.replace(/\n/g, '<br/>')),
+      paragraph(`<span style="font-size:12px;color:${MUTED};">Reply directly to this email to respond to the user at ${params.senderEmail}.</span>`),
     ].join('')),
   }
 }

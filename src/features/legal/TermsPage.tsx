@@ -145,7 +145,7 @@ export function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold mt-8 mb-3">11. Termination</h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              You may terminate your account at any time by contacting us at support@grantlume.com.
+              You may terminate your account at any time by contacting us at hello@grantlume.com.
               We may suspend or terminate your account if you violate these Terms or if your subscription
               lapses. Upon termination, your right to use the Service ceases immediately. We will
               make Your Data available for export for 30 days following termination, after which it
@@ -201,7 +201,7 @@ export function TermsPage() {
             </p>
             <div className="text-sm text-muted-foreground mt-2 bg-muted/30 rounded-lg p-4">
               <p className="font-medium text-foreground">GrantLume Ltd.</p>
-              <p>Email: legal@grantlume.com</p>
+              <p>Email: hello@grantlume.com</p>
               <p>Website: www.grantlume.com</p>
             </div>
           </section>

@@ -39,8 +39,8 @@ You can find your Supabase callback URL at:
 2. User Type: **External** (or Internal if using Google Workspace)
 3. Fill in:
    - App name: `GrantLume`
-   - User support email: `support@grantlume.com`
-   - Developer contact email: `dev@grantlume.com`
+   - User support email: `hello@grantlume.com`
+   - Developer contact email: `hello@grantlume.com`
 4. Scopes: add `email`, `profile`, `openid`
 5. Save and publish (move from Testing to Production when ready)
 
