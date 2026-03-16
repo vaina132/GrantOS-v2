@@ -6,9 +6,10 @@ create table if not exists public.timesheet_approvers (
   org_id uuid not null references public.organisations(id) on delete cascade,
   person_id uuid not null references public.persons(id) on delete cascade,
   user_id uuid references auth.users(id) on delete set null,
+  department text default null,  -- NULL = org-wide approver, non-null = approves only this department
   created_at timestamptz not null default now(),
 
-  unique(org_id, person_id)
+  unique(org_id, person_id, department)
 );
 
 -- RLS

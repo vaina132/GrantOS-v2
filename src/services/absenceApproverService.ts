@@ -16,10 +16,10 @@ export const absenceApproverService = {
     })) as AbsenceApprover[]
   },
 
-  async add(orgId: string, personId: string, userId: string | null): Promise<AbsenceApprover> {
+  async add(orgId: string, personId: string, userId: string | null, department: string | null = null): Promise<AbsenceApprover> {
     const { data, error } = await supabase
       .from('absence_approvers' as any)
-      .insert({ org_id: orgId, person_id: personId, user_id: userId })
+      .insert({ org_id: orgId, person_id: personId, user_id: userId, department })
       .select('*, persons(id, full_name, email)')
       .single()
 
@@ -58,5 +58,18 @@ export const absenceApproverService = {
     return (data ?? [])
       .map((r: any) => ({ email: r.persons?.email, name: r.persons?.full_name ?? '' }))
       .filter((r: any) => r.email) as { email: string; name: string }[]
+  },
+
+  /** Get approvers that cover a specific person's department (org-wide + matching department) */
+  async getApproversForPerson(orgId: string, personDepartment: string | null): Promise<AbsenceApprover[]> {
+    const { data, error } = await supabase
+      .from('absence_approvers' as any)
+      .select('*, persons(id, full_name, email)')
+      .eq('org_id', orgId)
+
+    if (error) return []
+    return (data ?? [])
+      .filter((r: any) => r.department === null || r.department === personDepartment)
+      .map((r: any) => ({ ...r, person: r.persons ?? null })) as AbsenceApprover[]
   },
 }

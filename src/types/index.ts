@@ -266,6 +266,7 @@ export interface AbsenceApprover {
   org_id: string
   person_id: string
   user_id: string | null
+  department: string | null  // null = org-wide, string = department-scoped
   created_at: string
   person?: Person
 }
@@ -275,6 +276,7 @@ export interface TimesheetApprover {
   org_id: string
   person_id: string
   user_id: string | null
+  department: string | null  // null = org-wide, string = department-scoped
   created_at: string
   person?: Person
 }

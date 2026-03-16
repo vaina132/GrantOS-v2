@@ -947,7 +947,12 @@
     "tsApprovalStep2": "Approvers can approve or reject timesheets from the Timesheets page",
     "tsApprovalStep3": "If no timesheet approvers are set, only Administrators can approve timesheets",
     "noTimesheetApprovers": "No timesheet approvers configured.",
-    "noTimesheetApproversDesc": "Only Administrators will be able to approve timesheets until you assign at least one approver."
+    "noTimesheetApproversDesc": "Only Administrators will be able to approve timesheets until you assign at least one approver.",
+    "approverScope": "Scope",
+    "allDepartments": "All departments (org-wide)",
+    "orgWide": "Org-wide",
+    "approvalDeptNote": "You can scope approvers to specific departments. Org-wide approvers cover all staff.",
+    "tsApprovalDeptNote": "You can scope approvers to specific departments. Org-wide approvers cover all staff."
   },
   "profile": {
     "title": "My Settings",

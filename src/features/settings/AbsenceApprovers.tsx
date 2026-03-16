@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { absenceApproverService } from '@/services/absenceApproverService'
+import { settingsService } from '@/services/settingsService'
 import { useAuthStore } from '@/stores/authStore'
 import { useStaff } from '@/hooks/useStaff'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
@@ -14,16 +15,22 @@ export function AbsenceApprovers() {
   const { orgId } = useAuthStore()
   const { staff } = useStaff({ is_active: true })
   const [approvers, setApprovers] = useState<AbsenceApprover[]>([])
+  const [departments, setDepartments] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [selectedPersonId, setSelectedPersonId] = useState('')
+  const [selectedDept, setSelectedDept] = useState<string>('')  // '' = org-wide
 
   const load = useCallback(async () => {
     if (!orgId) return
     setLoading(true)
     try {
-      const data = await absenceApproverService.list(orgId)
+      const [data, org] = await Promise.all([
+        absenceApproverService.list(orgId),
+        settingsService.getOrganisation(orgId),
+      ])
       setApprovers(data)
+      setDepartments(org?.departments ?? [])
     } catch (err) {
       const message = err instanceof Error ? err.message : t('common.failedToSave')
       toast({ title: t('common.error'), description: message, variant: 'destructive' })
@@ -38,11 +45,13 @@ export function AbsenceApprovers() {
     if (!orgId || !selectedPersonId) return
     setSaving(true)
     try {
-      // Try to find the user_id for this person (if they have an account linked by email)
       const person = staff.find(p => p.id === selectedPersonId)
-      await absenceApproverService.add(orgId, selectedPersonId, null)
-      toast({ title: t('settings.approverAdded'), description: t('settings.approverAddedDesc', { name: person?.full_name ?? '' }) })
+      const dept = selectedDept || null
+      await absenceApproverService.add(orgId, selectedPersonId, null, dept)
+      const scope = dept ? `absences for ${dept}` : 'all absences (org-wide)'
+      toast({ title: t('settings.approverAdded'), description: `${person?.full_name ?? ''} can now approve ${scope}.` })
       setSelectedPersonId('')
+      setSelectedDept('')
       load()
     } catch (err) {
       const message = err instanceof Error ? err.message : t('common.failedToSave')
@@ -63,9 +72,9 @@ export function AbsenceApprovers() {
     }
   }
 
-  // Filter out people who are already approvers
-  const approverPersonIds = new Set(approvers.map(a => a.person_id))
-  const availableStaff = staff.filter(p => !approverPersonIds.has(p.id))
+  // A person can be added multiple times with different departments
+  const existingKeys = new Set(approvers.map(a => `${a.person_id}::${a.department ?? ''}`))
+  const wouldDuplicate = existingKeys.has(`${selectedPersonId}::${selectedDept}`)
 
   return (
     <div className="space-y-6">
@@ -86,6 +95,7 @@ export function AbsenceApprovers() {
             <li>{t('settings.approvalStep2')}</li>
             <li>{t('settings.approvalStep3')}</li>
             <li>{t('settings.approvalStep4')}</li>
+            <li>{t('settings.approvalDeptNote')}</li>
           </ul>
         </div>
       </div>
@@ -100,12 +110,25 @@ export function AbsenceApprovers() {
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="">{t('common.selectPerson')}</option>
-            {availableStaff.map(p => (
-              <option key={p.id} value={p.id}>{p.full_name}{p.role ? ` — ${p.role}` : ''}</option>
+            {staff.map(p => (
+              <option key={p.id} value={p.id}>{p.full_name}{p.role ? ` — ${p.role}` : ''}{p.department ? ` (${p.department})` : ''}</option>
             ))}
           </select>
         </div>
-        <Button onClick={handleAdd} disabled={saving || !selectedPersonId} className="gap-1.5">
+        <div className="space-y-1 min-w-[180px]">
+          <label className="text-xs font-medium text-muted-foreground">{t('settings.approverScope')}</label>
+          <select
+            value={selectedDept}
+            onChange={(e) => setSelectedDept(e.target.value)}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <option value="">{t('settings.allDepartments')}</option>
+            {departments.map(d => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+        </div>
+        <Button onClick={handleAdd} disabled={saving || !selectedPersonId || wouldDuplicate} className="gap-1.5">
           <Plus className="h-4 w-4" />
           {saving ? t('common.adding') : t('settings.addApprover')}
         </Button>
@@ -135,7 +158,16 @@ export function AbsenceApprovers() {
               <div className="flex items-center gap-3">
                 <PersonAvatar name={approver.person?.full_name ?? '?'} size="sm" />
                 <div>
-                  <div className="text-sm font-medium">{approver.person?.full_name ?? 'Unknown'}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{approver.person?.full_name ?? 'Unknown'}</span>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      approver.department
+                        ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400'
+                        : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    }`}>
+                      {approver.department ?? t('settings.orgWide')}
+                    </span>
+                  </div>
                   {(approver.person as any)?.email && (
                     <div className="text-xs text-muted-foreground">{(approver.person as any).email}</div>
                   )}
