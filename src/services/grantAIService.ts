@@ -24,7 +24,7 @@ export const grantAIService = {
 
     try {
       // 2. Call Vercel serverless function with storage path (small JSON body)
-      const response = await fetch('/api/parse-grant', {
+      const response = await fetch('/api/ai?action=parse-grant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

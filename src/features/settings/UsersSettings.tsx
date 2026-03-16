@@ -61,7 +61,7 @@ export function UsersSettings() {
       // Resolve emails from user IDs via server-side API
       if (rows.length > 0) {
         try {
-          const res = await fetch('/api/resolve-emails', {
+          const res = await fetch('/api/members?action=resolve-emails', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userIds: rows.map((r) => r.user_id) }),
@@ -117,7 +117,7 @@ export function UsersSettings() {
     try {
       // Call server-side API that can use the service role key to
       // create/find the auth user and insert the org_members row.
-      const res = await fetch('/api/invite-member', {
+      const res = await fetch('/api/members?action=invite-member', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

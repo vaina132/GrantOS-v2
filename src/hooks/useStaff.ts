@@ -1,59 +1,35 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { staffService, type StaffFilters } from '@/services/staffService'
 import { useAuthStore } from '@/stores/authStore'
-import { toast } from '@/components/ui/use-toast'
 import type { Person } from '@/types'
 
 export function useStaff(filters?: StaffFilters) {
   const { orgId } = useAuthStore()
-  const [staff, setStaff] = useState<Person[]>([])
-  const [isLoading, setIsLoading] = useState(true)
 
-  const fetch = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const data = await staffService.list(orgId, filters)
-      setStaff(data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load staff'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [orgId, filters?.search, filters?.department, filters?.employment_type, filters?.is_active])
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['staff', orgId, filters?.search, filters?.department, filters?.employment_type, filters?.is_active],
+    queryFn: () => staffService.list(orgId, filters),
+    enabled: !!orgId,
+  })
 
-  useEffect(() => {
-    fetch()
-  }, [fetch])
-
-  return { staff, isLoading, refetch: fetch }
+  return { staff: data ?? [] as Person[], isLoading, refetch }
 }
 
 export function useStaffMember(id: string | undefined) {
-  const [person, setPerson] = useState<Person | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['staffMember', id],
+    queryFn: () => staffService.getById(id!),
+    enabled: !!id,
+  })
 
-  const fetch = useCallback(async () => {
-    if (!id) {
-      setPerson(null)
-      setIsLoading(false)
-      return
-    }
-    setIsLoading(true)
-    try {
-      const data = await staffService.getById(id)
-      setPerson(data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load staff member'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [id])
+  return { person: data ?? null as Person | null, isLoading, refetch }
+}
 
-  useEffect(() => {
-    fetch()
-  }, [fetch])
-
-  return { person, isLoading, refetch: fetch }
+/** Invalidate all staff-related queries (call after mutations) */
+export function useInvalidateStaff() {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['staff'] })
+    queryClient.invalidateQueries({ queryKey: ['staffMember'] })
+  }
 }

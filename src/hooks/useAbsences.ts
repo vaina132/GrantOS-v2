@@ -1,32 +1,26 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { absenceService, type AbsenceFilters } from '@/services/absenceService'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
-import { toast } from '@/components/ui/use-toast'
 import type { Absence } from '@/types'
 
 export function useAbsences(filters?: Omit<AbsenceFilters, 'year'>) {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
-  const [absences, setAbsences] = useState<Absence[]>([])
-  const [isLoading, setIsLoading] = useState(true)
 
-  const fetch = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const data = await absenceService.list(orgId, { ...filters, year: globalYear })
-      setAbsences(data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load absences'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [orgId, globalYear, filters?.person_id, filters?.type])
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['absences', orgId, globalYear, filters?.person_id, filters?.type],
+    queryFn: () => absenceService.list(orgId, { ...filters, year: globalYear }),
+    enabled: !!orgId,
+  })
 
-  useEffect(() => {
-    fetch()
-  }, [fetch])
+  return { absences: data ?? [] as Absence[], isLoading, refetch }
+}
 
-  return { absences, isLoading, refetch: fetch }
+/** Invalidate all absence-related queries */
+export function useInvalidateAbsences() {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['absences'] })
+  }
 }

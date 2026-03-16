@@ -113,7 +113,7 @@ export function ProposalsPage() {
   // Search EU Funding & Tenders Portal for call identifiers
   const searchEuCalls = useCallback(async (query: string): Promise<ComboOption[]> => {
     try {
-      const res = await fetch(`/api/eu-calls?q=${encodeURIComponent(query)}&pageSize=15`)
+      const res = await fetch(`/api/ai?action=eu-calls&q=${encodeURIComponent(query)}&pageSize=15`)
       if (!res.ok) return []
       const { topics } = await res.json()
       return (topics ?? []).map((t: any) => ({

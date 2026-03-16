@@ -290,7 +290,7 @@ export function BulkImport() {
         try {
           // 2. Call AI extraction API
           setProcessingMessage('AI is reading your document...')
-          const response = await fetch('/api/parse-import', {
+          const response = await fetch('/api/ai?action=parse-import', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

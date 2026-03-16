@@ -1,88 +1,46 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { projectsService, type ProjectFilters } from '@/services/projectsService'
 import { useAuthStore } from '@/stores/authStore'
-import { toast } from '@/components/ui/use-toast'
 import type { Project, WorkPackage } from '@/types'
 
 export function useProjects(filters?: ProjectFilters) {
   const { orgId } = useAuthStore()
-  const [projects, setProjects] = useState<Project[]>([])
-  const [isLoading, setIsLoading] = useState(true)
 
-  const fetch = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const data = await projectsService.list(orgId, filters)
-      setProjects(data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load projects'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [orgId, filters?.search, filters?.status, filters?.funding_scheme_id])
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['projects', orgId, filters?.search, filters?.status, filters?.funding_scheme_id],
+    queryFn: () => projectsService.list(orgId, filters),
+    enabled: !!orgId,
+  })
 
-  useEffect(() => {
-    fetch()
-  }, [fetch])
-
-  return { projects, isLoading, refetch: fetch }
+  return { projects: data ?? [] as Project[], isLoading, refetch }
 }
 
 export function useProject(id: string | undefined) {
-  const [project, setProject] = useState<Project | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['project', id],
+    queryFn: () => projectsService.getById(id!),
+    enabled: !!id,
+  })
 
-  const fetch = useCallback(async () => {
-    if (!id) {
-      setProject(null)
-      setIsLoading(false)
-      return
-    }
-    setIsLoading(true)
-    try {
-      const data = await projectsService.getById(id)
-      setProject(data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load project'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [id])
-
-  useEffect(() => {
-    fetch()
-  }, [fetch])
-
-  return { project, isLoading, refetch: fetch }
+  return { project: data ?? null as Project | null, isLoading, refetch }
 }
 
 export function useWorkPackages(projectId: string | undefined) {
-  const [workPackages, setWorkPackages] = useState<WorkPackage[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['workPackages', projectId],
+    queryFn: () => projectsService.listWorkPackages(projectId!),
+    enabled: !!projectId,
+  })
 
-  const fetch = useCallback(async () => {
-    if (!projectId) {
-      setWorkPackages([])
-      setIsLoading(false)
-      return
-    }
-    setIsLoading(true)
-    try {
-      const data = await projectsService.listWorkPackages(projectId)
-      setWorkPackages(data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load work packages'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [projectId])
+  return { workPackages: data ?? [] as WorkPackage[], isLoading, refetch }
+}
 
-  useEffect(() => {
-    fetch()
-  }, [fetch])
-
-  return { workPackages, isLoading, refetch: fetch }
+/** Invalidate all project-related queries (call after mutations) */
+export function useInvalidateProjects() {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['projects'] })
+    queryClient.invalidateQueries({ queryKey: ['project'] })
+    queryClient.invalidateQueries({ queryKey: ['workPackages'] })
+  }
 }

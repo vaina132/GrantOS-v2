@@ -173,7 +173,7 @@ export function StaffDetail() {
                 setInviting(true)
                 try {
                   const role: OrgRole = (person.invite_role as OrgRole) ?? 'Viewer'
-                  const res = await fetch('/api/invite-member', {
+                  const res = await fetch('/api/members?action=invite-member', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

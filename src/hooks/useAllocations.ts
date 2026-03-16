@@ -1,90 +1,63 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { allocationsService } from '@/services/allocationsService'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
-import { toast } from '@/components/ui/use-toast'
 import type { Assignment, PmBudget, PeriodLock } from '@/types'
 import type { AssignmentType } from '@/types'
 
 export function useAssignments(type: AssignmentType) {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
-  const [assignments, setAssignments] = useState<Assignment[]>([])
-  const [isLoading, setIsLoading] = useState(true)
 
-  const fetch = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const data = await allocationsService.listAssignments(orgId, globalYear, type)
-      setAssignments(data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load assignments'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [orgId, globalYear, type])
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['assignments', orgId, globalYear, type],
+    queryFn: () => allocationsService.listAssignments(orgId, globalYear, type),
+    enabled: !!orgId,
+  })
 
-  useEffect(() => {
-    fetch()
-  }, [fetch])
-
-  return { assignments, isLoading, refetch: fetch }
+  return { assignments: data ?? [] as Assignment[], isLoading, refetch }
 }
 
 export function usePmBudgets(type: AssignmentType) {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
-  const [budgets, setBudgets] = useState<PmBudget[]>([])
-  const [isLoading, setIsLoading] = useState(true)
 
-  const fetch = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const data = await allocationsService.listPmBudgets(orgId, globalYear, type)
-      setBudgets(data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load PM budgets'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [orgId, globalYear, type])
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['pmBudgets', orgId, globalYear, type],
+    queryFn: () => allocationsService.listPmBudgets(orgId, globalYear, type),
+    enabled: !!orgId,
+  })
 
-  useEffect(() => {
-    fetch()
-  }, [fetch])
-
-  return { budgets, isLoading, refetch: fetch }
+  return { budgets: data ?? [] as PmBudget[], isLoading, refetch }
 }
 
 export function usePeriodLocks() {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
-  const [locks, setLocks] = useState<PeriodLock[]>([])
-  const [isLoading, setIsLoading] = useState(true)
 
-  const fetch = useCallback(async () => {
-    setIsLoading(true)
-    try {
-      const data = await allocationsService.listPeriodLocks(orgId, globalYear)
-      setLocks(data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load period locks'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [orgId, globalYear])
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['periodLocks', orgId, globalYear],
+    queryFn: () => allocationsService.listPeriodLocks(orgId, globalYear),
+    enabled: !!orgId,
+  })
 
-  useEffect(() => {
-    fetch()
-  }, [fetch])
+  const locks = data ?? [] as PeriodLock[]
 
   const isLocked = useCallback(
     (month: number) => locks.some((l) => l.month === month),
     [locks],
   )
 
-  return { locks, isLoading, isLocked, refetch: fetch }
+  return { locks, isLoading, isLocked, refetch }
+}
+
+/** Invalidate all allocation-related queries */
+export function useInvalidateAllocations() {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['assignments'] })
+    queryClient.invalidateQueries({ queryKey: ['pmBudgets'] })
+    queryClient.invalidateQueries({ queryKey: ['periodLocks'] })
+  }
 }

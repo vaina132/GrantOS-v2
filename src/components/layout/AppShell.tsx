@@ -1,8 +1,10 @@
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { Breadcrumbs } from './Breadcrumbs'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { useAuthStore } from '@/stores/authStore'
+import { useOrgStore } from '@/stores/orgStore'
 
 interface AppShellProps {
   children: ReactNode
@@ -10,6 +12,12 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   useKeyboardShortcuts()
+  const { orgId } = useAuthStore()
+  const loadOrg = useOrgStore((s) => s.load)
+
+  useEffect(() => {
+    if (orgId) loadOrg(orgId)
+  }, [orgId, loadOrg])
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />

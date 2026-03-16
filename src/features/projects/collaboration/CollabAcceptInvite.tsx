@@ -45,10 +45,10 @@ export function CollabAcceptInvite() {
 
   const lookupInvite = async () => {
     try {
-      const res = await fetch('/api/collab-invite', {
+      const res = await fetch('/api/members?action=collab-lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'lookup', token }),
+        body: JSON.stringify({ token }),
       })
       const data = await res.json()
       if (!res.ok || !data.success) {
@@ -70,10 +70,10 @@ export function CollabAcceptInvite() {
     if (!token) return
     setAccepting(true)
     try {
-      const res = await fetch('/api/collab-invite', {
+      const res = await fetch('/api/members?action=collab-accept', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'accept', token, userId: user?.id }),
+        body: JSON.stringify({ token, userId: user?.id }),
       })
       const data = await res.json()
       if (!res.ok || !data.success) {

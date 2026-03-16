@@ -81,7 +81,7 @@ export const collabAIService = {
     }
 
     try {
-      const response = await fetch('/api/parse-collab-grant', {
+      const response = await fetch('/api/ai?action=parse-collab-grant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

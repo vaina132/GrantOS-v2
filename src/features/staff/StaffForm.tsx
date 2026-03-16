@@ -205,7 +205,7 @@ export function StaffForm() {
         // Send invitation if requested
         if (inviteToSystem && data.email && orgId) {
           try {
-            const res = await fetch('/api/invite-member', {
+            const res = await fetch('/api/members?action=invite-member', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -576,7 +576,7 @@ export function StaffForm() {
                           setInviting(true)
                           try {
                             const role: OrgRole = (person.invite_role as OrgRole) ?? 'Viewer'
-                            const res = await fetch('/api/invite-member', {
+                            const res = await fetch('/api/members?action=invite-member', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ email: person.email, orgId, role, invitedBy: user?.id, personId: person.id }),
@@ -634,7 +634,7 @@ export function StaffForm() {
                             if (!orgId || !person.email) return
                             setInviting(true)
                             try {
-                              const res = await fetch('/api/invite-member', {
+                              const res = await fetch('/api/members?action=invite-member', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ email: person.email, orgId, role: inviteRole, invitedBy: user?.id, personId: person.id }),
