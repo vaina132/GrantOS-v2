@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/stores/authStore'
 import type { GrantAIExtraction } from '@/types'
 
 export const grantAIService = {
@@ -32,6 +33,8 @@ export const grantAIService = {
           file_name: file.name,
           organisation_abbreviation: opts?.organisationAbbreviation || '',
           user_instructions: opts?.userInstructions || '',
+          org_id: useAuthStore.getState().orgId || '',
+          user_id: useAuthStore.getState().user?.id || '',
         }),
       })
 

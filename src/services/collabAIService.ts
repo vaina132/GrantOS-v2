@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/stores/authStore'
 
 export interface CollabAIExtraction {
   project: {
@@ -88,6 +89,8 @@ export const collabAIService = {
           storage_path: storagePath,
           file_name: file.name,
           user_instructions: opts?.userInstructions || '',
+          org_id: useAuthStore.getState().orgId || '',
+          user_id: useAuthStore.getState().user?.id || '',
         }),
       })
 

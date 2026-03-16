@@ -765,3 +765,27 @@ export interface CollabReportEvent {
   note: string | null
   created_at: string
 }
+
+// ── AI Usage & Quota ────────────────────────────────────────
+export interface AiUsage {
+  id: string
+  org_id: string
+  month: string          // 'YYYY-MM'
+  tokens_in: number
+  tokens_out: number
+  request_count: number
+  updated_at: string
+}
+
+export interface AiQuotaLimits {
+  monthly_tokens: number    // total (in + out) per month
+  monthly_requests: number  // max requests per month
+}
+
+/** Monthly AI limits per plan tier */
+export const AI_PLAN_LIMITS: Record<OrgPlan, AiQuotaLimits> = {
+  trial:      { monthly_tokens: 200_000,   monthly_requests: 10 },
+  starter:    { monthly_tokens: 500_000,   monthly_requests: 30 },
+  growth:     { monthly_tokens: 2_000_000, monthly_requests: 100 },
+  enterprise: { monthly_tokens: 10_000_000, monthly_requests: 500 },
+}

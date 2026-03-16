@@ -24,6 +24,7 @@ import {
   HORIZON_COUNTRIES, ORG_TYPES, BUDGET_TOOLTIPS,
 } from '@/lib/collabConstants'
 import type { CollabPartnerRole, CollabIndirectCostBase } from '@/types'
+import { AiQuotaWidget } from '@/components/ai/AiQuotaWidget'
 
 // ============================================================================
 // Tooltip helper
@@ -305,6 +306,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
   const [aiParsing, setAiParsing] = useState(false)
   const [aiInstructions, setAiInstructions] = useState('')
   const [aiDragOver, setAiDragOver] = useState(false)
+  const [aiQuotaExhausted, setAiQuotaExhausted] = useState(false)
 
   // Form state
   const [project, setProject] = useState<ProjectFormData>({
@@ -1144,6 +1146,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">{t('collaboration.setupAiFileTypes')}</div>
               </div>
+              <AiQuotaWidget variant="compact" onQuotaExhausted={setAiQuotaExhausted} />
               {aiFile && (
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-muted-foreground" />
@@ -1152,7 +1155,7 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
                   <Button variant="ghost" size="sm" className="h-5 w-5 p-0 ml-auto" onClick={() => setAiFile(null)}>
                     <X className="h-3 w-3" />
                   </Button>
-                  <Button size="sm" className="h-7 gap-1.5" onClick={handleAIImport} disabled={aiParsing}>
+                  <Button size="sm" className="h-7 gap-1.5" onClick={handleAIImport} disabled={aiParsing || aiQuotaExhausted}>
                     {aiParsing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
                     {aiParsing ? t('collaboration.setupAiAnalyzing') : t('collaboration.setupAiExtractBtn')}
                   </Button>

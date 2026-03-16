@@ -15,6 +15,7 @@ import {
   ArrowRight, ArrowLeft, Check, AlertTriangle, Loader2, X, Lightbulb,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AiQuotaWidget } from '@/components/ai/AiQuotaWidget'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -202,6 +203,7 @@ export function BulkImport() {
   const [userHint, setUserHint] = useState('')
 
   // Parsing / AI state
+  const [quotaExhausted, setQuotaExhausted] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [processingMessage, setProcessingMessage] = useState('')
   const [parsed, setParsed] = useState<ParsedData | null>(null)
@@ -298,6 +300,8 @@ export function BulkImport() {
               file_name: file.name,
               import_type: importType,
               user_instructions: userHint.trim() || undefined,
+              org_id: useAuthStore.getState().orgId || '',
+              user_id: useAuthStore.getState().user?.id || '',
             }),
           })
 
@@ -595,12 +599,17 @@ export function BulkImport() {
           </Card>
         )}
 
+        {/* AI Quota (for document files) */}
+        {file && isAIFile && (
+          <AiQuotaWidget onQuotaExhausted={setQuotaExhausted} />
+        )}
+
         {/* Actions */}
         <div className="flex items-center justify-between">
           <Button variant="outline" size="sm" onClick={downloadTemplate}>
             <FileSpreadsheet className="mr-1 h-4 w-4" /> Download Template
           </Button>
-          <Button onClick={handleProcess} disabled={!file || processing}>
+          <Button onClick={handleProcess} disabled={!file || processing || (isAIFile && quotaExhausted)}>
             {isAIFile && <Sparkles className="mr-1 h-4 w-4" />}
             {!isAIFile && <ArrowRight className="mr-1 h-4 w-4" />}
             {isAIFile ? 'Extract with AI' : 'Parse & Continue'}

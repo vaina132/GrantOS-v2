@@ -16,6 +16,101 @@ export const config = {
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
 
+// ── AI Quota Limits per plan ──────────────────────────────────────────────
+const AI_PLAN_LIMITS: Record<string, { monthly_tokens: number; monthly_requests: number }> = {
+  trial:      { monthly_tokens: 200_000,   monthly_requests: 10 },
+  starter:    { monthly_tokens: 500_000,   monthly_requests: 30 },
+  growth:     { monthly_tokens: 2_000_000, monthly_requests: 100 },
+  enterprise: { monthly_tokens: 10_000_000, monthly_requests: 500 },
+}
+
+function currentMonth(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+async function checkQuota(
+  supabase: any, orgId: string
+): Promise<{ allowed: boolean; error?: string; plan?: string; usage?: any; limits?: any }> {
+  if (!orgId) return { allowed: false, error: 'org_id is required for AI requests' }
+
+  // Get org plan
+  const { data: org } = await supabase
+    .from('organisations')
+    .select('plan')
+    .eq('id', orgId)
+    .single()
+
+  const plan = org?.plan || 'trial'
+  const limits = AI_PLAN_LIMITS[plan] || AI_PLAN_LIMITS.trial
+
+  // Get current month usage
+  const month = currentMonth()
+  const { data: usage } = await supabase
+    .from('ai_usage')
+    .select('tokens_in, tokens_out, request_count')
+    .eq('org_id', orgId)
+    .eq('month', month)
+    .maybeSingle()
+
+  const totalTokens = (usage?.tokens_in || 0) + (usage?.tokens_out || 0)
+  const requestCount = usage?.request_count || 0
+
+  if (totalTokens >= limits.monthly_tokens) {
+    return { allowed: false, error: `AI token limit reached (${totalTokens.toLocaleString()} / ${limits.monthly_tokens.toLocaleString()} tokens used this month). Upgrade your plan for more.`, plan, usage, limits }
+  }
+  if (requestCount >= limits.monthly_requests) {
+    return { allowed: false, error: `AI request limit reached (${requestCount} / ${limits.monthly_requests} requests this month). Upgrade your plan for more.`, plan, usage, limits }
+  }
+
+  return { allowed: true, plan, usage, limits }
+}
+
+async function recordUsage(
+  supabase: any,
+  orgId: string,
+  userId: string,
+  action: string,
+  tokensIn: number,
+  tokensOut: number,
+) {
+  const month = currentMonth()
+
+  // Upsert monthly aggregate
+  const { data: existing } = await supabase
+    .from('ai_usage')
+    .select('id, tokens_in, tokens_out, request_count')
+    .eq('org_id', orgId)
+    .eq('month', month)
+    .maybeSingle()
+
+  if (existing) {
+    await supabase.from('ai_usage').update({
+      tokens_in: existing.tokens_in + tokensIn,
+      tokens_out: existing.tokens_out + tokensOut,
+      request_count: existing.request_count + 1,
+      updated_at: new Date().toISOString(),
+    }).eq('id', existing.id)
+  } else {
+    await supabase.from('ai_usage').insert({
+      org_id: orgId,
+      month,
+      tokens_in: tokensIn,
+      tokens_out: tokensOut,
+      request_count: 1,
+    })
+  }
+
+  // Insert audit log entry
+  await supabase.from('ai_usage_log').insert({
+    org_id: orgId,
+    user_id: userId,
+    action,
+    tokens_in: tokensIn,
+    tokens_out: tokensOut,
+  })
+}
+
 function cors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
@@ -144,7 +239,12 @@ async function callClaude(claudeApiKey: string, systemPrompt: string, messageCon
     throw { status: 502, message: 'No text response from AI' }
   }
 
-  return { text: textBlock.text, usage: claudeData.usage }
+  return {
+    text: textBlock.text,
+    usage: claudeData.usage,
+    tokens_in: claudeData.usage?.input_tokens || 0,
+    tokens_out: claudeData.usage?.output_tokens || 0,
+  }
 }
 
 function parseJsonResponse(rawText: string): any {
@@ -249,8 +349,14 @@ async function handleParseGrant(req: VercelRequest, res: VercelResponse) {
     const env = getClaudeAndSupabase()
     if (!env) return res.status(500).json({ error: 'Server credentials not configured' })
 
-    const { storage_path, file_name, organisation_abbreviation, user_instructions } = req.body || {}
+    const { storage_path, file_name, organisation_abbreviation, user_instructions, org_id, user_id } = req.body || {}
     if (!storage_path) return res.status(400).json({ error: 'No storage_path provided' })
+
+    // Quota check
+    if (org_id) {
+      const quota = await checkQuota(env.supabase, org_id)
+      if (!quota.allowed) return res.status(429).json({ error: quota.error, quota_exceeded: true })
+    }
 
     const { arrayBuffer } = await downloadAndExtract(env.supabase, storage_path, file_name)
 
@@ -277,8 +383,13 @@ async function handleParseGrant(req: VercelRequest, res: VercelResponse) {
     }
     userPrompt += '\n\nReturn ONLY the JSON object.'
 
-    const { text, usage } = await callClaude(env.claudeApiKey, GRANT_SYSTEM_PROMPT, [{ type: 'text', text: userPrompt }])
+    const { text, usage, tokens_in, tokens_out } = await callClaude(env.claudeApiKey, GRANT_SYSTEM_PROMPT, [{ type: 'text', text: userPrompt }])
     const extraction = parseJsonResponse(text)
+
+    // Record usage
+    if (org_id) {
+      await recordUsage(env.supabase, org_id, user_id || 'unknown', 'parse-grant', tokens_in, tokens_out)
+    }
 
     return res.status(200).json({ extraction, usage })
   } catch (err: any) {
@@ -387,8 +498,14 @@ async function handleParseCollabGrant(req: VercelRequest, res: VercelResponse) {
     const env = getClaudeAndSupabase()
     if (!env) return res.status(500).json({ error: 'Server credentials not configured' })
 
-    const { storage_path, file_name, user_instructions } = req.body || {}
+    const { storage_path, file_name, user_instructions, org_id, user_id } = req.body || {}
     if (!storage_path) return res.status(400).json({ error: 'No storage_path provided' })
+
+    // Quota check
+    if (org_id) {
+      const quota = await checkQuota(env.supabase, org_id)
+      if (!quota.allowed) return res.status(429).json({ error: quota.error, quota_exceeded: true })
+    }
 
     const { arrayBuffer, ext } = await downloadAndExtract(env.supabase, storage_path, file_name)
 
@@ -400,8 +517,13 @@ async function handleParseCollabGrant(req: VercelRequest, res: VercelResponse) {
     prompt += '\n\nReturn ONLY the JSON object.'
 
     const messageContent = await buildContentFromFile(arrayBuffer, ext, prompt)
-    const { text, usage } = await callClaude(env.claudeApiKey, COLLAB_SYSTEM_PROMPT, messageContent)
+    const { text, usage, tokens_in, tokens_out } = await callClaude(env.claudeApiKey, COLLAB_SYSTEM_PROMPT, messageContent)
     const extraction = parseJsonResponse(text)
+
+    // Record usage
+    if (org_id) {
+      await recordUsage(env.supabase, org_id, user_id || 'unknown', 'parse-collab-grant', tokens_in, tokens_out)
+    }
 
     // Validate
     const hasProject = extraction.project?.title || extraction.project?.acronym
@@ -459,10 +581,16 @@ async function handleParseImport(req: VercelRequest, res: VercelResponse) {
     const env = getClaudeAndSupabase()
     if (!env) return res.status(500).json({ error: 'Server credentials not configured' })
 
-    const { storage_path, file_name, import_type, user_instructions } = req.body || {}
+    const { storage_path, file_name, import_type, user_instructions, org_id, user_id } = req.body || {}
     if (!storage_path) return res.status(400).json({ error: 'No storage_path provided' })
     if (!import_type || !['persons', 'projects', 'proposals'].includes(import_type)) {
       return res.status(400).json({ error: 'import_type must be one of: persons, projects, proposals' })
+    }
+
+    // Quota check
+    if (org_id) {
+      const quota = await checkQuota(env.supabase, org_id)
+      if (!quota.allowed) return res.status(429).json({ error: quota.error, quota_exceeded: true })
     }
 
     const { arrayBuffer, ext } = await downloadAndExtract(env.supabase, storage_path, file_name)
@@ -474,8 +602,13 @@ async function handleParseImport(req: VercelRequest, res: VercelResponse) {
     prompt += '\n\nReturn ONLY the JSON object.'
 
     const messageContent = await buildContentFromFile(arrayBuffer, ext, prompt)
-    const { text, usage } = await callClaude(env.claudeApiKey, IMPORT_SYSTEM_PROMPT, messageContent)
+    const { text, usage, tokens_in, tokens_out } = await callClaude(env.claudeApiKey, IMPORT_SYSTEM_PROMPT, messageContent)
     const extraction = parseJsonResponse(text)
+
+    // Record usage
+    if (org_id) {
+      await recordUsage(env.supabase, org_id, user_id || 'unknown', 'parse-import', tokens_in, tokens_out)
+    }
 
     return res.status(200).json({ extraction, usage })
   } catch (err: any) {

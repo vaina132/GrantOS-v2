@@ -16,6 +16,7 @@ import {
   FileText, Target, ClipboardList, Package, Sparkles, X, Plus, Trash2,
 } from 'lucide-react'
 import type { GrantAIExtraction } from '@/types'
+import { AiQuotaWidget } from '@/components/ai/AiQuotaWidget'
 
 type WizardStep = 'upload' | 'processing' | 'review' | 'saving'
 
@@ -24,6 +25,7 @@ export function GrantAIWizard() {
   const { orgId } = useAuthStore()
 
   const [step, setStep] = useState<WizardStep>('upload')
+  const [quotaExhausted, setQuotaExhausted] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -379,8 +381,10 @@ export function GrantAIWizard() {
               </div>
             )}
 
+            <AiQuotaWidget className="mt-2" onQuotaExhausted={setQuotaExhausted} />
+
             <div className="flex justify-end">
-              <Button onClick={handleParse} disabled={!file} size="lg">
+              <Button onClick={handleParse} disabled={!file || quotaExhausted} size="lg">
                 <Sparkles className="mr-2 h-4 w-4" />
                 Analyze with AI
               </Button>
