@@ -99,6 +99,9 @@ export type Database = {
           plan: string
           trial_ends_at: string | null
           is_active: boolean
+          paddle_customer_id: string | null
+          paddle_subscription_id: string | null
+          subscription_status: string | null
           created_at: string
           updated_at: string
         }
@@ -115,6 +118,9 @@ export type Database = {
           plan?: string
           trial_ends_at?: string | null
           is_active?: boolean
+          paddle_customer_id?: string | null
+          paddle_subscription_id?: string | null
+          subscription_status?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -131,6 +137,9 @@ export type Database = {
           plan?: string
           trial_ends_at?: string | null
           is_active?: boolean
+          paddle_customer_id?: string | null
+          paddle_subscription_id?: string | null
+          subscription_status?: string | null
           created_at?: string
           updated_at?: string
         }

@@ -32,6 +32,10 @@ export interface Organisation {
   plan: OrgPlan
   trial_ends_at: string | null
   is_active: boolean
+  // Paddle billing
+  paddle_customer_id: string | null
+  paddle_subscription_id: string | null
+  subscription_status: string | null
   // DocuSign integration
   docusign_integration_key: string | null
   docusign_user_id: string | null

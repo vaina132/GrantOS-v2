@@ -272,6 +272,27 @@ export function trialExpiringEmail(params: {
   }
 }
 
+export function trialExpiredEmail(params: {
+  userName: string; orgName: string; upgradeUrl: string
+}): EmailTemplate {
+  return {
+    subject: `Your GrantLume trial has expired — upgrade to continue`,
+    html: layout('Trial Expired', [
+      heading('Your Trial Has Expired'),
+      paragraph(`Hi ${params.userName}, the free trial for <strong>${params.orgName}</strong> on GrantLume has ended.`),
+      infoBox('Your data is safe and preserved for 90 days. Upgrade now to restore full access to all features.', DANGER, '#fef2f2'),
+      paragraph('Here\'s what happens next:'),
+      paragraph(`<ul style="margin:0;padding-left:18px;font-size:14px;line-height:2;color:${TEXT_SEC};">
+        <li>Your projects and data remain intact</li>
+        <li>Read-only access continues for a limited time</li>
+        <li>Upgrade anytime to restore full functionality</li>
+      </ul>`),
+      button('Upgrade Now', params.upgradeUrl, DANGER),
+      paragraph(`<span style="font-size:13px;color:${MUTED};">Need more time? Contact us at hello@grantlume.com and we'll be happy to help.</span>`),
+    ].join('')),
+  }
+}
+
 export function periodLockedEmail(params: {
   recipientName: string; orgName: string; period: string; lockedBy: string
 }): EmailTemplate {

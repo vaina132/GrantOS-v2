@@ -5,6 +5,7 @@ import {
   timesheetReminderEmail,
   projectEndingSoonEmail,
   trialExpiringEmail,
+  trialExpiredEmail,
   collabReportReminderEmail,
   collabDeliverableReminderEmail,
   collabMilestoneReminderEmail,
@@ -199,8 +200,8 @@ async function runProjectAlerts(
       }
     }
 
-    // ── 2. Trial expiring reminders (7, 3, 1 days) ──
-    const trialAlertDays = [7, 3, 1]
+    // ── 2. Trial expiring reminders (7, 3, 1 days) + expired (0 days) ──
+    const trialAlertDays = [7, 3, 1, 0]
 
     for (const days of trialAlertDays) {
       const targetDate = new Date(now)
@@ -233,19 +234,51 @@ async function runProjectAlerts(
           const email = userData?.user?.email
           if (!email) continue
 
-          const { subject, html } = trialExpiringEmail({
-            userName: email.split('@')[0],
-            orgName: org.name,
-            daysRemaining: days,
-            upgradeUrl: `${appUrl}/settings`,
-          })
-
-          try {
-            await resend.emails.send({ from, to: email, subject, html })
-            totalSent++
-          } catch (emailErr) {
-            console.error(`[cron] Failed to send trial alert to ${email}:`, emailErr)
+          // Send appropriate email
+          if (days === 0) {
+            const { subject, html } = trialExpiredEmail({
+              userName: email.split('@')[0],
+              orgName: org.name,
+              upgradeUrl: `${appUrl}/settings?tab=subscription`,
+            })
+            try {
+              await resend.emails.send({ from, to: email, subject, html })
+              totalSent++
+            } catch (emailErr) {
+              console.error(`[cron] Failed to send trial expired email to ${email}:`, emailErr)
+            }
+          } else {
+            const { subject, html } = trialExpiringEmail({
+              userName: email.split('@')[0],
+              orgName: org.name,
+              daysRemaining: days,
+              upgradeUrl: `${appUrl}/settings?tab=subscription`,
+            })
+            try {
+              await resend.emails.send({ from, to: email, subject, html })
+              totalSent++
+            } catch (emailErr) {
+              console.error(`[cron] Failed to send trial alert to ${email}:`, emailErr)
+            }
           }
+
+          // In-app notification
+          try {
+            const notifTitle = days === 0
+              ? 'Your free trial has expired'
+              : `Trial expires in ${days} day${days === 1 ? '' : 's'}`
+            const notifMessage = days === 0
+              ? `Your free trial for ${org.name} has ended. Upgrade to continue using all features.`
+              : `Your free trial for ${org.name} expires in ${days} day${days === 1 ? '' : 's'}. Upgrade now to avoid interruption.`
+            await supabase.from('notifications').insert({
+              user_id: admin.user_id,
+              org_id: org.id,
+              type: days === 0 ? 'trial_expired' : 'trial_expiring',
+              title: notifTitle,
+              message: notifMessage,
+              link: '/settings?tab=subscription',
+            })
+          } catch { /* ignore notification errors */ }
         }
       }
     }
