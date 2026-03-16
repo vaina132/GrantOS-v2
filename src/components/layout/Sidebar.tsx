@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { GrantLumeLogo } from '@/components/common/GrantLumeLogo'
 import type { PermissionKey } from '@/lib/permissions'
 import type { LucideIcon } from 'lucide-react'
+import { AiQuotaWidget } from '@/components/ai/AiQuotaWidget'
 
 interface NavItem {
   path: string
@@ -164,6 +165,7 @@ export function Sidebar() {
         </nav>
 
         <div className="border-t px-3 py-3 space-y-2">
+          <AiQuotaWidget variant="compact" className="px-3 py-1" />
           <NavLink
             to="/help"
             onClick={() => setSidebarOpen(false)}

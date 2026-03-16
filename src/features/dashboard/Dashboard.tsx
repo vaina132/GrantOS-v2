@@ -34,6 +34,7 @@ import {
 } from 'recharts'
 import { SalaryCoverageChart } from './SalaryCoverageChart'
 import { YearSelector } from '@/components/common/YearSelector'
+import { AiQuotaWidget } from '@/components/ai/AiQuotaWidget'
 
 const STATUS_COLORS: Record<string, string> = {
   Upcoming: '#3b82f6',
@@ -255,8 +256,13 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* Salary Coverage */}
-      {!isLoading && can('canSeeSalary') && <SalaryCoverageChart />}
+      {/* AI Usage + Salary Coverage */}
+      {!isLoading && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <AiQuotaWidget variant="full" />
+          {can('canSeeSalary') && <SalaryCoverageChart />}
+        </div>
+      )}
 
       {/* Project Table */}
       {!isLoading && projects.length > 0 && (
