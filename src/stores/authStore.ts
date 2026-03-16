@@ -188,22 +188,9 @@ async function loadUserContext(
     .eq('user_id', user.id)
     .maybeSingle()
 
-  // Any error (table missing, RLS, etc.) — bootstrap as admin in early dev
+  // Log query errors but do NOT bootstrap as admin — fall through to collab check
   if (memberError) {
-    console.warn('[GrantLume] org_members query failed, bootstrapping as admin:', memberError.code, memberError.message)
-    set({
-      user,
-      orgId: null,
-      orgName: 'Development',
-      role: 'Admin',
-      permissions: computePermissions('Admin'),
-      accessType: 'member',
-      orgPlan: 'enterprise',
-      trialEndsAt: null,
-      isLoading: false,
-      error: null,
-    })
-    return
+    console.warn('[GrantLume] org_members query error:', memberError.code, memberError.message)
   }
 
   if (member) {

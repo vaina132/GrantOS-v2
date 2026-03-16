@@ -58,7 +58,7 @@ export function AuthCallbackPage() {
           }
           if (data.session) {
             console.log('[AuthCallback] Code exchange success, user:', data.session.user.email)
-            onSuccess(type)
+            await onSuccess(type)
             return
           }
         }
@@ -94,7 +94,7 @@ export function AuthCallbackPage() {
             return
           }
           console.log('[AuthCallback] verifyOtp success')
-          onSuccess(type)
+          await onSuccess(type)
           return
         }
 
@@ -113,7 +113,7 @@ export function AuthCallbackPage() {
         }
         if (session) {
           console.log('[AuthCallback] Session found via getSession, user:', session.user.email)
-          onSuccess(type)
+          await onSuccess(type)
           return
         }
 
@@ -122,7 +122,7 @@ export function AuthCallbackPage() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
           console.log('[AuthCallback] Auth state changed:', event, !!newSession)
           if (newSession) {
-            onSuccess(type)
+            onSuccess(type) // fire-and-forget in listener context
             subscription.unsubscribe()
           }
         })
@@ -150,21 +150,28 @@ export function AuthCallbackPage() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         const ctx = user?.user_metadata?.invite_context as InviteContext | undefined
-        if (!ctx) return
+        if (!ctx) {
+          console.log('[AuthCallback] No invite_context in user metadata')
+          return
+        }
 
         setInviteContext(ctx)
-        console.log('[AuthCallback] Found invite context:', ctx)
+        console.log('[AuthCallback] Found invite context:', JSON.stringify(ctx))
 
         if (ctx.type === 'collab' && ctx.token) {
           // Accept collab invitation
+          console.log('[AuthCallback] Calling collab-accept with token:', ctx.token, 'userId:', user?.id)
           const res = await fetch('/api/members?action=collab-accept', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: ctx.token, userId: user?.id }),
           })
+          const body = await res.json().catch(() => ({}))
           if (res.ok) {
             setInviteAccepted(true)
-            console.log('[AuthCallback] Collab invite accepted')
+            console.log('[AuthCallback] Collab invite accepted:', body)
+          } else {
+            console.error('[AuthCallback] collab-accept failed:', res.status, body)
           }
         } else if (ctx.type === 'org' && ctx.orgId) {
           // The org member row was already created by invite-member API when the admin invited.
