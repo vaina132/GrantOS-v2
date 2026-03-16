@@ -1,15 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  LayoutDashboard,
   FolderKanban,
   Users,
   CalendarDays,
   ClipboardCheck,
   DollarSign,
-  GanttChart,
-  FileText,
-  Shield,
   Lightbulb,
   ArrowRight,
   Check,
@@ -19,8 +15,8 @@ import {
   ChevronRight,
   Zap,
   Lock,
-  BarChart3,
-  Clock,
+  Shield,
+  Sparkles,
 } from 'lucide-react'
 import { GrantLumeLogo } from '@/components/common/GrantLumeLogo'
 
@@ -33,154 +29,109 @@ const t = {
       pricing: 'Pricing',
       security: 'Security',
       login: 'Login',
-      tryFree: 'Start Free Trial',
+      tryFree: 'Try Free',
     },
     hero: {
-      badge: '14-day free trial — No credit card required',
-      title: 'Grant Management,',
-      titleHighlight: 'Simplified.',
+      badge: 'Try free for 14 days',
+      title: 'Stop managing grants',
+      titleHighlight: 'in spreadsheets.',
       subtitle:
-        'GrantLume helps research organisations track projects, allocations, timesheets, budgets, and reporting — all in one beautifully designed platform.',
-      cta: 'Start your free trial',
-      ctaSub: 'No credit card needed · Set up in 2 minutes',
+        'GrantLume is the all-in-one platform for research organisations to manage projects, budgets, timesheets, and partner collaborations.',
+      cta: 'Start free trial',
+      ctaSub: 'No credit card · Ready in 2 minutes',
       login: 'Already have an account?',
     },
-    stats: [
-      { value: '100%', label: 'Cloud-based' },
-      { value: '0€', label: 'Setup costs' },
-      { value: '14', label: 'Free trial days' },
-      { value: '5', label: 'User roles' },
-    ],
     features: {
-      title: 'Everything you need to manage grants',
-      subtitle: 'From proposal to final report — one platform for your entire grant lifecycle.',
+      title: 'One platform. Every grant.',
+      subtitle: 'From proposal pipeline to financial reporting — everything your team needs.',
       list: [
         {
-          icon: 'LayoutDashboard',
-          title: 'Dashboard',
-          desc: 'Real-time overview of your projects, budgets, staff, and key performance indicators at a glance.',
+          icon: 'Lightbulb',
+          title: 'Proposals to Projects',
+          desc: 'Track proposals from idea to submission. One click converts a funded proposal into a live project with budgets and work packages.',
         },
         {
           icon: 'FolderKanban',
-          title: 'Project Management',
-          desc: 'Track all your grant projects with work packages, milestones, deliverables, and budget allocations.',
-        },
-        {
-          icon: 'Lightbulb',
-          title: 'Proposal Pipeline',
-          desc: 'Manage proposals from idea to submission. Convert approved proposals directly into active projects.',
-        },
-        {
-          icon: 'Users',
-          title: 'Staff Management',
-          desc: 'Manage your research team with roles, departments, employment types, and salary tracking.',
+          title: 'Projects & Work Packages',
+          desc: 'Manage grant projects with milestones, deliverables, reporting periods, and AI-powered document parsing.',
         },
         {
           icon: 'CalendarDays',
-          title: 'Allocations',
-          desc: 'Plan and track person-month allocations across projects. Visualise capacity and avoid over-commitment.',
+          title: 'Person-Month Allocations',
+          desc: 'Plan and track staff effort across projects. Compare planned vs. actual. Spot over-commitments before they happen.',
         },
         {
           icon: 'ClipboardCheck',
-          title: 'Timesheets',
-          desc: 'Record, submit, and approve time entries. Support for approval workflows and period locking.',
+          title: 'Timesheets & Absences',
+          desc: 'Submit, approve, and lock timesheets. Track absences with substitutes. Full approval workflow built in.',
         },
         {
           icon: 'DollarSign',
-          title: 'Financial Tracking',
-          desc: 'Budget management by category — personnel, travel, subcontracting, indirect costs. Real-time spend tracking.',
+          title: 'Budget & Expense Tracking',
+          desc: 'Personnel, travel, subcontracting, indirect costs — all tracked by category with real-time budget-vs-actual.',
         },
         {
-          icon: 'GanttChart',
-          title: 'Project Timeline',
-          desc: 'Interactive Gantt chart view of all projects with drag-and-drop scheduling and milestone tracking.',
-        },
-        {
-          icon: 'FileText',
-          title: 'Reports & Export',
-          desc: 'Generate PDF reports for projects, budgets, timesheets, and proposals. Export data anytime.',
-        },
-        {
-          icon: 'Shield',
-          title: 'Audit Trail',
-          desc: 'Full audit log of every change. Know who did what, when. Stay compliant with funding body requirements.',
-        },
-        {
-          icon: 'BarChart3',
-          title: 'Role-Based Access',
-          desc: 'Five configurable roles: Admin, Project Manager, Finance Officer, Viewer, and External Participant.',
-        },
-        {
-          icon: 'Clock',
-          title: 'Guest Access',
-          desc: 'Invite external partners to view projects or submit timesheets without full platform access.',
+          icon: 'Users',
+          title: 'Multi-Partner Collaboration',
+          desc: 'Invite consortium partners. Collect financial reports per period. Track deviations. All from one dashboard.',
         },
       ],
     },
-    howItWorks: {
-      title: 'Up and running in minutes',
-      steps: [
-        { num: '1', title: 'Create your account', desc: 'Sign up for free — no credit card required.' },
-        { num: '2', title: 'Set up your organisation', desc: 'Name your workspace, choose your currency, invite your team.' },
-        { num: '3', title: 'Add your first project', desc: 'Import or create projects with budgets, work packages, and staff assignments.' },
-        { num: '4', title: 'Manage & report', desc: 'Track time, allocations, expenses, and generate reports for your funding bodies.' },
+    extras: {
+      title: 'Plus everything else you\'d expect',
+      items: [
+        'Interactive Gantt timeline',
+        'PDF report generation',
+        'AI grant document parsing',
+        'Role-based permissions',
+        'In-app notifications',
+        'Multi-language (EN, DE, FR, ES, PT)',
+        'Data import & export',
+        'Dark mode',
       ],
     },
     pricing: {
-      title: 'Simple, transparent pricing',
-      subtitle: 'Start free. Upgrade when you need to.',
+      title: 'Simple pricing. No surprises.',
+      subtitle: 'One price per organisation. Not per user.',
+      yearly: 'Save 2 months with annual billing',
       plans: [
         {
-          name: 'Trial',
-          price: '0€',
+          name: 'Free Trial',
+          price: '0',
           period: '14 days',
-          desc: 'Try everything — no commitment',
-          features: ['All features included', 'Up to 3 users', 'Unlimited projects', 'Email support'],
+          desc: 'See if GrantLume fits your team',
+          features: ['All features included', '3 projects', '5 staff members', '2 user seats', '5 AI document parses'],
           cta: 'Start free trial',
           highlighted: false,
         },
         {
           name: 'Starter',
-          price: '49€',
-          period: '/month',
+          price: '49',
+          period: '/mo',
           desc: 'For small research groups',
-          features: ['All features included', 'Up to 10 users', 'Unlimited projects', 'Priority email support', 'Data export'],
+          features: ['10 projects', '20 staff members', '5 user seats', '20 AI parses/month', 'PDF reports & export'],
           cta: 'Start free trial',
           highlighted: true,
         },
         {
           name: 'Growth',
-          price: '99€',
-          period: '/month',
-          desc: 'For growing organisations',
-          features: ['All features included', 'Up to 50 users', 'Unlimited projects', 'Priority support', 'Custom roles', 'API access'],
+          price: '99',
+          period: '/mo',
+          desc: 'For departments with partners',
+          features: ['Unlimited projects', 'Unlimited staff', '20 user seats', '100 AI parses/month', 'Collaboration module', 'Custom role permissions'],
           cta: 'Start free trial',
           highlighted: false,
         },
-        {
-          name: 'Enterprise',
-          price: 'Custom',
-          period: '',
-          desc: 'For large institutions',
-          features: ['Unlimited users', 'Unlimited projects', 'Dedicated support', 'Custom integrations', 'SLA guarantee', 'On-premise option'],
-          cta: 'Contact us',
-          highlighted: false,
-        },
       ],
+      enterprise: 'Managing 50+ users or need custom integrations?',
+      enterpriseCta: 'Talk to us',
     },
     trust: {
-      title: 'Built for European research organisations',
-      subtitle: 'GDPR-compliant, EU-hosted, and designed with data protection at its core.',
-      items: [
-        { icon: 'Lock', title: 'GDPR Compliant', desc: 'Full compliance with the EU General Data Protection Regulation. Data minimisation, purpose limitation, right to erasure, and data portability — all built in from day one.' },
-        { icon: 'Shield', title: 'EU Data Residency', desc: 'All data stored exclusively in EU data centres (Frankfurt, Germany). Encrypted at rest (AES-256) and in transit (TLS 1.2+). No data ever leaves the European Economic Area.' },
-        { icon: 'Zap', title: 'Privacy by Design', desc: 'Role-based access control with 23 granular permissions. Row-level security ensures complete data isolation between organisations. No tracking cookies, no analytics, no third-party scripts.' },
-      ],
-      badges: ['GDPR Art. 25 — Data Protection by Design', 'EU AI Act Compliant', 'ePrivacy Directive Compliant', 'Immutable Audit Trail (Art. 30)', 'EU-Only Data Storage', '72h Breach Notification'],
+      title: 'Built for European research',
+      badges: ['GDPR compliant', 'EU-hosted (Frankfurt)', 'AES-256 encryption', 'Row-level data isolation', 'No tracking cookies', 'Privacy by design'],
     },
     cta: {
-      title: 'Ready to simplify your grant management?',
-      subtitle: 'Join research organisations across Europe who trust GrantLume.',
+      title: 'Your grants deserve better than a spreadsheet.',
       button: 'Start your 14-day free trial',
       note: 'No credit card required · Cancel anytime',
     },
@@ -199,154 +150,109 @@ const t = {
       pricing: 'Preise',
       security: 'Sicherheit',
       login: 'Anmelden',
-      tryFree: 'Kostenlos testen',
+      tryFree: 'Testen',
     },
     hero: {
-      badge: '14 Tage kostenlos testen — Keine Kreditkarte erforderlich',
-      title: 'Fördermittel-Management,',
-      titleHighlight: 'vereinfacht.',
+      badge: '14 Tage kostenlos testen',
+      title: 'Schluss mit Fördermittelverwaltung',
+      titleHighlight: 'in Tabellen.',
       subtitle:
-        'GrantLume hilft Forschungsorganisationen, Projekte, Zuweisungen, Zeiterfassung, Budgets und Berichte an einem Ort zu verwalten — in einer elegant gestalteten Plattform.',
+        'GrantLume ist die All-in-One-Plattform für Forschungsorganisationen zur Verwaltung von Projekten, Budgets, Zeiterfassung und Partnerkooperationen.',
       cta: 'Kostenlos testen',
-      ctaSub: 'Keine Kreditkarte nötig · In 2 Minuten eingerichtet',
+      ctaSub: 'Keine Kreditkarte · In 2 Minuten startklar',
       login: 'Bereits registriert?',
     },
-    stats: [
-      { value: '100%', label: 'Cloud-basiert' },
-      { value: '0€', label: 'Einrichtungskosten' },
-      { value: '14', label: 'Kostenlose Testtage' },
-      { value: '5', label: 'Benutzerrollen' },
-    ],
     features: {
-      title: 'Alles, was Sie für die Fördermittelverwaltung brauchen',
-      subtitle: 'Vom Antrag bis zum Schlussbericht — eine Plattform für den gesamten Förder-Lebenszyklus.',
+      title: 'Eine Plattform. Jedes Förderprojekt.',
+      subtitle: 'Von der Antrags-Pipeline bis zur Finanzberichterstattung — alles, was Ihr Team braucht.',
       list: [
         {
-          icon: 'LayoutDashboard',
-          title: 'Dashboard',
-          desc: 'Echtzeit-Überblick über Projekte, Budgets, Personal und Leistungskennzahlen auf einen Blick.',
+          icon: 'Lightbulb',
+          title: 'Vom Antrag zum Projekt',
+          desc: 'Anträge von der Idee bis zur Einreichung verfolgen. Ein Klick wandelt einen bewilligten Antrag in ein aktives Projekt um.',
         },
         {
           icon: 'FolderKanban',
-          title: 'Projektmanagement',
-          desc: 'Verwalten Sie alle Förderprojekte mit Arbeitspaketen, Meilensteinen, Deliverables und Budgetzuweisungen.',
-        },
-        {
-          icon: 'Lightbulb',
-          title: 'Antrags-Pipeline',
-          desc: 'Verwalten Sie Anträge von der Idee bis zur Einreichung. Genehmigte Anträge direkt in aktive Projekte umwandeln.',
-        },
-        {
-          icon: 'Users',
-          title: 'Personalverwaltung',
-          desc: 'Verwalten Sie Ihr Forschungsteam mit Rollen, Abteilungen, Beschäftigungsarten und Gehaltsverfolgung.',
+          title: 'Projekte & Arbeitspakete',
+          desc: 'Förderprojekte mit Meilensteinen, Deliverables, Berichtsperioden und KI-gestützter Dokumentenanalyse verwalten.',
         },
         {
           icon: 'CalendarDays',
-          title: 'Zuweisungen',
-          desc: 'Planen und verfolgen Sie Personenmonate über Projekte hinweg. Kapazitäten visualisieren und Überbelegung vermeiden.',
+          title: 'Personenmonat-Zuweisungen',
+          desc: 'Personalaufwand projektübergreifend planen und verfolgen. Plan vs. Ist vergleichen. Überbelegungen frühzeitig erkennen.',
         },
         {
           icon: 'ClipboardCheck',
-          title: 'Zeiterfassung',
-          desc: 'Zeiten erfassen, einreichen und genehmigen. Unterstützung für Genehmigungsworkflows und Periodensperren.',
+          title: 'Zeiterfassung & Abwesenheiten',
+          desc: 'Zeiten einreichen, genehmigen und sperren. Abwesenheiten mit Vertretungen erfassen. Vollständiger Genehmigungsworkflow.',
         },
         {
           icon: 'DollarSign',
-          title: 'Finanzverfolgung',
-          desc: 'Budgetverwaltung nach Kategorien — Personal, Reisen, Unteraufträge, indirekte Kosten. Echtzeit-Ausgabenverfolgung.',
+          title: 'Budget- & Ausgabenverfolgung',
+          desc: 'Personal, Reisen, Unteraufträge, indirekte Kosten — alles nach Kategorie mit Echtzeit-Soll/Ist-Vergleich.',
         },
         {
-          icon: 'GanttChart',
-          title: 'Projekt-Timeline',
-          desc: 'Interaktive Gantt-Diagramm-Ansicht aller Projekte mit Drag-and-Drop-Planung und Meilenstein-Tracking.',
-        },
-        {
-          icon: 'FileText',
-          title: 'Berichte & Export',
-          desc: 'PDF-Berichte für Projekte, Budgets, Zeiterfassung und Anträge generieren. Daten jederzeit exportieren.',
-        },
-        {
-          icon: 'Shield',
-          title: 'Audit-Trail',
-          desc: 'Vollständiges Protokoll jeder Änderung. Wer hat was wann gemacht? Bleiben Sie konform mit den Anforderungen der Fördergeber.',
-        },
-        {
-          icon: 'BarChart3',
-          title: 'Rollenbasierter Zugang',
-          desc: 'Fünf konfigurierbare Rollen: Admin, Projektmanager, Finanzbeauftragte, Betrachter und Externe Teilnehmer.',
-        },
-        {
-          icon: 'Clock',
-          title: 'Gastzugang',
-          desc: 'Laden Sie externe Partner ein, Projekte einzusehen oder Zeiten einzureichen — ohne vollen Plattformzugang.',
+          icon: 'Users',
+          title: 'Multi-Partner-Kollaboration',
+          desc: 'Konsortialpartner einladen. Finanzberichte pro Periode sammeln. Abweichungen verfolgen. Alles in einem Dashboard.',
         },
       ],
     },
-    howItWorks: {
-      title: 'In wenigen Minuten einsatzbereit',
-      steps: [
-        { num: '1', title: 'Konto erstellen', desc: 'Kostenlos registrieren — keine Kreditkarte erforderlich.' },
-        { num: '2', title: 'Organisation einrichten', desc: 'Benennen Sie Ihren Workspace, wählen Sie Ihre Währung, laden Sie Ihr Team ein.' },
-        { num: '3', title: 'Erstes Projekt anlegen', desc: 'Importieren oder erstellen Sie Projekte mit Budgets, Arbeitspaketen und Personalzuweisungen.' },
-        { num: '4', title: 'Verwalten & berichten', desc: 'Erfassen Sie Zeiten, Zuweisungen, Ausgaben und generieren Sie Berichte für Ihre Fördergeber.' },
+    extras: {
+      title: 'Plus alles andere, was Sie erwarten',
+      items: [
+        'Interaktive Gantt-Timeline',
+        'PDF-Berichtsgenerierung',
+        'KI-Dokumentenanalyse',
+        'Rollenbasierte Berechtigungen',
+        'In-App-Benachrichtigungen',
+        'Mehrsprachig (EN, DE, FR, ES, PT)',
+        'Datenimport & -export',
+        'Dark Mode',
       ],
     },
     pricing: {
-      title: 'Einfache, transparente Preise',
-      subtitle: 'Kostenlos starten. Upgraden, wenn Sie es brauchen.',
+      title: 'Einfache Preise. Keine Überraschungen.',
+      subtitle: 'Ein Preis pro Organisation. Nicht pro Benutzer.',
+      yearly: '2 Monate sparen bei jährlicher Zahlung',
       plans: [
         {
           name: 'Testversion',
-          price: '0€',
+          price: '0',
           period: '14 Tage',
-          desc: 'Alles testen — ohne Verpflichtung',
-          features: ['Alle Funktionen enthalten', 'Bis zu 3 Benutzer', 'Unbegrenzte Projekte', 'E-Mail-Support'],
+          desc: 'Testen Sie ob GrantLume zu Ihrem Team passt',
+          features: ['Alle Funktionen enthalten', '3 Projekte', '5 Mitarbeiter', '2 Benutzer', '5 KI-Dokumentenanalysen'],
           cta: 'Kostenlos testen',
           highlighted: false,
         },
         {
           name: 'Starter',
-          price: '49€',
+          price: '49',
           period: '/Monat',
           desc: 'Für kleine Forschungsgruppen',
-          features: ['Alle Funktionen enthalten', 'Bis zu 10 Benutzer', 'Unbegrenzte Projekte', 'Prioritäts-E-Mail-Support', 'Datenexport'],
+          features: ['10 Projekte', '20 Mitarbeiter', '5 Benutzer', '20 KI-Analysen/Monat', 'PDF-Berichte & Export'],
           cta: 'Kostenlos testen',
           highlighted: true,
         },
         {
           name: 'Growth',
-          price: '99€',
+          price: '99',
           period: '/Monat',
-          desc: 'Für wachsende Organisationen',
-          features: ['Alle Funktionen enthalten', 'Bis zu 50 Benutzer', 'Unbegrenzte Projekte', 'Prioritäts-Support', 'Benutzerdefinierte Rollen', 'API-Zugang'],
+          desc: 'Für Abteilungen mit Partnern',
+          features: ['Unbegrenzte Projekte', 'Unbegrenzte Mitarbeiter', '20 Benutzer', '100 KI-Analysen/Monat', 'Kollaborationsmodul', 'Individuelle Rollenberechtigungen'],
           cta: 'Kostenlos testen',
           highlighted: false,
         },
-        {
-          name: 'Enterprise',
-          price: 'Individuell',
-          period: '',
-          desc: 'Für große Institutionen',
-          features: ['Unbegrenzte Benutzer', 'Unbegrenzte Projekte', 'Dedizierter Support', 'Individuelle Integrationen', 'SLA-Garantie', 'On-Premise-Option'],
-          cta: 'Kontaktieren Sie uns',
-          highlighted: false,
-        },
       ],
+      enterprise: '50+ Benutzer oder individuelle Integrationen?',
+      enterpriseCta: 'Sprechen Sie mit uns',
     },
     trust: {
-      title: 'Entwickelt für europäische Forschungsorganisationen',
-      subtitle: 'DSGVO-konform, in der EU gehostet und mit Datenschutz als Kernprinzip entwickelt.',
-      items: [
-        { icon: 'Lock', title: 'DSGVO-konform', desc: 'Volle Konformität mit der EU-Datenschutz-Grundverordnung. Datenminimierung, Zweckbindung, Recht auf Löschung und Datenportabilität — alles von Anfang an integriert.' },
-        { icon: 'Shield', title: 'EU-Datenstandort', desc: 'Alle Daten werden ausschließlich in EU-Rechenzentren gespeichert (Frankfurt, Deutschland). Verschlüsselt im Ruhezustand (AES-256) und bei der Übertragung (TLS 1.2+). Keine Daten verlassen den EWR.' },
-        { icon: 'Zap', title: 'Privacy by Design', desc: 'Rollenbasierte Zugriffskontrolle mit 23 granularen Berechtigungen. Row-Level-Security gewährleistet vollständige Datenisolierung. Keine Tracking-Cookies, keine Analyse-Tools, keine Drittanbieter-Skripte.' },
-      ],
-      badges: ['DSGVO Art. 25 — Datenschutz durch Technikgestaltung', 'EU AI Act konform', 'ePrivacy-Richtlinie konform', 'Unveränderliches Audit-Protokoll (Art. 30)', 'Nur EU-Datenspeicherung', '72h Meldepflicht bei Datenpannen'],
+      title: 'Entwickelt für europäische Forschung',
+      badges: ['DSGVO-konform', 'EU-gehostet (Frankfurt)', 'AES-256-Verschlüsselung', 'Row-Level-Datenisolierung', 'Keine Tracking-Cookies', 'Privacy by Design'],
     },
     cta: {
-      title: 'Bereit, Ihre Fördermittelverwaltung zu vereinfachen?',
-      subtitle: 'Schließen Sie sich Forschungsorganisationen in ganz Europa an, die GrantLume vertrauen.',
+      title: 'Ihre Förderprojekte verdienen Besseres als eine Tabelle.',
       button: 'Jetzt 14 Tage kostenlos testen',
       note: 'Keine Kreditkarte erforderlich · Jederzeit kündbar',
     },
@@ -362,20 +268,16 @@ const t = {
 }
 
 const iconMap: Record<string, React.ElementType> = {
-  LayoutDashboard,
   FolderKanban,
   Users,
   CalendarDays,
   ClipboardCheck,
   DollarSign,
-  GanttChart,
-  FileText,
-  Shield,
   Lightbulb,
-  BarChart3,
-  Clock,
   Lock,
+  Shield,
   Zap,
+  Sparkles,
 }
 
 export function LandingPage() {
@@ -383,61 +285,38 @@ export function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const c = t[lang]
 
-  // On the marketing domain, link to app.grantlume.com for login/signup
   const hostname = window.location.hostname
   const isAppDomain = hostname.startsWith('app.') || hostname === 'localhost' || hostname === '127.0.0.1'
   const appBase = isAppDomain ? '' : 'https://app.grantlume.com'
 
   return (
     <div className="min-h-screen bg-white text-gray-900 antialiased">
-      {/* ── Navigation ── */}
+      {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2">
-              <GrantLumeLogo size={34} variant="color" />
+              <GrantLumeLogo size={32} variant="color" />
               <span className="text-xl font-bold tracking-tight"><span className="text-[#1a2744]">Grant</span><span className="text-emerald-600">Lume</span></span>
             </div>
 
-            {/* Desktop nav */}
             <div className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-                {c.nav.features}
-              </a>
-              <a href="#pricing" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-                {c.nav.pricing}
-              </a>
-              <a href="#trust" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
-                {c.nav.security}
-              </a>
-              <button
-                onClick={() => setLang(lang === 'en' ? 'de' : 'en')}
-                className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
-              >
+              <a href="#features" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">{c.nav.features}</a>
+              <a href="#pricing" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">{c.nav.pricing}</a>
+              <a href="#trust" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">{c.nav.security}</a>
+              <button onClick={() => setLang(lang === 'en' ? 'de' : 'en')} className="flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">
                 <Globe className="h-4 w-4" />
                 {lang === 'en' ? 'DE' : 'EN'}
               </button>
-              <a
-                href={`${appBase}/login`}
-                className="text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors"
-              >
-                {c.nav.login}
-              </a>
-              <a
-                href={`${appBase}/signup`}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors shadow-sm"
-              >
+              <a href={`${appBase}/login`} className="text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors">{c.nav.login}</a>
+              <a href={`${appBase}/signup`} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors shadow-sm">
                 {c.nav.tryFree}
                 <ArrowRight className="h-3.5 w-3.5" />
               </a>
             </div>
 
-            {/* Mobile menu button */}
             <div className="md:hidden flex items-center gap-2">
-              <button
-                onClick={() => setLang(lang === 'en' ? 'de' : 'en')}
-                className="p-2 text-gray-500"
-              >
+              <button onClick={() => setLang(lang === 'en' ? 'de' : 'en')} className="p-2 text-gray-500">
                 <Globe className="h-5 w-5" />
               </button>
               <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 text-gray-700">
@@ -446,25 +325,14 @@ export function LandingPage() {
             </div>
           </div>
 
-          {/* Mobile menu */}
           {mobileMenuOpen && (
             <div className="md:hidden pb-4 space-y-3 border-t border-gray-100 pt-4">
-              <a href="#features" className="block text-sm font-medium text-gray-600 py-1" onClick={() => setMobileMenuOpen(false)}>
-                {c.nav.features}
-              </a>
-              <a href="#pricing" className="block text-sm font-medium text-gray-600 py-1" onClick={() => setMobileMenuOpen(false)}>
-                {c.nav.pricing}
-              </a>
-              <a href="#trust" className="block text-sm font-medium text-gray-600 py-1" onClick={() => setMobileMenuOpen(false)}>
-                {c.nav.security}
-              </a>
+              <a href="#features" className="block text-sm font-medium text-gray-600 py-1" onClick={() => setMobileMenuOpen(false)}>{c.nav.features}</a>
+              <a href="#pricing" className="block text-sm font-medium text-gray-600 py-1" onClick={() => setMobileMenuOpen(false)}>{c.nav.pricing}</a>
+              <a href="#trust" className="block text-sm font-medium text-gray-600 py-1" onClick={() => setMobileMenuOpen(false)}>{c.nav.security}</a>
               <div className="flex gap-3 pt-2">
-                <a href={`${appBase}/login`} className="flex-1 text-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700">
-                  {c.nav.login}
-                </a>
-                <a href={`${appBase}/signup`} className="flex-1 text-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white">
-                  {c.nav.tryFree}
-                </a>
+                <a href={`${appBase}/login`} className="flex-1 text-center rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700">{c.nav.login}</a>
+                <a href={`${appBase}/signup`} className="flex-1 text-center rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white">{c.nav.tryFree}</a>
               </div>
             </div>
           )}
@@ -474,17 +342,16 @@ export function LandingPage() {
       {/* ── Hero ── */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-indigo-50" />
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-100/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-100/30 rounded-full blur-3xl translate-y-1/2 -translate-x-1/4" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-100/40 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 sm:pt-28 sm:pb-32">
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-20 sm:pt-28 sm:pb-28">
           <div className="max-w-3xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 border border-blue-200 px-4 py-1.5 text-sm font-medium text-blue-700 mb-8">
               <Zap className="h-3.5 w-3.5" />
               {c.hero.badge}
             </div>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1]">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.1]">
               {c.hero.title}
               <br />
               <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
@@ -492,7 +359,7 @@ export function LandingPage() {
               </span>
             </h1>
 
-            <p className="mt-6 text-lg sm:text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
+            <p className="mt-6 text-lg text-gray-600 leading-relaxed max-w-2xl mx-auto">
               {c.hero.subtitle}
             </p>
 
@@ -504,45 +371,27 @@ export function LandingPage() {
                 {c.hero.cta}
                 <ArrowRight className="h-4 w-4" />
               </a>
-              <a
-                href={`${appBase}/login`}
-                className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
-              >
+              <a href={`${appBase}/login`} className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">
                 {c.hero.login}
                 <ChevronRight className="h-4 w-4" />
               </a>
             </div>
-
             <p className="mt-4 text-sm text-gray-500">{c.hero.ctaSub}</p>
           </div>
         </div>
       </section>
 
-      {/* ── Stats ── */}
-      <section className="border-y border-gray-100 bg-gray-50/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {c.stats.map((stat, i) => (
-              <div key={i} className="text-center">
-                <div className="text-3xl sm:text-4xl font-extrabold text-blue-600">{stat.value}</div>
-                <div className="mt-1 text-sm text-gray-600 font-medium">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features ── */}
-      <section id="features" className="py-20 sm:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-2xl mx-auto text-center mb-16">
+      {/* ── Features (6 cards) ── */}
+      <section id="features" className="py-16 sm:py-24">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl mx-auto text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">{c.features.title}</h2>
             <p className="mt-4 text-lg text-gray-600">{c.features.subtitle}</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {c.features.list.map((feature, i) => {
-              const Icon = iconMap[feature.icon] || LayoutDashboard
+              const Icon = iconMap[feature.icon] || FolderKanban
               return (
                 <div
                   key={i}
@@ -557,48 +406,36 @@ export function LandingPage() {
               )
             })}
           </div>
-        </div>
-      </section>
 
-      {/* ── How It Works ── */}
-      <section className="py-20 sm:py-28 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-16">
-            {c.howItWorks.title}
-          </h2>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {c.howItWorks.steps.map((step, i) => (
-              <div key={i} className="relative">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white font-bold text-lg mb-4">
-                  {step.num}
-                </div>
-                <h3 className="text-lg font-semibold mb-2">{step.title}</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">{step.desc}</p>
-                {i < 3 && (
-                  <div className="hidden lg:block absolute top-6 left-[calc(100%_-_8px)] w-[calc(100%_-_40px)]">
-                    <div className="border-t-2 border-dashed border-blue-200" />
-                  </div>
-                )}
-              </div>
-            ))}
+          {/* ── Extras strip ── */}
+          <div className="mt-14 rounded-2xl bg-gray-50 border border-gray-100 p-6 sm:p-8">
+            <h3 className="text-base font-semibold text-gray-900 mb-4">{c.extras.title}</h3>
+            <div className="flex flex-wrap gap-3">
+              {c.extras.items.map((item, i) => (
+                <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-white border border-gray-200 px-3.5 py-1.5 text-sm text-gray-700">
+                  <Check className="h-3.5 w-3.5 text-blue-600" />
+                  {item}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Pricing ── */}
-      <section id="pricing" className="py-20 sm:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-2xl mx-auto text-center mb-16">
+      {/* ── Pricing (3 cards + enterprise line) ── */}
+      <section id="pricing" className="py-16 sm:py-24 bg-gray-50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-2xl mx-auto text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">{c.pricing.title}</h2>
-            <p className="mt-4 text-lg text-gray-600">{c.pricing.subtitle}</p>
+            <p className="mt-3 text-lg text-gray-600">{c.pricing.subtitle}</p>
+            <p className="mt-1 text-sm text-blue-600 font-medium">{c.pricing.yearly}</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-3 gap-6">
             {c.pricing.plans.map((plan, i) => (
               <div
                 key={i}
-                className={`relative rounded-2xl p-6 ${
+                className={`relative rounded-2xl p-6 flex flex-col ${
                   plan.highlighted
                     ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/20 ring-2 ring-blue-600 scale-[1.02]'
                     : 'bg-white border border-gray-200'
@@ -614,14 +451,13 @@ export function LandingPage() {
                   <p className={`text-sm mt-1 ${plan.highlighted ? 'text-blue-100' : 'text-gray-500'}`}>{plan.desc}</p>
                 </div>
                 <div className="mb-6">
-                  <span className="text-4xl font-extrabold">{plan.price}</span>
+                  <span className="text-4xl font-extrabold">{plan.price === '0' ? '0' : plan.price}</span>
+                  <span className={`text-lg font-extrabold ${plan.highlighted ? 'text-white' : ''}`}>{plan.price !== '0' ? '€' : '€'}</span>
                   {plan.period && (
-                    <span className={`text-sm ${plan.highlighted ? 'text-blue-200' : 'text-gray-500'}`}>
-                      {' '}{plan.period}
-                    </span>
+                    <span className={`text-sm ml-0.5 ${plan.highlighted ? 'text-blue-200' : 'text-gray-500'}`}>{plan.period}</span>
                   )}
                 </div>
-                <ul className="space-y-3 mb-6">
+                <ul className="space-y-2.5 mb-6 flex-1">
                   {plan.features.map((f, j) => (
                     <li key={j} className="flex items-start gap-2 text-sm">
                       <Check className={`h-4 w-4 mt-0.5 shrink-0 ${plan.highlighted ? 'text-blue-200' : 'text-blue-600'}`} />
@@ -642,42 +478,28 @@ export function LandingPage() {
               </div>
             ))}
           </div>
+
+          <p className="text-center mt-8 text-sm text-gray-500">
+            {c.pricing.enterprise}{' '}
+            <a href="mailto:hello@grantlume.com" className="font-semibold text-blue-600 hover:underline">{c.pricing.enterpriseCta}</a>
+          </p>
         </div>
       </section>
 
-      {/* ── Trust / Security / GDPR ── */}
-      <section id="trust" className="py-20 sm:py-28 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-center mb-4">
-            {c.trust.title}
-          </h2>
-          <p className="text-center text-lg text-gray-600 max-w-2xl mx-auto mb-16">
-            {c.trust.subtitle}
-          </p>
-
-          <div className="grid sm:grid-cols-3 gap-8 mb-12">
-            {c.trust.items.map((item, i) => {
-              const Icon = iconMap[item.icon] || Shield
-              return (
-                <div key={i} className="text-center bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 mb-4">
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
-                  <p className="text-sm text-gray-600 leading-relaxed">{item.desc}</p>
-                </div>
-              )
-            })}
+      {/* ── Trust (badge strip) ── */}
+      <section id="trust" className="py-14 sm:py-20">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <Lock className="h-5 w-5 text-blue-600" />
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{c.trust.title}</h2>
           </div>
-
-          {/* Compliance badges */}
-          <div className="flex flex-wrap justify-center gap-3">
+          <div className="flex flex-wrap justify-center gap-2.5">
             {c.trust.badges.map((badge, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1.5 rounded-full bg-white border border-blue-200 px-4 py-2 text-xs font-medium text-blue-700 shadow-sm"
+                className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 border border-gray-200 px-4 py-2 text-xs font-medium text-gray-700"
               >
-                <Check className="h-3.5 w-3.5 text-blue-500" />
+                <Shield className="h-3.5 w-3.5 text-blue-500" />
                 {badge}
               </span>
             ))}
@@ -686,20 +508,17 @@ export function LandingPage() {
       </section>
 
       {/* ── CTA ── */}
-      <section className="py-20 sm:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 px-8 py-16 sm:px-16 sm:py-20 text-center">
+      <section className="py-16 sm:py-24">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 px-8 py-14 sm:px-16 sm:py-16 text-center">
             <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-10 left-10 w-72 h-72 bg-white rounded-full blur-3xl" />
-              <div className="absolute bottom-10 right-10 w-96 h-96 bg-blue-300 rounded-full blur-3xl" />
+              <div className="absolute top-10 left-10 w-64 h-64 bg-white rounded-full blur-3xl" />
+              <div className="absolute bottom-10 right-10 w-80 h-80 bg-blue-300 rounded-full blur-3xl" />
             </div>
             <div className="relative z-10">
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight max-w-lg mx-auto">
                 {c.cta.title}
               </h2>
-              <p className="mt-4 text-lg text-blue-100 max-w-xl mx-auto">
-                {c.cta.subtitle}
-              </p>
               <div className="mt-8">
                 <a
                   href={`${appBase}/signup`}
@@ -717,7 +536,7 @@ export function LandingPage() {
 
       {/* ── Footer ── */}
       <footer className="border-t border-gray-100 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="grid sm:grid-cols-3 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-3">
@@ -729,36 +548,16 @@ export function LandingPage() {
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-3">{c.footer.product}</h4>
               <ul className="space-y-2">
-                <li>
-                  <a href="#features" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-                    {c.nav.features}
-                  </a>
-                </li>
-                <li>
-                  <a href="#pricing" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-                    {c.nav.pricing}
-                  </a>
-                </li>
-                <li>
-                  <a href="#trust" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-                    {c.nav.security}
-                  </a>
-                </li>
+                <li><a href="#features" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">{c.nav.features}</a></li>
+                <li><a href="#pricing" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">{c.nav.pricing}</a></li>
+                <li><a href="#trust" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">{c.nav.security}</a></li>
               </ul>
             </div>
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-3">{c.footer.legal}</h4>
               <ul className="space-y-2">
-                <li>
-                  <Link to="/terms" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-                    {c.footer.terms}
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/privacy" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-                    {c.footer.privacy}
-                  </Link>
-                </li>
+                <li><Link to="/terms" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">{c.footer.terms}</Link></li>
+                <li><Link to="/privacy" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">{c.footer.privacy}</Link></li>
               </ul>
             </div>
           </div>
