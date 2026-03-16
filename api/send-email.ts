@@ -193,7 +193,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       to: allowedRecipients,
       subject,
       html,
-      ...(replyTo ? { reply_to: replyTo } : {}),
+      ...(replyTo ? { replyTo } : {}),
     })
 
     if (error) {
