@@ -31,6 +31,7 @@ ALTER TABLE ai_usage ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_usage_log ENABLE ROW LEVEL SECURITY;
 
 -- Org members can read their own org's usage
+DROP POLICY IF EXISTS ai_usage_select ON ai_usage;
 CREATE POLICY ai_usage_select ON ai_usage
   FOR SELECT USING (
     org_id IN (SELECT om.org_id FROM org_members om WHERE om.user_id = auth.uid())
@@ -40,6 +41,7 @@ CREATE POLICY ai_usage_select ON ai_usage
 -- No INSERT/UPDATE policy for authenticated users
 
 -- Log: org members can read their own org's log
+DROP POLICY IF EXISTS ai_usage_log_select ON ai_usage_log;
 CREATE POLICY ai_usage_log_select ON ai_usage_log
   FOR SELECT USING (
     org_id IN (SELECT om.org_id FROM org_members om WHERE om.user_id = auth.uid())

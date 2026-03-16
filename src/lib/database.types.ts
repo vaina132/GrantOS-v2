@@ -9,6 +9,82 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_usage: {
+        Row: {
+          id: string
+          org_id: string
+          month: string
+          tokens_in: number
+          tokens_out: number
+          request_count: number
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          month: string
+          tokens_in?: number
+          tokens_out?: number
+          request_count?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          month?: string
+          tokens_in?: number
+          tokens_out?: number
+          request_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      ai_usage_log: {
+        Row: {
+          id: string
+          org_id: string
+          user_id: string
+          action: string
+          tokens_in: number
+          tokens_out: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          user_id: string
+          action: string
+          tokens_in?: number
+          tokens_out?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          user_id?: string
+          action?: string
+          tokens_in?: number
+          tokens_out?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_log_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       organisations: {
         Row: {
           id: string
