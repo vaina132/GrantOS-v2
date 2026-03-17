@@ -84,6 +84,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
+        // Skip loading context if an MFA challenge is in progress —
+        // we have an AAL1 session but the user must complete MFA first
+        if (get().mfaChallengeId) return
+
         // Only reload context if user changed (avoid duplicate on init)
         const current = get().user
         if (current?.id !== session.user.id) {
@@ -139,8 +143,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           // Create MFA challenge
           const { data: challengeData, error: challengeErr } = await supabase.auth.mfa.challenge({ factorId: totp.id })
           if (challengeErr) throw challengeErr
+          // IMPORTANT: Do NOT set user here — keep user null so LoginPage stays
+          // mounted (App.tsx redirects away if user is set). The AAL1 session
+          // is stored by the Supabase client internally and will be used for
+          // the mfa.verify() call.
           set({
             isLoading: false,
+            user: null,
             mfaFactorId: totp.id,
             mfaChallengeId: challengeData.id,
           })
