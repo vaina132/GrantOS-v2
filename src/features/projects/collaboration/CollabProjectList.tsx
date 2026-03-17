@@ -24,18 +24,27 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function CollabProjectList() {
   const { t } = useTranslation()
-  const { orgId } = useAuthStore()
+  const { orgId, accessType, user } = useAuthStore()
   const navigate = useNavigate()
   const [projects, setProjects] = useState<CollabProject[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'active' | 'archived'>('all')
   const [search, setSearch] = useState('')
+  const isCollabOnly = accessType === 'collab_partner'
 
   const load = async () => {
-    if (!orgId) return
     setLoading(true)
     try {
-      const data = await collabProjectService.list(orgId)
+      let data: CollabProject[]
+      if (isCollabOnly && user) {
+        // Collab-only users: fetch projects they're invited to
+        data = await collabProjectService.listForPartner(user.id)
+      } else if (orgId) {
+        // Org members: fetch projects owned by this org
+        data = await collabProjectService.list(orgId)
+      } else {
+        data = []
+      }
       setProjects(data)
     } catch (err) {
       toast({ title: t('common.error'), description: t('collaboration.failedToLoadProjects'), variant: 'destructive' })
@@ -44,7 +53,7 @@ export function CollabProjectList() {
     }
   }
 
-  useEffect(() => { load() }, [orgId])
+  useEffect(() => { load() }, [orgId, user?.id])
 
   const handleDelete = async (id: string) => {
     const name = projects.find(p => p.id === id)?.acronym ?? ''
@@ -124,30 +133,34 @@ export function CollabProjectList() {
             {t('collaboration.description')}
           </p>
         </div>
-        <Button onClick={() => navigate('/projects/collaboration/new')} className="gap-2">
-          <Plus className="h-4 w-4" />
-          {t('collaboration.newProject')}
-        </Button>
+        {!isCollabOnly && (
+          <Button onClick={() => navigate('/projects/collaboration/new')} className="gap-2">
+            <Plus className="h-4 w-4" />
+            {t('collaboration.newProject')}
+          </Button>
+        )}
       </div>
 
       {/* AI Import quick-action */}
-      <Card className="border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <Sparkles className="h-5 w-5 text-purple-500 shrink-0" />
-            <div className="flex-1">
-              <h3 className="font-medium text-sm">{t('collaboration.quickImportAi')}</h3>
-              <p className="text-xs text-muted-foreground">
-                {t('collaboration.quickImportAiDesc')}
-              </p>
+      {!isCollabOnly && (
+        <Card className="border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Sparkles className="h-5 w-5 text-purple-500 shrink-0" />
+              <div className="flex-1">
+                <h3 className="font-medium text-sm">{t('collaboration.quickImportAi')}</h3>
+                <p className="text-xs text-muted-foreground">
+                  {t('collaboration.quickImportAiDesc')}
+                </p>
+              </div>
+              <Button size="sm" variant="outline" className="shrink-0 gap-1.5 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40" onClick={() => navigate('/projects/collaboration/new/ai-import')}>
+                <Sparkles className="h-3.5 w-3.5" />
+                {t('collaboration.importAndCreate')}
+              </Button>
             </div>
-            <Button size="sm" variant="outline" className="shrink-0 gap-1.5 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40" onClick={() => navigate('/projects/collaboration/new/ai-import')}>
-              <Sparkles className="h-3.5 w-3.5" />
-              {t('collaboration.importAndCreate')}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filter tabs + search */}
       {projects.length > 0 && (
@@ -188,14 +201,18 @@ export function CollabProjectList() {
               {t('collaboration.noProjectsDesc')}
             </p>
             <div className="flex gap-3">
-              <Button onClick={() => navigate('/projects/collaboration/new')} className="gap-2">
-                <Plus className="h-4 w-4" />
-                {t('collaboration.createManually')}
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/projects/collaboration/new/ai-import')} className="gap-2 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40">
-                <Sparkles className="h-4 w-4 text-purple-500" />
-                {t('collaboration.importWithAi')}
-              </Button>
+              {!isCollabOnly && (
+                <>
+                  <Button onClick={() => navigate('/projects/collaboration/new')} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    {t('collaboration.createManually')}
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate('/projects/collaboration/new/ai-import')} className="gap-2 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40">
+                    <Sparkles className="h-4 w-4 text-purple-500" />
+                    {t('collaboration.importWithAi')}
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -237,40 +254,42 @@ export function CollabProjectList() {
                     </div>
                   </div>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                      {p.status === 'draft' && (
-                        <DropdownMenuItem onClick={() => handleLaunch(p.id)}>
-                          <Rocket className="mr-2 h-4 w-4" />
-                          {t('collaboration.launch')}
+                  {!isCollabOnly && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                        {p.status === 'draft' && (
+                          <DropdownMenuItem onClick={() => handleLaunch(p.id)}>
+                            <Rocket className="mr-2 h-4 w-4" />
+                            {t('collaboration.launch')}
+                          </DropdownMenuItem>
+                        )}
+                        {p.status === 'active' && (
+                          <DropdownMenuItem onClick={() => handleArchive(p.id, p.status)}>
+                            <Archive className="mr-2 h-4 w-4" />
+                            {t('collaboration.archive')}
+                          </DropdownMenuItem>
+                        )}
+                        {p.status === 'archived' && (
+                          <DropdownMenuItem onClick={() => handleArchive(p.id, p.status)}>
+                            <ArchiveRestore className="mr-2 h-4 w-4" />
+                            {t('collaboration.unarchive')}
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => handleDelete(p.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {t('common.delete')}
                         </DropdownMenuItem>
-                      )}
-                      {p.status === 'active' && (
-                        <DropdownMenuItem onClick={() => handleArchive(p.id, p.status)}>
-                          <Archive className="mr-2 h-4 w-4" />
-                          {t('collaboration.archive')}
-                        </DropdownMenuItem>
-                      )}
-                      {p.status === 'archived' && (
-                        <DropdownMenuItem onClick={() => handleArchive(p.id, p.status)}>
-                          <ArchiveRestore className="mr-2 h-4 w-4" />
-                          {t('collaboration.unarchive')}
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => handleDelete(p.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        {t('common.delete')}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </CardContent>
             </Card>

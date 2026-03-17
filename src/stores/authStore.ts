@@ -23,6 +23,7 @@ interface AuthState {
   error: string | null
 
   initialize: () => Promise<void>
+  reloadContext: () => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, meta?: { firstName?: string; lastName?: string }) => Promise<void>
   signInWithProvider: (provider: 'google' | 'azure' | 'slack') => Promise<void>
@@ -97,6 +98,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         })
       }
     })
+  },
+
+  reloadContext: async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await loadUserContext(user, set)
+    }
   },
 
   signIn: async (email: string, password: string) => {
@@ -270,6 +278,28 @@ async function loadUserContext(
 
   if (collabPartner) {
     // Collab-only user — skip onboarding, give limited access
+    set({
+      user,
+      orgId: null,
+      orgName: null,
+      role: 'External Participant',
+      permissions: computePermissions('External Participant'),
+      accessType: 'collab_partner',
+      orgPlan: null,
+      trialEndsAt: null,
+      isLoading: false,
+      error: null,
+    })
+    return
+  }
+
+  // Not yet accepted — but check user_metadata for invite_context.
+  // This handles the race condition where AuthCallbackPage hasn't finished
+  // calling collab-accept yet, but we know this user is a collab invitee.
+  const inviteCtx = user.user_metadata?.invite_context as
+    | { type?: string } | undefined
+  if (inviteCtx?.type === 'collab') {
+    console.log('[GrantLume] Collab invite_context found in metadata — treating as collab partner (pending accept)')
     set({
       user,
       orgId: null,

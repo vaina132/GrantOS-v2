@@ -32,6 +32,28 @@ export const collabProjectService = {
     return (data ?? []) as unknown as CollabProject[]
   },
 
+  /** List projects where the current user is an accepted collab partner */
+  async listForPartner(userId: string): Promise<CollabProject[]> {
+    // Step 1: find project IDs where this user is an accepted partner
+    const { data: partnerRows, error: pErr } = await supabase
+      .from('collab_partners')
+      .select('project_id')
+      .eq('user_id', userId)
+      .eq('invite_status', 'accepted')
+    if (pErr) throw pErr
+    const projectIds = (partnerRows ?? []).map(r => r.project_id)
+    if (projectIds.length === 0) return []
+
+    // Step 2: fetch those projects with partner info
+    const { data, error } = await supabase
+      .from('collab_projects')
+      .select('*, collab_partners(id, org_name, role, invite_status)')
+      .in('id', projectIds)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return (data ?? []) as unknown as CollabProject[]
+  },
+
   async get(id: string): Promise<CollabProject> {
     const { data, error } = await supabase
       .from('collab_projects')

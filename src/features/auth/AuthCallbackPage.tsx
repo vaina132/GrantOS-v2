@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, XCircle, Loader2, ArrowRight, Sparkles, Building2, Globe } from 'lucide-react'
 import { GrantLumeWordmark } from '@/components/common/GrantLumeLogo'
@@ -184,6 +185,11 @@ export function AuthCallbackPage() {
         await supabase.auth.updateUser({
           data: { invite_context: null },
         })
+
+        // Reload auth context so the store picks up the correct role/permissions
+        // now that collab-accept has linked user_id and set invite_status='accepted'
+        console.log('[AuthCallback] Reloading user context after invite acceptance')
+        await useAuthStore.getState().reloadContext()
       } catch (err) {
         console.error('[AuthCallback] Failed to process invite:', err)
       }
@@ -199,7 +205,9 @@ export function AuthCallbackPage() {
         // For other flows (magic link, email change, etc.) redirect immediately
         setStatus('success')
         setMessage(t('auth.verifiedRedirecting'))
-        setTimeout(() => navigate('/dashboard', { replace: true }), 1500)
+        const { accessType } = useAuthStore.getState()
+        const dest = accessType === 'collab_partner' ? '/projects/collaboration' : '/dashboard'
+        setTimeout(() => navigate(dest, { replace: true }), 1500)
       }
     }
 
