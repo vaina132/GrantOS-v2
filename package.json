@@ -44,7 +44,7 @@
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.53.0",
     "react-i18next": "^16.5.8",
-    "react-router-dom": "^6.26.2",
+    "react-router-dom": "^7.13.1",
     "recharts": "^2.12.7",
     "resend": "^6.9.3",
     "tailwind-merge": "^2.5.2",
