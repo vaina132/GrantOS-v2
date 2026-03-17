@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Download, ChevronDown, ChevronRight, Target, ListChecks, GanttChart as GanttIcon, Bell, ClipboardList, FolderOpen } from 'lucide-react'
+import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Download, ChevronDown, ChevronRight, Target, ListChecks, GanttChart as GanttIcon, Bell, ClipboardList, FolderOpen, Receipt } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService, collabTaskService, collabDeliverableService, collabMilestoneService, collabTaskEffortService, syncCollabToMyProjects } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
@@ -18,6 +18,7 @@ import { EditProjectDialog } from './EditProjectDialog'
 import { EditAllocDialog } from './EditAllocDialog'
 import { EditContactDialog } from './EditContactDialog'
 import { CollabGanttChart } from './CollabGanttChart'
+import { CollabExpenses } from './CollabExpenses'
 import { DocumentList } from '@/features/documents/DocumentList'
 import { generateCollabBudgetPDF } from '@/services/reportGenerator'
 import { formatDate } from '@/lib/utils'
@@ -39,8 +40,9 @@ const INVITE_STATUS_COLORS: Record<string, string> = {
 const TAB_KEYS = [
   { value: 'general', labelKey: 'collaboration.tabGeneral', icon: FileText },
   { value: 'budget', labelKey: 'collaboration.tabBudget', icon: DollarSign },
+  { value: 'expenses', labelKey: 'projects.expenses', icon: Receipt },
   { value: 'partners', labelKey: 'collaboration.tabPartners', icon: Users },
-  { value: 'wps', labelKey: 'collaboration.tabWps', icon: LayoutGrid },
+  { value: 'wps', labelKey: 'projects.tabWpsTasks', icon: LayoutGrid },
   { value: 'periods', labelKey: 'collaboration.tabPeriods', icon: Calendar },
   { value: 'deliverables', labelKey: 'collaboration.tabDelMs', icon: ListChecks },
   { value: 'reports', labelKey: 'collaboration.tabReports', icon: ClipboardList },
@@ -516,8 +518,8 @@ export function CollabProjectDetail() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        {/* Mobile dropdown (visible < md) */}
-        <div className="md:hidden mb-4">
+        {/* Mobile dropdown (visible < sm) */}
+        <div className="sm:hidden mb-4">
           <select
             value={activeTab}
             onChange={e => setActiveTab(e.target.value)}
@@ -528,14 +530,16 @@ export function CollabProjectDetail() {
             ))}
           </select>
         </div>
-        {/* Desktop scrollable tabs (visible >= md) */}
-        <TabsList className="hidden md:inline-flex w-full justify-start overflow-x-auto">
-          {TAB_KEYS.map(tab => (
-            <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 text-xs whitespace-nowrap">
-              <tab.icon className="h-3.5 w-3.5" /> {t(tab.labelKey)}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        {/* Scrollable tabs (visible >= sm) */}
+        <div className="hidden sm:block overflow-x-auto -mx-1 px-1 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <TabsList className="inline-flex w-max min-w-full justify-start">
+            {TAB_KEYS.map(tab => (
+              <TabsTrigger key={tab.value} value={tab.value} className="gap-1 text-xs whitespace-nowrap px-2.5 py-1.5">
+                <tab.icon className="h-3.5 w-3.5 shrink-0" /> {t(tab.labelKey)}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {/* General Tab */}
         <TabsContent value="general" className="mt-4 space-y-4">
@@ -705,6 +709,11 @@ export function CollabProjectDetail() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Expenses Tab */}
+        <TabsContent value="expenses" className="mt-4">
+          {id && <CollabExpenses projectId={id} />}
         </TabsContent>
 
         {/* Partners Tab */}

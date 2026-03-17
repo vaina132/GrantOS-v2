@@ -435,8 +435,8 @@ export function ProjectDetail() {
 
       {/* ── Tabs (icon-based, matching Collab style) ───────────── */}
       <Tabs value={detailTab} onValueChange={v => setDetailTab(v as DetailTab)}>
-        {/* Mobile dropdown */}
-        <div className="md:hidden mb-4">
+        {/* Mobile dropdown (visible < sm) */}
+        <div className="sm:hidden mb-4">
           <select
             value={detailTab}
             onChange={e => setDetailTab(e.target.value as DetailTab)}
@@ -447,14 +447,16 @@ export function ProjectDetail() {
             ))}
           </select>
         </div>
-        {/* Desktop scrollable tabs */}
-        <TabsList className="hidden md:inline-flex w-full justify-start overflow-x-auto">
-          {visibleTabs.map(tab => (
-            <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 text-xs whitespace-nowrap">
-              <tab.icon className="h-3.5 w-3.5" /> {t(tab.labelKey)}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        {/* Scrollable tabs (visible >= sm) */}
+        <div className="hidden sm:block overflow-x-auto -mx-1 px-1 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <TabsList className="inline-flex w-max min-w-full justify-start">
+            {visibleTabs.map(tab => (
+              <TabsTrigger key={tab.value} value={tab.value} className="gap-1 text-xs whitespace-nowrap px-2.5 py-1.5">
+                <tab.icon className="h-3.5 w-3.5 shrink-0" /> {t(tab.labelKey)}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {/* ── General Tab ──────────────────────────────────────── */}
         <TabsContent value="general" className="mt-4 space-y-4">
