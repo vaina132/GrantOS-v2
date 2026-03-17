@@ -4,18 +4,18 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useProject, useWorkPackages } from '@/hooks/useProjects'
 import { projectsService } from '@/services/projectsService'
 import { allocationsService } from '@/services/allocationsService'
+import { deliverablesService } from '@/services/deliverablesService'
 import { useAuthStore } from '@/stores/authStore'
-import { PageHeader } from '@/components/layout/PageHeader'
-import { StatusBadge } from '@/components/common/StatusBadge'
 import { ConfirmModal } from '@/components/common/ConfirmModal'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/use-toast'
-import { ArrowLeft, Pencil, Plus, Trash2, Save } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus, Trash2, Save, FileText, DollarSign, LayoutGrid, ListChecks, Calendar, FolderOpen } from 'lucide-react'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { DocumentList } from '@/features/documents/DocumentList'
 import { DeliverablesTab } from './DeliverablesTab'
@@ -24,7 +24,24 @@ import { BudgetConsumptionChart } from './BudgetConsumptionChart'
 import { ProjectExpenses } from './ProjectExpenses'
 import type { WorkPackage, PmBudget, Assignment } from '@/types'
 
-type DetailTab = 'overview' | 'budget' | 'expenses' | 'workpackages' | 'deliverables' | 'reporting' | 'documents'
+type DetailTab = 'general' | 'budget' | 'expenses' | 'workpackages' | 'deliverables' | 'reporting' | 'documents'
+
+const STATUS_COLORS: Record<string, string> = {
+  Active: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+  Completed: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  Suspended: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+  Terminated: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+}
+
+const TAB_KEYS: { value: DetailTab; labelKey: string; icon: typeof FileText; permKey?: string }[] = [
+  { value: 'general', labelKey: 'collaboration.tabGeneral', icon: FileText },
+  { value: 'budget', labelKey: 'collaboration.tabBudget', icon: DollarSign, permKey: 'canSeeFinancialDetails' },
+  { value: 'expenses', labelKey: 'projects.expenses', icon: DollarSign, permKey: 'canSeeFinancialDetails' },
+  { value: 'workpackages', labelKey: 'projects.tabWpsTasks', icon: LayoutGrid },
+  { value: 'deliverables', labelKey: 'collaboration.tabDelMs', icon: ListChecks },
+  { value: 'reporting', labelKey: 'collaboration.tabReports', icon: Calendar },
+  { value: 'documents', labelKey: 'projects.documents', icon: FolderOpen },
+]
 
 export function ProjectDetail() {
   const { t } = useTranslation()
@@ -33,7 +50,7 @@ export function ProjectDetail() {
   const { project, isLoading } = useProject(id)
   const { workPackages, isLoading: loadingWPs, refetch: refetchWPs } = useWorkPackages(id)
   const { orgId, can } = useAuthStore()
-  const [detailTab, setDetailTab] = useState<DetailTab>('overview')
+  const [detailTab, setDetailTab] = useState<DetailTab>('general')
 
   const [wpNumber, setWpNumber] = useState<number>(1)
   const [wpName, setWpName] = useState('')
@@ -107,6 +124,11 @@ export function ProjectDetail() {
   // Allocations for this project (to show allocated vs budget)
   const [projectAllocations, setProjectAllocations] = useState<Assignment[]>([])
 
+  // KPI counts for General tab summary
+  const [deliverablesCount, setDeliverablesCount] = useState(0)
+  const [milestonesCount, setMilestonesCount] = useState(0)
+  const [periodsCount, setPeriodsCount] = useState(0)
+
   const loadPmBudgets = useCallback(async () => {
     if (!id) return
     try {
@@ -131,6 +153,14 @@ export function ProjectDetail() {
   useEffect(() => {
     loadPmBudgets()
   }, [loadPmBudgets])
+
+  // Load KPI counts for summary
+  useEffect(() => {
+    if (!id) return
+    deliverablesService.listDeliverables(id).then(d => setDeliverablesCount(d.length)).catch(() => {})
+    deliverablesService.listMilestones(id).then(m => setMilestonesCount(m.length)).catch(() => {})
+    deliverablesService.listReportingPeriods(id).then(p => setPeriodsCount(p.length)).catch(() => {})
+  }, [id])
 
   const handleSavePmBudgets = async () => {
     if (!id || !orgId) return
@@ -297,589 +327,636 @@ export function ProjectDetail() {
     }
   }
 
+  const durationMonths = useMemo(() => {
+    if (!project) return null
+    const s = new Date(project.start_date)
+    const e = new Date(project.end_date)
+    return (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1
+  }, [project])
+
+  const visibleTabs = useMemo(() =>
+    TAB_KEYS.filter(tab => !tab.permKey || can(tab.permKey as any)),
+  [can])
+
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Skeleton className="h-64" />
-          <Skeleton className="h-64" />
-        </div>
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-5 w-96" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     )
   }
 
   if (!project) {
     return (
-      <div className="space-y-6">
-        <PageHeader title={t('projects.notFound')} />
-        <Button variant="outline" onClick={() => navigate('/projects')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> {t('projects.backToProjects')}
-        </Button>
+      <div className="text-center py-20 text-muted-foreground">
+        <p>{t('projects.notFound')}</p>
+        <Button variant="link" onClick={() => navigate('/projects')}>{t('projects.backToProjects')}</Button>
       </div>
     )
   }
 
-  const detailTabs: { key: DetailTab; label: string; show: boolean }[] = [
-    { key: 'overview', label: t('projects.overview'), show: true },
-    { key: 'budget', label: t('projects.budget'), show: can('canSeeFinancialDetails') },
-    { key: 'expenses', label: t('projects.expenses'), show: can('canSeeFinancialDetails') },
-    { key: 'workpackages', label: t('projects.workPackages'), show: true },
-    { key: 'deliverables', label: t('projects.deliverables'), show: true },
-    { key: 'reporting', label: t('projects.reporting'), show: true },
-    { key: 'documents', label: t('projects.documents'), show: true },
-  ]
-
   return (
-    <div className="space-y-0">
-      <PageHeader
-        title={project.acronym}
-        description={project.title}
-        actions={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate('/projects')}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> {t('common.back')}
-            </Button>
-            {can('canManageProjects') && (
-              <Button onClick={() => navigate(`/projects/${project.id}/edit`)}>
-                <Pencil className="mr-2 h-4 w-4" /> {t('common.edit')}
-              </Button>
-            )}
+    <div className="space-y-6">
+      {/* ── Header (Collab-style) ──────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/projects')}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold">{project.acronym}</h1>
+              <Badge className={STATUS_COLORS[project.status] ?? ''} variant="secondary">
+                {project.status}
+              </Badge>
+            </div>
+            <p className="text-muted-foreground mt-1">{project.title}</p>
+            <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground mt-2">
+              {project.grant_number && <span>GA {project.grant_number}</span>}
+              {project.funding_schemes?.name && <span>{project.funding_schemes.name}</span>}
+              {project.start_date && project.end_date && (
+                <span>{formatDate(project.start_date)} → {formatDate(project.end_date)}</span>
+              )}
+              {durationMonths && <span>{durationMonths} {t('collaboration.months')}</span>}
+            </div>
           </div>
-        }
-      />
-
-      <div className="border-b mt-4">
-        <nav className="-mb-px flex gap-6 overflow-x-auto" aria-label="Tabs">
-          {detailTabs.filter((t) => t.show).map((t) => {
-            const active = detailTab === t.key
-            return (
-              <button
-                key={t.key}
-                onClick={() => setDetailTab(t.key)}
-                className={cn(
-                  'whitespace-nowrap pb-3 pt-1 text-sm font-medium border-b-2 transition-colors',
-                  active
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30',
-                )}
-              >
-                {t.label}
-              </button>
-            )
-          })}
-        </nav>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {can('canManageProjects') && (
+            <Button variant="outline" size="sm" onClick={() => navigate(`/projects/${project.id}/edit`)} className="gap-2">
+              <Pencil className="h-4 w-4" /> {t('common.edit')}
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="pt-5 animate-fade-in" key={detailTab}>
-        {/* Overview Tab */}
-        {detailTab === 'overview' && (
+      {/* ── Tabs (icon-based, matching Collab style) ───────────── */}
+      <Tabs value={detailTab} onValueChange={v => setDetailTab(v as DetailTab)}>
+        {/* Mobile dropdown */}
+        <div className="md:hidden mb-4">
+          <select
+            value={detailTab}
+            onChange={e => setDetailTab(e.target.value as DetailTab)}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            {visibleTabs.map(tab => (
+              <option key={tab.value} value={tab.value}>{t(tab.labelKey)}</option>
+            ))}
+          </select>
+        </div>
+        {/* Desktop scrollable tabs */}
+        <TabsList className="hidden md:inline-flex w-full justify-start overflow-x-auto">
+          {visibleTabs.map(tab => (
+            <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 text-xs whitespace-nowrap">
+              <tab.icon className="h-3.5 w-3.5" /> {t(tab.labelKey)}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {/* ── General Tab ──────────────────────────────────────── */}
+        <TabsContent value="general" className="mt-4 space-y-4">
           <Card>
-            <CardHeader><CardTitle>{t('projects.projectDetails')}</CardTitle></CardHeader>
-            <CardContent>
-              <dl className="space-y-3">
-                <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">{t('projects.grantNumber')}</dt>
-                  <dd className="text-sm font-medium">{project.grant_number ?? '—'}</dd>
+            <CardContent className="p-5 space-y-5">
+              {/* Project identity — 4-column grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('projects.acronym')}</p>
+                  <p className="font-semibold">{project.acronym}</p>
                 </div>
-                <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">{t('projects.fundingScheme')}</dt>
-                  <dd className="text-sm font-medium">{project.funding_schemes?.name ?? '—'}</dd>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('common.status')}</p>
+                  <Badge className={STATUS_COLORS[project.status] ?? ''} variant="secondary">
+                    {project.status}
+                  </Badge>
                 </div>
-                <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">{t('common.status')}</dt>
-                  <dd><StatusBadge status={project.status} /></dd>
+                {project.grant_number && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">{t('projects.grantNumber')}</p>
+                    <p className="font-medium">{project.grant_number}</p>
+                  </div>
+                )}
+                {project.funding_schemes?.name && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">{t('projects.fundingScheme')}</p>
+                    <p className="font-medium">{project.funding_schemes.name}</p>
+                  </div>
+                )}
+                {project.start_date && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">{t('common.startDate')}</p>
+                    <p className="font-medium">{formatDate(project.start_date)}</p>
+                  </div>
+                )}
+                {project.end_date && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">{t('common.endDate')}</p>
+                    <p className="font-medium">{formatDate(project.end_date)}</p>
+                  </div>
+                )}
+                {durationMonths && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">{t('collaboration.duration')}</p>
+                    <p className="font-medium">{durationMonths} {t('collaboration.months')}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('projects.ledByOurOrg')}</p>
+                  <Badge variant={project.is_lead_organisation ? 'default' : 'secondary'}>
+                    {project.is_lead_organisation ? t('common.yes') : t('common.no')}
+                  </Badge>
                 </div>
-                <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">{t('common.period')}</dt>
-                  <dd className="text-sm font-medium">
-                    {formatDate(project.start_date)} – {formatDate(project.end_date)}
-                  </dd>
+              </div>
+
+              {/* Divider */}
+              <div className="border-t" />
+
+              {/* KPI summary numbers */}
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+                <div className="text-center">
+                  <p className="text-xl font-bold">{workPackages.length}</p>
+                  <p className="text-[11px] text-muted-foreground">{t('projects.workPackages')}</p>
                 </div>
-                <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">{t('projects.workPackages')}</dt>
-                  <dd>
-                    <Badge variant={project.has_wps ? 'default' : 'secondary'}>
-                      {project.has_wps ? t('common.yes') : t('common.no')}
-                    </Badge>
-                  </dd>
+                <div className="text-center">
+                  <p className="text-xl font-bold">{deliverablesCount}</p>
+                  <p className="text-[11px] text-muted-foreground">{t('projects.deliverables')}</p>
                 </div>
-                <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">{t('projects.ledByOurOrg')}</dt>
-                  <dd>
-                    <Badge variant={project.is_lead_organisation ? 'default' : 'secondary'}>
-                      {project.is_lead_organisation ? t('common.yes') : t('common.no')}
-                    </Badge>
-                  </dd>
+                <div className="text-center">
+                  <p className="text-xl font-bold">{milestonesCount}</p>
+                  <p className="text-[11px] text-muted-foreground">{t('projects.milestones')}</p>
                 </div>
-                <div className="flex justify-between">
-                  <dt className="text-sm text-muted-foreground">{t('projects.responsiblePerson')}</dt>
-                  <dd className="text-sm font-medium">{project.responsible_person?.full_name ?? '—'}</dd>
+                <div className="text-center">
+                  <p className="text-xl font-bold">{totalProjectBudgetPm.toFixed(1)}</p>
+                  <p className="text-[11px] text-muted-foreground">{t('collaboration.personMonths')}</p>
                 </div>
-              </dl>
+                <div className="text-center">
+                  <p className="text-xl font-bold">{project.total_budget != null ? formatCurrency(project.total_budget) : '—'}</p>
+                  <p className="text-[11px] text-muted-foreground">{t('projects.totalBudget')}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold">{periodsCount}</p>
+                  <p className="text-[11px] text-muted-foreground">{t('projects.reporting')}</p>
+                </div>
+              </div>
+
+              {/* Responsible person */}
+              {project.responsible_person?.full_name && (
+                <>
+                  <div className="border-t" />
+                  <div className="text-sm">
+                    <p className="text-xs text-muted-foreground mb-1">{t('projects.responsiblePerson')}</p>
+                    <p className="font-medium">{project.responsible_person.full_name}</p>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
-        )}
+        </TabsContent>
 
-        {/* Budget Tab */}
-        {detailTab === 'budget' && (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader><CardTitle>{t('projects.budgetBreakdown')}</CardTitle></CardHeader>
-              <CardContent>
-                <dl className="space-y-3">
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-muted-foreground">{t('projects.totalBudget')}</dt>
-                    <dd className="text-sm font-medium tabular-nums">
-                      {project.total_budget != null ? formatCurrency(project.total_budget) : '—'}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-muted-foreground">{t('financials.personnelBudget')}</dt>
-                    <dd className="text-sm font-medium tabular-nums">
-                      {project.budget_personnel != null ? formatCurrency(project.budget_personnel) : '—'}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-muted-foreground">{t('projects.travel')}</dt>
-                    <dd className="text-sm font-medium tabular-nums">
-                      {project.budget_travel != null ? formatCurrency(project.budget_travel) : '—'}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-muted-foreground">{t('projects.subcontracting')}</dt>
-                    <dd className="text-sm font-medium tabular-nums">
-                      {project.budget_subcontracting != null ? formatCurrency(project.budget_subcontracting) : '—'}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-muted-foreground">{t('projects.other')}</dt>
-                    <dd className="text-sm font-medium tabular-nums">
-                      {project.budget_other != null ? formatCurrency(project.budget_other) : '—'}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-sm text-muted-foreground">{t('projects.overheadRate')}</dt>
-                    <dd className="text-sm font-medium tabular-nums">
-                      {project.overhead_rate != null ? `${project.overhead_rate}%` : '—'}
-                    </dd>
-                  </div>
-                  {can('canSeePersonnelRates') && (
-                    <div className="flex justify-between">
-                      <dt className="text-sm text-muted-foreground">{t('projects.ourPmRate')}</dt>
-                      <dd className="text-sm font-medium tabular-nums">
-                        {project.our_pm_rate != null ? formatCurrency(project.our_pm_rate) : '—'}
-                      </dd>
-                    </div>
-                  )}
-                </dl>
-              </CardContent>
-            </Card>
-
-            {projectYears.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>{t('projects.personMonthsPerYear')}</CardTitle>
-                    {can('canManageProjects') && pmBudgetDirty && (
-                      <Button size="sm" onClick={handleSavePmBudgets} disabled={pmBudgetSaving}>
-                        <Save className="mr-1 h-4 w-4" />
-                        {pmBudgetSaving ? t('common.saving') : t('common.save')}
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(projectYears.length, 6)}, 1fr)` }}>
-                    {projectYears.map((year) => (
-                      <div key={year} className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">{year}</Label>
-                        <Input
-                          type="number"
-                          step="0.5"
-                          min="0"
-                          value={pmBudgetValues[year] ?? ''}
-                          placeholder="0"
-                          onChange={(e) => {
-                            setPmBudgetValues((prev) => ({ ...prev, [year]: Number(e.target.value) || 0 }))
-                            setPmBudgetDirty(true)
-                          }}
-                          disabled={!can('canManageProjects')}
-                          className="tabular-nums"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  {projectYears.length > 0 && (
-                    <div className="mt-3 text-sm text-muted-foreground">
-                      {t('common.total')}: <span className="font-semibold text-foreground">{Object.values(pmBudgetValues).reduce((a, b) => a + b, 0).toFixed(1)} PM</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Budget Consumption Chart */}
-            <BudgetConsumptionChart project={project} projectYears={projectYears} />
-          </div>
-        )}
-
-        {/* Expenses Tab */}
-        {detailTab === 'expenses' && (
-          <ProjectExpenses project={project} />
-        )}
-
-        {/* Work Packages Tab */}
-        {detailTab === 'workpackages' && (
-          <div className="space-y-6">
-            {/* Summary card: project PM budget vs WP allocation vs allocated */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="rounded-lg border bg-card p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.projectBudget')}</div>
-                <div className="text-xl font-bold tabular-nums mt-0.5">{totalProjectBudgetPm.toFixed(1)} PM</div>
-                <div className="text-[11px] text-muted-foreground">{t('projects.totalAcrossYears')}</div>
-              </div>
-              <div className="rounded-lg border bg-card p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.assignedToWPs')}</div>
-                <div className={cn('text-xl font-bold tabular-nums mt-0.5', totalWpBudgetPm > totalProjectBudgetPm + 0.01 ? 'text-red-500' : 'text-foreground')}>
-                  {totalWpBudgetPm.toFixed(1)} PM
+        {/* ── Budget Tab ─────────────────────────────────────── */}
+        <TabsContent value="budget" className="mt-4 space-y-6">
+          <Card>
+            <CardHeader><CardTitle>{t('projects.budgetBreakdown')}</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('projects.totalBudget')}</p>
+                  <p className="font-semibold tabular-nums">{project.total_budget != null ? formatCurrency(project.total_budget) : '—'}</p>
                 </div>
-                <div className="text-[11px] text-muted-foreground">
-                  {totalProjectBudgetPm > 0 ? `${Math.round((totalWpBudgetPm / totalProjectBudgetPm) * 100)}%` : '—'} {t('projects.ofBudget')}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('financials.personnelBudget')}</p>
+                  <p className="font-medium tabular-nums">{project.budget_personnel != null ? formatCurrency(project.budget_personnel) : '—'}</p>
                 </div>
-              </div>
-              <div className="rounded-lg border bg-card p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.allocated')}</div>
-                <div className={cn('text-xl font-bold tabular-nums mt-0.5', totalAllocatedPm > totalProjectBudgetPm + 0.01 ? 'text-amber-500' : 'text-primary')}>
-                  {totalAllocatedPm.toFixed(1)} PM
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('projects.travel')}</p>
+                  <p className="font-medium tabular-nums">{project.budget_travel != null ? formatCurrency(project.budget_travel) : '—'}</p>
                 </div>
-                <div className="text-[11px] text-muted-foreground">{t('projects.peopleAllocated')}</div>
-              </div>
-              <div className="rounded-lg border bg-card p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.remaining')}</div>
-                <div className={cn('text-xl font-bold tabular-nums mt-0.5', (totalProjectBudgetPm - totalAllocatedPm) < 0 ? 'text-red-500' : 'text-emerald-500')}>
-                  {(totalProjectBudgetPm - totalAllocatedPm).toFixed(1)} PM
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('projects.subcontracting')}</p>
+                  <p className="font-medium tabular-nums">{project.budget_subcontracting != null ? formatCurrency(project.budget_subcontracting) : '—'}</p>
                 </div>
-                <div className="text-[11px] text-muted-foreground">{t('projects.budgetMinusAllocated')}</div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('projects.other')}</p>
+                  <p className="font-medium tabular-nums">{project.budget_other != null ? formatCurrency(project.budget_other) : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">{t('projects.overheadRate')}</p>
+                  <p className="font-medium tabular-nums">{project.overhead_rate != null ? `${project.overhead_rate}%` : '—'}</p>
+                </div>
+                {can('canSeePersonnelRates') && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-0.5">{t('projects.ourPmRate')}</p>
+                    <p className="font-medium tabular-nums">{project.our_pm_rate != null ? formatCurrency(project.our_pm_rate) : '—'}</p>
+                  </div>
+                )}
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            {/* WP list with PM budgets */}
+          {projectYears.length > 0 && (
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>{t('projects.workPackages')}</CardTitle>
-                  {can('canManageProjects') && wpPmBudgetDirty && (
-                    <Button size="sm" onClick={handleSaveWpPmBudgets} disabled={wpPmBudgetSaving}>
+                  <CardTitle>{t('projects.personMonthsPerYear')}</CardTitle>
+                  {can('canManageProjects') && pmBudgetDirty && (
+                    <Button size="sm" onClick={handleSavePmBudgets} disabled={pmBudgetSaving}>
                       <Save className="mr-1 h-4 w-4" />
-                      {wpPmBudgetSaving ? t('common.saving') : t('projects.savePmBudgets')}
+                      {pmBudgetSaving ? t('common.saving') : t('common.save')}
                     </Button>
                   )}
                 </div>
               </CardHeader>
               <CardContent>
-                {loadingWPs ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
+                <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(projectYears.length, 6)}, 1fr)` }}>
+                  {projectYears.map((year) => (
+                    <div key={year} className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">{year}</Label>
+                      <Input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={pmBudgetValues[year] ?? ''}
+                        placeholder="0"
+                        onChange={(e) => {
+                          setPmBudgetValues((prev) => ({ ...prev, [year]: Number(e.target.value) || 0 }))
+                          setPmBudgetDirty(true)
+                        }}
+                        disabled={!can('canManageProjects')}
+                        className="tabular-nums"
+                      />
+                    </div>
+                  ))}
+                </div>
+                {projectYears.length > 0 && (
+                  <div className="mt-3 text-sm text-muted-foreground">
+                    {t('common.total')}: <span className="font-semibold text-foreground">{Object.values(pmBudgetValues).reduce((a, b) => a + b, 0).toFixed(1)} PM</span>
                   </div>
-                ) : (
-                  <>
-                    {workPackages.length > 0 && (
-                      <div className="rounded-lg border mb-4 overflow-x-auto">
-                        <table className="w-full text-sm min-w-[700px]">
-                          <thead>
-                            <tr className="border-b bg-muted/50">
-                              <th className="px-4 py-2 text-left font-medium w-12">#</th>
-                              <th className="px-4 py-2 text-left font-medium">{t('common.name')}</th>
-                              <th className="px-4 py-2 text-left font-medium">{t('common.period')}</th>
-                              <th className="px-4 py-2 text-right font-medium">{t('projects.budgetPM')}</th>
-                              <th className="px-4 py-2 text-right font-medium">{t('projects.allocated')}</th>
-                              <th className="px-4 py-2 text-right font-medium">{t('projects.remaining')}</th>
-                              {can('canManageProjects') && (
-                                <th className="px-4 py-2 text-right font-medium">{t('common.actions')}</th>
-                              )}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {workPackages.map((wp) => {
-                              const wpBudget = wpPmBudgets[wp.id] ?? 0
-                              const wpAlloc = wpAllocatedPms[wp.id] ?? 0
-                              const wpRemaining = wpBudget - wpAlloc
-                              const isEditing = editingWpId === wp.id
-
-                              return (
-                                <tr key={wp.id} className="border-b last:border-0 hover:bg-muted/20">
-                                  <td className="px-4 py-2 text-xs tabular-nums text-muted-foreground">
-                                    {isEditing ? (
-                                      <select
-                                        value={editWpNumber}
-                                        onChange={e => setEditWpNumber(Number(e.target.value))}
-                                        className="h-7 w-14 rounded border border-input bg-background px-1 text-xs"
-                                      >
-                                        {Array.from({ length: 40 }, (_, i) => i + 1).map(n => (
-                                          <option key={n} value={n}>{n}</option>
-                                        ))}
-                                      </select>
-                                    ) : (
-                                      <span className="font-semibold">{wp.number ?? '—'}</span>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-2">
-                                    {isEditing ? (
-                                      <div className="space-y-1">
-                                        <Input value={editWpName} onChange={e => setEditWpName(e.target.value)} className="h-7 text-xs" placeholder="WP name" />
-                                        <Input value={editWpDesc} onChange={e => setEditWpDesc(e.target.value)} className="h-7 text-xs" placeholder="Description" />
-                                      </div>
-                                    ) : (
-                                      <>
-                                        <div className="font-medium">{wp.name}</div>
-                                        {wp.description && <div className="text-muted-foreground text-xs truncate max-w-[200px]">{wp.description}</div>}
-                                      </>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-2 text-xs text-muted-foreground">
-                                    {isEditing ? (
-                                      <div className="flex gap-1 items-center">
-                                        <select
-                                          value={editWpStartMonth}
-                                          onChange={e => setEditWpStartMonth(Number(e.target.value))}
-                                          className="h-7 rounded border border-input bg-background px-1 text-xs"
-                                        >
-                                          {Array.from({ length: projectMonthCount }, (_, i) => i + 1).map(m => (
-                                            <option key={m} value={m}>{projectMonthLabel(m)}</option>
-                                          ))}
-                                        </select>
-                                        <span className="text-muted-foreground">–</span>
-                                        <select
-                                          value={editWpEndMonth}
-                                          onChange={e => setEditWpEndMonth(Number(e.target.value))}
-                                          className="h-7 rounded border border-input bg-background px-1 text-xs"
-                                        >
-                                          {Array.from({ length: projectMonthCount }, (_, i) => i + 1).map(m => (
-                                            <option key={m} value={m}>{projectMonthLabel(m)}</option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    ) : (
-                                      <>
-                                        {wp.start_month ? projectMonthLabel(wp.start_month) : '—'}
-                                        {' – '}
-                                        {wp.end_month ? projectMonthLabel(wp.end_month) : '—'}
-                                      </>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-2 text-right">
-                                    {can('canManageProjects') ? (
-                                      <Input
-                                        type="number"
-                                        step="0.1"
-                                        min="0"
-                                        value={wpBudget || ''}
-                                        placeholder="0"
-                                        onChange={(e) => {
-                                          setWpPmBudgets(prev => ({ ...prev, [wp.id]: Number(e.target.value) || 0 }))
-                                          setWpPmBudgetDirty(true)
-                                        }}
-                                        className="w-20 ml-auto text-right tabular-nums h-7 text-xs"
-                                      />
-                                    ) : (
-                                      <span className="tabular-nums font-medium">{wpBudget.toFixed(1)}</span>
-                                    )}
-                                  </td>
-                                  <td className="px-4 py-2 text-right tabular-nums text-xs">
-                                    <span className={cn(wpAlloc > wpBudget + 0.01 && wpBudget > 0 ? 'text-amber-600 font-semibold' : 'text-muted-foreground')}>
-                                      {wpAlloc.toFixed(2)}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-2 text-right tabular-nums text-xs">
-                                    <span className={cn(wpRemaining < 0 ? 'text-red-500 font-semibold' : 'text-emerald-600')}>
-                                      {wpBudget > 0 ? wpRemaining.toFixed(2) : '—'}
-                                    </span>
-                                  </td>
-                                  {can('canManageProjects') && (
-                                    <td className="px-4 py-2 text-right">
-                                      <div className="flex items-center justify-end gap-1">
-                                        {isEditing ? (
-                                          <>
-                                            <Button variant="ghost" size="sm" onClick={handleSaveEditWp} disabled={editWpSaving} className="h-7 text-xs">
-                                              <Save className="h-3 w-3 mr-1" />
-                                              {editWpSaving ? '...' : t('common.save')}
-                                            </Button>
-                                            <Button variant="ghost" size="sm" onClick={() => setEditingWpId(null)} className="h-7 text-xs">{t('common.cancel')}</Button>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditWp(wp)}>
-                                              <Pencil className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setWpDeleteTarget(wp)}>
-                                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                                            </Button>
-                                          </>
-                                        )}
-                                      </div>
-                                    </td>
-                                  )}
-                                </tr>
-                              )
-                            })}
-                            {/* Totals row */}
-                            <tr className="bg-muted/30 font-semibold text-xs">
-                              <td className="px-4 py-2" colSpan={3}>{t('common.total')}</td>
-                              <td className="px-4 py-2 text-right tabular-nums">{totalWpBudgetPm.toFixed(1)} PM</td>
-                              <td className="px-4 py-2 text-right tabular-nums">{totalAllocatedPm.toFixed(2)}</td>
-                              <td className="px-4 py-2 text-right tabular-nums">
-                                <span className={cn((totalWpBudgetPm - totalAllocatedPm) < 0 ? 'text-red-500' : 'text-emerald-600')}>
-                                  {totalWpBudgetPm > 0 ? (totalWpBudgetPm - totalAllocatedPm).toFixed(2) : '—'}
-                                </span>
-                              </td>
-                              {can('canManageProjects') && <td />}
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-
-                    {/* Budget distribution bar */}
-                    {workPackages.length > 0 && totalProjectBudgetPm > 0 && (
-                      <div className="mb-4 space-y-1.5">
-                        <div className="text-xs text-muted-foreground">{t('projects.pmBudgetDistribution')}</div>
-                        <div className="h-3 rounded-full bg-muted overflow-hidden flex">
-                          {workPackages.map((wp, i) => {
-                            const wpBudget = wpPmBudgets[wp.id] ?? 0
-                            const pct = totalProjectBudgetPm > 0 ? (wpBudget / totalProjectBudgetPm) * 100 : 0
-                            const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500', 'bg-red-400', 'bg-pink-500', 'bg-cyan-500', 'bg-lime-500']
-                            return pct > 0 ? (
-                              <div
-                                key={wp.id}
-                                className={cn('h-full', colors[i % colors.length])}
-                                style={{ width: `${pct}%` }}
-                                title={`${wp.name}: ${wpBudget.toFixed(1)} PM (${pct.toFixed(0)}%)`}
-                              />
-                            ) : null
-                          })}
-                        </div>
-                        <div className="flex gap-3 flex-wrap text-[10px] text-muted-foreground">
-                          {workPackages.map((wp, i) => {
-                            const wpBudget = wpPmBudgets[wp.id] ?? 0
-                            const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500', 'bg-red-400', 'bg-pink-500', 'bg-cyan-500', 'bg-lime-500']
-                            return (
-                              <span key={wp.id} className="flex items-center gap-1">
-                                <span className={cn('w-2 h-2 rounded-sm', colors[i % colors.length])} />
-                                {wp.name}: {wpBudget.toFixed(1)} PM
-                              </span>
-                            )
-                          })}
-                          {totalProjectBudgetPm - totalWpBudgetPm > 0.01 && (
-                            <span className="flex items-center gap-1 text-amber-600">
-                              {t('projects.unassigned')}: {(totalProjectBudgetPm - totalWpBudgetPm).toFixed(1)} PM
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Add new WP form */}
-                    {can('canManageProjects') && (
-                      <div className="space-y-3 rounded-lg border p-4 bg-muted/10">
-                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('projects.addWorkPackage')}</div>
-                        <div className="flex gap-2 items-end flex-wrap">
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">{t('projects.wpNumber')}</Label>
-                            <select
-                              value={wpNumber}
-                              onChange={(e) => setWpNumber(Number(e.target.value))}
-                              className="flex h-9 w-16 rounded-md border border-input bg-background px-2 py-1 text-sm"
-                            >
-                              {Array.from({ length: 40 }, (_, i) => i + 1).map(n => (
-                                <option key={n} value={n}>{n}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="space-y-1 flex-1 min-w-[120px]">
-                            <Label className="text-xs text-muted-foreground">{t('projects.wpName')} *</Label>
-                            <Input
-                              placeholder="WP name"
-                              value={wpName}
-                              onChange={(e) => setWpName(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-1 flex-1 min-w-[120px]">
-                            <Label className="text-xs text-muted-foreground">{t('projects.wpDescription')}</Label>
-                            <Input
-                              placeholder="Optional"
-                              value={wpDesc}
-                              onChange={(e) => setWpDesc(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex gap-2 items-end flex-wrap">
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">{t('projects.startMonth')}</Label>
-                            <select
-                              value={wpStartMonth}
-                              onChange={(e) => setWpStartMonth(Number(e.target.value))}
-                              className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
-                            >
-                              {Array.from({ length: projectMonthCount || 1 }, (_, i) => i + 1).map(m => (
-                                <option key={m} value={m}>{projectMonthLabel(m)}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">{t('projects.endMonth')}</Label>
-                            <select
-                              value={wpEndMonth}
-                              onChange={(e) => setWpEndMonth(Number(e.target.value))}
-                              className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
-                            >
-                              {Array.from({ length: projectMonthCount || 1 }, (_, i) => i + 1).map(m => (
-                                <option key={m} value={m}>{projectMonthLabel(m)}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <Button onClick={handleAddWP} disabled={wpSaving || !wpName.trim()}>
-                            <Plus className="mr-1 h-4 w-4" />
-                            {wpSaving ? t('common.adding') : t('projects.addWP')}
-                          </Button>
-                        </div>
-                        {projectMonthCount > 0 && (
-                          <div className="text-[11px] text-muted-foreground">
-                            {t('projects.projectDuration', { months: projectMonthCount, start: formatDate(project!.start_date), end: formatDate(project!.end_date) })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
                 )}
               </CardContent>
             </Card>
-          </div>
-        )}
+          )}
 
-        {/* Deliverables & Milestones Tab */}
-        {detailTab === 'deliverables' && project && (
+          <BudgetConsumptionChart project={project} projectYears={projectYears} />
+        </TabsContent>
+
+        {/* ── Expenses Tab ─────────────────────────────────────── */}
+        <TabsContent value="expenses" className="mt-4">
+          <ProjectExpenses project={project} />
+        </TabsContent>
+
+        {/* ── WPs & Tasks Tab ──────────────────────────────────── */}
+        <TabsContent value="workpackages" className="mt-4 space-y-6">
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-lg border bg-card p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.projectBudget')}</div>
+              <div className="text-xl font-bold tabular-nums mt-0.5">{totalProjectBudgetPm.toFixed(1)} PM</div>
+              <div className="text-[11px] text-muted-foreground">{t('projects.totalAcrossYears')}</div>
+            </div>
+            <div className="rounded-lg border bg-card p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.assignedToWPs')}</div>
+              <div className={cn('text-xl font-bold tabular-nums mt-0.5', totalWpBudgetPm > totalProjectBudgetPm + 0.01 ? 'text-red-500' : 'text-foreground')}>
+                {totalWpBudgetPm.toFixed(1)} PM
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                {totalProjectBudgetPm > 0 ? `${Math.round((totalWpBudgetPm / totalProjectBudgetPm) * 100)}%` : '—'} {t('projects.ofBudget')}
+              </div>
+            </div>
+            <div className="rounded-lg border bg-card p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.allocated')}</div>
+              <div className={cn('text-xl font-bold tabular-nums mt-0.5', totalAllocatedPm > totalProjectBudgetPm + 0.01 ? 'text-amber-500' : 'text-primary')}>
+                {totalAllocatedPm.toFixed(1)} PM
+              </div>
+              <div className="text-[11px] text-muted-foreground">{t('projects.peopleAllocated')}</div>
+            </div>
+            <div className="rounded-lg border bg-card p-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t('projects.remaining')}</div>
+              <div className={cn('text-xl font-bold tabular-nums mt-0.5', (totalProjectBudgetPm - totalAllocatedPm) < 0 ? 'text-red-500' : 'text-emerald-500')}>
+                {(totalProjectBudgetPm - totalAllocatedPm).toFixed(1)} PM
+              </div>
+              <div className="text-[11px] text-muted-foreground">{t('projects.budgetMinusAllocated')}</div>
+            </div>
+          </div>
+
+          {/* WP list with PM budgets */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>{t('projects.workPackages')}</CardTitle>
+                {can('canManageProjects') && wpPmBudgetDirty && (
+                  <Button size="sm" onClick={handleSaveWpPmBudgets} disabled={wpPmBudgetSaving}>
+                    <Save className="mr-1 h-4 w-4" />
+                    {wpPmBudgetSaving ? t('common.saving') : t('projects.savePmBudgets')}
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingWPs ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              ) : (
+                <>
+                  {workPackages.length > 0 && (
+                    <div className="rounded-lg border mb-4 overflow-x-auto">
+                      <table className="w-full text-sm min-w-[700px]">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="px-4 py-2 text-left font-medium w-12">#</th>
+                            <th className="px-4 py-2 text-left font-medium">{t('common.name')}</th>
+                            <th className="px-4 py-2 text-left font-medium">{t('common.period')}</th>
+                            <th className="px-4 py-2 text-right font-medium">{t('projects.budgetPM')}</th>
+                            <th className="px-4 py-2 text-right font-medium">{t('projects.allocated')}</th>
+                            <th className="px-4 py-2 text-right font-medium">{t('projects.remaining')}</th>
+                            {can('canManageProjects') && (
+                              <th className="px-4 py-2 text-right font-medium">{t('common.actions')}</th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {workPackages.map((wp) => {
+                            const wpBudget = wpPmBudgets[wp.id] ?? 0
+                            const wpAlloc = wpAllocatedPms[wp.id] ?? 0
+                            const wpRemaining = wpBudget - wpAlloc
+                            const isEditing = editingWpId === wp.id
+
+                            return (
+                              <tr key={wp.id} className="border-b last:border-0 hover:bg-muted/20">
+                                <td className="px-4 py-2 text-xs tabular-nums text-muted-foreground">
+                                  {isEditing ? (
+                                    <select
+                                      value={editWpNumber}
+                                      onChange={e => setEditWpNumber(Number(e.target.value))}
+                                      className="h-7 w-14 rounded border border-input bg-background px-1 text-xs"
+                                    >
+                                      {Array.from({ length: 40 }, (_, i) => i + 1).map(n => (
+                                        <option key={n} value={n}>{n}</option>
+                                      ))}
+                                    </select>
+                                  ) : (
+                                    <span className="font-semibold">{wp.number ?? '—'}</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2">
+                                  {isEditing ? (
+                                    <div className="space-y-1">
+                                      <Input value={editWpName} onChange={e => setEditWpName(e.target.value)} className="h-7 text-xs" placeholder="WP name" />
+                                      <Input value={editWpDesc} onChange={e => setEditWpDesc(e.target.value)} className="h-7 text-xs" placeholder="Description" />
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <div className="font-medium">{wp.name}</div>
+                                      {wp.description && <div className="text-muted-foreground text-xs truncate max-w-[200px]">{wp.description}</div>}
+                                    </>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2 text-xs text-muted-foreground">
+                                  {isEditing ? (
+                                    <div className="flex gap-1 items-center">
+                                      <select
+                                        value={editWpStartMonth}
+                                        onChange={e => setEditWpStartMonth(Number(e.target.value))}
+                                        className="h-7 rounded border border-input bg-background px-1 text-xs"
+                                      >
+                                        {Array.from({ length: projectMonthCount }, (_, i) => i + 1).map(m => (
+                                          <option key={m} value={m}>{projectMonthLabel(m)}</option>
+                                        ))}
+                                      </select>
+                                      <span className="text-muted-foreground">–</span>
+                                      <select
+                                        value={editWpEndMonth}
+                                        onChange={e => setEditWpEndMonth(Number(e.target.value))}
+                                        className="h-7 rounded border border-input bg-background px-1 text-xs"
+                                      >
+                                        {Array.from({ length: projectMonthCount }, (_, i) => i + 1).map(m => (
+                                          <option key={m} value={m}>{projectMonthLabel(m)}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {wp.start_month ? projectMonthLabel(wp.start_month) : '—'}
+                                      {' – '}
+                                      {wp.end_month ? projectMonthLabel(wp.end_month) : '—'}
+                                    </>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2 text-right">
+                                  {can('canManageProjects') ? (
+                                    <Input
+                                      type="number"
+                                      step="0.1"
+                                      min="0"
+                                      value={wpBudget || ''}
+                                      placeholder="0"
+                                      onChange={(e) => {
+                                        setWpPmBudgets(prev => ({ ...prev, [wp.id]: Number(e.target.value) || 0 }))
+                                        setWpPmBudgetDirty(true)
+                                      }}
+                                      className="w-20 ml-auto text-right tabular-nums h-7 text-xs"
+                                    />
+                                  ) : (
+                                    <span className="tabular-nums font-medium">{wpBudget.toFixed(1)}</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2 text-right tabular-nums text-xs">
+                                  <span className={cn(wpAlloc > wpBudget + 0.01 && wpBudget > 0 ? 'text-amber-600 font-semibold' : 'text-muted-foreground')}>
+                                    {wpAlloc.toFixed(2)}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-2 text-right tabular-nums text-xs">
+                                  <span className={cn(wpRemaining < 0 ? 'text-red-500 font-semibold' : 'text-emerald-600')}>
+                                    {wpBudget > 0 ? wpRemaining.toFixed(2) : '—'}
+                                  </span>
+                                </td>
+                                {can('canManageProjects') && (
+                                  <td className="px-4 py-2 text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                      {isEditing ? (
+                                        <>
+                                          <Button variant="ghost" size="sm" onClick={handleSaveEditWp} disabled={editWpSaving} className="h-7 text-xs">
+                                            <Save className="h-3 w-3 mr-1" />
+                                            {editWpSaving ? '...' : t('common.save')}
+                                          </Button>
+                                          <Button variant="ghost" size="sm" onClick={() => setEditingWpId(null)} className="h-7 text-xs">{t('common.cancel')}</Button>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditWp(wp)}>
+                                            <Pencil className="h-3.5 w-3.5" />
+                                          </Button>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setWpDeleteTarget(wp)}>
+                                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                          </Button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            )
+                          })}
+                          {/* Totals row */}
+                          <tr className="bg-muted/30 font-semibold text-xs">
+                            <td className="px-4 py-2" colSpan={3}>{t('common.total')}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">{totalWpBudgetPm.toFixed(1)} PM</td>
+                            <td className="px-4 py-2 text-right tabular-nums">{totalAllocatedPm.toFixed(2)}</td>
+                            <td className="px-4 py-2 text-right tabular-nums">
+                              <span className={cn((totalWpBudgetPm - totalAllocatedPm) < 0 ? 'text-red-500' : 'text-emerald-600')}>
+                                {totalWpBudgetPm > 0 ? (totalWpBudgetPm - totalAllocatedPm).toFixed(2) : '—'}
+                              </span>
+                            </td>
+                            {can('canManageProjects') && <td />}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Budget distribution bar */}
+                  {workPackages.length > 0 && totalProjectBudgetPm > 0 && (
+                    <div className="mb-4 space-y-1.5">
+                      <div className="text-xs text-muted-foreground">{t('projects.pmBudgetDistribution')}</div>
+                      <div className="h-3 rounded-full bg-muted overflow-hidden flex">
+                        {workPackages.map((wp, i) => {
+                          const wpBudget = wpPmBudgets[wp.id] ?? 0
+                          const pct = totalProjectBudgetPm > 0 ? (wpBudget / totalProjectBudgetPm) * 100 : 0
+                          const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500', 'bg-red-400', 'bg-pink-500', 'bg-cyan-500', 'bg-lime-500']
+                          return pct > 0 ? (
+                            <div
+                              key={wp.id}
+                              className={cn('h-full', colors[i % colors.length])}
+                              style={{ width: `${pct}%` }}
+                              title={`${wp.name}: ${wpBudget.toFixed(1)} PM (${pct.toFixed(0)}%)`}
+                            />
+                          ) : null
+                        })}
+                      </div>
+                      <div className="flex gap-3 flex-wrap text-[10px] text-muted-foreground">
+                        {workPackages.map((wp, i) => {
+                          const wpBudget = wpPmBudgets[wp.id] ?? 0
+                          const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500', 'bg-red-400', 'bg-pink-500', 'bg-cyan-500', 'bg-lime-500']
+                          return (
+                            <span key={wp.id} className="flex items-center gap-1">
+                              <span className={cn('w-2 h-2 rounded-sm', colors[i % colors.length])} />
+                              {wp.name}: {wpBudget.toFixed(1)} PM
+                            </span>
+                          )
+                        })}
+                        {totalProjectBudgetPm - totalWpBudgetPm > 0.01 && (
+                          <span className="flex items-center gap-1 text-amber-600">
+                            {t('projects.unassigned')}: {(totalProjectBudgetPm - totalWpBudgetPm).toFixed(1)} PM
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Add new WP form */}
+                  {can('canManageProjects') && (
+                    <div className="space-y-3 rounded-lg border p-4 bg-muted/10">
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('projects.addWorkPackage')}</div>
+                      <div className="flex gap-2 items-end flex-wrap">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">{t('projects.wpNumber')}</Label>
+                          <select
+                            value={wpNumber}
+                            onChange={(e) => setWpNumber(Number(e.target.value))}
+                            className="flex h-9 w-16 rounded-md border border-input bg-background px-2 py-1 text-sm"
+                          >
+                            {Array.from({ length: 40 }, (_, i) => i + 1).map(n => (
+                              <option key={n} value={n}>{n}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1 flex-1 min-w-[120px]">
+                          <Label className="text-xs text-muted-foreground">{t('projects.wpName')} *</Label>
+                          <Input
+                            placeholder="WP name"
+                            value={wpName}
+                            onChange={(e) => setWpName(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-1 flex-1 min-w-[120px]">
+                          <Label className="text-xs text-muted-foreground">{t('projects.wpDescription')}</Label>
+                          <Input
+                            placeholder="Optional"
+                            value={wpDesc}
+                            onChange={(e) => setWpDesc(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 items-end flex-wrap">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">{t('projects.startMonth')}</Label>
+                          <select
+                            value={wpStartMonth}
+                            onChange={(e) => setWpStartMonth(Number(e.target.value))}
+                            className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
+                          >
+                            {Array.from({ length: projectMonthCount || 1 }, (_, i) => i + 1).map(m => (
+                              <option key={m} value={m}>{projectMonthLabel(m)}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">{t('projects.endMonth')}</Label>
+                          <select
+                            value={wpEndMonth}
+                            onChange={(e) => setWpEndMonth(Number(e.target.value))}
+                            className="flex h-9 rounded-md border border-input bg-background px-2 py-1 text-sm"
+                          >
+                            {Array.from({ length: projectMonthCount || 1 }, (_, i) => i + 1).map(m => (
+                              <option key={m} value={m}>{projectMonthLabel(m)}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <Button onClick={handleAddWP} disabled={wpSaving || !wpName.trim()}>
+                          <Plus className="mr-1 h-4 w-4" />
+                          {wpSaving ? t('common.adding') : t('projects.addWP')}
+                        </Button>
+                      </div>
+                      {projectMonthCount > 0 && (
+                        <div className="text-[11px] text-muted-foreground">
+                          {t('projects.projectDuration', { months: projectMonthCount, start: formatDate(project.start_date), end: formatDate(project.end_date) })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Del. & MS Tab ────────────────────────────────────── */}
+        <TabsContent value="deliverables" className="mt-4">
           <DeliverablesTab
             project={project}
             workPackages={workPackages}
             projectMonthLabel={projectMonthLabel}
             projectMonthCount={projectMonthCount}
           />
-        )}
+        </TabsContent>
 
-        {/* Reporting Periods Tab */}
-        {detailTab === 'reporting' && project && (
+        {/* ── Reporting Tab ────────────────────────────────────── */}
+        <TabsContent value="reporting" className="mt-4">
           <ReportingPeriodsTab
             project={project}
             projectMonthLabel={projectMonthLabel}
             projectMonthCount={projectMonthCount}
           />
-        )}
+        </TabsContent>
 
-        {/* Documents Tab */}
-        {detailTab === 'documents' && id && <DocumentList projectId={id} />}
-      </div>
+        {/* ── Documents Tab ────────────────────────────────────── */}
+        <TabsContent value="documents" className="mt-4">
+          {id && <DocumentList projectId={id} />}
+        </TabsContent>
+      </Tabs>
 
       <ConfirmModal
         open={!!wpDeleteTarget}

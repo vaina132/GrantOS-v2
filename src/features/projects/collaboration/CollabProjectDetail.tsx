@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Download, ChevronDown, ChevronRight, Target, ListChecks, GanttChart as GanttIcon, Bell, ClipboardList } from 'lucide-react'
+import { ArrowLeft, Users, FileText, Calendar, Rocket, Trash2, Send, Mail, Plus, Pencil, DollarSign, LayoutGrid, Archive, ArchiveRestore, Download, ChevronDown, ChevronRight, Target, ListChecks, GanttChart as GanttIcon, Bell, ClipboardList, FolderOpen } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService, collabPartnerService, collabWpService, collabAllocService, collabPeriodService, collabReportService, collabTaskService, collabDeliverableService, collabMilestoneService, collabTaskEffortService, syncCollabToMyProjects } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
@@ -18,6 +18,7 @@ import { EditProjectDialog } from './EditProjectDialog'
 import { EditAllocDialog } from './EditAllocDialog'
 import { EditContactDialog } from './EditContactDialog'
 import { CollabGanttChart } from './CollabGanttChart'
+import { DocumentList } from '@/features/documents/DocumentList'
 import { generateCollabBudgetPDF } from '@/services/reportGenerator'
 import type { CollabProject, CollabPartner, CollabWorkPackage, CollabPartnerWpAlloc, CollabReportingPeriod, CollabReport, CollabTask, CollabDeliverable, CollabMilestone, CollabReminderSettings, CollabReminderUnit } from '@/types'
 
@@ -44,6 +45,7 @@ const TAB_KEYS = [
   { value: 'budget', labelKey: 'collaboration.tabBudget', icon: DollarSign },
   { value: 'effort', labelKey: 'collaboration.tabEffort', icon: Target },
   { value: 'gantt', labelKey: 'collaboration.tabTimeline', icon: GanttIcon },
+  { value: 'documents', labelKey: 'projects.documents', icon: FolderOpen },
 ]
 
 const DEFAULT_REMINDER_SETTINGS: CollabReminderSettings = {
@@ -1581,6 +1583,11 @@ export function CollabProjectDetail() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        {/* ── Documents Tab ────────────────────────────────────── */}
+        <TabsContent value="documents" className="mt-4">
+          {id && <DocumentList projectId={id} />}
         </TabsContent>
       </Tabs>
       <EditProjectDialog
