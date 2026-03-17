@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/use-toast'
-import { ArrowLeft, Pencil, Plus, Trash2, Save, FileText, DollarSign, LayoutGrid, ListChecks, FolderOpen, Target, GanttChart as GanttIcon, ClipboardList } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus, Trash2, Save, FileText, DollarSign, LayoutGrid, ListChecks, FolderOpen, Target, GanttChart as GanttIcon, ClipboardList, Calendar, Receipt } from 'lucide-react'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { DocumentList } from '@/features/documents/DocumentList'
 import { DeliverablesTab } from './DeliverablesTab'
@@ -26,7 +26,7 @@ import { ProjectGanttChart } from './ProjectGanttChart'
 import { collabTaskEffortService, collabPartnerService, collabWpService, collabTaskService } from '@/services/collabProjectService'
 import type { WorkPackage, PmBudget, Assignment, CollabPartner, CollabWorkPackage, CollabTask, CollabPartnerTaskEffort } from '@/types'
 
-type DetailTab = 'general' | 'budget' | 'expenses' | 'workpackages' | 'periods' | 'deliverables' | 'effort' | 'timeline' | 'documents'
+type DetailTab = 'general' | 'budget' | 'expenses' | 'workpackages' | 'periods' | 'deliverables' | 'reporting' | 'effort' | 'timeline' | 'documents'
 
 const STATUS_COLORS: Record<string, string> = {
   Active: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
@@ -38,10 +38,11 @@ const STATUS_COLORS: Record<string, string> = {
 const TAB_KEYS: { value: DetailTab; labelKey: string; icon: typeof FileText; permKey?: string }[] = [
   { value: 'general', labelKey: 'collaboration.tabGeneral', icon: FileText },
   { value: 'budget', labelKey: 'collaboration.tabBudget', icon: DollarSign, permKey: 'canSeeFinancialDetails' },
-  { value: 'expenses', labelKey: 'projects.expenses', icon: DollarSign, permKey: 'canSeeFinancialDetails' },
+  { value: 'expenses', labelKey: 'projects.expenses', icon: Receipt, permKey: 'canSeeFinancialDetails' },
   { value: 'workpackages', labelKey: 'projects.tabWpsTasks', icon: LayoutGrid },
-  { value: 'periods', labelKey: 'collaboration.tabPeriods', icon: ClipboardList },
+  { value: 'periods', labelKey: 'collaboration.tabPeriods', icon: Calendar },
   { value: 'deliverables', labelKey: 'collaboration.tabDelMs', icon: ListChecks },
+  { value: 'reporting', labelKey: 'collaboration.tabReports', icon: ClipboardList },
   { value: 'effort', labelKey: 'projects.tabOurEffort', icon: Target },
   { value: 'timeline', labelKey: 'collaboration.tabTimeline', icon: GanttIcon },
   { value: 'documents', labelKey: 'projects.documents', icon: FolderOpen },
@@ -986,6 +987,15 @@ export function ProjectDetail() {
           <DeliverablesTab
             project={project}
             workPackages={workPackages}
+            projectMonthLabel={projectMonthLabel}
+            projectMonthCount={projectMonthCount}
+          />
+        </TabsContent>
+
+        {/* ── Reports Tab ──────────────────────────────────────── */}
+        <TabsContent value="reporting" className="mt-4">
+          <ReportingPeriodsTab
+            project={project}
             projectMonthLabel={projectMonthLabel}
             projectMonthCount={projectMonthCount}
           />
