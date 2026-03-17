@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
+import { useInvalidateProjects } from '@/hooks/useProjects'
 import { proposalService } from '@/services/proposalService'
 import { generateProposalsPipelinePDF } from '@/services/reportGenerator'
 import { staffService } from '@/services/staffService'
@@ -70,6 +71,7 @@ export function ProposalsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { orgId, user } = useAuthStore()
+  const invalidateProjects = useInvalidateProjects()
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -280,6 +282,7 @@ export function ProposalsPage() {
     setConverting(true)
     try {
       const projectId = await proposalService.convertToProject(convertTarget, orgId, user.id)
+      invalidateProjects()
       toast({ title: t('proposals.projectCreated'), description: t('proposals.projectCreatedDesc') })
       setConvertTarget(null)
       navigate(`/projects/${projectId}`)

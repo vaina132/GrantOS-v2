@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { projectsService } from '@/services/projectsService'
 import { settingsService } from '@/services/settingsService'
 import { useAuthStore } from '@/stores/authStore'
-import { useProject } from '@/hooks/useProjects'
+import { useProject, useInvalidateProjects } from '@/hooks/useProjects'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -156,6 +156,8 @@ export function ProjectForm() {
     }
   }, [project, reset])
 
+  const invalidateProjects = useInvalidateProjects()
+
   const onSubmit = async (data: ProjectFormData) => {
     setSaving(true)
     try {
@@ -181,6 +183,7 @@ export function ProjectForm() {
         await projectsService.create(payload as Parameters<typeof projectsService.create>[0])
         toast({ title: 'Created', description: `${data.acronym} has been created.` })
       }
+      invalidateProjects()
       navigate('/projects')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to save'

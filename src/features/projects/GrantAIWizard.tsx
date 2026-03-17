@@ -4,6 +4,7 @@ import { grantAIService } from '@/services/grantAIService'
 import { projectsService } from '@/services/projectsService'
 import { deliverablesService } from '@/services/deliverablesService'
 import { useAuthStore } from '@/stores/authStore'
+import { useInvalidateProjects } from '@/hooks/useProjects'
 import { computeProjectStatus } from '@/lib/utils'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,7 @@ type WizardStep = 'upload' | 'processing' | 'review' | 'saving'
 export function GrantAIWizard() {
   const navigate = useNavigate()
   const { orgId } = useAuthStore()
+  const invalidateProjects = useInvalidateProjects()
 
   const [step, setStep] = useState<WizardStep>('upload')
   const [quotaExhausted, setQuotaExhausted] = useState(false)
@@ -262,6 +264,7 @@ export function GrantAIWizard() {
         })
       }
 
+      invalidateProjects()
       toast({ title: 'Project Created!', description: `${p.acronym} and all related data have been imported successfully.` })
       navigate(`/projects/${project.id}`)
     } catch (err) {

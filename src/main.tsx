@@ -25,6 +25,7 @@ const queryClient = new QueryClient({
       staleTime: 2 * 60 * 1000, // 2 minutes
       gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
       refetchOnWindowFocus: false,
+      refetchOnMount: 'always', // Always refetch when a component mounts (e.g. navigating back to a list)
       retry: 1,
     },
   },

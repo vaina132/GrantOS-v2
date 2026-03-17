@@ -10,7 +10,7 @@ import { avatarService } from '@/services/avatarService'
 import { emailService } from '@/services/emailService'
 import { notificationService } from '@/services/notificationService'
 import { useAuthStore } from '@/stores/authStore'
-import { useStaffMember } from '@/hooks/useStaff'
+import { useStaffMember, useInvalidateStaff } from '@/hooks/useStaff'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -66,6 +66,7 @@ export function StaffForm() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [inviteToSystem, setInviteToSystem] = useState(false)
   const [inviteRole, setInviteRole] = useState<InvitableRole>('Project Manager')
+  const invalidateStaff = useInvalidateStaff()
 
   useEffect(() => {
     if (!orgId) return
@@ -265,6 +266,7 @@ export function StaffForm() {
         await avatarService.remove(orgId, savedPerson.id)
         await staffService.update(savedPerson.id, { avatar_url: null })
       }
+      invalidateStaff()
       navigate('/staff')
     } catch (err) {
       const message = err instanceof Error ? err.message : t('common.failedToSave')
