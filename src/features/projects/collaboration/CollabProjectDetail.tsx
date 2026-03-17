@@ -20,6 +20,7 @@ import { EditContactDialog } from './EditContactDialog'
 import { CollabGanttChart } from './CollabGanttChart'
 import { DocumentList } from '@/features/documents/DocumentList'
 import { generateCollabBudgetPDF } from '@/services/reportGenerator'
+import { formatDate } from '@/lib/utils'
 import type { CollabProject, CollabPartner, CollabWorkPackage, CollabPartnerWpAlloc, CollabReportingPeriod, CollabReport, CollabTask, CollabDeliverable, CollabMilestone, CollabReminderSettings, CollabReminderUnit } from '@/types'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -37,12 +38,12 @@ const INVITE_STATUS_COLORS: Record<string, string> = {
 
 const TAB_KEYS = [
   { value: 'general', labelKey: 'collaboration.tabGeneral', icon: FileText },
+  { value: 'budget', labelKey: 'collaboration.tabBudget', icon: DollarSign },
   { value: 'partners', labelKey: 'collaboration.tabPartners', icon: Users },
   { value: 'wps', labelKey: 'collaboration.tabWps', icon: LayoutGrid },
   { value: 'periods', labelKey: 'collaboration.tabPeriods', icon: Calendar },
-  { value: 'reports', labelKey: 'collaboration.tabReports', icon: ClipboardList },
   { value: 'deliverables', labelKey: 'collaboration.tabDelMs', icon: ListChecks },
-  { value: 'budget', labelKey: 'collaboration.tabBudget', icon: DollarSign },
+  { value: 'reports', labelKey: 'collaboration.tabReports', icon: ClipboardList },
   { value: 'effort', labelKey: 'collaboration.tabEffort', icon: Target },
   { value: 'gantt', labelKey: 'collaboration.tabTimeline', icon: GanttIcon },
   { value: 'documents', labelKey: 'projects.documents', icon: FolderOpen },
@@ -476,9 +477,9 @@ export function CollabProjectDetail() {
               {project.grant_number && <span>GA {project.grant_number}</span>}
               {project.funding_programme && <span>{project.funding_programme}</span>}
               {project.start_date && project.end_date && (
-                <span>{project.start_date} → {project.end_date}</span>
+                <span>{formatDate(project.start_date)} → {formatDate(project.end_date)}</span>
               )}
-              {project.duration_months && <span>{project.duration_months} months</span>}
+              {project.duration_months && <span>{project.duration_months} {t('collaboration.months')}</span>}
             </div>
           </div>
         </div>
@@ -573,13 +574,13 @@ export function CollabProjectDetail() {
                 {project.start_date && (
                   <div>
                     <p className="text-xs text-muted-foreground mb-0.5">{t('common.startDate')}</p>
-                    <p className="font-medium">{project.start_date}</p>
+                    <p className="font-medium">{formatDate(project.start_date)}</p>
                   </div>
                 )}
                 {project.end_date && (
                   <div>
                     <p className="text-xs text-muted-foreground mb-0.5">{t('common.endDate')}</p>
-                    <p className="font-medium">{project.end_date}</p>
+                    <p className="font-medium">{formatDate(project.end_date)}</p>
                   </div>
                 )}
                 {project.duration_months && (

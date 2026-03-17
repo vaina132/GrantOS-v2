@@ -15,16 +15,18 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/use-toast'
-import { ArrowLeft, Pencil, Plus, Trash2, Save, FileText, DollarSign, LayoutGrid, ListChecks, Calendar, FolderOpen } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus, Trash2, Save, FileText, DollarSign, LayoutGrid, ListChecks, FolderOpen, Target, GanttChart as GanttIcon, ClipboardList } from 'lucide-react'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import { DocumentList } from '@/features/documents/DocumentList'
 import { DeliverablesTab } from './DeliverablesTab'
 import { ReportingPeriodsTab } from './ReportingPeriodsTab'
 import { BudgetConsumptionChart } from './BudgetConsumptionChart'
 import { ProjectExpenses } from './ProjectExpenses'
-import type { WorkPackage, PmBudget, Assignment } from '@/types'
+import { ProjectGanttChart } from './ProjectGanttChart'
+import { collabTaskEffortService, collabPartnerService, collabWpService, collabTaskService } from '@/services/collabProjectService'
+import type { WorkPackage, PmBudget, Assignment, CollabPartner, CollabWorkPackage, CollabTask, CollabPartnerTaskEffort } from '@/types'
 
-type DetailTab = 'general' | 'budget' | 'expenses' | 'workpackages' | 'deliverables' | 'reporting' | 'documents'
+type DetailTab = 'general' | 'budget' | 'expenses' | 'workpackages' | 'periods' | 'deliverables' | 'effort' | 'timeline' | 'documents'
 
 const STATUS_COLORS: Record<string, string> = {
   Active: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
@@ -38,8 +40,10 @@ const TAB_KEYS: { value: DetailTab; labelKey: string; icon: typeof FileText; per
   { value: 'budget', labelKey: 'collaboration.tabBudget', icon: DollarSign, permKey: 'canSeeFinancialDetails' },
   { value: 'expenses', labelKey: 'projects.expenses', icon: DollarSign, permKey: 'canSeeFinancialDetails' },
   { value: 'workpackages', labelKey: 'projects.tabWpsTasks', icon: LayoutGrid },
+  { value: 'periods', labelKey: 'collaboration.tabPeriods', icon: ClipboardList },
   { value: 'deliverables', labelKey: 'collaboration.tabDelMs', icon: ListChecks },
-  { value: 'reporting', labelKey: 'collaboration.tabReports', icon: Calendar },
+  { value: 'effort', labelKey: 'projects.tabOurEffort', icon: Target },
+  { value: 'timeline', labelKey: 'collaboration.tabTimeline', icon: GanttIcon },
   { value: 'documents', labelKey: 'projects.documents', icon: FolderOpen },
 ]
 
@@ -129,6 +133,13 @@ export function ProjectDetail() {
   const [milestonesCount, setMilestonesCount] = useState(0)
   const [periodsCount, setPeriodsCount] = useState(0)
 
+  // Collab effort data (for "Our Effort" tab — loaded when project has collab_project_id)
+  const [collabPartners, setCollabPartners] = useState<CollabPartner[]>([])
+  const [collabWps, setCollabWps] = useState<CollabWorkPackage[]>([])
+  const [collabTasks, setCollabTasks] = useState<CollabTask[]>([])
+  const [collabEffort, setCollabEffort] = useState<CollabPartnerTaskEffort[]>([])
+  const [effortLoading, setEffortLoading] = useState(false)
+
   const loadPmBudgets = useCallback(async () => {
     if (!id) return
     try {
@@ -161,6 +172,34 @@ export function ProjectDetail() {
     deliverablesService.listMilestones(id).then(m => setMilestonesCount(m.length)).catch(() => {})
     deliverablesService.listReportingPeriods(id).then(p => setPeriodsCount(p.length)).catch(() => {})
   }, [id])
+
+  // Load collab effort data when project is linked to a collab project
+  useEffect(() => {
+    const cpId = project?.collab_project_id
+    if (!cpId) return
+    setEffortLoading(true)
+    Promise.all([
+      collabPartnerService.list(cpId),
+      collabWpService.list(cpId),
+      collabTaskService.listByProject(cpId),
+      collabTaskEffortService.listByProject(cpId),
+    ]).then(([partners, wps, tasks, effort]) => {
+      setCollabPartners(partners)
+      setCollabWps(wps)
+      setCollabTasks(tasks)
+      setCollabEffort(effort)
+    }).catch(() => {}).finally(() => setEffortLoading(false))
+  }, [project?.collab_project_id])
+
+  // Group collab tasks by WP for effort table
+  const collabTasksByWp = useMemo(() => {
+    const map: Record<string, CollabTask[]> = {}
+    for (const t of collabTasks) {
+      const key = t.wp_id ?? '__none__'
+      ;(map[key] ??= []).push(t)
+    }
+    return map
+  }, [collabTasks])
 
   const handleSavePmBudgets = async () => {
     if (!id || !orgId) return
@@ -933,6 +972,15 @@ export function ProjectDetail() {
           </Card>
         </TabsContent>
 
+        {/* ── Periods Tab ──────────────────────────────────────── */}
+        <TabsContent value="periods" className="mt-4">
+          <ReportingPeriodsTab
+            project={project}
+            projectMonthLabel={projectMonthLabel}
+            projectMonthCount={projectMonthCount}
+          />
+        </TabsContent>
+
         {/* ── Del. & MS Tab ────────────────────────────────────── */}
         <TabsContent value="deliverables" className="mt-4">
           <DeliverablesTab
@@ -943,11 +991,104 @@ export function ProjectDetail() {
           />
         </TabsContent>
 
-        {/* ── Reporting Tab ────────────────────────────────────── */}
-        <TabsContent value="reporting" className="mt-4">
-          <ReportingPeriodsTab
+        {/* ── Our Effort Tab ───────────────────────────────────── */}
+        <TabsContent value="effort" className="mt-4">
+          {!project.collab_project_id ? (
+            <Card>
+              <CardContent className="py-12 text-center text-sm text-muted-foreground">
+                <Target className="h-8 w-8 mx-auto mb-3 text-muted-foreground/50" />
+                <p className="font-medium">{t('projects.noCollabLinked')}</p>
+                <p className="text-xs mt-1">{t('projects.noCollabLinkedDesc')}</p>
+              </CardContent>
+            </Card>
+          ) : effortLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-32 w-full" />
+            </div>
+          ) : collabPartners.length === 0 || collabWps.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-sm text-muted-foreground">
+                <p>{t('projects.noEffortData')}</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">{t('projects.ourEffortOverview')}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left bg-muted/50">
+                      <th className="p-3 font-medium sticky left-0 bg-muted/50">{t('projects.wpTask')}</th>
+                      {collabPartners.map(p => (
+                        <th key={p.id} className="p-3 font-medium text-right text-xs min-w-[80px]" title={p.org_name}>
+                          <div className="truncate max-w-[80px]">{p.org_name}</div>
+                          <div className="text-[10px] text-muted-foreground font-normal">
+                            {p.role === 'coordinator' ? t('collaboration.coord') : `#${p.participant_number}`}
+                          </div>
+                        </th>
+                      ))}
+                      <th className="p-3 font-medium text-right w-24">{t('common.total')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {collabWps.map(wp => {
+                      const wpTasks = collabTasksByWp[wp.id] ?? []
+                      const wpPartnerPMs = collabPartners.map(p =>
+                        wpTasks.reduce((s, tk) => {
+                          const eff = collabEffort.find(e => e.task_id === tk.id && e.partner_id === p.id)
+                          return s + (eff?.person_months ?? 0)
+                        }, 0)
+                      )
+                      const wpTotal = wpPartnerPMs.reduce((s, v) => s + v, 0)
+                      return (
+                        <tr key={wp.id} className="border-b bg-primary/[0.03] font-medium">
+                          <td className="p-2.5 sticky left-0 bg-primary/[0.03]">
+                            <span className="font-mono text-xs mr-1.5">WP{wp.wp_number}</span>
+                            {wp.title}
+                          </td>
+                          {wpPartnerPMs.map((pm, i) => (
+                            <td key={collabPartners[i].id} className="p-2.5 text-right tabular-nums text-xs">
+                              {pm > 0 ? pm.toFixed(1) : <span className="text-muted-foreground/40">—</span>}
+                            </td>
+                          ))}
+                          <td className="p-2.5 text-right tabular-nums font-bold">
+                            {wpTotal > 0 ? wpTotal.toFixed(1) : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="bg-muted/50 font-medium border-t-2">
+                      <td className="p-3 sticky left-0 bg-muted/50">{t('common.total')}</td>
+                      {collabPartners.map(p => {
+                        const partnerTotal = collabEffort.filter(e => e.partner_id === p.id).reduce((s, e) => s + e.person_months, 0)
+                        return (
+                          <td key={p.id} className="p-3 text-right tabular-nums text-xs">
+                            {partnerTotal > 0 ? partnerTotal.toFixed(1) : '—'}
+                          </td>
+                        )
+                      })}
+                      <td className="p-3 text-right tabular-nums font-bold">
+                        {collabEffort.reduce((s, e) => s + e.person_months, 0).toFixed(1)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ── Timeline Tab ─────────────────────────────────────── */}
+        <TabsContent value="timeline" className="mt-4">
+          <ProjectGanttChart
             project={project}
-            projectMonthLabel={projectMonthLabel}
+            workPackages={workPackages}
             projectMonthCount={projectMonthCount}
           />
         </TabsContent>

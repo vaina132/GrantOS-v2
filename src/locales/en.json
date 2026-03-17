@@ -390,7 +390,13 @@
     "savePmBudgets": "Save PM Budgets",
     "pmBudgetsUpdated": "PM budgets updated.",
     "wpPmBudgetsUpdated": "WP PM budgets updated.",
-    "projectDuration": "Project duration: {{months}} months ({{start}} – {{end}})"
+    "projectDuration": "Project duration: {{months}} months ({{start}} – {{end}})",
+    "tabOurEffort": "Our Effort",
+    "noCollabLinked": "No collaboration project linked",
+    "noCollabLinkedDesc": "This project is not linked to a collaboration project. Effort data is only available for projects synced from the Collaboration module.",
+    "noEffortData": "No effort data available yet. Add partners and work packages in the linked collaboration project first.",
+    "ourEffortOverview": "Effort Distribution (from Collaboration)",
+    "wpTask": "WP / Task"
   },
   "expenses": {
     "title": "Expenses",
