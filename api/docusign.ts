@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { cors, authenticateRequest, handleAuthError } from './lib/auth.js'
+import { checkRateLimit } from './lib/rateLimit.js'
 
 /**
  * POST /api/docusign?action=sign     — Create DocuSign envelope for signing
@@ -12,9 +14,23 @@ import { Resend } from 'resend'
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  cors(req, res)
+  if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
+  // Rate limit: 10 docusign requests per 60s per IP
+  if (!checkRateLimit(req, res, { limit: 10, windowSeconds: 60, prefix: 'docusign' })) return
+
   const action = (req.query.action as string) || ''
+
+  // Webhook is called by DocuSign servers — no JWT auth, uses its own verification
+  if (action === 'sign') {
+    try {
+      await authenticateRequest(req)
+    } catch (err) {
+      return handleAuthError(err, res)
+    }
+  }
 
   switch (action) {
     case 'sign':

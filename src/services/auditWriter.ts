@@ -8,6 +8,27 @@ interface AuditEntry {
   details?: string
 }
 
+type SecurityAction =
+  | 'login'
+  | 'login_failed'
+  | 'logout'
+  | 'mfa_enroll'
+  | 'mfa_verify'
+  | 'mfa_unenroll'
+  | 'role_change'
+  | 'member_invite'
+  | 'member_remove'
+  | 'export'
+  | 'password_change'
+
+interface SecurityAuditEntry {
+  action: SecurityAction
+  details?: string
+  orgId?: string | null
+  targetUserId?: string | null
+  targetEmail?: string | null
+}
+
 /**
  * Writes an audit log entry. Fire-and-forget — errors are logged but not thrown.
  */
@@ -32,6 +53,28 @@ export async function writeAudit({ orgId, entityType, action, entityId, details 
 /**
  * Writes field-level change entries. Fire-and-forget.
  */
+/**
+ * Writes a security-related audit log entry (login, logout, MFA, role changes, exports).
+ * Fire-and-forget — errors are logged but not thrown.
+ */
+export async function writeSecurityAudit(entry: SecurityAuditEntry) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    await (supabase.from as any)('audit_log').insert({
+      org_id: entry.orgId ?? user?.app_metadata?.org_id ?? null,
+      user_id: user?.id ?? null,
+      user_email: user?.email ?? entry.targetEmail ?? null,
+      entity_type: 'security',
+      action: entry.action,
+      entity_id: entry.targetUserId ?? user?.id ?? 'system',
+      details: entry.details ?? null,
+    })
+  } catch (err) {
+    console.warn('[GrantLume] Security audit write failed:', err)
+  }
+}
+
 export async function writeAuditChanges(
   orgId: string,
   entityType: string,

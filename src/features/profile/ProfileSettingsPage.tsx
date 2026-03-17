@@ -12,6 +12,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
 import { Switch } from '@/components/ui/switch'
 import { User, Bell, Lock, Save, Info, Globe, Check } from 'lucide-react'
+import { MfaEnrollment } from './MfaEnrollment'
+import { writeSecurityAudit } from '@/services/auditWriter'
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n'
 import type { UserPreferences } from '@/types'
 
@@ -99,6 +101,7 @@ export function ProfileSettingsPage() {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword })
       if (error) throw error
+      writeSecurityAudit({ action: 'password_change', details: 'Password changed via profile settings' })
       toast({ title: t('profile.passwordUpdated') })
       setNewPassword('')
       setConfirmPassword('')
@@ -262,6 +265,9 @@ export function ProfileSettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* ── Two-Factor Authentication ── */}
+        <MfaEnrollment />
 
         {/* ── Email Notifications ── */}
         <Card>

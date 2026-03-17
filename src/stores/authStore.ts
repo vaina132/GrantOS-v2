@@ -9,6 +9,7 @@ import {
 } from '@/lib/permissions'
 import type { OrgRole, OrgPlan, AccessType } from '@/types'
 import type { User } from '@supabase/supabase-js'
+import { writeSecurityAudit } from '@/services/auditWriter'
 
 interface AuthState {
   user: User | null
@@ -22,9 +23,15 @@ interface AuthState {
   isLoading: boolean
   error: string | null
 
+  // MFA state
+  mfaFactorId: string | null
+  mfaChallengeId: string | null
+
   initialize: () => Promise<void>
   reloadContext: () => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
+  verifyMfa: (code: string) => Promise<void>
+  cancelMfa: () => void
   signUp: (email: string, password: string, meta?: { firstName?: string; lastName?: string }) => Promise<void>
   signInWithProvider: (provider: 'google' | 'azure' | 'slack') => Promise<void>
   signOut: () => Promise<void>
@@ -44,6 +51,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   trialEndsAt: null,
   isLoading: true,
   error: null,
+  mfaFactorId: null,
+  mfaChallengeId: null,
 
   initialize: async () => {
     if (initialized) return
@@ -108,18 +117,88 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signIn: async (email: string, password: string) => {
-    set({ isLoading: true, error: null })
+    set({ isLoading: true, error: null, mfaFactorId: null, mfaChallengeId: null })
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
+
+      // Check if MFA verification is required
+      // When user has TOTP enrolled, Supabase returns an MFA challenge instead of a session
+      if (data.session === null && data.user === null) {
+        // This shouldn't happen, but guard against it
+        throw new Error('Sign in failed — no session or user returned')
+      }
+
+      // If user has MFA enrolled, we need to check the AAL level
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (aalData && aalData.currentLevel === 'aal1' && aalData.nextLevel === 'aal2') {
+        // User needs to verify MFA — find their TOTP factor
+        const { data: factorsData } = await supabase.auth.mfa.listFactors()
+        const totp = factorsData?.totp?.[0]
+        if (totp) {
+          // Create MFA challenge
+          const { data: challengeData, error: challengeErr } = await supabase.auth.mfa.challenge({ factorId: totp.id })
+          if (challengeErr) throw challengeErr
+          set({
+            isLoading: false,
+            mfaFactorId: totp.id,
+            mfaChallengeId: challengeData.id,
+          })
+          return // Don't navigate — LoginPage will show MFA verification
+        }
+      }
+
       if (data.user) {
         await loadUserContext(data.user, set)
+        writeSecurityAudit({ action: 'login', details: 'Password login (no MFA)' })
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign in failed'
+      set({ isLoading: false, error: message, mfaFactorId: null, mfaChallengeId: null })
+      writeSecurityAudit({ action: 'login_failed', details: message, targetEmail: email })
+      throw err
+    }
+  },
+
+  verifyMfa: async (code: string) => {
+    const { mfaFactorId, mfaChallengeId } = get()
+    if (!mfaFactorId || !mfaChallengeId) {
+      throw new Error('No MFA challenge in progress')
+    }
+
+    set({ isLoading: true, error: null })
+    try {
+      const { error } = await supabase.auth.mfa.verify({
+        factorId: mfaFactorId,
+        challengeId: mfaChallengeId,
+        code,
+      })
+      if (error) throw error
+
+      set({ mfaFactorId: null, mfaChallengeId: null })
+
+      // After MFA verification, load user context
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await loadUserContext(user, set)
+        writeSecurityAudit({ action: 'mfa_verify', details: 'MFA verification successful' })
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'MFA verification failed'
       set({ isLoading: false, error: message })
       throw err
     }
+  },
+
+  cancelMfa: () => {
+    supabase.auth.signOut().catch(() => {})
+    set({
+      mfaFactorId: null,
+      mfaChallengeId: null,
+      isLoading: false,
+      error: null,
+      user: null,
+    })
   },
 
   signUp: async (email, password, meta) => {
@@ -164,6 +243,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   signOut: async () => {
+    writeSecurityAudit({ action: 'logout' })
     initialized = false
     await supabase.auth.signOut()
     set({

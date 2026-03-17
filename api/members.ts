@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
+import { cors, authenticateRequest, handleAuthError } from './lib/auth.js'
+import { checkRateLimit } from './lib/rateLimit.js'
 
 /**
  * Consolidated members API — replaces invite-member, resolve-emails, collab-invite.
@@ -12,12 +14,6 @@ import crypto from 'crypto'
  * POST /api/members?action=collab-lookup
  */
 
-function cors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-}
-
 function getSupabase() {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -25,12 +21,27 @@ function getSupabase() {
   return { client: createClient(supabaseUrl, serviceKey), url: supabaseUrl }
 }
 
+// Actions that don't require JWT (token-based auth for unauthenticated invitees)
+const PUBLIC_ACTIONS = ['collab-accept', 'collab-lookup']
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  cors(res)
+  cors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
+  // Rate limit: 30 requests per 60s per IP
+  if (!checkRateLimit(req, res, { limit: 30, windowSeconds: 60, prefix: 'members' })) return
+
   const action = (req.query.action as string) || ''
+
+  // Require JWT for non-public actions
+  if (!PUBLIC_ACTIONS.includes(action)) {
+    try {
+      await authenticateRequest(req)
+    } catch (err) {
+      return handleAuthError(err, res)
+    }
+  }
 
   switch (action) {
     case 'invite-member':

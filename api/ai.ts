@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
+import { cors, authenticateRequest, handleAuthError } from './lib/auth.js'
+import { checkRateLimit } from './lib/rateLimit.js'
 
 /**
  * Consolidated AI & search API — replaces parse-grant, parse-collab-grant, parse-import, eu-calls.
@@ -111,17 +113,28 @@ async function recordUsage(
   })
 }
 
-function cors(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'authorization, x-client-info, apikey, content-type')
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  cors(res)
+  cors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
 
+  // Rate limit: 20 AI requests per 60s per IP
+  if (!checkRateLimit(req, res, { limit: 20, windowSeconds: 60, prefix: 'ai' })) return
+
+  // Authenticate all AI requests
+  let auth
+  try {
+    auth = await authenticateRequest(req)
+  } catch (err) {
+    return handleAuthError(err, res)
+  }
+
   const action = (req.query.action as string) || ''
+
+  // Inject authenticated user context into request body for downstream handlers
+  if (req.body && typeof req.body === 'object') {
+    if (!req.body.org_id && auth.orgId) req.body.org_id = auth.orgId
+    if (!req.body.user_id) req.body.user_id = auth.userId
+  }
 
   switch (action) {
     case 'parse-grant':

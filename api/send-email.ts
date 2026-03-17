@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Resend } from 'resend'
 import { createClient } from '@supabase/supabase-js'
+import { cors, authenticateRequest, handleAuthError } from './lib/auth.js'
+import { checkRateLimit } from './lib/rateLimit.js'
 import {
   invitationEmail,
   welcomeEmail,
@@ -148,12 +150,19 @@ async function shouldSend(
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  cors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
+  // Rate limit: 20 emails per 60s per IP
+  if (!checkRateLimit(req, res, { limit: 20, windowSeconds: 60, prefix: 'email' })) return
+
+  // Authenticate — only logged-in users can trigger emails
+  try {
+    await authenticateRequest(req)
+  } catch (err) {
+    return handleAuthError(err, res)
+  }
 
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) {

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/apiClient'
 import { useAuthStore } from '@/stores/authStore'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -292,9 +293,8 @@ export function BulkImport() {
         try {
           // 2. Call AI extraction API
           setProcessingMessage('AI is reading your document...')
-          const response = await fetch('/api/ai?action=parse-import', {
+          const response = await apiFetch('/api/ai?action=parse-import', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               storage_path: storagePath,
               file_name: file.name,

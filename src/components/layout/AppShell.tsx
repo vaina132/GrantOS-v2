@@ -3,6 +3,8 @@ import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { Breadcrumbs } from './Breadcrumbs'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { useIdleTimeout } from '@/hooks/useIdleTimeout'
+import { IdleWarningDialog } from '@/components/common/IdleWarningDialog'
 import { useAuthStore } from '@/stores/authStore'
 import { useOrgStore } from '@/stores/orgStore'
 
@@ -14,6 +16,7 @@ export function AppShell({ children }: AppShellProps) {
   useKeyboardShortcuts()
   const { orgId } = useAuthStore()
   const loadOrg = useOrgStore((s) => s.load)
+  const { showWarning, secondsLeft, dismissWarning } = useIdleTimeout()
 
   useEffect(() => {
     if (orgId) loadOrg(orgId)
@@ -28,6 +31,11 @@ export function AppShell({ children }: AppShellProps) {
           {children}
         </main>
       </div>
+      <IdleWarningDialog
+        open={showWarning}
+        secondsLeft={secondsLeft}
+        onStayLoggedIn={dismissWarning}
+      />
     </div>
   )
 }

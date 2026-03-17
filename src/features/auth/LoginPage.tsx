@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/use-toast'
-import { Eye, EyeOff, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, ShieldCheck, KeyRound, ArrowLeft } from 'lucide-react'
 import { GrantLumeLogo, GrantLumeWordmark } from '@/components/common/GrantLumeLogo'
 
 // ── Rate-limit helpers ──────────────────────────────────
@@ -44,7 +44,9 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
   const [loading, setLoading] = useState(false)
-  const { signIn } = useAuthStore()
+  const { signIn, verifyMfa, cancelMfa, mfaChallengeId } = useAuthStore()
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaLoading, setMfaLoading] = useState(false)
   const navigate = useNavigate()
 
   // Rate limiting state
@@ -104,6 +106,14 @@ export function LoginPage() {
     setLoading(true)
     try {
       await signIn(email, password)
+
+      // If MFA is required, signIn sets mfaChallengeId and returns without navigating
+      const { mfaChallengeId: mfaNeeded } = useAuthStore.getState()
+      if (mfaNeeded) {
+        // MFA step will be shown — don't navigate yet
+        return
+      }
+
       clearAttemptState()
 
       // If "Remember me" is unchecked, mark session for cleanup on tab close
@@ -120,6 +130,26 @@ export function LoginPage() {
       toast({ title: t('auth.signInFailed'), description: message, variant: 'destructive' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!mfaCode || mfaCode.length !== 6) {
+      toast({ title: t('auth.mfaInvalidCode'), description: t('auth.mfaEnter6Digits'), variant: 'destructive' })
+      return
+    }
+    setMfaLoading(true)
+    try {
+      await verifyMfa(mfaCode)
+      clearAttemptState()
+      navigate('/dashboard')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t('auth.mfaVerificationFailed')
+      toast({ title: t('auth.mfaVerificationFailed'), description: message, variant: 'destructive' })
+      setMfaCode('')
+    } finally {
+      setMfaLoading(false)
     }
   }
 
@@ -159,7 +189,7 @@ export function LoginPage() {
         </div>
       </div>
 
-      {/* Right panel — login form */}
+      {/* Right panel — login form or MFA verification */}
       <div className="flex flex-1 items-center justify-center p-6 sm:p-12 bg-background">
         <div className="w-full max-w-[420px] space-y-8 animate-fade-in">
           {/* Mobile logo */}
@@ -167,6 +197,56 @@ export function LoginPage() {
             <GrantLumeWordmark size={36} variant="color" textClassName="text-xl font-bold tracking-tight" />
           </div>
 
+          {/* ── MFA Verification Step ── */}
+          {mfaChallengeId ? (
+            <>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="h-5 w-5 text-primary" />
+                  <h2 className="text-2xl font-bold tracking-tight">{t('auth.mfaTitle')}</h2>
+                </div>
+                <p className="text-sm text-muted-foreground">{t('auth.mfaDescription')}</p>
+              </div>
+
+              <form onSubmit={handleMfaSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="mfa-code">{t('auth.mfaCode')}</Label>
+                  <Input
+                    id="mfa-code"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    required
+                    autoFocus
+                    autoComplete="one-time-code"
+                    className="h-11 text-center text-lg font-mono tracking-[0.5em]"
+                  />
+                </div>
+
+                <Button type="submit" className="w-full h-11 font-semibold text-base" disabled={mfaLoading || mfaCode.length !== 6}>
+                  {mfaLoading ? t('common.loading') : t('auth.mfaVerify')}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full gap-2 text-muted-foreground"
+                  onClick={() => {
+                    cancelMfa()
+                    setMfaCode('')
+                  }}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  {t('auth.mfaBackToLogin')}
+                </Button>
+              </form>
+            </>
+          ) : (
+          <>
           <div className="space-y-2">
             <h2 className="text-2xl font-bold tracking-tight">{t('dashboard.welcome')}</h2>
             <p className="text-sm text-muted-foreground">{t('auth.signIn')}</p>
@@ -288,6 +368,8 @@ export function LoginPage() {
             {' '}{t('common.and')}{' '}
             <Link to="/privacy" className="text-primary hover:underline">{t('auth.privacyPolicy')}</Link>
           </p>
+          </>
+          )}
         </div>
       </div>
     </div>

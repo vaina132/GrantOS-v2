@@ -2,6 +2,8 @@
  * Email service — sends emails via Vercel API route → Resend
  */
 
+import { apiFetch } from '@/lib/apiClient'
+
 const EMAIL_API_URL = '/api/send-email'
 
 type EmailTemplate =
@@ -47,9 +49,8 @@ interface SendEmailOptions {
 
 async function sendEmail({ template, to, params, replyTo }: SendEmailOptions): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
-    const res = await fetch(EMAIL_API_URL, {
+    const res = await apiFetch(EMAIL_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ template, to, params, replyTo }),
     })
 

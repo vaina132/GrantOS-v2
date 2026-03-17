@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
+import { apiFetch } from '@/lib/apiClient'
 import type { GrantAIExtraction } from '@/types'
 
 export const grantAIService = {
@@ -25,9 +26,8 @@ export const grantAIService = {
 
     try {
       // 2. Call Vercel serverless function with storage path (small JSON body)
-      const response = await fetch('/api/ai?action=parse-grant', {
+      const response = await apiFetch('/api/ai?action=parse-grant', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           storage_path: storagePath,
           file_name: file.name,

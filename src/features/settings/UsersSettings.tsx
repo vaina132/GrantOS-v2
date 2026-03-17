@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/apiClient'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -62,9 +63,8 @@ export function UsersSettings() {
       // Resolve emails from user IDs via server-side API
       if (rows.length > 0) {
         try {
-          const res = await fetch('/api/members?action=resolve-emails', {
+          const res = await apiFetch('/api/members?action=resolve-emails', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userIds: rows.map((r) => r.user_id) }),
           })
           if (res.ok) {
@@ -118,9 +118,8 @@ export function UsersSettings() {
     try {
       // Call server-side API that can use the service role key to
       // create/find the auth user and insert the org_members row.
-      const res = await fetch('/api/members?action=invite-member', {
+      const res = await apiFetch('/api/members?action=invite-member', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: inviteEmail,
           orgId,

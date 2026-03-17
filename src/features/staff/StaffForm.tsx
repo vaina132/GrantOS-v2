@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { apiFetch } from '@/lib/apiClient'
 import { staffService } from '@/services/staffService'
 import { settingsService } from '@/services/settingsService'
 import { avatarService } from '@/services/avatarService'
@@ -206,9 +207,8 @@ export function StaffForm() {
         // Send invitation if requested
         if (inviteToSystem && data.email && orgId) {
           try {
-            const res = await fetch('/api/members?action=invite-member', {
+            const res = await apiFetch('/api/members?action=invite-member', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 email: data.email,
                 orgId,
@@ -586,9 +586,8 @@ export function StaffForm() {
                           setInviting(true)
                           try {
                             const role: InvitableRole = (person.invite_role as InvitableRole) ?? 'Project Manager'
-                            const res = await fetch('/api/members?action=invite-member', {
+                            const res = await apiFetch('/api/members?action=invite-member', {
                               method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({ email: person.email, orgId, role, invitedBy: user?.id, personId: person.id }),
                             })
                             const d = await res.json()
@@ -644,9 +643,8 @@ export function StaffForm() {
                             if (!orgId || !person.email) return
                             setInviting(true)
                             try {
-                              const res = await fetch('/api/members?action=invite-member', {
+                              const res = await apiFetch('/api/members?action=invite-member', {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ email: person.email, orgId, role: inviteRole, invitedBy: user?.id, personId: person.id }),
                               })
                               const d = await res.json()

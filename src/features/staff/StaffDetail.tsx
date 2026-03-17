@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useStaffMember } from '@/hooks/useStaff'
 import { useAuthStore } from '@/stores/authStore'
 import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/apiClient'
 import { absenceService } from '@/services/absenceService'
 import { emailService } from '@/services/emailService'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
@@ -173,9 +174,8 @@ export function StaffDetail() {
                 setInviting(true)
                 try {
                   const role: InvitableRole = (person.invite_role as InvitableRole) ?? 'Project Manager'
-                  const res = await fetch('/api/members?action=invite-member', {
+                  const res = await apiFetch('/api/members?action=invite-member', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                       email: person.email,
                       orgId,

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
+import { apiFetch } from '@/lib/apiClient'
 
 export interface CollabAIExtraction {
   project: {
@@ -82,9 +83,8 @@ export const collabAIService = {
     }
 
     try {
-      const response = await fetch('/api/ai?action=parse-collab-grant', {
+      const response = await apiFetch('/api/ai?action=parse-collab-grant', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           storage_path: storagePath,
           file_name: file.name,

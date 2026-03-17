@@ -3,6 +3,8 @@
  * Calls the /api/docusign-sign endpoint to create an envelope and get a signing URL.
  */
 
+import { apiFetch } from '@/lib/apiClient'
+
 export const docusignService = {
   /**
    * Request signing for a submitted timesheet.
@@ -15,9 +17,8 @@ export const docusignService = {
     month: number
     userId: string
   }): Promise<{ envelopeId: string; signingUrl: string; status: string }> {
-    const res = await fetch('/api/docusign?action=sign', {
+    const res = await apiFetch('/api/docusign?action=sign', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),
     })
 

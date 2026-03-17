@@ -14,10 +14,11 @@ import { AbsenceTypeSettings } from './AbsenceTypeSettings'
 import { IntegrationsSettings } from './IntegrationsSettings'
 import { TimesheetApprovers } from './TimesheetApprovers'
 import { SubscriptionSettings } from './SubscriptionSettings'
+import { SecuritySettings } from './SecuritySettings'
 
-type SettingsTab = 'org' | 'users' | 'roles' | 'funding' | 'locks' | 'holidays' | 'approvers' | 'ts-approvers' | 'absence-types' | 'integrations' | 'subscription'
+type SettingsTab = 'org' | 'users' | 'roles' | 'security' | 'funding' | 'locks' | 'holidays' | 'approvers' | 'ts-approvers' | 'absence-types' | 'integrations' | 'subscription'
 
-const VALID_TABS: SettingsTab[] = ['org', 'users', 'roles', 'funding', 'locks', 'holidays', 'approvers', 'ts-approvers', 'absence-types', 'integrations', 'subscription']
+const VALID_TABS: SettingsTab[] = ['org', 'users', 'roles', 'security', 'funding', 'locks', 'holidays', 'approvers', 'ts-approvers', 'absence-types', 'integrations', 'subscription']
 
 export function SettingsPage() {
   const { t } = useTranslation()
@@ -42,6 +43,7 @@ export function SettingsPage() {
           { key: 'org', label: 'Organisation' },
           { key: 'users', label: 'Users' },
           { key: 'roles', label: 'Role Permissions' },
+          { key: 'security', label: 'Security' },
           { key: 'funding', label: 'Funding Schemes' },
           { key: 'locks', label: 'Period Locks' },
           { key: 'holidays', label: 'Holidays' },
@@ -65,6 +67,7 @@ export function SettingsPage() {
       {tab === 'org' && <OrgSettings />}
       {tab === 'users' && <UsersSettings />}
       {tab === 'roles' && <RolePermissions />}
+      {tab === 'security' && <SecuritySettings />}
       {tab === 'funding' && <FundingSchemes />}
       {tab === 'locks' && <PeriodLocking />}
       {tab === 'holidays' && <HolidaySettings />}
