@@ -418,6 +418,23 @@ export function InviteSignupPage() {
               )}
             </div>
 
+            {invite.orgName && (
+              <div className="space-y-2">
+                <Label htmlFor="organisation">{t('invite.organisation')}</Label>
+                <Input
+                  id="organisation"
+                  type="text"
+                  value={invite.orgName}
+                  readOnly
+                  tabIndex={-1}
+                  className="h-11 bg-muted/50"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {t('invite.orgPreFilled')}
+                </p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="password">{t('auth.password')} *</Label>
               <div className="relative">

@@ -29,6 +29,7 @@ import { PrivacyPage } from '@/features/legal/PrivacyPage'
 import { LandingPage } from '@/features/landing/LandingPage'
 import { HelpPage } from '@/features/help/HelpPage'
 import { CollabAcceptInvite } from '@/features/projects/collaboration/CollabAcceptInvite'
+import { CollabPages } from '@/features/projects/collaboration/CollabPages'
 import { InviteSignupPage } from '@/features/auth/InviteSignupPage'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -101,7 +102,7 @@ export default function App() {
         <Route path="/home" element={user ? <Navigate to={userHome} replace /> : <LandingPage />} />
         <Route path="/login" element={user ? <Navigate to={userHome} replace /> : <LoginPage />} />
         <Route path="/signup" element={user ? <Navigate to={userHome} replace /> : <SignUpPage />} />
-        <Route path="/forgot-password" element={user ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />} />
+        <Route path="/forgot-password" element={user ? <Navigate to={userHome} replace /> : <ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/terms" element={<TermsPage />} />
@@ -121,9 +122,38 @@ export default function App() {
                 <AppShell>
                   <ErrorBoundary>
                     <Routes>
-                      <Route path="/dashboard" element={<DashboardPage />} />
-                      <Route path="/projects/*" element={<ProjectsPage />} />
-                      <Route path="/staff/*" element={<StaffPage />} />
+                      <Route
+                        path="/dashboard"
+                        element={
+                          <ProtectedRoute permission="canSeeDashboard">
+                            <DashboardPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/projects/collaboration/*"
+                        element={
+                          <ProtectedRoute permission="canSeeCollaboration">
+                            <CollabPages />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/projects/*"
+                        element={
+                          <ProtectedRoute permission="canSeeProjects">
+                            <ProjectsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/staff/*"
+                        element={
+                          <ProtectedRoute permission="canSeeStaff">
+                            <StaffPage />
+                          </ProtectedRoute>
+                        }
+                      />
                       <Route
                         path="/allocations"
                         element={
@@ -206,8 +236,8 @@ export default function App() {
                       />
                       <Route path="/profile" element={<ProfileSettingsPage />} />
                       <Route path="/help" element={<HelpPage />} />
-                      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="/" element={<Navigate to={userHome} replace />} />
+                      <Route path="*" element={<Navigate to={userHome} replace />} />
                     </Routes>
                   </ErrorBoundary>
                 </AppShell>

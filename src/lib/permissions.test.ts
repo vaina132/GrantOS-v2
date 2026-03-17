@@ -61,12 +61,13 @@ describe('computePermissions', () => {
     expect(p.canManageOrg).toBe(false)
   })
 
-  it('External Participant can only submit timesheets and see projects', () => {
+  it('External Participant can only see collaboration module', () => {
     const p = computePermissions('External Participant')
     expect(p.canSeeDashboard).toBe(false)
-    expect(p.canSeeProjects).toBe(true)
-    expect(p.canSeeTimesheets).toBe(true)
-    expect(p.canSubmitTimesheets).toBe(true)
+    expect(p.canSeeProjects).toBe(false)
+    expect(p.canSeeCollaboration).toBe(true)
+    expect(p.canSeeTimesheets).toBe(false)
+    expect(p.canSubmitTimesheets).toBe(false)
     expect(p.canWrite).toBe(true)
     expect(p.canSeeStaff).toBe(false)
     expect(p.canSeeFinancials).toBe(false)

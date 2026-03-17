@@ -1229,7 +1229,9 @@
     "duration": "Duration",
     "months": "months",
     "accepted": "accepted",
+    "invited": "invited",
     "pending": "pending",
+    "resend": "Resend",
     "workPackages": "Work Packages",
     "deliverables": "Deliverables",
     "milestones": "Milestones",
@@ -1629,6 +1631,8 @@
     "choosePassword": "Choose a secure password",
     "reEnterPassword": "Re-enter your password",
     "emailPreFilled": "This email was set by the person who invited you.",
+    "organisation": "Organisation",
+    "orgPreFilled": "This was set by the coordinator who invited you.",
     "alreadyHaveAccount": "Already have an account?",
     "accountExists": "Account already exists",
     "accountExistsDesc": "An account with {{email}} already exists. Please sign in to accept the invitation.",
@@ -1646,3 +1650,4 @@
     "goToDashboard": "Go to Dashboard"
   }
 }
+

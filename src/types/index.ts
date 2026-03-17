@@ -544,7 +544,7 @@ export interface GrantAIExtraction {
 
 export type CollabProjectStatus = 'draft' | 'active' | 'archived'
 export type CollabPartnerRole = 'coordinator' | 'partner'
-export type CollabPartnerInviteStatus = 'pending' | 'accepted' | 'declined'
+export type CollabPartnerInviteStatus = 'pending' | 'invited' | 'accepted' | 'declined'
 export type CollabPeriodType = 'formal' | 'informal'
 export type CollabReportStatus = 'draft' | 'submitted' | 'approved' | 'rejected'
 export type CollabIndirectCostBase = 'all_direct' | 'personnel_only' | 'all_except_subcontracting'

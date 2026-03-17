@@ -49,6 +49,11 @@ export function ProtectedRoute({ children, permission }: ProtectedRouteProps) {
   }
 
   if (permission && !can(permission)) {
+    // Collab-only users: redirect to collaboration page instead of dead-end
+    const { accessType } = useAuthStore.getState()
+    if (accessType === 'collab_partner') {
+      return <Navigate to="/projects/collaboration" replace />
+    }
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center space-y-4 max-w-md">

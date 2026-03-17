@@ -43,10 +43,10 @@ const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'nav.core',
     items: [
-      { path: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard },
-      { path: '/staff', labelKey: 'nav.staff', icon: Users },
+      { path: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard, permission: 'canSeeDashboard' },
+      { path: '/staff', labelKey: 'nav.staff', icon: Users, permission: 'canSeeStaff' },
       { path: '/proposals', labelKey: 'nav.proposals', icon: Lightbulb, permission: 'canSeeProposals' },
-      { path: '/projects', labelKey: 'nav.projects', icon: FolderKanban },
+      { path: '/projects', labelKey: 'nav.projects', icon: FolderKanban, permission: 'canSeeProjects' },
       { path: '/projects/collaboration', labelKey: 'nav.collaboration', icon: Globe, permission: 'canSeeCollaboration' },
     ],
   },
@@ -165,7 +165,7 @@ export function Sidebar() {
         </nav>
 
         <div className="border-t px-3 py-3 space-y-2">
-          <AiQuotaWidget variant="compact" className="px-3 py-1" />
+          {can('canSeeDashboard') && <AiQuotaWidget variant="compact" className="px-3 py-1" />}
           <NavLink
             to="/help"
             onClick={() => setSidebarOpen(false)}

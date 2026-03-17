@@ -29,6 +29,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const INVITE_STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400',
+  invited: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400',
   accepted: 'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400',
   declined: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400',
 }
@@ -248,6 +249,11 @@ export function CollabProjectDetail() {
         role: p.role,
         acceptUrl: getInviteUrl(p),
       })
+      // Mark partner as 'invited' (email sent)
+      if (p.invite_status === 'pending') {
+        await collabPartnerService.update(p.id, { invite_status: 'invited' })
+        setPartners(prev => prev.map(pp => pp.id === p.id ? { ...pp, invite_status: 'invited' } : pp))
+      }
       toast({ title: t('common.sent'), description: t('collaboration.invitationSentTo', { email: p.contact_email }) })
     } catch {
       toast({ title: t('common.error'), description: t('collaboration.failedToSendInvitation'), variant: 'destructive' })
@@ -256,14 +262,15 @@ export function CollabProjectDetail() {
 
   const handleSendAllInvites = async () => {
     if (!project) return
-    const pending = partners.filter(p => p.invite_status === 'pending' && p.contact_email)
-    if (pending.length === 0) {
+    const uninvited = partners.filter(p => p.invite_status === 'pending' && p.contact_email)
+    if (uninvited.length === 0) {
       toast({ title: t('collaboration.noPendingInvitations'), description: t('collaboration.allPartnersInvited') })
       return
     }
     setSendingInvites(true)
     let sent = 0
-    for (const p of pending) {
+    const sentIds: string[] = []
+    for (const p of uninvited) {
       try {
         await emailService.sendCollabPartnerInvitation({
           to: p.contact_email!,
@@ -276,13 +283,20 @@ export function CollabProjectDetail() {
           role: p.role,
           acceptUrl: getInviteUrl(p),
         })
+        // Mark partner as 'invited'
+        await collabPartnerService.update(p.id, { invite_status: 'invited' }).catch(() => {})
+        sentIds.push(p.id)
         sent++
       } catch {
         // continue sending to others
       }
     }
+    // Update local state in one batch
+    if (sentIds.length > 0) {
+      setPartners(prev => prev.map(pp => sentIds.includes(pp.id) ? { ...pp, invite_status: 'invited' } : pp))
+    }
     setSendingInvites(false)
-    toast({ title: t('collaboration.invitationsSent'), description: t('collaboration.sentCountInvitations', { sent, total: pending.length }) })
+    toast({ title: t('collaboration.invitationsSent'), description: t('collaboration.sentCountInvitations', { sent, total: uninvited.length }) })
   }
 
   const handleAddPeriod = async () => {
@@ -436,7 +450,8 @@ export function CollabProjectDetail() {
     sum + p.budget_personnel + p.budget_subcontracting + p.budget_travel + p.budget_equipment + p.budget_other_goods
   , 0)
   const totalPMs = partners.reduce((sum, p) => sum + p.total_person_months, 0)
-  const pendingCount = partners.filter(p => p.invite_status === 'pending' && p.contact_email).length
+  const uninvitedCount = partners.filter(p => p.invite_status === 'pending' && p.contact_email).length
+  const invitedCount = partners.filter(p => p.invite_status === 'invited').length
   const acceptedCount = partners.filter(p => p.invite_status === 'accepted').length
 
   return (
@@ -469,10 +484,10 @@ export function CollabProjectDetail() {
           <Button variant="outline" size="sm" onClick={() => navigate(`/projects/collaboration/${id}/edit`)} className="gap-2">
             <Pencil className="h-4 w-4" /> {t('collaboration.editAll')}
           </Button>
-          {pendingCount > 0 && (
+          {uninvitedCount > 0 && (
             <Button variant="outline" onClick={handleSendAllInvites} disabled={sendingInvites} className="gap-2">
               <Send className="h-4 w-4" />
-              {sendingInvites ? t('common.sending') : t('collaboration.inviteAll', { count: pendingCount })}
+              {sendingInvites ? t('common.sending') : t('collaboration.inviteAll', { count: uninvitedCount })}
             </Button>
           )}
           {project.status === 'draft' && (
@@ -581,7 +596,7 @@ export function CollabProjectDetail() {
                 <div className="text-center">
                   <p className="text-xl font-bold">{partners.length}</p>
                   <p className="text-[11px] text-muted-foreground">{t('collaboration.partners')}</p>
-                  <p className="text-[10px] text-muted-foreground">{acceptedCount} {t('collaboration.accepted')} · {pendingCount} {t('collaboration.pending')}</p>
+                  <p className="text-[10px] text-muted-foreground">{acceptedCount} {t('collaboration.accepted')} · {invitedCount} {t('collaboration.invited')} · {uninvitedCount} {t('collaboration.pending')}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-xl font-bold">{wps.length}</p>
@@ -728,9 +743,9 @@ export function CollabProjectDetail() {
                         <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setEditPartner(p); setShowPartnerDialog(true) }}>
                           <Pencil className="h-3.5 w-3.5" /> {t('common.edit')}
                         </Button>
-                        {p.invite_status === 'pending' && p.contact_email && (
+                        {(p.invite_status === 'pending' || p.invite_status === 'invited') && p.contact_email && (
                           <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => handleSendInvite(p)}>
-                            <Mail className="h-3.5 w-3.5" /> {t('common.email')}
+                            <Mail className="h-3.5 w-3.5" /> {p.invite_status === 'invited' ? t('collaboration.resend') : t('common.email')}
                           </Button>
                         )}
                       </div>
