@@ -400,7 +400,7 @@ export interface FundingScheme {
   name: string
   type: string
   overhead_rate: number
-  requires_time_range: boolean
+  requires_time_range?: boolean
   created_at: string
   updated_at: string
 }
