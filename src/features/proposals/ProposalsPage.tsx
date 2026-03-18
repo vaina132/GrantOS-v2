@@ -337,7 +337,6 @@ export function ProposalsPage() {
                     proposals,
                     [
                       { header: 'Title', accessor: (p) => p.project_name },
-                      { header: 'Acronym', accessor: (p) => p.acronym ?? '' },
                       { header: 'Call ID', accessor: (p) => p.call_identifier ?? '' },
                       { header: 'Programme', accessor: (p) => p.funding_scheme ?? '' },
                       { header: 'Status', accessor: (p) => p.status },
