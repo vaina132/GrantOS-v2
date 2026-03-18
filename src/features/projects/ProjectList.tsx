@@ -15,10 +15,11 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/use-toast'
-import { Plus, Search, Trash2, Pencil, FolderKanban, Sparkles, Globe, Upload } from 'lucide-react'
+import { Plus, Search, Trash2, Pencil, FolderKanban, Sparkles, Globe, Upload, Download } from 'lucide-react'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import type { Project, ProjectStatus, CollabProject } from '@/types'
 import { ImportDialog } from '@/components/import/ImportDialog'
+import { exportToExcel } from '@/lib/exportUtils'
 
 const STATUS_OPTIONS: (ProjectStatus | 'All')[] = ['All', 'Upcoming', 'Active', 'Completed', 'Suspended']
 
@@ -30,6 +31,7 @@ export function ProjectList() {
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const [importAiOpen, setImportAiOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const filters: ProjectFilters = {
@@ -91,8 +93,28 @@ export function ProjectList() {
                 <Upload className="mr-2 h-4 w-4" /> {t('import.importProjects')}
               </Button>
               {aiEnabled && (
-                <Button variant="outline" onClick={() => navigate('/projects/import-ai')}>
-                  <Sparkles className="mr-2 h-4 w-4" /> {t('projects.importWithAI')}
+                <Button variant="outline" onClick={() => setImportAiOpen(true)}>
+                  <Sparkles className="mr-2 h-4 w-4" /> {t('import.importWithAI')}
+                </Button>
+              )}
+              {projects.length > 0 && (
+                <Button variant="outline" onClick={() => exportToExcel(
+                  projects,
+                  [
+                    { header: 'Acronym', accessor: (p) => p.acronym },
+                    { header: 'Title', accessor: (p) => p.title },
+                    { header: 'Status', accessor: (p) => p.status },
+                    { header: 'Start Date', accessor: (p) => p.start_date },
+                    { header: 'End Date', accessor: (p) => p.end_date },
+                    { header: 'Grant Number', accessor: (p) => p.grant_number ?? '' },
+                    { header: 'Total Budget', accessor: (p) => p.total_budget ?? '' },
+                    { header: 'Personnel Budget', accessor: (p) => p.budget_personnel ?? '' },
+                    { header: 'Travel Budget', accessor: (p) => p.budget_travel ?? '' },
+                  ],
+                  'projects_export',
+                  'Projects',
+                )}>
+                  <Download className="mr-2 h-4 w-4" /> {t('common.export')}
                 </Button>
               )}
               <Button onClick={() => navigate('/projects/new')}>
@@ -296,6 +318,13 @@ export function ProjectList() {
         open={importOpen}
         onOpenChange={setImportOpen}
         importType="projects"
+        onImportComplete={() => refetch()}
+      />
+      <ImportDialog
+        open={importAiOpen}
+        onOpenChange={setImportAiOpen}
+        importType="projects"
+        aiMode
         onImportComplete={() => refetch()}
       />
     </div>

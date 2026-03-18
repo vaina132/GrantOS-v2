@@ -1147,7 +1147,9 @@
     "stepImport": "Import",
     "importStaff": "Import Staff",
     "importProjects": "Import Projects",
-    "importProposals": "Import Proposals"
+    "importProposals": "Import Proposals",
+    "importWithAI": "Import with AI",
+    "importWithAITitle": "Import {{type}} with AI"
   },
   "documents": {
     "title": "Documents",

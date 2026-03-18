@@ -14,21 +14,23 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
-import { Plus, Search, Trash2, Pencil, Users, Upload } from 'lucide-react'
+import { Plus, Search, Trash2, Pencil, Users, Upload, Sparkles, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
 import type { Person } from '@/types'
 import { ImportDialog } from '@/components/import/ImportDialog'
+import { exportToExcel } from '@/lib/exportUtils'
 
 export function StaffList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { can } = useAuthStore()
+  const { can, aiEnabled } = useAuthStore()
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<boolean | undefined>(true)
   const [deleteTarget, setDeleteTarget] = useState<Person | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [importAiOpen, setImportAiOpen] = useState(false)
 
   const filters: StaffFilters = {
     search: search || undefined,
@@ -82,6 +84,31 @@ export function StaffList() {
               <Button variant="outline" onClick={() => setImportOpen(true)}>
                 <Upload className="mr-2 h-4 w-4" /> {t('import.importStaff')}
               </Button>
+              {aiEnabled && (
+                <Button variant="outline" onClick={() => setImportAiOpen(true)}>
+                  <Sparkles className="mr-2 h-4 w-4" /> {t('import.importWithAI')}
+                </Button>
+              )}
+              {staff.length > 0 && (
+                <Button variant="outline" onClick={() => exportToExcel(
+                  staff,
+                  [
+                    { header: 'Full Name', accessor: (p) => p.full_name },
+                    { header: 'Email', accessor: (p) => p.email ?? '' },
+                    { header: 'Department', accessor: (p) => p.department ?? '' },
+                    { header: 'Role', accessor: (p) => p.role ?? '' },
+                    { header: 'Employment Type', accessor: (p) => p.employment_type ?? '' },
+                    { header: 'FTE', accessor: (p) => p.fte ?? '' },
+                    { header: 'Start Date', accessor: (p) => p.start_date ?? '' },
+                    { header: 'End Date', accessor: (p) => p.end_date ?? '' },
+                    { header: 'Active', accessor: (p) => p.is_active ? 'Yes' : 'No' },
+                  ],
+                  'staff_export',
+                  'Staff',
+                )}>
+                  <Download className="mr-2 h-4 w-4" /> {t('common.export')}
+                </Button>
+              )}
               <Button onClick={() => navigate('/staff/new')}>
                 <Plus className="mr-2 h-4 w-4" /> {t('staff.addPerson')}
               </Button>
@@ -259,6 +286,13 @@ export function StaffList() {
         open={importOpen}
         onOpenChange={setImportOpen}
         importType="persons"
+        onImportComplete={() => refetch()}
+      />
+      <ImportDialog
+        open={importAiOpen}
+        onOpenChange={setImportAiOpen}
+        importType="persons"
+        aiMode
         onImportComplete={() => refetch()}
       />
     </div>

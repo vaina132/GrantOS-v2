@@ -196,15 +196,20 @@ interface ImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   importType: ImportType
+  /** When true, dialog opens in AI-focused mode (only accepts documents/images) */
+  aiMode?: boolean
   /** Called after successful import so the parent can refresh data */
   onImportComplete?: () => void
 }
 
-export function ImportDialog({ open, onOpenChange, importType, onImportComplete }: ImportDialogProps) {
+const AI_ONLY_ACCEPT = '.pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.webp'
+
+export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportComplete }: ImportDialogProps) {
   const { t } = useTranslation()
   const { orgId, aiEnabled } = useAuthStore()
   const config = IMPORT_CONFIGS[importType]
-  const fileAccept = aiEnabled ? ALL_ACCEPT : SPREADSHEET_ACCEPT
+  const effectiveAiMode = aiMode && aiEnabled
+  const fileAccept = effectiveAiMode ? AI_ONLY_ACCEPT : aiEnabled ? ALL_ACCEPT : SPREADSHEET_ACCEPT
 
   // Wizard state
   const [step, setStep] = useState<Step>('upload')
@@ -491,8 +496,8 @@ export function ImportDialog({ open, onOpenChange, importType, onImportComplete 
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Upload className="h-4 w-4" />
-            {t('import.importTitle', { type: config.label })}
+            {effectiveAiMode ? <Sparkles className="h-4 w-4 text-amber-500" /> : <Upload className="h-4 w-4" />}
+            {effectiveAiMode ? t('import.importWithAITitle', { type: config.label }) : t('import.importTitle', { type: config.label })}
           </DialogTitle>
         </DialogHeader>
 
@@ -502,11 +507,23 @@ export function ImportDialog({ open, onOpenChange, importType, onImportComplete 
         {step === 'upload' && (
           <div className="space-y-4">
             {/* Hint */}
-            <div className="flex items-start gap-2 rounded-lg border bg-muted/30 p-3">
-              <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+            <div className={cn(
+              'flex items-start gap-2 rounded-lg border p-3',
+              effectiveAiMode ? 'bg-purple-50/50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800' : 'bg-muted/30',
+            )}>
+              {effectiveAiMode ? <Sparkles className="h-4 w-4 text-purple-500 mt-0.5 shrink-0" /> : <Lightbulb className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />}
               <div className="text-xs text-muted-foreground space-y-1">
-                <p>{config.description}</p>
-                <p>{config.templateHint}</p>
+                {effectiveAiMode ? (
+                  <>
+                    <p>Upload a PDF, Word document, or image and AI will extract {config.label.toLowerCase()} data automatically.</p>
+                    <p>For best results, use clear documents with structured data (tables, lists).</p>
+                  </>
+                ) : (
+                  <>
+                    <p>{config.description}</p>
+                    <p>{config.templateHint}</p>
+                  </>
+                )}
               </div>
             </div>
 
@@ -547,10 +564,12 @@ export function ImportDialog({ open, onOpenChange, importType, onImportComplete 
                   <Upload className="h-8 w-8 text-muted-foreground/40 mx-auto" />
                   <p className="font-medium text-sm">{t('import.dropOrBrowse')}</p>
                   <div className="flex flex-wrap gap-1.5 justify-center">
-                    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted rounded-full px-2 py-0.5">
-                      <FileSpreadsheet className="h-2.5 w-2.5" /> CSV / Excel
-                    </span>
-                    {aiEnabled && (
+                    {!effectiveAiMode && (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted rounded-full px-2 py-0.5">
+                        <FileSpreadsheet className="h-2.5 w-2.5" /> CSV / Excel
+                      </span>
+                    )}
+                    {(aiEnabled || effectiveAiMode) && (
                       <>
                         <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted rounded-full px-2 py-0.5">
                           <FileText className="h-2.5 w-2.5" /> PDF / Word
@@ -585,7 +604,7 @@ export function ImportDialog({ open, onOpenChange, importType, onImportComplete 
             )}
 
             {/* AI hint */}
-            {file && isAIFile && (
+            {(file && isAIFile) || effectiveAiMode ? (
               <div className="space-y-1.5">
                 <Label htmlFor="ai-hint" className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <Lightbulb className="h-3.5 w-3.5 text-amber-500" /> Help the AI (optional)
@@ -598,22 +617,24 @@ export function ImportDialog({ open, onOpenChange, importType, onImportComplete 
                   className="text-sm h-8"
                 />
               </div>
-            )}
+            ) : null}
 
             {/* AI Quota */}
-            {file && isAIFile && (
+            {((file && isAIFile) || effectiveAiMode) && (
               <AiQuotaWidget onQuotaExhausted={setQuotaExhausted} />
             )}
 
             {/* Actions */}
             <div className="flex items-center justify-between pt-1">
-              <Button variant="outline" size="sm" onClick={downloadTemplate} className="text-xs h-8 gap-1.5">
-                <Download className="h-3.5 w-3.5" /> {t('import.downloadTemplate')}
-              </Button>
-              <Button size="sm" onClick={handleProcess} disabled={!file || processing || (isAIFile && quotaExhausted)} className="h-8 gap-1.5">
-                {isAIFile && <Sparkles className="h-3.5 w-3.5" />}
-                {!isAIFile && <ArrowRight className="h-3.5 w-3.5" />}
-                {isAIFile ? t('import.extractWithAI') : t('import.parseAndContinue')}
+              {!effectiveAiMode ? (
+                <Button variant="outline" size="sm" onClick={downloadTemplate} className="text-xs h-8 gap-1.5">
+                  <Download className="h-3.5 w-3.5" /> {t('import.downloadTemplate')}
+                </Button>
+              ) : <div />}
+              <Button size="sm" onClick={handleProcess} disabled={!file || processing || ((isAIFile || effectiveAiMode) && quotaExhausted)} className="h-8 gap-1.5">
+                {(isAIFile || effectiveAiMode) && <Sparkles className="h-3.5 w-3.5" />}
+                {!isAIFile && !effectiveAiMode && <ArrowRight className="h-3.5 w-3.5" />}
+                {(isAIFile || effectiveAiMode) ? t('import.extractWithAI') : t('import.parseAndContinue')}
               </Button>
             </div>
           </div>

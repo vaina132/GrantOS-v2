@@ -38,9 +38,11 @@ import {
   Send,
   Download,
   Upload,
+  Sparkles,
 } from 'lucide-react'
 import type { Proposal, ProposalStatus, Person } from '@/types'
 import { ImportDialog } from '@/components/import/ImportDialog'
+import { exportToExcel } from '@/lib/exportUtils'
 import { ComboInput, type ComboOption } from '@/components/common/ComboInput'
 import { supabase } from '@/lib/supabase'
 
@@ -72,7 +74,7 @@ const EMPTY_FORM = {
 export function ProposalsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { orgId, user } = useAuthStore()
+  const { orgId, user, aiEnabled } = useAuthStore()
   const invalidateProjects = useInvalidateProjects()
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [loading, setLoading] = useState(true)
@@ -84,6 +86,7 @@ export function ProposalsPage() {
   const [converting, setConverting] = useState(false)
   const [filterStatus, setFilterStatus] = useState<ProposalStatus | 'All'>('All')
   const [importOpen, setImportOpen] = useState(false)
+  const [importAiOpen, setImportAiOpen] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [fundingSchemeOptions, setFundingSchemeOptions] = useState<ComboOption[]>([])
   const [staffList, setStaffList] = useState<Person[]>([])
@@ -316,19 +319,50 @@ export function ProposalsPage() {
         description="Track grant proposal applications and convert granted ones into projects"
         actions={
           <div className="flex gap-2">
-            {proposals.length > 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => generateProposalsPipelinePDF(proposals, '')}
-              >
-                <Download className="h-4 w-4" /> Export PDF
-              </Button>
-            )}
             <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setImportOpen(true)}>
               <Upload className="h-4 w-4" /> {t('import.importProposals')}
             </Button>
+            {aiEnabled && (
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setImportAiOpen(true)}>
+                <Sparkles className="h-4 w-4" /> {t('import.importWithAI')}
+              </Button>
+            )}
+            {proposals.length > 0 && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => exportToExcel(
+                    proposals,
+                    [
+                      { header: 'Title', accessor: (p) => p.project_name },
+                      { header: 'Acronym', accessor: (p) => p.acronym ?? '' },
+                      { header: 'Call ID', accessor: (p) => p.call_identifier ?? '' },
+                      { header: 'Programme', accessor: (p) => p.funding_scheme ?? '' },
+                      { header: 'Status', accessor: (p) => p.status },
+                      { header: 'Submission Deadline', accessor: (p) => p.submission_deadline ?? '' },
+                      { header: 'Our PMs', accessor: (p) => p.our_pms ?? '' },
+                      { header: 'Personnel Budget', accessor: (p) => p.personnel_budget ?? '' },
+                      { header: 'Travel Budget', accessor: (p) => p.travel_budget ?? '' },
+                      { header: 'Notes', accessor: (p) => p.notes ?? '' },
+                    ],
+                    'proposals_export',
+                    'Proposals',
+                  )}
+                >
+                  <Download className="h-4 w-4" /> {t('common.export')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => generateProposalsPipelinePDF(proposals, '')}
+                >
+                  <Download className="h-4 w-4" /> Export PDF
+                </Button>
+              </>
+            )}
             <Button onClick={openCreate} size="sm" className="gap-1.5">
               <Plus className="h-4 w-4" /> New Proposal
             </Button>
@@ -634,6 +668,13 @@ export function ProposalsPage() {
         open={importOpen}
         onOpenChange={setImportOpen}
         importType="proposals"
+        onImportComplete={() => fetchProposals()}
+      />
+      <ImportDialog
+        open={importAiOpen}
+        onOpenChange={setImportAiOpen}
+        importType="proposals"
+        aiMode
         onImportComplete={() => fetchProposals()}
       />
     </div>
