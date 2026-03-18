@@ -1,53 +1,45 @@
-import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
 import { apiFetch } from '@/lib/apiClient'
 import type { GrantAIExtraction } from '@/types'
 
 export const grantAIService = {
   /**
-   * Upload a grant agreement file and get AI-extracted project data.
-   * 1. Uploads the PDF to Supabase Storage (avoids Vercel body size limit).
-   * 2. Calls the Vercel serverless function with the storage path.
-   * 3. Cleans up the temp file after parsing.
+   * Send a grant agreement file to AI for extraction.
+   * File is encoded as base64 and sent directly in the request body.
    */
   async parseGrantAgreement(
     file: File,
     opts?: { organisationAbbreviation?: string; userInstructions?: string },
   ): Promise<{ extraction: GrantAIExtraction; usage?: any }> {
-    // 1. Upload PDF to Supabase Storage
-    const storagePath = `temp/${Date.now()}_${file.name}`
-    const { error: uploadError } = await supabase.storage
-      .from('grant-uploads')
-      .upload(storagePath, file, { contentType: file.type, upsert: false })
+    // 1. Read file as base64
+    const arrayBuffer = await file.arrayBuffer()
+    const base64 = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    )
 
-    if (uploadError) {
-      throw new Error(`Failed to upload file: ${uploadError.message}`)
+    if (base64.length > 4_000_000) {
+      throw new Error('File is too large for AI processing (max ~3MB). Please use a smaller file.')
     }
 
-    try {
-      // 2. Call Vercel serverless function with storage path (small JSON body)
-      const response = await apiFetch('/api/ai?action=parse-grant', {
-        method: 'POST',
-        body: JSON.stringify({
-          storage_path: storagePath,
-          file_name: file.name,
-          organisation_abbreviation: opts?.organisationAbbreviation || '',
-          user_instructions: opts?.userInstructions || '',
-          org_id: useAuthStore.getState().orgId || '',
-          user_id: useAuthStore.getState().user?.id || '',
-        }),
-      })
+    // 2. Call Vercel serverless function with base64 data
+    const response = await apiFetch('/api/ai?action=parse-grant', {
+      method: 'POST',
+      body: JSON.stringify({
+        file_data: base64,
+        file_name: file.name,
+        organisation_abbreviation: opts?.organisationAbbreviation || '',
+        user_instructions: opts?.userInstructions || '',
+        org_id: useAuthStore.getState().orgId || '',
+        user_id: useAuthStore.getState().user?.id || '',
+      }),
+    })
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
-        throw new Error(errData.error || `Failed to parse grant agreement (${response.status})`)
-      }
-
-      const data = await response.json()
-      return data as { extraction: GrantAIExtraction; usage?: any }
-    } finally {
-      // 3. Clean up temp file
-      await supabase.storage.from('grant-uploads').remove([storagePath]).catch(() => {})
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
+      throw new Error(errData.error || `Failed to parse grant agreement (${response.status})`)
     }
+
+    const data = await response.json()
+    return data as { extraction: GrantAIExtraction; usage?: any }
   },
 }

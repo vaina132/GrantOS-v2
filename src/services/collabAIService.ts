@@ -1,4 +1,3 @@
-import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
 import { apiFetch } from '@/lib/apiClient'
 
@@ -73,36 +72,33 @@ export const collabAIService = {
     file: File,
     opts?: { userInstructions?: string },
   ): Promise<{ extraction: CollabAIExtraction; usage?: any; warning?: string }> {
-    const storagePath = `collab-temp/${Date.now()}_${file.name}`
-    const { error: uploadError } = await supabase.storage
-      .from('grant-uploads')
-      .upload(storagePath, file, { contentType: file.type, upsert: false })
+    // Read file as base64
+    const arrayBuffer = await file.arrayBuffer()
+    const base64 = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    )
 
-    if (uploadError) {
-      throw new Error(`Failed to upload file: ${uploadError.message}`)
+    if (base64.length > 4_000_000) {
+      throw new Error('File is too large for AI processing (max ~3MB). Please use a smaller file.')
     }
 
-    try {
-      const response = await apiFetch('/api/ai?action=parse-collab-grant', {
-        method: 'POST',
-        body: JSON.stringify({
-          storage_path: storagePath,
-          file_name: file.name,
-          user_instructions: opts?.userInstructions || '',
-          org_id: useAuthStore.getState().orgId || '',
-          user_id: useAuthStore.getState().user?.id || '',
-        }),
-      })
+    const response = await apiFetch('/api/ai?action=parse-collab-grant', {
+      method: 'POST',
+      body: JSON.stringify({
+        file_data: base64,
+        file_name: file.name,
+        user_instructions: opts?.userInstructions || '',
+        org_id: useAuthStore.getState().orgId || '',
+        user_id: useAuthStore.getState().user?.id || '',
+      }),
+    })
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
-        throw new Error(errData.error || `Failed to parse document (${response.status})`)
-      }
-
-      const data = await response.json()
-      return data as { extraction: CollabAIExtraction; usage?: any; warning?: string }
-    } finally {
-      await supabase.storage.from('grant-uploads').remove([storagePath]).catch(() => {})
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
+      throw new Error(errData.error || `Failed to parse document (${response.status})`)
     }
+
+    const data = await response.json()
+    return data as { extraction: CollabAIExtraction; usage?: any; warning?: string }
   },
 }

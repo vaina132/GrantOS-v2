@@ -13,7 +13,7 @@ import { checkRateLimit } from './lib/rateLimit.js'
  */
 
 export const config = {
-  maxDuration: 60,
+  maxDuration: 120,
 }
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
@@ -117,40 +117,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   cors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
 
-  // Rate limit: 20 AI requests per 60s per IP
-  if (!checkRateLimit(req, res, { limit: 20, windowSeconds: 60, prefix: 'ai' })) return
-
-  // Authenticate all AI requests
-  let auth
-  try {
-    auth = await authenticateRequest(req)
-  } catch (err) {
-    return handleAuthError(err, res)
-  }
-
   const action = (req.query.action as string) || ''
 
-  // Inject authenticated user context into request body for downstream handlers
-  if (req.body && typeof req.body === 'object') {
-    if (!req.body.org_id && auth.orgId) req.body.org_id = auth.orgId
-    if (!req.body.user_id) req.body.user_id = auth.userId
+  // Health check — no auth required, useful for diagnostics
+  if (action === 'health' && req.method === 'GET') {
+    const env = getClaudeAndSupabase()
+    return res.status(200).json({
+      ok: true,
+      hasClaudeKey: !!process.env.CLAUDE_API_KEY,
+      hasSupabaseUrl: !!(process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL),
+      hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      hasEnv: !!env,
+      timestamp: new Date().toISOString(),
+    })
   }
 
-  switch (action) {
-    case 'parse-grant':
-      if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-      return handleParseGrant(req, res)
-    case 'parse-collab-grant':
-      if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-      return handleParseCollabGrant(req, res)
-    case 'parse-import':
-      if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-      return handleParseImport(req, res)
-    case 'eu-calls':
-      if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
-      return handleEuCalls(req, res)
-    default:
-      return res.status(400).json({ error: `Unknown action: "${action}"` })
+  try {
+    // Rate limit: 20 AI requests per 60s per IP
+    if (!checkRateLimit(req, res, { limit: 20, windowSeconds: 60, prefix: 'ai' })) return
+
+    // Authenticate all AI requests
+    let auth
+    try {
+      auth = await authenticateRequest(req)
+    } catch (err) {
+      return handleAuthError(err, res)
+    }
+
+    // Inject authenticated user context into request body for downstream handlers
+    if (req.body && typeof req.body === 'object') {
+      if (!req.body.org_id && auth.orgId) req.body.org_id = auth.orgId
+      if (!req.body.user_id) req.body.user_id = auth.userId
+    }
+
+    switch (action) {
+      case 'parse-grant':
+        if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+        return await handleParseGrant(req, res)
+      case 'parse-collab-grant':
+        if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+        return await handleParseCollabGrant(req, res)
+      case 'parse-import':
+        if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+        return await handleParseImport(req, res)
+      case 'eu-calls':
+        if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
+        return await handleEuCalls(req, res)
+      default:
+        return res.status(400).json({ error: `Unknown action: "${action}"` })
+    }
+  } catch (fatalErr: any) {
+    // Global safety net — if any handler throws without catching, return a proper error
+    console.error('[GrantLume] AI handler fatal error:', fatalErr)
+    if (!res.headersSent) {
+      return res.status(500).json({ error: `Unexpected server error: ${fatalErr?.message || 'Unknown'}` })
+    }
   }
 }
 
@@ -193,9 +214,15 @@ async function buildContentFromFile(arrayBuffer: ArrayBuffer, ext: string, userP
   }
 
   if (ext === 'pdf') {
-    const { extractText } = await import('unpdf')
-    const { text: pdfPages } = await extractText(new Uint8Array(arrayBuffer))
-    const pdfText = pdfPages.join('\n')
+    let pdfText: string
+    try {
+      const { extractText } = await import('unpdf')
+      const { text: pdfPages } = await extractText(new Uint8Array(arrayBuffer))
+      pdfText = pdfPages.join('\n')
+    } catch (pdfErr) {
+      console.error('[GrantLume] unpdf extraction failed:', pdfErr)
+      throw new Error('Could not extract text from PDF. The PDF parser encountered an error. Try uploading as an image instead.')
+    }
 
     if (!pdfText || pdfText.trim().length < 20) {
       throw new Error('Could not extract text from PDF. The file may be scanned/image-based. Try uploading as an image instead.')
@@ -362,8 +389,8 @@ async function handleParseGrant(req: VercelRequest, res: VercelResponse) {
     const env = getClaudeAndSupabase()
     if (!env) return res.status(500).json({ error: 'Server credentials not configured' })
 
-    const { storage_path, file_name, organisation_abbreviation, user_instructions, org_id, user_id } = req.body || {}
-    if (!storage_path) return res.status(400).json({ error: 'No storage_path provided' })
+    const { storage_path, file_data, file_name, organisation_abbreviation, user_instructions, org_id, user_id } = req.body || {}
+    if (!storage_path && !file_data) return res.status(400).json({ error: 'No storage_path or file_data provided' })
 
     // Quota check
     if (org_id) {
@@ -371,12 +398,25 @@ async function handleParseGrant(req: VercelRequest, res: VercelResponse) {
       if (!quota.allowed) return res.status(429).json({ error: quota.error, quota_exceeded: true })
     }
 
-    const { arrayBuffer } = await downloadAndExtract(env.supabase, storage_path, file_name)
+    let arrayBuffer: ArrayBuffer
+    if (file_data) {
+      const buffer = Buffer.from(file_data, 'base64')
+      arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+    } else {
+      const result = await downloadAndExtract(env.supabase, storage_path, file_name)
+      arrayBuffer = result.arrayBuffer
+    }
 
     // Extract text from PDF
-    const { extractText } = await import('unpdf')
-    const { text: pdfPages } = await extractText(new Uint8Array(arrayBuffer))
-    const pdfText = pdfPages.join('\n')
+    let pdfText: string
+    try {
+      const { extractText } = await import('unpdf')
+      const { text: pdfPages } = await extractText(new Uint8Array(arrayBuffer))
+      pdfText = pdfPages.join('\n')
+    } catch (pdfErr) {
+      console.error('[GrantLume] parse-grant: unpdf extraction failed:', pdfErr)
+      return res.status(400).json({ error: 'Could not extract text from PDF. The PDF parser encountered an error. Try uploading as an image instead.' })
+    }
 
     if (!pdfText || pdfText.trim().length === 0) {
       return res.status(400).json({ error: 'Could not extract text from PDF. The file may be scanned/image-based.' })
@@ -511,8 +551,8 @@ async function handleParseCollabGrant(req: VercelRequest, res: VercelResponse) {
     const env = getClaudeAndSupabase()
     if (!env) return res.status(500).json({ error: 'Server credentials not configured' })
 
-    const { storage_path, file_name, user_instructions, org_id, user_id } = req.body || {}
-    if (!storage_path) return res.status(400).json({ error: 'No storage_path provided' })
+    const { storage_path, file_data, file_name, user_instructions, org_id, user_id } = req.body || {}
+    if (!storage_path && !file_data) return res.status(400).json({ error: 'No storage_path or file_data provided' })
 
     // Quota check
     if (org_id) {
@@ -520,7 +560,17 @@ async function handleParseCollabGrant(req: VercelRequest, res: VercelResponse) {
       if (!quota.allowed) return res.status(429).json({ error: quota.error, quota_exceeded: true })
     }
 
-    const { arrayBuffer, ext } = await downloadAndExtract(env.supabase, storage_path, file_name)
+    let arrayBuffer: ArrayBuffer
+    let ext: string
+    if (file_data) {
+      const buffer = Buffer.from(file_data, 'base64')
+      arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+      ext = (file_name || '').toLowerCase().split('.').pop() || ''
+    } else {
+      const result = await downloadAndExtract(env.supabase, storage_path, file_name)
+      arrayBuffer = result.arrayBuffer
+      ext = result.ext
+    }
 
     let prompt = `Extract collaboration project data from this document (file: "${file_name}").`
     prompt += `\nThis is an EU-funded multi-partner project. Extract ALL project metadata, partners with their budgets, work packages with tasks, deliverables, and milestones.`
@@ -590,23 +640,45 @@ For "proposals":
 Return ONLY the JSON object. No markdown fences, no explanation.`
 
 async function handleParseImport(req: VercelRequest, res: VercelResponse) {
+  console.log('[GrantLume] parse-import: started')
   try {
     const env = getClaudeAndSupabase()
-    if (!env) return res.status(500).json({ error: 'Server credentials not configured' })
+    if (!env) {
+      console.error('[GrantLume] parse-import: missing env vars — CLAUDE_API_KEY, SUPABASE_URL, or SUPABASE_SERVICE_ROLE_KEY not set')
+      return res.status(500).json({ error: 'Server credentials not configured. Please check CLAUDE_API_KEY and Supabase environment variables.' })
+    }
 
-    const { storage_path, file_name, import_type, user_instructions, org_id, user_id } = req.body || {}
-    if (!storage_path) return res.status(400).json({ error: 'No storage_path provided' })
+    const { storage_path, file_data, file_name, import_type, user_instructions, org_id, user_id } = req.body || {}
+    console.log('[GrantLume] parse-import: params', { storage_path: !!storage_path, file_data: !!file_data, file_name, import_type, org_id })
+    if (!storage_path && !file_data) return res.status(400).json({ error: 'No storage_path or file_data provided' })
     if (!import_type || !['persons', 'projects', 'proposals'].includes(import_type)) {
       return res.status(400).json({ error: 'import_type must be one of: persons, projects, proposals' })
     }
 
     // Quota check
     if (org_id) {
+      console.log('[GrantLume] parse-import: checking quota…')
       const quota = await checkQuota(env.supabase, org_id)
       if (!quota.allowed) return res.status(429).json({ error: quota.error, quota_exceeded: true })
     }
 
-    const { arrayBuffer, ext } = await downloadAndExtract(env.supabase, storage_path, file_name)
+    let arrayBuffer: ArrayBuffer
+    let ext: string
+
+    if (file_data) {
+      // Direct base64 file data — no storage needed
+      console.log('[GrantLume] parse-import: decoding base64 file data…')
+      const buffer = Buffer.from(file_data, 'base64')
+      arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
+      ext = (file_name || '').toLowerCase().split('.').pop() || ''
+      console.log('[GrantLume] parse-import: decoded, ext =', ext, 'size =', arrayBuffer.byteLength)
+    } else {
+      console.log('[GrantLume] parse-import: downloading file from storage…')
+      const result = await downloadAndExtract(env.supabase, storage_path, file_name)
+      arrayBuffer = result.arrayBuffer
+      ext = result.ext
+      console.log('[GrantLume] parse-import: file downloaded, ext =', ext, 'size =', arrayBuffer.byteLength)
+    }
 
     let prompt = `Extract "${import_type}" data from this document (file: "${file_name}").`
     prompt += `\nReturn a JSON object with a "rows" array matching the "${import_type}" schema from the system prompt.`
@@ -614,20 +686,26 @@ async function handleParseImport(req: VercelRequest, res: VercelResponse) {
     if (user_instructions) prompt += `\n\nAdditional instructions from the user:\n${user_instructions}`
     prompt += '\n\nReturn ONLY the JSON object.'
 
+    console.log('[GrantLume] parse-import: building content from file…')
     const messageContent = await buildContentFromFile(arrayBuffer, ext, prompt)
+    console.log('[GrantLume] parse-import: calling Claude API…')
     const { text, usage, tokens_in, tokens_out } = await callClaude(env.claudeApiKey, IMPORT_SYSTEM_PROMPT, messageContent)
+    console.log('[GrantLume] parse-import: Claude responded, tokens_in =', tokens_in, 'tokens_out =', tokens_out)
     const extraction = parseJsonResponse(text)
+    console.log('[GrantLume] parse-import: parsed extraction, rows =', extraction?.rows?.length ?? 0)
 
     // Record usage
     if (org_id) {
-      await recordUsage(env.supabase, org_id, user_id || 'unknown', 'parse-import', tokens_in, tokens_out)
+      await recordUsage(env.supabase, org_id, user_id || 'unknown', 'parse-import', tokens_in, tokens_out).catch((e: any) => {
+        console.error('[GrantLume] parse-import: usage recording failed (non-fatal):', e)
+      })
     }
 
     return res.status(200).json({ extraction, usage })
   } catch (err: any) {
-    if (err.status) return res.status(err.status).json({ error: err.message })
     console.error('[GrantLume] parse-import error:', err)
-    return res.status(500).json({ error: `Server error: ${err.message || 'Unknown error'}` })
+    if (err.status) return res.status(err.status).json({ error: err.message })
+    return res.status(500).json({ error: `Server error: ${err?.message || 'Unknown error'}` })
   }
 }
 

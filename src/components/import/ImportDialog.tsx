@@ -311,78 +311,97 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
         setProcessing(false)
       }
     } else {
-      // AI extraction
+      // AI extraction — send file as base64 directly to API (no storage upload)
       setStep('processing')
       setProcessing(true)
-      setProcessingMessage('Uploading file…')
+      setProcessingMessage('Preparing file…')
       try {
-        const storagePath = `import-temp/${Date.now()}_${file.name}`
-        const { error: uploadError } = await supabase.storage
-          .from('grant-uploads')
-          .upload(storagePath, file, { contentType: file.type, upsert: false })
-        if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`)
+        console.log('[AI Import] Step 1: Reading file as base64…', { name: file.name, size: file.size, type: file.type })
+        const arrayBuffer = await file.arrayBuffer()
+        const base64 = btoa(
+          new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+        )
+        console.log('[AI Import] Step 1 done: base64 length =', base64.length)
 
+        // Check file size — Vercel has ~4.5MB body limit
+        if (base64.length > 4_000_000) {
+          throw new Error('File is too large for AI processing (max ~3MB). Please use a smaller file or convert to a spreadsheet.')
+        }
+
+        setProcessingMessage('AI is reading your document…')
+        console.log('[AI Import] Step 2: Calling AI parse-import API…')
+        const abortCtrl = new AbortController()
+        const timeout = setTimeout(() => abortCtrl.abort(), 120_000) // 120s timeout
+        const reqBody = {
+          file_data: base64,
+          file_name: file.name,
+          import_type: importType,
+          user_instructions: userHint.trim() || undefined,
+          org_id: useAuthStore.getState().orgId || '',
+          user_id: useAuthStore.getState().user?.id || '',
+        }
+        console.log('[AI Import] Request body (without file_data):', { ...reqBody, file_data: `[${base64.length} chars]` })
+        let response: Response
         try {
-          setProcessingMessage('AI is reading your document…')
-          const abortCtrl = new AbortController()
-          const timeout = setTimeout(() => abortCtrl.abort(), 90_000) // 90s timeout
-          let response: Response
-          try {
-            response = await apiFetch('/api/ai?action=parse-import', {
-              method: 'POST',
-              signal: abortCtrl.signal,
-              body: JSON.stringify({
-                storage_path: storagePath,
-                file_name: file.name,
-                import_type: importType,
-                user_instructions: userHint.trim() || undefined,
-                org_id: useAuthStore.getState().orgId || '',
-                user_id: useAuthStore.getState().user?.id || '',
-              }),
-            })
-          } catch (fetchErr: any) {
-            if (fetchErr?.name === 'AbortError') throw new Error('AI extraction timed out. Please try a smaller document or use a spreadsheet instead.')
-            throw fetchErr
-          } finally {
-            clearTimeout(timeout)
-          }
-
-          if (!response.ok) {
-            const errData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
-            throw new Error(errData.error || `AI extraction failed (${response.status})`)
-          }
-
-          setProcessingMessage('Processing results…')
-          const data = await response.json()
-          const rows: Record<string, unknown>[] = data.extraction?.rows ?? []
-
-          if (rows.length === 0) {
-            toast({ title: 'No data found', description: 'AI could not extract any records from this document. Try a different file or add hints.', variant: 'destructive' })
-            setStep('upload')
-            setProcessing(false)
-            return
-          }
-
-          const allKeys = new Set<string>()
-          for (const row of rows) {
-            for (const key of Object.keys(row)) allKeys.add(key)
-          }
-          const internalFields = ['confidence', '_notes']
-          const headers = [...allKeys].filter((k) => !internalFields.includes(k))
-          const autoMapping = autoMap(headers, config.columns)
-
-          setParsed({ headers, rows, source: 'ai' })
-          setMapping(autoMapping)
-          setStep('map')
-
-          const avgConfidence = rows.reduce((sum, r) => sum + (Number(r.confidence) || 0), 0) / rows.length
-          if (avgConfidence < 70) {
-            toast({ title: 'Low confidence', description: 'AI extraction confidence is below 70%. Please review the data carefully.', variant: 'default' })
-          }
+          response = await apiFetch('/api/ai?action=parse-import', {
+            method: 'POST',
+            signal: abortCtrl.signal,
+            body: JSON.stringify(reqBody),
+          })
+        } catch (fetchErr: any) {
+          console.error('[AI Import] Fetch error:', fetchErr)
+          if (fetchErr?.name === 'AbortError') throw new Error('AI extraction timed out (120s). Please try a smaller document or use a spreadsheet instead.')
+          throw fetchErr
         } finally {
-          await supabase.storage.from('grant-uploads').remove([storagePath]).catch(() => {})
+          clearTimeout(timeout)
+        }
+
+        console.log('[AI Import] Step 2 done: API responded with status', response.status)
+
+        if (!response.ok) {
+          const errText = await response.text()
+          console.error('[AI Import] API error response:', response.status, errText)
+          let errMsg = `AI extraction failed (${response.status})`
+          try {
+            const errData = JSON.parse(errText)
+            errMsg = errData.error || errMsg
+          } catch { /* not JSON */ }
+          throw new Error(errMsg)
+        }
+
+        setProcessingMessage('Processing results…')
+        console.log('[AI Import] Step 3: Parsing response JSON…')
+        const data = await response.json()
+        console.log('[AI Import] Step 3 done: Got data', { rowCount: data.extraction?.rows?.length ?? 0, keys: Object.keys(data) })
+        const rows: Record<string, unknown>[] = data.extraction?.rows ?? []
+
+        if (rows.length === 0) {
+          console.warn('[AI Import] No rows extracted from document')
+          toast({ title: 'No data found', description: 'AI could not extract any records from this document. Try a different file or add hints.', variant: 'destructive' })
+          setStep('upload')
+          setProcessing(false)
+          return
+        }
+
+        const allKeys = new Set<string>()
+        for (const row of rows) {
+          for (const key of Object.keys(row)) allKeys.add(key)
+        }
+        const internalFields = ['confidence', '_notes']
+        const headers = [...allKeys].filter((k) => !internalFields.includes(k))
+        const autoMapping = autoMap(headers, config.columns)
+
+        console.log('[AI Import] Step 4: Mapped columns', { headers, autoMapping, rowCount: rows.length })
+        setParsed({ headers, rows, source: 'ai' })
+        setMapping(autoMapping)
+        setStep('map')
+
+        const avgConfidence = rows.reduce((sum, r) => sum + (Number(r.confidence) || 0), 0) / rows.length
+        if (avgConfidence < 70) {
+          toast({ title: 'Low confidence', description: 'AI extraction confidence is below 70%. Please review the data carefully.', variant: 'default' })
         }
       } catch (err) {
+        console.error('[AI Import] Error:', err)
         const message = err instanceof Error ? err.message : 'Failed to process file'
         toast({ title: 'Error', description: message, variant: 'destructive' })
         setStep('upload')
