@@ -942,6 +942,8 @@
     "periodUnlocked": "Period unlocked",
     "workingDaysYear": "Working Days / Year",
     "defaultOverheadRate": "Default Overhead Rate (%)",
+    "defaultVacationDays": "Default Vacation Days / Year",
+    "defaultVacationDaysDesc": "Default annual vacation days for new staff members. Individual staff can override this value.",
     "timesheetsDriveAllocations": "Timesheets Drive Allocations",
     "timesheetsDriveAllocationsDesc": "When enabled, allocation PM values are automatically calculated from timesheet entries and become read-only. When disabled, allocations can be edited manually.",
     "exportComplete": "Export complete",

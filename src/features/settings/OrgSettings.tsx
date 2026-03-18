@@ -27,6 +27,7 @@ export function OrgSettings() {
   const [defaultOverheadRate, setDefaultOverheadRate] = useState('25')
   const [departments, setDepartments] = useState<string[]>([])
   const [newDept, setNewDept] = useState('')
+  const [defaultVacationDays, setDefaultVacationDays] = useState('25')
   const [timesheetsDriveAllocations, setTimesheetsDriveAllocations] = useState(false)
 
   useEffect(() => {
@@ -41,6 +42,7 @@ export function OrgSettings() {
         setWorkingDaysPerYear(String(org.working_days_per_year ?? 220))
         setDefaultOverheadRate(String(org.default_overhead_rate ?? 25))
         setDepartments(org.departments ?? [])
+        setDefaultVacationDays(String((org as any).default_vacation_days ?? 25))
         setTimesheetsDriveAllocations(org.timesheets_drive_allocations ?? false)
       }
     }).catch(() => {}).finally(() => setLoading(false))
@@ -58,6 +60,7 @@ export function OrgSettings() {
         working_days_per_year: Number(workingDaysPerYear),
         default_overhead_rate: Number(defaultOverheadRate),
         departments,
+        default_vacation_days: Number(defaultVacationDays) || 25,
         timesheets_drive_allocations: timesheetsDriveAllocations,
       })
       toast({ title: t('settings.settingsSaved') })
@@ -122,6 +125,11 @@ export function OrgSettings() {
           <div className="space-y-2">
             <Label>{t('settings.defaultOverheadRate')}</Label>
             <Input type="number" value={defaultOverheadRate} onChange={(e) => setDefaultOverheadRate(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>{t('settings.defaultVacationDays')}</Label>
+            <Input type="number" min="0" max="365" value={defaultVacationDays} onChange={(e) => setDefaultVacationDays(e.target.value)} />
+            <p className="text-xs text-muted-foreground">{t('settings.defaultVacationDaysDesc')}</p>
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label>{t('settings.departments')}</Label>

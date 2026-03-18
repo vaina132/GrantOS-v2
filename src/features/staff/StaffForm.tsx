@@ -69,10 +69,14 @@ export function StaffForm() {
   const [inviteRole, setInviteRole] = useState<InvitableRole>('Project Manager')
   const invalidateStaff = useInvalidateStaff()
 
+  const [orgDefaultVacationDays, setOrgDefaultVacationDays] = useState(25)
+
+  // Fetch org settings (departments + default vacation days)
   useEffect(() => {
     if (!orgId) return
     settingsService.getOrganisation(orgId).then((org) => {
       if (org?.departments) setDepartments(org.departments)
+      setOrgDefaultVacationDays((org as any)?.default_vacation_days ?? 25)
     }).catch(() => {})
   }, [orgId])
 
@@ -101,6 +105,13 @@ export function StaffForm() {
       is_active: true,
     },
   })
+
+  // Apply org default vacation days for new staff once loaded
+  useEffect(() => {
+    if (!isEdit) {
+      setValue('vacation_days_per_year', orgDefaultVacationDays)
+    }
+  }, [isEdit, orgDefaultVacationDays, setValue])
 
   // Watch email field to conditionally show invite toggle
   const watchedEmail = useWatch({ control, name: 'email' })
@@ -132,7 +143,7 @@ export function StaffForm() {
         start_date: person.start_date ?? '',
         end_date: person.end_date ?? '',
         annual_salary: person.annual_salary,
-        vacation_days_per_year: person.vacation_days_per_year ?? 25,
+        vacation_days_per_year: person.vacation_days_per_year ?? orgDefaultVacationDays,
         country: person.country ?? '',
         region: person.region ?? '',
         is_active: person.is_active,
