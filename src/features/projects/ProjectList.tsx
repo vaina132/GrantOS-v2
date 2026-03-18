@@ -15,9 +15,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/use-toast'
-import { Plus, Search, Trash2, Pencil, FolderKanban, Sparkles, Globe } from 'lucide-react'
+import { Plus, Search, Trash2, Pencil, FolderKanban, Sparkles, Globe, Upload } from 'lucide-react'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import type { Project, ProjectStatus, CollabProject } from '@/types'
+import { ImportDialog } from '@/components/import/ImportDialog'
 
 const STATUS_OPTIONS: (ProjectStatus | 'All')[] = ['All', 'Upcoming', 'Active', 'Completed', 'Suspended']
 
@@ -28,6 +29,7 @@ export function ProjectList() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const filters: ProjectFilters = {
@@ -84,6 +86,9 @@ export function ProjectList() {
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => navigate('/projects/collaboration')}>
                 <Globe className="mr-2 h-4 w-4" /> {t('projects.collaboration')}
+              </Button>
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" /> {t('import.importProjects')}
               </Button>
               {aiEnabled && (
                 <Button variant="outline" onClick={() => navigate('/projects/import-ai')}>
@@ -285,6 +290,13 @@ export function ProjectList() {
         destructive
         loading={deleting}
         onConfirm={handleDelete}
+      />
+
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        importType="projects"
+        onImportComplete={() => refetch()}
       />
     </div>
   )

@@ -19,7 +19,6 @@ import { AbsencesPage } from '@/features/absences/AbsencesPage'
 import { FinancialsPage } from '@/features/financials/FinancialsPage'
 import { TimelinePage } from '@/features/timeline/TimelinePage'
 import { ReportsPage } from '@/features/reports/ReportsPage'
-import { ImportPage } from '@/features/import/ImportPage'
 import { AuditPage } from '@/features/audit/AuditPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { ProposalsPage } from '@/features/proposals/ProposalsPage'
@@ -199,14 +198,6 @@ export default function App() {
                         element={
                           <ProtectedRoute permission="canSeeReports">
                             <ReportsPage />
-                          </ProtectedRoute>
-                        }
-                      />
-                      <Route
-                        path="/import"
-                        element={
-                          <ProtectedRoute permission="canSeeImport">
-                            <ImportPage />
                           </ProtectedRoute>
                         }
                       />

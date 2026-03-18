@@ -14,10 +14,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
-import { Plus, Search, Trash2, Pencil, Users } from 'lucide-react'
+import { Plus, Search, Trash2, Pencil, Users, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
 import type { Person } from '@/types'
+import { ImportDialog } from '@/components/import/ImportDialog'
 
 export function StaffList() {
   const { t } = useTranslation()
@@ -27,6 +28,7 @@ export function StaffList() {
   const [activeFilter, setActiveFilter] = useState<boolean | undefined>(true)
   const [deleteTarget, setDeleteTarget] = useState<Person | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
 
   const filters: StaffFilters = {
     search: search || undefined,
@@ -76,9 +78,14 @@ export function StaffList() {
         description={t('staff.description')}
         actions={
           can('canWrite') ? (
-            <Button onClick={() => navigate('/staff/new')}>
-              <Plus className="mr-2 h-4 w-4" /> {t('staff.addPerson')}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" /> {t('import.importStaff')}
+              </Button>
+              <Button onClick={() => navigate('/staff/new')}>
+                <Plus className="mr-2 h-4 w-4" /> {t('staff.addPerson')}
+              </Button>
+            </div>
           ) : undefined
         }
       />
@@ -246,6 +253,13 @@ export function StaffList() {
         destructive
         loading={deleting}
         onConfirm={handleDelete}
+      />
+
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        importType="persons"
+        onImportComplete={() => refetch()}
       />
     </div>
   )

@@ -37,8 +37,10 @@ import {
   XCircle,
   Send,
   Download,
+  Upload,
 } from 'lucide-react'
 import type { Proposal, ProposalStatus, Person } from '@/types'
+import { ImportDialog } from '@/components/import/ImportDialog'
 import { ComboInput, type ComboOption } from '@/components/common/ComboInput'
 import { supabase } from '@/lib/supabase'
 
@@ -81,6 +83,7 @@ export function ProposalsPage() {
   const [convertTarget, setConvertTarget] = useState<Proposal | null>(null)
   const [converting, setConverting] = useState(false)
   const [filterStatus, setFilterStatus] = useState<ProposalStatus | 'All'>('All')
+  const [importOpen, setImportOpen] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [fundingSchemeOptions, setFundingSchemeOptions] = useState<ComboOption[]>([])
   const [staffList, setStaffList] = useState<Person[]>([])
@@ -323,6 +326,9 @@ export function ProposalsPage() {
                 <Download className="h-4 w-4" /> Export PDF
               </Button>
             )}
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4" /> {t('import.importProposals')}
+            </Button>
             <Button onClick={openCreate} size="sm" className="gap-1.5">
               <Plus className="h-4 w-4" /> New Proposal
             </Button>
@@ -622,6 +628,13 @@ export function ProposalsPage() {
         message={`This will create a new project from "${convertTarget?.project_name}" with the proposal's budget data. You can then edit the project details. Continue?`}
         confirmLabel={converting ? 'Converting...' : 'Create Project'}
         loading={converting}
+      />
+
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        importType="proposals"
+        onImportComplete={() => fetchProposals()}
       />
     </div>
   )

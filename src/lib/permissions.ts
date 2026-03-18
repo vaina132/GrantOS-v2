@@ -224,7 +224,6 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
   { path: '/financials', minPermission: 'canSeeFinancials' },
   { path: '/timeline', minPermission: 'canSeeTimeline' },
   { path: '/reports', minPermission: 'canSeeReports' },
-  { path: '/import', minPermission: 'canSeeImport' },
   { path: '/audit', minPermission: 'canSeeAudit' },
   { path: '/proposals', minPermission: 'canSeeProposals' },
   { path: '/projects/collaboration', minPermission: 'canSeeCollaboration' },

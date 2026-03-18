@@ -12,7 +12,6 @@ import {
   DollarSign,
   GanttChart,
   FileText,
-  Upload,
   Shield,
   Settings,
   HelpCircle,
@@ -64,7 +63,6 @@ const NAV_GROUPS: NavGroup[] = [
     labelKey: 'nav.administration',
     items: [
       { path: '/reports', labelKey: 'nav.reports', icon: FileText, permission: 'canSeeReports' },
-      { path: '/import', labelKey: 'nav.import', icon: Upload, permission: 'canSeeImport' },
       { path: '/audit', labelKey: 'nav.auditLog', icon: Shield, permission: 'canSeeAudit' },
       { path: '/settings', labelKey: 'nav.settings', icon: Settings, permission: 'canManageOrg' },
     ],
