@@ -24,7 +24,7 @@ const STATUS_OPTIONS: (ProjectStatus | 'All')[] = ['All', 'Upcoming', 'Active', 
 export function ProjectList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { can } = useAuthStore()
+  const { can, aiEnabled } = useAuthStore()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
@@ -85,9 +85,11 @@ export function ProjectList() {
               <Button variant="outline" onClick={() => navigate('/projects/collaboration')}>
                 <Globe className="mr-2 h-4 w-4" /> {t('projects.collaboration')}
               </Button>
-              <Button variant="outline" onClick={() => navigate('/projects/import-ai')}>
-                <Sparkles className="mr-2 h-4 w-4" /> {t('projects.importWithAI')}
-              </Button>
+              {aiEnabled && (
+                <Button variant="outline" onClick={() => navigate('/projects/import-ai')}>
+                  <Sparkles className="mr-2 h-4 w-4" /> {t('projects.importWithAI')}
+                </Button>
+              )}
               <Button onClick={() => navigate('/projects/new')}>
                 <Plus className="mr-2 h-4 w-4" /> {t('projects.newProject')}
               </Button>

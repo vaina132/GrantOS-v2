@@ -295,11 +295,18 @@ export function CollabProjectSetup({ mode = 'manual' }: { mode?: 'manual' | 'ai-
   const { t } = useTranslation()
   const { id: editId } = useParams<{ id: string }>()
   const isEdit = !!editId
-  const { orgId, user } = useAuthStore()
+  const { orgId, user, aiEnabled } = useAuthStore()
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
   const [loadingEdit, setLoadingEdit] = useState(!!editId)
+
+  // Redirect if AI import mode requested but AI is disabled
+  useEffect(() => {
+    if (mode === 'ai-import' && !aiEnabled) {
+      navigate('/projects/collaboration/new', { replace: true })
+    }
+  }, [mode, aiEnabled, navigate])
 
   // AI Import state
   const [aiFile, setAiFile] = useState<File | null>(null)

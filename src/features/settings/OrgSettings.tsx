@@ -29,6 +29,7 @@ export function OrgSettings() {
   const [newDept, setNewDept] = useState('')
   const [defaultVacationDays, setDefaultVacationDays] = useState('25')
   const [timesheetsDriveAllocations, setTimesheetsDriveAllocations] = useState(false)
+  const [aiEnabled, setAiEnabled] = useState(true)
 
   useEffect(() => {
     if (!orgId) return
@@ -44,6 +45,7 @@ export function OrgSettings() {
         setDepartments(org.departments ?? [])
         setDefaultVacationDays(String((org as any).default_vacation_days ?? 25))
         setTimesheetsDriveAllocations(org.timesheets_drive_allocations ?? false)
+        setAiEnabled((org as any).ai_enabled ?? true)
       }
     }).catch(() => {}).finally(() => setLoading(false))
   }, [orgId])
@@ -62,7 +64,10 @@ export function OrgSettings() {
         departments,
         default_vacation_days: Number(defaultVacationDays) || 25,
         timesheets_drive_allocations: timesheetsDriveAllocations,
-      })
+        ai_enabled: aiEnabled,
+      } as any)
+      // Reload auth context so aiEnabled is reflected immediately across the app
+      try { await useAuthStore.getState().reloadContext() } catch { /* non-critical */ }
       toast({ title: t('settings.settingsSaved') })
     } catch (err) {
       const message = err instanceof Error ? err.message : t('common.failedToSave')
@@ -212,6 +217,37 @@ export function OrgSettings() {
               />
             </button>
           </div>
+        </div>
+
+        <div className="rounded-lg border p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-semibold">{t('settings.aiEnabled')}</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t('settings.aiEnabledDesc')}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={aiEnabled}
+              onClick={() => setAiEnabled(v => !v)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                aiEnabled ? 'bg-primary' : 'bg-muted'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                  aiEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          {!aiEnabled && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+              {t('settings.aiDisabledWarning')}
+            </p>
+          )}
         </div>
         <div className="flex justify-between">
           <div className="flex gap-2">

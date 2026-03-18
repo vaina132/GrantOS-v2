@@ -24,7 +24,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function CollabProjectList() {
   const { t } = useTranslation()
-  const { orgId, accessType, user } = useAuthStore()
+  const { orgId, accessType, user, aiEnabled } = useAuthStore()
   const navigate = useNavigate()
   const [projects, setProjects] = useState<CollabProject[]>([])
   const [loading, setLoading] = useState(true)
@@ -142,7 +142,7 @@ export function CollabProjectList() {
       </div>
 
       {/* AI Import quick-action */}
-      {!isCollabOnly && (
+      {!isCollabOnly && aiEnabled && (
         <Card className="border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -207,10 +207,12 @@ export function CollabProjectList() {
                     <Plus className="h-4 w-4" />
                     {t('collaboration.createManually')}
                   </Button>
-                  <Button variant="outline" onClick={() => navigate('/projects/collaboration/new/ai-import')} className="gap-2 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40">
-                    <Sparkles className="h-4 w-4 text-purple-500" />
-                    {t('collaboration.importWithAi')}
-                  </Button>
+                  {aiEnabled && (
+                    <Button variant="outline" onClick={() => navigate('/projects/collaboration/new/ai-import')} className="gap-2 border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900/40">
+                      <Sparkles className="h-4 w-4 text-purple-500" />
+                      {t('collaboration.importWithAi')}
+                    </Button>
+                  )}
                 </>
               )}
             </div>

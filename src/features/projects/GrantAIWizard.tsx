@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { grantAIService } from '@/services/grantAIService'
 import { projectsService } from '@/services/projectsService'
@@ -23,8 +23,13 @@ type WizardStep = 'upload' | 'processing' | 'review' | 'saving'
 
 export function GrantAIWizard() {
   const navigate = useNavigate()
-  const { orgId } = useAuthStore()
+  const { orgId, aiEnabled } = useAuthStore()
   const invalidateProjects = useInvalidateProjects()
+
+  // Redirect if AI is disabled for this organisation
+  useEffect(() => {
+    if (!aiEnabled) navigate('/projects', { replace: true })
+  }, [aiEnabled, navigate])
 
   const [step, setStep] = useState<WizardStep>('upload')
   const [quotaExhausted, setQuotaExhausted] = useState(false)

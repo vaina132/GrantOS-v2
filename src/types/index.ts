@@ -28,6 +28,7 @@ export interface Organisation {
   average_personnel_rate_pm: number
   departments: string[]
   default_vacation_days: number
+  ai_enabled: boolean
   timesheets_drive_allocations: boolean
   private_absence_types: string[]
   plan: OrgPlan

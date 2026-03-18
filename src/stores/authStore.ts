@@ -20,6 +20,7 @@ interface AuthState {
   accessType: AccessType | null
   orgPlan: OrgPlan | null
   trialEndsAt: string | null
+  aiEnabled: boolean
   isLoading: boolean
   error: string | null
 
@@ -49,6 +50,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   accessType: null,
   orgPlan: null,
   trialEndsAt: null,
+  aiEnabled: true,
   isLoading: true,
   error: null,
   mfaFactorId: null,
@@ -106,6 +108,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           accessType: null,
           orgPlan: null,
           trialEndsAt: null,
+          aiEnabled: true,
           isLoading: false,
           error: null,
         })
@@ -264,6 +267,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       accessType: null,
       orgPlan: null,
       trialEndsAt: null,
+      aiEnabled: true,
       isLoading: false,
       error: null,
     })
@@ -303,20 +307,20 @@ async function loadUserContext(
       } catch { /* non-critical */ }
     }
 
-    // Fetch org details
-    const { data: org } = await supabase
+    // Fetch org details (cast to any because ai_enabled may not be in generated types yet)
+    const { data: org } = await (supabase as any)
       .from('organisations')
-      .select('name, plan, trial_ends_at, is_active')
+      .select('name, plan, trial_ends_at, is_active, ai_enabled')
       .eq('id', member.org_id)
-      .single()
+      .single() as { data: any }
 
     if (org && !org.is_active) {
-      set({ isLoading: false, error: 'Account suspended. Contact support.' })
+      set({ isLoading: false, error: 'Account suspended. Contact support.', aiEnabled: true })
       return
     }
 
     if (org && org.trial_ends_at && new Date(org.trial_ends_at) < new Date()) {
-      set({ isLoading: false, error: 'Trial expired. Please upgrade.' })
+      set({ isLoading: false, error: 'Trial expired. Please upgrade.', aiEnabled: true })
       return
     }
 
@@ -350,6 +354,7 @@ async function loadUserContext(
       accessType: 'member',
       orgPlan: (org?.plan as OrgPlan) ?? null,
       trialEndsAt: org?.trial_ends_at ?? null,
+      aiEnabled: (org as any)?.ai_enabled ?? true,
       isLoading: false,
       error: null,
     })
@@ -376,6 +381,7 @@ async function loadUserContext(
       accessType: 'collab_partner',
       orgPlan: null,
       trialEndsAt: null,
+      aiEnabled: false,
       isLoading: false,
       error: null,
     })
@@ -414,6 +420,7 @@ async function loadUserContext(
     accessType: null,
     orgPlan: null,
     trialEndsAt: null,
+    aiEnabled: true,
     isLoading: false,
     error: null,
   })

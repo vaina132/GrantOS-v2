@@ -193,7 +193,9 @@ interface ParsedData {
 
 export function BulkImport() {
   const { t } = useTranslation()
-  const { orgId } = useAuthStore()
+  const { orgId, aiEnabled } = useAuthStore()
+  const SPREADSHEET_ACCEPT = '.csv,.xlsx,.xls,.tsv'
+  const fileAccept = aiEnabled ? ALL_ACCEPT : SPREADSHEET_ACCEPT
 
   // Wizard state
   const [step, setStep] = useState<Step>('upload')
@@ -214,6 +216,12 @@ export function BulkImport() {
   // ─── File handling ──────────────────────────────
 
   const handleFileSelect = useCallback((f: File) => {
+    // When AI is disabled, reject document/image files
+    if (!aiEnabled && getFileCategory(f.name) === 'document') {
+      setFileError('AI integration is disabled for your organisation. Only spreadsheet files (CSV, Excel) are supported. An admin can enable AI in Settings → Organisation.')
+      setFile(null)
+      return
+    }
     const error = validateFile(f)
     if (error) {
       setFileError(error)
@@ -222,7 +230,7 @@ export function BulkImport() {
     }
     setFileError(null)
     setFile(f)
-  }, [])
+  }, [aiEnabled])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -559,7 +567,7 @@ export function BulkImport() {
             <input
               id="import-file-input"
               type="file"
-              accept={ALL_ACCEPT}
+              accept={fileAccept}
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0]
