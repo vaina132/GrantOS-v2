@@ -485,7 +485,7 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
       for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize)
         console.log(`[Import] Batch ${i / batchSize + 1}: inserting ${batch.length} rows…`)
-        const { error } = await supabase.from(config.table).insert(batch as any)
+        const { error } = await supabase.from(config.table as any).insert(batch as any)
         if (error) {
           console.error('[Import] Supabase insert error:', error)
           throw error
