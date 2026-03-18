@@ -90,6 +90,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // we have an AAL1 session but the user must complete MFA first
         if (get().mfaChallengeId) return
 
+        // Also check AAL level: if user has MFA enrolled but only AAL1,
+        // they still need to verify. Skip loading context to prevent
+        // the dashboard from flashing before the MFA prompt appears.
+        try {
+          const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+          if (aalData && aalData.currentLevel === 'aal1' && aalData.nextLevel === 'aal2') {
+            return // MFA verification pending — signIn() will handle it
+          }
+        } catch { /* ignore — proceed normally if AAL check fails */ }
+
         // Only reload context if user changed (avoid duplicate on init)
         const current = get().user
         if (current?.id !== session.user.id) {
