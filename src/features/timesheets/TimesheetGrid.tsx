@@ -3,7 +3,9 @@ import { timesheetService, toDateStr } from '@/services/timesheetService'
 import { docusignService } from '@/services/docusignService'
 import { holidayService } from '@/services/holidayService'
 import { absenceService } from '@/services/absenceService'
+import { travelService } from '@/services/travelService'
 import { settingsService } from '@/services/settingsService'
+import { generateTimesheetPdf } from '@/services/timesheetPdfExport'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { YearSelector } from '@/components/common/YearSelector'
@@ -12,10 +14,10 @@ import { useProjects } from '@/hooks/useProjects'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
-import { Copy, Sparkles, ChevronLeft, ChevronRight, Trash2, Plus, RotateCcw, CalendarDays, X, Send, PenTool, CheckCircle2, Clock, Undo2, FileSignature, Loader2, Shield } from 'lucide-react'
+import { Copy, Sparkles, ChevronLeft, ChevronRight, Trash2, Plus, RotateCcw, CalendarDays, X, Send, PenTool, CheckCircle2, Clock, Undo2, FileSignature, Loader2, Shield, Plane, FileDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { hoursToPm, formatPm, pmToHours } from '@/lib/pmUtils'
-import type { Holiday, Absence, Assignment, TimesheetDay, TimesheetEntry } from '@/types'
+import type { Holiday, Absence, Assignment, TimesheetDay, TimesheetEntry, Travel } from '@/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -31,6 +33,8 @@ interface DayInfo {
   holidayName: string | null
   isAbsence: boolean
   absenceType: string | null
+  isTravel: boolean
+  travelLocation: string | null
   isAvailable: boolean
 }
 
@@ -41,10 +45,15 @@ interface ProjectRow {
   wpName: string | null
   allocPm: number
   color: string
+  isNationalProject: boolean
 }
 
 interface GridState {
   [key: string]: number // key = `${project_id}:${wp_id}:${dateStr}` → hours
+}
+
+interface NationalDayState {
+  [key: string]: { start_time: string; end_time: string; description: string } // same key format
 }
 
 export function TimesheetGrid() {
@@ -62,6 +71,7 @@ export function TimesheetGrid() {
   // Data state
   const [holidays, setHolidays] = useState<Holiday[]>([])
   const [absences, setAbsences] = useState<Absence[]>([])
+  const [travels, setTravels] = useState<Travel[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [existingDays, setExistingDays] = useState<TimesheetDay[]>([])
   const [hoursPerDay, setHoursPerDay] = useState(8)
@@ -82,6 +92,7 @@ export function TimesheetGrid() {
 
   // Grid state (local edits before save)
   const [grid, setGrid] = useState<GridState>({})
+  const [nationalGrid, setNationalGrid] = useState<NationalDayState>({})
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Determine person: staff sees self, admin can switch
@@ -104,24 +115,35 @@ export function TimesheetGrid() {
     try {
       // Load assignments across ALL months of the year (not just selected month)
       // This ensures projects show even if no PM allocated for this specific month
-      const [days, hols, abs, alloc] = await Promise.all([
+      const [days, hols, abs, alloc, trvls] = await Promise.all([
         timesheetService.listDays(orgId, currentPersonId, globalYear, selectedMonth),
         holidayService.listForMonth(orgId, globalYear, selectedMonth),
         absenceService.list(orgId, { person_id: currentPersonId, year: globalYear }),
         loadAssignmentsAllMonths(orgId, currentPersonId, globalYear),
+        travelService.list(orgId, { person_id: currentPersonId, year: globalYear, month: selectedMonth }),
       ])
       setHolidays(hols)
       setAbsences(abs)
+      setTravels(trvls)
       setAssignments(alloc)
       setExistingDays(days)
 
       // Build grid state from loaded day entries
       const g: GridState = {}
+      const ng: NationalDayState = {}
       for (const d of days) {
         const key = `${d.project_id}:${d.work_package_id ?? ''}:${d.date}`
         g[key] = d.hours
+        if (d.start_time || d.end_time || d.description) {
+          ng[key] = {
+            start_time: d.start_time ?? '',
+            end_time: d.end_time ?? '',
+            description: d.description ?? '',
+          }
+        }
       }
       setGrid(g)
+      setNationalGrid(ng)
 
       // Ensure envelope exists and load it for status
       try {
@@ -196,6 +218,12 @@ export function TimesheetGrid() {
       }
     }
 
+    // Build travel date set for this person
+    const travelDateMap = new Map<string, string>()
+    for (const t of travels) {
+      travelDateMap.set(t.date, t.location)
+    }
+
     const result: DayInfo[] = []
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(globalYear, selectedMonth - 1, d)
@@ -204,15 +232,17 @@ export function TimesheetGrid() {
       const isWeekend = dow === 0 || dow === 6
       const isHoliday = holidaySet.has(dateStr)
       const isAbsence = absenceDates.has(dateStr)
+      const isTravel = travelDateMap.has(dateStr)
       result.push({
         date, dateStr, dayNum: d, dow, isWeekend, isHoliday,
         holidayName: holidayNames.get(dateStr) ?? null,
         isAbsence, absenceType: absenceTypeMap.get(dateStr) ?? null,
+        isTravel, travelLocation: travelDateMap.get(dateStr) ?? null,
         isAvailable: !isWeekend && !isHoliday && !isAbsence,
       })
     }
     return result
-  }, [globalYear, selectedMonth, holidays, absences, currentPersonId, staff])
+  }, [globalYear, selectedMonth, holidays, absences, travels, currentPersonId, staff])
 
   const availableDays = useMemo(() => calendarDays.filter(d => d.isAvailable), [calendarDays])
   const availableDateStrs = useMemo(() => availableDays.map(d => d.dateStr), [availableDays])
@@ -239,6 +269,7 @@ export function TimesheetGrid() {
           wpName: (a as any).work_packages?.name ?? null,
           allocPm: 0, // will be filled below
           color: '',
+          isNationalProject: false, // set below
         })
       }
     }
@@ -256,6 +287,7 @@ export function TimesheetGrid() {
           wpName: null,
           allocPm: 0,
           color: '',
+          isNationalProject: false, // set below
         })
       }
     }
@@ -273,6 +305,7 @@ export function TimesheetGrid() {
           wpName: null,
           allocPm: 0,
           color: '',
+          isNationalProject: false, // set below
         })
       }
     }
@@ -281,11 +314,15 @@ export function TimesheetGrid() {
     const removedSet = new Set(removedProjectIds)
     return rows
       .filter(r => !removedSet.has(r.project_id))
-      .map((r, i) => ({
-        ...r,
-        allocPm: pmByKey.get(`${r.project_id}:${r.work_package_id ?? ''}`) ?? 0,
-        color: PROJECT_COLORS[i % PROJECT_COLORS.length],
-      }))
+      .map((r, i) => {
+        const proj = projectMap.get(r.project_id)
+        return {
+          ...r,
+          allocPm: pmByKey.get(`${r.project_id}:${r.work_package_id ?? ''}`) ?? 0,
+          color: PROJECT_COLORS[i % PROJECT_COLORS.length],
+          isNationalProject: proj?.funding_schemes?.requires_time_range ?? false,
+        }
+      })
   }, [assignments, existingDays, manualProjectIds, removedProjectIds, allProjects, selectedMonth])
 
   // Compute totals
@@ -337,6 +374,64 @@ export function TimesheetGrid() {
       }
     }, 800)
   }, [orgId, currentPersonId])
+
+  // National project cell change handler (start_time + end_time + description)
+  const nationalSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handleNationalCellChange = useCallback((
+    projectId: string, wpId: string | null, dateStr: string,
+    field: 'start_time' | 'end_time' | 'description', value: string,
+  ) => {
+    const key = `${projectId}:${wpId ?? ''}:${dateStr}`
+    setNationalGrid(prev => {
+      const existing = prev[key] ?? { start_time: '', end_time: '', description: '' }
+      return { ...prev, [key]: { ...existing, [field]: value } }
+    })
+
+    // Auto-compute hours from start_time and end_time
+    if (field === 'start_time' || field === 'end_time') {
+      setNationalGrid(prev => {
+        const entry = prev[key]
+        if (entry?.start_time && entry?.end_time) {
+          const [sh, sm] = entry.start_time.split(':').map(Number)
+          const [eh, em] = entry.end_time.split(':').map(Number)
+          if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
+            const diff = (eh * 60 + em - sh * 60 - sm) / 60
+            const hours = Math.max(0, Math.round(diff * 4) / 4) // snap to 0.25
+            setGrid(gPrev => ({ ...gPrev, [key]: hours }))
+          }
+        }
+        return prev
+      })
+    }
+
+    // Debounced save
+    if (nationalSaveTimerRef.current) clearTimeout(nationalSaveTimerRef.current)
+    nationalSaveTimerRef.current = setTimeout(async () => {
+      if (!orgId || !currentPersonId) return
+      // Get current state
+      const entry = nationalGrid[key] ?? { start_time: '', end_time: '', description: '' }
+      const updatedEntry = { ...entry, [field]: value }
+      // Compute hours
+      let hours = grid[key] || 0
+      if (updatedEntry.start_time && updatedEntry.end_time) {
+        const [sh, sm] = updatedEntry.start_time.split(':').map(Number)
+        const [eh, em] = updatedEntry.end_time.split(':').map(Number)
+        if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
+          const diff = (eh * 60 + em - sh * 60 - sm) / 60
+          hours = Math.max(0, Math.round(diff * 4) / 4)
+        }
+      }
+      try {
+        await timesheetService.upsertDay(orgId, currentPersonId, projectId, wpId, dateStr, hours, {
+          start_time: updatedEntry.start_time || null,
+          end_time: updatedEntry.end_time || null,
+          description: updatedEntry.description || null,
+        })
+      } catch (err) {
+        console.error('National auto-save failed:', err)
+      }
+    }, 800)
+  }, [orgId, currentPersonId, nationalGrid, grid])
 
   // Fill from plan
   const handleAutoFill = async () => {
@@ -791,6 +886,44 @@ export function TimesheetGrid() {
               Locked
             </div>
           )}
+
+          {/* PDF Export — available when there are hours */}
+          {grandTotal > 0 && (
+            <Button variant="outline" size="sm" onClick={() => {
+              const currentPerson = staff.find(p => p.id === currentPersonId)
+              if (!currentPerson || !orgId) return
+              generateTimesheetPdf({
+                person: currentPerson,
+                year: globalYear,
+                month: selectedMonth,
+                orgName: '', // filled from settings if available
+                days: existingDays,
+                projects: allProjects,
+                envelope,
+                hoursPerDay,
+                holidays: new Set(holidays.map(h => h.date)),
+                absences: new Set(
+                  absences.filter(a => a.person_id === currentPersonId).flatMap(a => {
+                    const dates: string[] = []
+                    const start = a.start_date ?? a.date
+                    const end = a.end_date ?? a.date ?? a.start_date
+                    if (!start) return dates
+                    const cursor = new Date(start)
+                    const endD = new Date(end ?? start)
+                    while (cursor <= endD) {
+                      dates.push(toDateStr(cursor))
+                      cursor.setDate(cursor.getDate() + 1)
+                    }
+                    return dates
+                  })
+                ),
+              })
+              toast({ title: 'PDF exported', description: 'Timesheet PDF downloaded.' })
+            }} className="gap-1.5">
+              <FileDown className="h-3.5 w-3.5" />
+              Export PDF
+            </Button>
+          )}
         </div>
       </div>
 
@@ -854,6 +987,7 @@ export function TimesheetGrid() {
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-muted" /> Weekend</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-50 border-red-200 border" /> Holiday</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-50 border-blue-200 border" /> Absence</span>
+        <span className="flex items-center gap-1.5"><Plane className="w-3 h-3 text-orange-500" /> Travel</span>
       </div>
 
       {/* THE GRID */}
@@ -878,11 +1012,15 @@ export function TimesheetGrid() {
                         'px-0 py-1 text-center font-medium border-b min-w-[42px] w-[42px]',
                         d.isWeekend && 'bg-muted/40',
                         d.isHoliday && 'bg-red-50',
+                        d.isTravel && !d.isWeekend && 'border-t-2 border-t-orange-400',
                       )}
-                      title={d.isHoliday ? d.holidayName ?? 'Holiday' : undefined}
+                      title={d.isHoliday ? d.holidayName ?? 'Holiday' : d.isTravel ? `Travel: ${d.travelLocation}` : undefined}
                     >
                       <div className="text-[9px] uppercase tracking-wider text-muted-foreground">{DAY_NAMES[d.dow]}</div>
-                      <div className={cn('text-[11px] font-bold', d.isHoliday && 'text-red-500')}>{d.dayNum}</div>
+                      <div className="flex items-center justify-center gap-0.5">
+                        <span className={cn('text-[11px] font-bold', d.isHoliday && 'text-red-500')}>{d.dayNum}</span>
+                        {d.isTravel && !d.isWeekend && <Plane className="h-2.5 w-2.5 text-orange-500" />}
+                      </div>
                     </th>
                   ))}
                   <th className="px-2 py-2 text-center font-bold border-b border-l min-w-[64px] bg-muted/60">Total</th>
@@ -946,17 +1084,32 @@ export function TimesheetGrid() {
                               d.isAbsence && !d.isWeekend && 'bg-blue-50/50',
                             )}
                           >
-                            {editable ? (
+                            {!editable ? (
+                              <div className="h-7 flex items-center justify-center text-muted-foreground/40 text-[10px]">
+                                {d.isHoliday ? '🏛' : d.isAbsence ? '🏖' : ''}
+                              </div>
+                            ) : row.isNationalProject ? (
+                              <div
+                                className={cn(
+                                  'h-7 flex items-center justify-center text-[10px] tabular-nums rounded',
+                                  value > 0 ? 'font-bold text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/30' : 'text-muted-foreground/30',
+                                )}
+                                title="Hours auto-computed from start/end time below"
+                              >
+                                {value > 0 ? value.toFixed(1) : '·'}
+                              </div>
+                            ) : (
                               <input
                                 type="number"
-                                step="0.5"
+                                step="0.25"
                                 min="0"
                                 max={hoursPerDay.toString()}
                                 value={value || ''}
                                 placeholder="·"
                                 onChange={(e) => {
                                   const raw = parseFloat(e.target.value) || 0
-                                  const v = Math.min(Math.max(raw, 0), hoursPerDay)
+                                  const snapped = Math.round(raw * 4) / 4 // snap to nearest 0.25
+                                  const v = Math.min(Math.max(snapped, 0), hoursPerDay)
                                   handleCellChange(row.project_id, row.work_package_id, d.dateStr, v)
                                 }}
                                 className={cn(
@@ -965,10 +1118,6 @@ export function TimesheetGrid() {
                                   value > 0 && 'font-bold',
                                 )}
                               />
-                            ) : (
-                              <div className="h-7 flex items-center justify-center text-muted-foreground/40 text-[10px]">
-                                {d.isHoliday ? '🏛' : d.isAbsence ? '🏖' : ''}
-                              </div>
                             )}
                           </td>
                         )
@@ -1022,6 +1171,66 @@ export function TimesheetGrid() {
           </div>
         </div>
       )}
+
+      {/* National project daily details */}
+      {projectRows.filter(r => r.isNationalProject).map(row => {
+        const workingDays = calendarDays.filter(d => d.isAvailable)
+        return (
+          <div key={`national-${row.project_id}`} className="rounded-lg border overflow-hidden">
+            <div className="bg-amber-50 dark:bg-amber-950/20 border-b px-4 py-2.5 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: row.color }} />
+              <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">{row.acronym}</span>
+              <span className="text-[10px] text-amber-600/70 dark:text-amber-400/50">— National project: enter start/end time &amp; activity per day</span>
+            </div>
+            <div className="divide-y max-h-[400px] overflow-y-auto">
+              {workingDays.map(d => {
+                const cellKey = `${row.project_id}:${row.work_package_id ?? ''}:${d.dateStr}`
+                const nd = nationalGrid[cellKey] ?? { start_time: '', end_time: '', description: '' }
+                const hours = grid[cellKey] || 0
+                const dayName = d.date.toLocaleDateString('en-US', { weekday: 'short' })
+                const dateFormatted = d.date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+
+                return (
+                  <div key={d.dateStr} className="flex items-center gap-3 px-4 py-2 hover:bg-muted/30 transition-colors">
+                    <div className="min-w-[80px] text-xs">
+                      <span className="font-semibold">{dayName}</span>{' '}
+                      <span className="text-muted-foreground">{dateFormatted}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="time"
+                        value={nd.start_time}
+                        onChange={e => handleNationalCellChange(row.project_id, row.work_package_id, d.dateStr, 'start_time', e.target.value)}
+                        disabled={isLocked}
+                        className="h-7 w-[90px] rounded border border-input bg-background px-1.5 text-xs tabular-nums focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none"
+                      />
+                      <span className="text-[10px] text-muted-foreground">to</span>
+                      <input
+                        type="time"
+                        value={nd.end_time}
+                        onChange={e => handleNationalCellChange(row.project_id, row.work_package_id, d.dateStr, 'end_time', e.target.value)}
+                        disabled={isLocked}
+                        className="h-7 w-[90px] rounded border border-input bg-background px-1.5 text-xs tabular-nums focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none"
+                      />
+                    </div>
+                    <span className={cn('text-[10px] font-bold tabular-nums min-w-[36px] text-center', hours > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground/40')}>
+                      {hours > 0 ? `${hours.toFixed(1)}h` : '—'}
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Activity description (Tätigkeitsbeschreibung)..."
+                      value={nd.description}
+                      onChange={e => handleNationalCellChange(row.project_id, row.work_package_id, d.dateStr, 'description', e.target.value)}
+                      disabled={isLocked}
+                      className="flex-1 h-7 rounded border border-input bg-background px-2 text-xs focus:ring-1 focus:ring-primary/30 focus:border-primary outline-none placeholder:text-muted-foreground/40"
+                    />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
 
       {/* Fill Month Full Dialog */}
       {fillFullOpen && (

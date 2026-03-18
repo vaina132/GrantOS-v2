@@ -14,7 +14,7 @@ export const projectsService = {
   async list(orgId: string | null, filters?: ProjectFilters): Promise<Project[]> {
     let query = supabase
       .from('projects')
-      .select('*, funding_schemes(id, name, type, overhead_rate), responsible_person:persons!projects_responsible_person_id_fkey(id, full_name, avatar_url)')
+      .select('*, funding_schemes(id, name, type, overhead_rate, requires_time_range), responsible_person:persons!projects_responsible_person_id_fkey(id, full_name, avatar_url)')
       .order('acronym')
 
     if (orgId) {
@@ -42,7 +42,7 @@ export const projectsService = {
   async getById(id: string): Promise<Project | null> {
     const { data, error } = await supabase
       .from('projects')
-      .select('*, funding_schemes(id, name, type, overhead_rate), responsible_person:persons!projects_responsible_person_id_fkey(id, full_name, avatar_url)')
+      .select('*, funding_schemes(id, name, type, overhead_rate, requires_time_range), responsible_person:persons!projects_responsible_person_id_fkey(id, full_name, avatar_url)')
       .eq('id', id)
       .single()
 
@@ -54,7 +54,7 @@ export const projectsService = {
     const { data, error } = await supabase
       .from('projects')
       .insert(project)
-      .select('*, funding_schemes(id, name, type, overhead_rate), responsible_person:persons!projects_responsible_person_id_fkey(id, full_name, avatar_url)')
+      .select('*, funding_schemes(id, name, type, overhead_rate, requires_time_range), responsible_person:persons!projects_responsible_person_id_fkey(id, full_name, avatar_url)')
       .single()
 
     if (error) throw error
@@ -106,7 +106,7 @@ export const projectsService = {
       .from('projects')
       .update({ ...rest, updated_at: new Date().toISOString() })
       .eq('id', id)
-      .select('*, funding_schemes(id, name, type, overhead_rate), responsible_person:persons!projects_responsible_person_id_fkey(id, full_name, avatar_url)')
+      .select('*, funding_schemes(id, name, type, overhead_rate, requires_time_range), responsible_person:persons!projects_responsible_person_id_fkey(id, full_name, avatar_url)')
       .single()
 
     if (error) throw error

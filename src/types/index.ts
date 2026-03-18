@@ -227,6 +227,9 @@ export interface TimesheetDay {
   work_package_id: string | null
   date: string
   hours: number
+  start_time: string | null
+  end_time: string | null
+  description: string | null
   created_at: string
   updated_at: string
 }
@@ -263,6 +266,21 @@ export interface Absence {
   // Joined relations
   persons?: { full_name: string } | null
   substitute_person?: { full_name: string } | null
+}
+
+export interface Travel {
+  id: string
+  org_id: string
+  person_id: string
+  project_id: string | null
+  date: string
+  location: string
+  notes: string | null
+  created_at: string
+  updated_at: string
+  // Joined relations
+  persons?: { full_name: string } | null
+  projects?: { acronym: string; title: string } | null
 }
 
 export interface AbsenceApprover {
@@ -382,6 +400,7 @@ export interface FundingScheme {
   name: string
   type: string
   overhead_rate: number
+  requires_time_range: boolean
   created_at: string
   updated_at: string
 }

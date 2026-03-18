@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { emailService } from './emailService'
 import { notificationService } from './notificationService'
+import { timesheetApproverService } from './timesheetApproverService'
 import type { TimesheetEntry, TimesheetStatus, TimesheetDay } from '@/types'
 import { hoursToPm } from '@/lib/pmUtils'
 
@@ -198,17 +199,20 @@ export const timesheetService = {
       }).catch(() => {})
     }).catch(() => {})
 
-    // Fire-and-forget: in-app notifications for admins/approvers
+    // Fire-and-forget: in-app notifications for admins AND timesheet approvers
     const MONTHS2 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
     const period2 = `${MONTHS2[month - 1]} ${year}`
     Promise.resolve(
       supabase
         .from('persons')
-        .select('full_name')
+        .select('full_name, department')
         .eq('id', personId)
         .single()
     ).then(({ data: person2 }) => {
       const name = (person2 as any)?.full_name ?? 'A team member'
+      const dept = (person2 as any)?.department ?? null
+
+      // Notify admins
       notificationService.getAdminUserIds(orgId).then((adminIds) => {
         notificationService.notifyMany({
           orgId,
@@ -218,6 +222,36 @@ export const timesheetService = {
           message: `${name} submitted their timesheet for ${period2}.`,
           link: '/timesheets',
         }).catch(() => {})
+      }).catch(() => {})
+
+      // Notify timesheet approvers (may overlap with admins, that's fine)
+      timesheetApproverService.getApproversForPerson(orgId, dept).then((approvers) => {
+        const approverUserIds = approvers.map(a => a.user_id).filter(Boolean) as string[]
+        if (approverUserIds.length > 0) {
+          notificationService.notifyMany({
+            orgId,
+            userIds: approverUserIds.filter(id => id !== userId),
+            type: 'approval',
+            title: 'Timesheet awaiting your approval',
+            message: `${name} submitted their timesheet for ${period2}. Please review and approve.`,
+            link: '/timesheets',
+          }).catch(() => {})
+        }
+        // Email approvers
+        const appUrl = typeof window !== 'undefined' ? window.location.origin : ''
+        for (const approver of approvers) {
+          const email = approver.person?.email
+          if (email) {
+            emailService.sendTimesheetSubmitted({
+              to: email,
+              approverName: approver.person?.full_name ?? email.split('@')[0],
+              submitterName: name,
+              orgName: '',
+              period: period2,
+              timesheetUrl: `${appUrl}/timesheets`,
+            }).catch(() => {})
+          }
+        }
       }).catch(() => {})
     }).catch(() => {})
   },
@@ -333,6 +367,7 @@ export const timesheetService = {
     workPackageId: string | null,
     date: string,
     hours: number,
+    extra?: { start_time?: string | null; end_time?: string | null; description?: string | null },
   ): Promise<void> {
     if (hours <= 0) {
       // Delete instead
@@ -354,6 +389,12 @@ export const timesheetService = {
       return
     }
 
+    // Build the extra fields for national projects
+    const extraFields: Record<string, unknown> = {}
+    if (extra?.start_time !== undefined) extraFields.start_time = extra.start_time
+    if (extra?.end_time !== undefined) extraFields.end_time = extra.end_time
+    if (extra?.description !== undefined) extraFields.description = extra.description
+
     // Try to find existing
     let findQuery = tsDays()
       .select('id')
@@ -372,7 +413,7 @@ export const timesheetService = {
 
     if (existing && existing.length > 0) {
       const { error } = await tsDays()
-        .update({ hours, updated_at: new Date().toISOString() })
+        .update({ hours, ...extraFields, updated_at: new Date().toISOString() })
         .eq('id', existing[0].id)
       if (error) throw error
     } else {
@@ -384,6 +425,7 @@ export const timesheetService = {
           work_package_id: workPackageId,
           date,
           hours,
+          ...extraFields,
         })
       if (error) throw error
     }
@@ -507,7 +549,7 @@ export const timesheetService = {
 
     for (const a of assignments) {
       const totalAllocHours = a.pms * availableDates.length * hoursPerDay
-      const dailyHours = Math.round((totalAllocHours / availableDates.length) * 2) / 2 // round to 0.5
+      const dailyHours = Math.round((totalAllocHours / availableDates.length) * 4) / 4 // round to 0.25
 
       for (const dateStr of availableDates) {
         const key = `${a.project_id}:${a.work_package_id ?? ''}:${dateStr}`
@@ -572,7 +614,7 @@ export const timesheetService = {
     }[] = []
 
     for (const [, proj] of projectMap) {
-      const avgHours = Math.round((proj.hours.reduce((a, b) => a + b, 0) / proj.hours.length) * 2) / 2
+      const avgHours = Math.round((proj.hours.reduce((a, b) => a + b, 0) / proj.hours.length) * 4) / 4
 
       for (const dateStr of availableDates) {
         toInsert.push({
