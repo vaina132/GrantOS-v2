@@ -585,7 +585,7 @@ For "projects":
 { "rows": [{ "acronym": "string", "title": "string", "start_date": "YYYY-MM-DD|null", "end_date": "YYYY-MM-DD|null", "status": "string|null", "grant_number": "string|null", "total_budget": "number|null", "budget_personnel": "number|null", "budget_travel": "number|null", "budget_subcontracting": "number|null", "budget_other": "number|null", "confidence": 85, "_notes": "string" }] }
 
 For "proposals":
-{ "rows": [{ "title": "string", "acronym": "string|null", "call_identifier": "string|null", "funding_programme": "string|null", "topic": "string|null", "status": "string|null", "submission_date": "YYYY-MM-DD|null", "requested_budget": "number|null", "duration_months": "number|null", "abstract": "string|null", "confidence": 85, "_notes": "string" }] }
+{ "rows": [{ "project_name": "string", "call_identifier": "string|null", "funding_scheme": "string|null", "status": "In Preparation|Submitted|Rejected|Granted|null", "submission_deadline": "YYYY-MM-DD|null", "expected_decision": "YYYY-MM-DD|null", "our_pms": "number|null", "personnel_budget": "number|null", "travel_budget": "number|null", "subcontracting_budget": "number|null", "other_budget": "number|null", "notes": "string|null", "confidence": 85, "_notes": "string" }] }
 
 Return ONLY the JSON object. No markdown fences, no explanation.`
 

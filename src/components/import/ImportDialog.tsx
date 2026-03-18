@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog'
 import {
   Upload, FileSpreadsheet, FileText, Image, Sparkles,
@@ -324,17 +324,28 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
 
         try {
           setProcessingMessage('AI is reading your document…')
-          const response = await apiFetch('/api/ai?action=parse-import', {
-            method: 'POST',
-            body: JSON.stringify({
-              storage_path: storagePath,
-              file_name: file.name,
-              import_type: importType,
-              user_instructions: userHint.trim() || undefined,
-              org_id: useAuthStore.getState().orgId || '',
-              user_id: useAuthStore.getState().user?.id || '',
-            }),
-          })
+          const abortCtrl = new AbortController()
+          const timeout = setTimeout(() => abortCtrl.abort(), 90_000) // 90s timeout
+          let response: Response
+          try {
+            response = await apiFetch('/api/ai?action=parse-import', {
+              method: 'POST',
+              signal: abortCtrl.signal,
+              body: JSON.stringify({
+                storage_path: storagePath,
+                file_name: file.name,
+                import_type: importType,
+                user_instructions: userHint.trim() || undefined,
+                org_id: useAuthStore.getState().orgId || '',
+                user_id: useAuthStore.getState().user?.id || '',
+              }),
+            })
+          } catch (fetchErr: any) {
+            if (fetchErr?.name === 'AbortError') throw new Error('AI extraction timed out. Please try a smaller document or use a spreadsheet instead.')
+            throw fetchErr
+          } finally {
+            clearTimeout(timeout)
+          }
 
           if (!response.ok) {
             const errData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
@@ -460,9 +471,10 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
       toast({ title: t('import.importComplete'), description: `${inserted} ${config.label.toLowerCase()} imported successfully.` })
       onImportComplete?.()
       onOpenChange(false)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Import failed'
-      toast({ title: t('common.error'), description: message, variant: 'destructive' })
+    } catch (err: any) {
+      console.error('[Import] Insert error:', err)
+      const message = err?.message || err?.details || err?.hint || 'Import failed'
+      toast({ title: t('import.importFailed'), description: message, variant: 'destructive' })
     } finally {
       setImporting(false)
     }
@@ -523,6 +535,9 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
             {effectiveAiMode ? <Sparkles className="h-4 w-4 text-amber-500" /> : <Upload className="h-4 w-4" />}
             {effectiveAiMode ? t('import.importWithAITitle', { type: config.label }) : t('import.importTitle', { type: config.label })}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            {effectiveAiMode ? 'Upload a document for AI-assisted import' : 'Upload a file to import data'}
+          </DialogDescription>
         </DialogHeader>
 
         <StepIndicator />
