@@ -214,26 +214,12 @@ async function buildContentFromFile(arrayBuffer: ArrayBuffer, ext: string, userP
   }
 
   if (ext === 'pdf') {
-    let pdfText: string
-    try {
-      const { extractText } = await import('unpdf')
-      const { text: pdfPages } = await extractText(new Uint8Array(arrayBuffer))
-      pdfText = pdfPages.join('\n')
-    } catch (pdfErr) {
-      console.error('[GrantLume] unpdf extraction failed:', pdfErr)
-      throw new Error('Could not extract text from PDF. The PDF parser encountered an error. Try uploading as an image instead.')
-    }
-
-    if (!pdfText || pdfText.trim().length < 20) {
-      throw new Error('Could not extract text from PDF. The file may be scanned/image-based. Try uploading as an image instead.')
-    }
-
-    const maxChars = 180000
-    const truncatedText = pdfText.length > maxChars
-      ? pdfText.slice(0, maxChars) + '\n\n[Document truncated]'
-      : pdfText
-
-    return [{ type: 'text', text: userPromptText + `\n\n--- DOCUMENT TEXT ---\n${truncatedText}\n--- END ---` }]
+    // Send PDF directly to Claude's native document support — no text extraction needed
+    const base64 = Buffer.from(arrayBuffer).toString('base64')
+    return [
+      { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+      { type: 'text', text: userPromptText },
+    ]
   }
 
   // Word, text, etc.
@@ -250,13 +236,21 @@ async function buildContentFromFile(arrayBuffer: ArrayBuffer, ext: string, userP
 }
 
 async function callClaude(claudeApiKey: string, systemPrompt: string, messageContent: any[]) {
+  // Check if any content block is a PDF document — requires beta header
+  const hasPdf = messageContent.some((b: any) => b.type === 'document' && b.source?.media_type === 'application/pdf')
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-api-key': claudeApiKey,
+    'anthropic-version': '2023-06-01',
+  }
+  if (hasPdf) {
+    headers['anthropic-beta'] = 'pdfs-2024-09-25'
+  }
+
   const claudeResponse = await fetch(CLAUDE_API_URL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': claudeApiKey,
-      'anthropic-version': '2023-06-01',
-    },
+    headers,
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
       max_tokens: 16384,
@@ -407,27 +401,10 @@ async function handleParseGrant(req: VercelRequest, res: VercelResponse) {
       arrayBuffer = result.arrayBuffer
     }
 
-    // Extract text from PDF
-    let pdfText: string
-    try {
-      const { extractText } = await import('unpdf')
-      const { text: pdfPages } = await extractText(new Uint8Array(arrayBuffer))
-      pdfText = pdfPages.join('\n')
-    } catch (pdfErr) {
-      console.error('[GrantLume] parse-grant: unpdf extraction failed:', pdfErr)
-      return res.status(400).json({ error: 'Could not extract text from PDF. The PDF parser encountered an error. Try uploading as an image instead.' })
-    }
+    // Send PDF directly to Claude's native document support
+    const base64 = Buffer.from(arrayBuffer).toString('base64')
 
-    if (!pdfText || pdfText.trim().length === 0) {
-      return res.status(400).json({ error: 'Could not extract text from PDF. The file may be scanned/image-based.' })
-    }
-
-    const maxChars = 180000
-    const truncatedText = pdfText.length > maxChars
-      ? pdfText.slice(0, maxChars) + '\n\n[Document truncated — remaining pages omitted]'
-      : pdfText
-
-    let userPrompt = `Here is the full text extracted from the grant agreement document:\n\n---\n${truncatedText}\n---\n\nPlease parse this grant agreement and extract all project information as the JSON schema described in the system prompt.`
+    let userPrompt = `Please parse this grant agreement PDF and extract all project information as the JSON schema described in the system prompt.`
     if (organisation_abbreviation) {
       userPrompt += `\n\nIMPORTANT: Our organisation's abbreviation/name is "${organisation_abbreviation}". When extracting budget figures, PM rates, and personnel costs, focus on the data specific to this organisation (not the total consortium figures). Look for budget tables or annexes that break down costs per beneficiary/partner.`
     }
@@ -436,7 +413,10 @@ async function handleParseGrant(req: VercelRequest, res: VercelResponse) {
     }
     userPrompt += '\n\nReturn ONLY the JSON object.'
 
-    const { text, usage, tokens_in, tokens_out } = await callClaude(env.claudeApiKey, GRANT_SYSTEM_PROMPT, [{ type: 'text', text: userPrompt }])
+    const { text, usage, tokens_in, tokens_out } = await callClaude(env.claudeApiKey, GRANT_SYSTEM_PROMPT, [
+      { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+      { type: 'text', text: userPrompt },
+    ])
     const extraction = parseJsonResponse(text)
 
     // Record usage
