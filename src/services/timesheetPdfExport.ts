@@ -323,7 +323,7 @@ export function generateTimesheetPdf(data: TimesheetPdfData): void {
 
   y += 10
 
-  // ── National project details ──
+  // ── Arbeitszeitnachweis (time-range tracking details) ──
   const nationalEntries = days.filter(d => {
     const proj = projectMap.get(d.project_id)
     return proj?.funding_schemes?.requires_time_range && (d.start_time || d.end_time || d.description)
@@ -333,7 +333,7 @@ export function generateTimesheetPdf(data: TimesheetPdfData): void {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(9)
     doc.setTextColor(...AMBER)
-    doc.text('National Project Details (Tätigkeitsbeschreibung)', marginL, y)
+    doc.text('Arbeitszeitnachweis — Tätigkeitsbeschreibung', marginL, y)
     y += 6
 
     // Table header

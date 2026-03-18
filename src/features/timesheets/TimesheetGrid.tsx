@@ -1094,7 +1094,7 @@ export function TimesheetGrid() {
                                   'h-7 flex items-center justify-center text-[10px] tabular-nums rounded',
                                   value > 0 ? 'font-bold text-amber-700 bg-amber-50 dark:text-amber-400 dark:bg-amber-950/30' : 'text-muted-foreground/30',
                                 )}
-                                title="Hours auto-computed from start/end time below"
+                                title="Arbeitszeitnachweis — hours auto-computed from start/end time"
                               >
                                 {value > 0 ? value.toFixed(1) : '·'}
                               </div>
@@ -1172,7 +1172,7 @@ export function TimesheetGrid() {
         </div>
       )}
 
-      {/* National project daily details */}
+      {/* Arbeitszeitnachweis — time-range tracking details */}
       {projectRows.filter(r => r.isNationalProject).map(row => {
         const workingDays = calendarDays.filter(d => d.isAvailable)
         return (
@@ -1180,7 +1180,7 @@ export function TimesheetGrid() {
             <div className="bg-amber-50 dark:bg-amber-950/20 border-b px-4 py-2.5 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full" style={{ backgroundColor: row.color }} />
               <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">{row.acronym}</span>
-              <span className="text-[10px] text-amber-600/70 dark:text-amber-400/50">— National project: enter start/end time &amp; activity per day</span>
+              <span className="text-[10px] text-amber-600/70 dark:text-amber-400/50">— Arbeitszeitnachweis: daily start/end time &amp; activity description</span>
             </div>
             <div className="divide-y max-h-[400px] overflow-y-auto">
               {workingDays.map(d => {
