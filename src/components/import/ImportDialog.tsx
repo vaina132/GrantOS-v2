@@ -479,13 +479,19 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
     setImporting(true)
     try {
       const rows = getMappedRows()
-      const batchSize = 100
+      console.log('[Import] Inserting', rows.length, 'rows into', config.table, '— sample row:', rows[0])
+      const batchSize = 50
       let inserted = 0
       for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize)
-        const { error } = await (supabase.from as any)(config.table).insert(batch)
-        if (error) throw error
+        console.log(`[Import] Batch ${i / batchSize + 1}: inserting ${batch.length} rows…`)
+        const { error } = await supabase.from(config.table).insert(batch as any)
+        if (error) {
+          console.error('[Import] Supabase insert error:', error)
+          throw error
+        }
         inserted += batch.length
+        console.log(`[Import] Batch done, total inserted: ${inserted}`)
       }
       toast({ title: t('import.importComplete'), description: `${inserted} ${config.label.toLowerCase()} imported successfully.` })
       onImportComplete?.()
