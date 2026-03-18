@@ -28,6 +28,7 @@ type FileCategory = 'spreadsheet' | 'document'
 interface ColumnDef {
   field: string
   label: string
+  type?: 'string' | 'number' | 'date'
   required: boolean
   aliases: string[]
 }
@@ -53,11 +54,11 @@ const IMPORT_CONFIGS: Record<ImportType, ImportConfig> = {
       { field: 'department', label: 'Department', required: false, aliases: ['department', 'dept', 'unit', 'division', 'group', 'team', 'lab', 'laboratory'] },
       { field: 'role', label: 'Role', required: false, aliases: ['role', 'position', 'title', 'job title', 'job role', 'function', 'designation'] },
       { field: 'employment_type', label: 'Employment Type', required: false, aliases: ['employment type', 'employment_type', 'contract', 'contract type'] },
-      { field: 'fte', label: 'FTE', required: false, aliases: ['fte', 'full time equivalent', 'working time', 'percentage', 'effort'] },
-      { field: 'start_date', label: 'Start Date', required: false, aliases: ['start date', 'start_date', 'startdate', 'hire date', 'from', 'joined', 'joining date'] },
-      { field: 'end_date', label: 'End Date', required: false, aliases: ['end date', 'end_date', 'enddate', 'leave date', 'to', 'until', 'departure'] },
+      { field: 'fte', label: 'FTE', required: false, type: 'number', aliases: ['fte', 'full time equivalent', 'working time', 'percentage', 'effort'] },
+      { field: 'start_date', label: 'Start Date', required: false, type: 'date', aliases: ['start date', 'start_date', 'startdate', 'hire date', 'from', 'joined', 'joining date'] },
+      { field: 'end_date', label: 'End Date', required: false, type: 'date', aliases: ['end date', 'end_date', 'enddate', 'leave date', 'to', 'until', 'departure'] },
       { field: 'country', label: 'Country', required: false, aliases: ['country', 'country code', 'nation', 'location', 'nationality'] },
-      { field: 'annual_salary', label: 'Annual Salary', required: false, aliases: ['salary', 'annual salary', 'annual_salary', 'pay', 'compensation', 'wage'] },
+      { field: 'annual_salary', label: 'Annual Salary', required: false, type: 'number', aliases: ['salary', 'annual salary', 'annual_salary', 'pay', 'compensation', 'wage'] },
     ],
     table: 'persons',
   },
@@ -68,31 +69,35 @@ const IMPORT_CONFIGS: Record<ImportType, ImportConfig> = {
     columns: [
       { field: 'acronym', label: 'Acronym', required: true, aliases: ['acronym', 'code', 'project code', 'short name', 'project id', 'project acronym', 'id', 'ref', 'reference', 'abbreviation'] },
       { field: 'title', label: 'Title', required: true, aliases: ['title', 'name', 'project name', 'project title', 'full title', 'project'] },
-      { field: 'start_date', label: 'Start Date', required: true, aliases: ['start date', 'start_date', 'startdate', 'start', 'from', 'begin', 'begin date', 'beginning', 'kick-off'] },
-      { field: 'end_date', label: 'End Date', required: true, aliases: ['end date', 'end_date', 'enddate', 'end', 'to', 'until', 'finish', 'finish date', 'due date', 'completion'] },
+      { field: 'start_date', label: 'Start Date', required: true, type: 'date', aliases: ['start date', 'start_date', 'startdate', 'start', 'from', 'begin', 'begin date', 'beginning', 'kick-off'] },
+      { field: 'end_date', label: 'End Date', required: true, type: 'date', aliases: ['end date', 'end_date', 'enddate', 'end', 'to', 'until', 'finish', 'finish date', 'due date', 'completion'] },
       { field: 'status', label: 'Status', required: false, aliases: ['status', 'state', 'project status', 'phase', 'stage'] },
       { field: 'grant_number', label: 'Grant Number', required: false, aliases: ['grant number', 'grant_number', 'grant', 'grant id', 'grant no', 'contract number', 'agreement number', 'ga number', 'project number'] },
-      { field: 'total_budget', label: 'Total Budget', required: false, aliases: ['total budget', 'total_budget', 'budget', 'total cost', 'grant amount', 'funding', 'amount', 'value'] },
-      { field: 'budget_personnel', label: 'Personnel Budget', required: false, aliases: ['budget personnel', 'budget_personnel', 'personnel budget', 'personnel cost', 'staff cost', 'personnel', 'labor', 'labour'] },
-      { field: 'budget_travel', label: 'Travel Budget', required: false, aliases: ['budget travel', 'budget_travel', 'travel budget', 'travel cost', 'travel', 'mobility'] },
-      { field: 'budget_subcontracting', label: 'Subcontracting Budget', required: false, aliases: ['budget subcontracting', 'budget_subcontracting', 'subcontracting', 'subcontracting budget', 'outsourcing'] },
-      { field: 'budget_other', label: 'Other Budget', required: false, aliases: ['budget other', 'budget_other', 'other budget', 'other cost', 'other', 'indirect', 'overhead'] },
+      { field: 'total_budget', label: 'Total Budget', required: false, type: 'number', aliases: ['total budget', 'total_budget', 'budget', 'total cost', 'grant amount', 'funding', 'amount', 'value'] },
+      { field: 'budget_personnel', label: 'Personnel Budget', required: false, type: 'number', aliases: ['budget personnel', 'budget_personnel', 'personnel budget', 'personnel cost', 'staff cost', 'personnel', 'labor', 'labour'] },
+      { field: 'budget_travel', label: 'Travel Budget', required: false, type: 'number', aliases: ['budget travel', 'budget_travel', 'travel budget', 'travel cost', 'travel', 'mobility'] },
+      { field: 'budget_subcontracting', label: 'Subcontracting Budget', required: false, type: 'number', aliases: ['budget subcontracting', 'budget_subcontracting', 'subcontracting', 'subcontracting budget', 'outsourcing'] },
+      { field: 'budget_other', label: 'Other Budget', required: false, type: 'number', aliases: ['budget other', 'budget_other', 'other budget', 'other cost', 'other', 'indirect', 'overhead'] },
     ],
     table: 'projects',
   },
   proposals: {
     label: 'Proposals',
     description: 'Import grant proposals from a spreadsheet.',
-    templateHint: 'Required: Title. Optional: acronym, call ID, programme, status, submission date, budget, duration.',
+    templateHint: 'Required: Title. Optional: call ID, programme, status, submission deadline, budgets, person-months, notes.',
     columns: [
-      { field: 'title', label: 'Title', required: true, aliases: ['title', 'name', 'proposal title', 'proposal name', 'project title'] },
-      { field: 'acronym', label: 'Acronym', required: false, aliases: ['acronym', 'code', 'short name', 'abbreviation'] },
-      { field: 'call_identifier', label: 'Call ID', required: false, aliases: ['call', 'call identifier', 'call_identifier', 'call id', 'call reference', 'topic id'] },
-      { field: 'funding_programme', label: 'Programme', required: false, aliases: ['programme', 'program', 'funding programme', 'funding_programme', 'scheme', 'funding scheme', 'framework'] },
+      { field: 'project_name', label: 'Title', required: true, aliases: ['title', 'name', 'proposal title', 'proposal name', 'project title', 'project name', 'project_name'] },
+      { field: 'call_identifier', label: 'Call ID', required: false, aliases: ['call', 'call identifier', 'call_identifier', 'call id', 'call reference', 'topic id', 'topic'] },
+      { field: 'funding_scheme', label: 'Programme', required: false, aliases: ['programme', 'program', 'funding programme', 'funding_programme', 'scheme', 'funding scheme', 'funding_scheme', 'framework'] },
       { field: 'status', label: 'Status', required: false, aliases: ['status', 'state', 'stage', 'outcome', 'result', 'decision'] },
-      { field: 'submission_date', label: 'Submission Date', required: false, aliases: ['submission date', 'submission_date', 'submitted', 'date', 'deadline'] },
-      { field: 'requested_budget', label: 'Requested Budget', required: false, aliases: ['budget', 'requested budget', 'requested_budget', 'amount', 'funding', 'cost'] },
-      { field: 'duration_months', label: 'Duration (months)', required: false, aliases: ['duration', 'duration_months', 'months', 'length', 'period'] },
+      { field: 'submission_deadline', label: 'Submission Deadline', required: false, type: 'date', aliases: ['submission deadline', 'submission_deadline', 'deadline', 'submission date', 'submitted', 'due date'] },
+      { field: 'expected_decision', label: 'Expected Decision', required: false, type: 'date', aliases: ['expected decision', 'expected_decision', 'decision date', 'result date', 'notification date'] },
+      { field: 'our_pms', label: 'Our Person-Months', required: false, type: 'number', aliases: ['our pms', 'our_pms', 'person months', 'person-months', 'pm', 'pms', 'effort', 'our effort'] },
+      { field: 'personnel_budget', label: 'Personnel Budget', required: false, type: 'number', aliases: ['personnel budget', 'personnel_budget', 'personnel cost', 'staff cost', 'personnel', 'labor', 'labour'] },
+      { field: 'travel_budget', label: 'Travel Budget', required: false, type: 'number', aliases: ['travel budget', 'travel_budget', 'travel cost', 'travel', 'mobility'] },
+      { field: 'subcontracting_budget', label: 'Subcontracting Budget', required: false, type: 'number', aliases: ['subcontracting budget', 'subcontracting_budget', 'subcontracting', 'outsourcing'] },
+      { field: 'other_budget', label: 'Other Budget', required: false, type: 'number', aliases: ['other budget', 'other_budget', 'other cost', 'other', 'indirect'] },
+      { field: 'notes', label: 'Notes', required: false, aliases: ['notes', 'note', 'comments', 'comment', 'remarks', 'description'] },
     ],
     table: 'proposals',
   },
@@ -395,12 +400,31 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
 
   const getMappedRows = () => {
     if (!parsed) return []
+    // Build a lookup for column types
+    const colTypeMap: Record<string, string> = {}
+    config.columns.forEach((c) => { if (c.type) colTypeMap[c.field] = c.type })
+
     return parsed.rows.map((row) => {
       const mapped: Record<string, unknown> = { org_id: orgId }
       for (const [targetField, csvHeader] of Object.entries(mapping)) {
-        if (csvHeader && row[csvHeader] !== undefined) {
-          mapped[targetField] = row[csvHeader]
+        if (!csvHeader || row[csvHeader] === undefined) continue
+        let val: unknown = row[csvHeader]
+        // Skip empty strings for optional fields
+        if (val === '' || val === null || val === undefined) continue
+
+        const colType = colTypeMap[targetField]
+        if (colType === 'number') {
+          // Strip currency symbols, commas, spaces then parse
+          const cleaned = String(val).replace(/[^\d.\-]/g, '')
+          const num = parseFloat(cleaned)
+          val = isNaN(num) ? undefined : num
+        } else if (colType === 'date') {
+          // Try to parse as date, keep as ISO string (YYYY-MM-DD)
+          const d = new Date(String(val))
+          val = isNaN(d.getTime()) ? String(val) : d.toISOString().split('T')[0]
         }
+
+        if (val !== undefined) mapped[targetField] = val
       }
       return mapped
     })
