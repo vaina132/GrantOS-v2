@@ -433,27 +433,32 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
     const colTypeMap: Record<string, string> = {}
     config.columns.forEach((c) => { if (c.type) colTypeMap[c.field] = c.type })
 
+    // All mapped target fields — every row must have the same keys for PostgREST
+    const allFields = Object.keys(mapping).filter((f) => mapping[f])
+
     return parsed.rows.map((row) => {
       const mapped: Record<string, unknown> = { org_id: orgId }
-      for (const [targetField, csvHeader] of Object.entries(mapping)) {
-        if (!csvHeader || row[csvHeader] === undefined) continue
+      for (const targetField of allFields) {
+        const csvHeader = mapping[targetField]
+        if (!csvHeader || row[csvHeader] === undefined || row[csvHeader] === '' || row[csvHeader] === null) {
+          mapped[targetField] = null
+          continue
+        }
         let val: unknown = row[csvHeader]
-        // Skip empty strings for optional fields
-        if (val === '' || val === null || val === undefined) continue
 
         const colType = colTypeMap[targetField]
         if (colType === 'number') {
           // Strip currency symbols, commas, spaces then parse
           const cleaned = String(val).replace(/[^\d.\-]/g, '')
           const num = parseFloat(cleaned)
-          val = isNaN(num) ? undefined : num
+          val = isNaN(num) ? null : num
         } else if (colType === 'date') {
           // Try to parse as date, keep as ISO string (YYYY-MM-DD)
           const d = new Date(String(val))
-          val = isNaN(d.getTime()) ? String(val) : d.toISOString().split('T')[0]
+          val = isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
         }
 
-        if (val !== undefined) mapped[targetField] = val
+        mapped[targetField] = val ?? null
       }
       return mapped
     })
