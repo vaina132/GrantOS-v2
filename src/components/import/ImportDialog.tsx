@@ -480,16 +480,38 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
     try {
       const rows = getMappedRows()
       console.log('[Import] Inserting', rows.length, 'rows into', config.table, '— sample row:', rows[0])
+
+      // Use direct REST API call instead of supabase-js SDK (SDK hangs on writes)
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token || supabaseAnonKey
+
       const batchSize = 50
       let inserted = 0
       for (let i = 0; i < rows.length; i += batchSize) {
         const batch = rows.slice(i, i + batchSize)
         console.log(`[Import] Batch ${i / batchSize + 1}: inserting ${batch.length} rows…`)
-        const { error } = await supabase.from(config.table as any).insert(batch as any)
-        if (error) {
-          console.error('[Import] Supabase insert error:', error)
-          throw error
+
+        const res = await fetch(`${supabaseUrl}/rest/v1/${config.table}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': supabaseAnonKey,
+            'Authorization': `Bearer ${accessToken}`,
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify(batch),
+        })
+
+        if (!res.ok) {
+          const errBody = await res.text()
+          console.error('[Import] REST insert error:', res.status, errBody)
+          let errMsg = `Insert failed (${res.status})`
+          try { errMsg = JSON.parse(errBody)?.message || errMsg } catch {}
+          throw new Error(errMsg)
         }
+
         inserted += batch.length
         console.log(`[Import] Batch done, total inserted: ${inserted}`)
       }
