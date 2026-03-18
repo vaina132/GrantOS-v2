@@ -429,36 +429,30 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
 
   const getMappedRows = () => {
     if (!parsed) return []
-    // Build a lookup for column types
     const colTypeMap: Record<string, string> = {}
     config.columns.forEach((c) => { if (c.type) colTypeMap[c.field] = c.type })
 
-    // All mapped target fields — every row must have the same keys for PostgREST
-    const allFields = Object.keys(mapping).filter((f) => mapping[f])
-
     return parsed.rows.map((row) => {
       const mapped: Record<string, unknown> = { org_id: orgId }
-      for (const targetField of allFields) {
-        const csvHeader = mapping[targetField]
-        if (!csvHeader || row[csvHeader] === undefined || row[csvHeader] === '' || row[csvHeader] === null) {
-          mapped[targetField] = null
-          continue
-        }
-        let val: unknown = row[csvHeader]
+      for (const [targetField, csvHeader] of Object.entries(mapping)) {
+        if (!csvHeader) continue
+        const rawVal = row[csvHeader]
+        if (rawVal === undefined || rawVal === '' || rawVal === null) continue
+        let val: unknown = rawVal
 
         const colType = colTypeMap[targetField]
         if (colType === 'number') {
-          // Strip currency symbols, commas, spaces then parse
           const cleaned = String(val).replace(/[^\d.\-]/g, '')
           const num = parseFloat(cleaned)
-          val = isNaN(num) ? null : num
+          if (isNaN(num)) continue
+          val = num
         } else if (colType === 'date') {
-          // Try to parse as date, keep as ISO string (YYYY-MM-DD)
           const d = new Date(String(val))
-          val = isNaN(d.getTime()) ? null : d.toISOString().split('T')[0]
+          if (isNaN(d.getTime())) continue
+          val = d.toISOString().split('T')[0]
         }
 
-        mapped[targetField] = val ?? null
+        mapped[targetField] = val
       }
       return mapped
     })
@@ -485,7 +479,6 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
       const rows = getMappedRows()
       console.log('[Import] Inserting', rows.length, 'rows into', config.table, '— sample row:', rows[0])
 
-      // Get access token from Supabase session in localStorage (avoids async getSession which can hang)
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
       let accessToken = supabaseAnonKey
@@ -496,54 +489,47 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
           if (stored?.access_token) accessToken = stored.access_token
         }
       } catch { /* use anon key */ }
-      console.log('[Import] Got token, length:', accessToken?.length, 'isAnon:', accessToken === supabaseAnonKey)
 
       const endpoint = `${supabaseUrl}/rest/v1/${config.table}`
-      console.log('[Import] REST endpoint:', endpoint)
-
-      const batchSize = 50
-      let inserted = 0
-      for (let i = 0; i < rows.length; i += batchSize) {
-        const batch = rows.slice(i, i + batchSize)
-        console.log(`[Import] Batch ${i / batchSize + 1}: inserting ${batch.length} rows…`)
-
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), 15000)
-
-        try {
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': supabaseAnonKey,
-              'Authorization': `Bearer ${accessToken}`,
-              'Prefer': 'return=minimal',
-            },
-            body: JSON.stringify(batch),
-            signal: controller.signal,
-          })
-          clearTimeout(timeout)
-
-          console.log('[Import] Batch response status:', res.status)
-          if (!res.ok) {
-            const errBody = await res.text()
-            console.error('[Import] REST insert error:', res.status, errBody)
-            let errMsg = `Insert failed (${res.status})`
-            try { errMsg = JSON.parse(errBody)?.message || errMsg } catch {}
-            throw new Error(errMsg)
-          }
-        } catch (fetchErr: any) {
-          clearTimeout(timeout)
-          if (fetchErr?.name === 'AbortError') {
-            throw new Error('Database insert timed out (15s). Please check your Supabase connection.')
-          }
-          throw fetchErr
-        }
-
-        inserted += batch.length
-        console.log(`[Import] Batch done, total inserted: ${inserted}`)
+      const headers = {
+        'Content-Type': 'application/json',
+        'apikey': supabaseAnonKey,
+        'Authorization': `Bearer ${accessToken}`,
+        'Prefer': 'return=minimal',
       }
-      toast({ title: t('import.importComplete'), description: `${inserted} ${config.label.toLowerCase()} imported successfully.` })
+
+      // Insert rows individually in parallel to avoid PostgREST "all keys must match" error
+      // Each row may have different optional fields; individual inserts let DB defaults apply
+      const results = await Promise.allSettled(
+        rows.map((row) =>
+          fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(row) })
+            .then(async (res) => {
+              if (!res.ok) {
+                const body = await res.text().catch(() => '')
+                throw new Error(body)
+              }
+            })
+        )
+      )
+
+      const succeeded = results.filter((r) => r.status === 'fulfilled').length
+      const failed = results.filter((r) => r.status === 'rejected')
+      console.log(`[Import] Done: ${succeeded} succeeded, ${failed.length} failed`)
+      if (failed.length > 0) {
+        console.error('[Import] Failed rows:', failed.slice(0, 3).map((r) => (r as PromiseRejectedResult).reason?.message))
+      }
+
+      if (succeeded === 0) {
+        const firstErr = (failed[0] as PromiseRejectedResult)?.reason?.message || 'All inserts failed'
+        let errMsg = firstErr
+        try { errMsg = JSON.parse(firstErr)?.message || firstErr } catch {}
+        throw new Error(errMsg)
+      }
+
+      const desc = failed.length > 0
+        ? `${succeeded} imported, ${failed.length} failed (check data for errors).`
+        : `${succeeded} ${config.label.toLowerCase()} imported successfully.`
+      toast({ title: t('import.importComplete'), description: desc })
       onImportComplete?.()
       onOpenChange(false)
     } catch (err: any) {
