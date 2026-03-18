@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as XLSX from 'xlsx'
-import { supabase } from '@/lib/supabase'
 import { apiFetch } from '@/lib/apiClient'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
@@ -481,11 +480,21 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
       const rows = getMappedRows()
       console.log('[Import] Inserting', rows.length, 'rows into', config.table, '— sample row:', rows[0])
 
-      // Use direct REST API call instead of supabase-js SDK (SDK hangs on writes)
+      // Get access token from Supabase session in localStorage (avoids async getSession which can hang)
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-      const { data: { session } } = await supabase.auth.getSession()
-      const accessToken = session?.access_token || supabaseAnonKey
+      let accessToken = supabaseAnonKey
+      try {
+        const storageKey = Object.keys(localStorage).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+        if (storageKey) {
+          const stored = JSON.parse(localStorage.getItem(storageKey) || '{}')
+          if (stored?.access_token) accessToken = stored.access_token
+        }
+      } catch { /* use anon key */ }
+      console.log('[Import] Got token, length:', accessToken?.length, 'isAnon:', accessToken === supabaseAnonKey)
+
+      const endpoint = `${supabaseUrl}/rest/v1/${config.table}`
+      console.log('[Import] REST endpoint:', endpoint)
 
       const batchSize = 50
       let inserted = 0
@@ -493,23 +502,37 @@ export function ImportDialog({ open, onOpenChange, importType, aiMode, onImportC
         const batch = rows.slice(i, i + batchSize)
         console.log(`[Import] Batch ${i / batchSize + 1}: inserting ${batch.length} rows…`)
 
-        const res = await fetch(`${supabaseUrl}/rest/v1/${config.table}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseAnonKey,
-            'Authorization': `Bearer ${accessToken}`,
-            'Prefer': 'return=minimal',
-          },
-          body: JSON.stringify(batch),
-        })
+        const controller = new AbortController()
+        const timeout = setTimeout(() => controller.abort(), 15000)
 
-        if (!res.ok) {
-          const errBody = await res.text()
-          console.error('[Import] REST insert error:', res.status, errBody)
-          let errMsg = `Insert failed (${res.status})`
-          try { errMsg = JSON.parse(errBody)?.message || errMsg } catch {}
-          throw new Error(errMsg)
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': supabaseAnonKey,
+              'Authorization': `Bearer ${accessToken}`,
+              'Prefer': 'return=minimal',
+            },
+            body: JSON.stringify(batch),
+            signal: controller.signal,
+          })
+          clearTimeout(timeout)
+
+          console.log('[Import] Batch response status:', res.status)
+          if (!res.ok) {
+            const errBody = await res.text()
+            console.error('[Import] REST insert error:', res.status, errBody)
+            let errMsg = `Insert failed (${res.status})`
+            try { errMsg = JSON.parse(errBody)?.message || errMsg } catch {}
+            throw new Error(errMsg)
+          }
+        } catch (fetchErr: any) {
+          clearTimeout(timeout)
+          if (fetchErr?.name === 'AbortError') {
+            throw new Error('Database insert timed out (15s). Please check your Supabase connection.')
+          }
+          throw fetchErr
         }
 
         inserted += batch.length
