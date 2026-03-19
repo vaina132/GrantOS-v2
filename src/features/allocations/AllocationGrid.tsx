@@ -15,7 +15,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
-import { Undo2, Redo2, Save, Grid3x3, Plus, UserPlus } from 'lucide-react'
+import { Undo2, Redo2, Save, Grid3x3, Plus, UserPlus, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
 import { getWorkingDaysInMonth, pmToHours, hoursToPm } from '@/lib/pmUtils'
@@ -27,23 +27,37 @@ import { projectsService } from '@/services/projectsService'
 import type { AssignmentType, Person, Project, WorkPackage } from '@/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const CURRENT_MONTH = new Date().getMonth() + 1
+const CURRENT_YEAR = new Date().getFullYear()
 
 /** Returns a heatmap background class based on utilisation % (allocated / capacity). */
 function heatmapBg(utilisation: number): string {
   if (utilisation <= 0) return ''
-  if (utilisation <= 0.5) return 'bg-emerald-50 dark:bg-emerald-950/20'
-  if (utilisation <= 0.8) return 'bg-yellow-50 dark:bg-yellow-950/20'
-  if (utilisation <= 1.0) return 'bg-amber-50 dark:bg-amber-950/20'
-  return 'bg-red-50 dark:bg-red-950/20'
+  if (utilisation <= 0.25) return 'bg-emerald-50/60 dark:bg-emerald-950/15'
+  if (utilisation <= 0.5) return 'bg-emerald-100/70 dark:bg-emerald-950/25'
+  if (utilisation <= 0.75) return 'bg-yellow-50/80 dark:bg-yellow-950/25'
+  if (utilisation <= 0.95) return 'bg-amber-100/80 dark:bg-amber-950/30'
+  if (utilisation <= 1.0) return 'bg-orange-100/80 dark:bg-orange-950/30'
+  return 'bg-red-100 dark:bg-red-950/40'
 }
 
 /** Returns a heatmap text color class for summary row utilisation values. */
 function heatmapText(utilisation: number): string {
-  if (utilisation <= 0) return 'text-muted-foreground'
-  if (utilisation <= 0.5) return 'text-emerald-700 dark:text-emerald-400'
-  if (utilisation <= 0.8) return 'text-yellow-700 dark:text-yellow-400'
-  if (utilisation <= 1.0) return 'text-amber-700 dark:text-amber-400'
-  return 'text-red-700 dark:text-red-400 font-bold'
+  if (utilisation <= 0) return 'text-muted-foreground/50'
+  if (utilisation <= 0.5) return 'text-emerald-600 dark:text-emerald-400'
+  if (utilisation <= 0.75) return 'text-yellow-600 dark:text-yellow-400'
+  if (utilisation <= 0.95) return 'text-amber-600 dark:text-amber-400'
+  if (utilisation <= 1.0) return 'text-orange-600 dark:text-orange-400 font-semibold'
+  return 'text-red-600 dark:text-red-400 font-bold'
+}
+
+/** Returns a utilisation badge for the person header. */
+function utilisationBadge(utilisation: number): { label: string; className: string } {
+  if (utilisation <= 0) return { label: 'Unallocated', className: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' }
+  if (utilisation <= 0.5) return { label: `${(utilisation * 100).toFixed(0)}%`, className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' }
+  if (utilisation <= 0.8) return { label: `${(utilisation * 100).toFixed(0)}%`, className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400' }
+  if (utilisation <= 1.0) return { label: `${(utilisation * 100).toFixed(0)}%`, className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400' }
+  return { label: `${(utilisation * 100).toFixed(0)}% ⚠`, className: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' }
 }
 
 type CellKey = string // "personId:projectId:wpId:month"
@@ -147,6 +161,16 @@ export function AllocationGrid() {
   const [addPersonId, setAddPersonId] = useState('')
   const [addProjectId, setAddProjectId] = useState('')
   const [addRowOpen, setAddRowOpen] = useState(false)
+  const [collapsedPersons, setCollapsedPersons] = useState<Set<string>>(new Set())
+
+  const togglePerson = useCallback((personId: string) => {
+    setCollapsedPersons(prev => {
+      const next = new Set(prev)
+      if (next.has(personId)) next.delete(personId)
+      else next.add(personId)
+      return next
+    })
+  }, [])
 
   // Build cell map from loaded assignments OR from timesheet aggregates
   useEffect(() => {
@@ -246,6 +270,25 @@ export function AllocationGrid() {
 
     return result
   }, [staff, projects, assignments, manualRows, wpsByProject, timesheetDriven, tsAggregates])
+
+  // Group rows by person for the grouped UI
+  const groupedByPerson = useMemo(() => {
+    const groups: { person: Person; rows: GridRow[]; personId: string }[] = []
+    const map = new Map<string, GridRow[]>()
+    const order: string[] = []
+    for (const row of rows) {
+      if (!map.has(row.person.id)) {
+        map.set(row.person.id, [])
+        order.push(row.person.id)
+      }
+      map.get(row.person.id)!.push(row)
+    }
+    for (const pid of order) {
+      const personRows = map.get(pid)!
+      groups.push({ person: personRows[0].person, rows: personRows, personId: pid })
+    }
+    return groups
+  }, [rows])
 
   const updateCell = useCallback(
     (personId: string, projectId: string, wpId: string | null, month: number, value: number) => {
@@ -604,8 +647,11 @@ export function AllocationGrid() {
     )
   }
 
+  const isCurrentYear = globalYear === CURRENT_YEAR
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+      {/* Toolbar */}
       {timesheetDriven && (
         <div className="rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 px-4 py-3 flex items-start gap-3">
           <div className="text-blue-600 text-sm mt-0.5">ℹ️</div>
@@ -619,167 +665,224 @@ export function AllocationGrid() {
       )}
       {!timesheetDriven && (
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={undo} disabled={!canUndo}>
-            <Undo2 className="mr-1 h-4 w-4" /> {t('allocations.undo')}
+          <Button variant="outline" size="sm" onClick={undo} disabled={!canUndo} className="h-8">
+            <Undo2 className="mr-1 h-3.5 w-3.5" /> {t('allocations.undo')}
           </Button>
-          <Button variant="outline" size="sm" onClick={redo} disabled={!canRedo}>
-            <Redo2 className="mr-1 h-4 w-4" /> {t('allocations.redo')}
+          <Button variant="outline" size="sm" onClick={redo} disabled={!canRedo} className="h-8">
+            <Redo2 className="mr-1 h-3.5 w-3.5" /> {t('allocations.redo')}
           </Button>
           <div className="flex-1" />
           {dirty && (
-            <Badge variant="secondary" className="text-xs">{t('allocations.unsavedChanges')}</Badge>
+            <Badge variant="secondary" className="text-xs animate-pulse">{t('allocations.unsavedChanges')}</Badge>
           )}
-          <Button size="sm" onClick={handleSave} disabled={!dirty || saving}>
-            <Save className="mr-1 h-4 w-4" />
+          <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="h-8">
+            <Save className="mr-1 h-3.5 w-3.5" />
             {saving ? t('common.saving') : t('common.save')}
           </Button>
         </div>
       )}
 
-      <div className="rounded-lg border overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="px-3 py-2 text-left font-medium sticky left-0 bg-muted/50 min-w-[140px]">{t('common.person')}</th>
-              <th className="px-3 py-2 text-left font-medium min-w-[100px]">{t('common.project')}</th>
-              {MONTHS.map((m, i) => (
-                <th
-                  key={m}
-                  className={cn(
-                    'px-2 py-2 text-center font-medium min-w-[60px]',
-                    isLocked(i + 1) && 'bg-amber-50 text-amber-700',
-                  )}
-                >
-                  {m}
-                  {isLocked(i + 1) && <span className="block text-[10px]">🔒</span>}
+      {/* Grid */}
+      <div className="rounded-lg border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse" style={{ minWidth: '900px' }}>
+            <thead className="sticky top-0 z-20">
+              <tr className="bg-muted/70 dark:bg-muted/40 border-b">
+                <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground sticky left-0 z-30 bg-muted/70 dark:bg-muted/40 min-w-[220px] w-[220px]">
+                  {t('common.project')}
                 </th>
-              ))}
-              <th className="px-3 py-2 text-right font-medium min-w-[60px]">{t('common.total')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, rowIdx) => {
-              let rowTotal = 0
-              const nextRow = rows[rowIdx + 1]
-              const isLastRowForPerson = !nextRow || nextRow.person.id !== row.person.id
-              return (<Fragment key={`${row.person.id}:${row.project.id}:${row.wpId}`}>
-                <tr className={cn('border-b last:border-0 hover:bg-muted/20', isLastRowForPerson && 'border-b-0')}>
-                  <td className="px-3 py-1 sticky left-0 bg-background font-medium text-xs max-w-[160px]">
-                    <div className="flex items-center gap-1.5">
-                      <PersonAvatar name={row.person.full_name} avatarUrl={row.person.avatar_url} size="xs" />
-                      <span className="truncate">{row.person.full_name}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-1 text-xs">
-                    <span className="font-semibold text-primary">{row.project.acronym}</span>
-                    {row.wpName && (
-                      <span className="block text-[10px] text-muted-foreground truncate max-w-[100px]">{row.wpName}</span>
-                    )}
-                  </td>
-                  {MONTHS.map((_, i) => {
-                    const month = i + 1
-                    const key = makeCellKey(row.person.id, row.project.id, row.wpId, month)
-                    const value = cells[key] ?? 0
-                    rowTotal += value
-                    const locked = isLocked(month)
-                    const personTotal = personMonthTotals[`${row.person.id}:${month}`] ?? 0
-                    const absencePm = absencePmMap[`${row.person.id}:${month}`] ?? 0
-                    const availableCapacity = Math.max(0, row.person.fte - absencePm)
-
-                    return (
-                      <td
-                        key={month}
-                        className={cn(
-                          'px-0 py-0 text-center relative',
-                          locked && 'bg-amber-50/50',
-                          !locked && availableCapacity > 0 && heatmapBg(personTotal / availableCapacity),
-                          !locked && availableCapacity === 0 && personTotal > 0 && 'bg-red-50 dark:bg-red-950/20',
-                        )}
-                        title={`${(availableCapacity > 0 ? (personTotal / availableCapacity * 100) : personTotal > 0 ? 999 : 0).toFixed(0)}% utilised — ${personTotal.toFixed(2)} / ${availableCapacity.toFixed(2)} PM${absencePm > 0 ? ` (${(absencePm * 22).toFixed(0)}d absent)` : ''}`}
-                      >
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="1"
-                          value={value || ''}
-                          placeholder="0"
-                          disabled={locked || timesheetDriven}
-                          onChange={(e) => {
-                            const v = Math.min(1, Math.max(0, Number(e.target.value) || 0))
-                            updateCell(row.person.id, row.project.id, row.wpId, month, v)
-                          }}
-                          onContextMenu={(e) => {
-                            if (timesheetDriven) return
-                            e.preventDefault()
-                            setBulkFillTarget({ personId: row.person.id, projectId: row.project.id, wpId: row.wpId })
-                            setBulkFillOpen(true)
-                          }}
-                          className={cn(
-                            'w-full h-8 text-center text-xs tabular-nums bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-primary',
-                            (locked || timesheetDriven) && 'opacity-50 cursor-not-allowed',
-                            value > 0 && 'font-medium',
-                          )}
-                        />
-                      </td>
-                    )
-                  })}
-                  <td className="px-3 py-1 text-right tabular-nums text-xs font-semibold">
-                    {rowTotal > 0 ? (
-                      <div>
-                        <span>{rowTotal.toFixed(2)} PM</span>
-                        <span className="block text-[10px] text-muted-foreground font-normal">
-                          {(() => {
-                            let totalHours = 0
-                            for (let m = 1; m <= 12; m++) {
-                              const k = makeCellKey(row.person.id, row.project.id, row.wpId, m)
-                              const pm = cells[k] ?? 0
-                              if (pm > 0) totalHours += pmToHours(pm, getWorkingDaysInMonth(globalYear, m), hoursPerDay)
-                            }
-                            return `${totalHours.toFixed(0)}h`
-                          })()}
-                        </span>
-                      </div>
-                    ) : '—'}
-                  </td>
-                </tr>
-                {isLastRowForPerson && (() => {
-                  let personYearTotal = 0
-                  const monthCells = MONTHS.map((_, i) => {
-                    const month = i + 1
-                    const pTotal = personMonthTotals[`${row.person.id}:${month}`] ?? 0
-                    const absPm = absencePmMap[`${row.person.id}:${month}`] ?? 0
-                    const cap = Math.max(0, row.person.fte - absPm)
-                    const util = cap > 0 ? pTotal / cap : pTotal > 0 ? 2 : 0
-                    personYearTotal += pTotal
-                    return { month, pTotal, cap, util }
-                  })
-                  const yearCap = row.person.fte * 12
-                  const yearUtil = yearCap > 0 ? personYearTotal / yearCap : 0
+                {MONTHS.map((m, i) => {
+                  const month = i + 1
+                  const locked = isLocked(month)
+                  const isCurrent = isCurrentYear && month === CURRENT_MONTH
                   return (
-                    <tr key={`summary:${row.person.id}`} className="border-b bg-muted/30">
-                      <td className="px-3 py-0.5 sticky left-0 bg-muted/30" />
-                      <td className="px-3 py-0.5 text-[10px] text-muted-foreground font-medium">{t('common.total')}</td>
-                      {monthCells.map((mc) => (
-                        <td
-                          key={mc.month}
-                          className={cn('px-1 py-0.5 text-center text-[10px] tabular-nums', heatmapText(mc.util))}
-                          title={`${(mc.util * 100).toFixed(0)}% — ${mc.pTotal.toFixed(2)} / ${mc.cap.toFixed(2)} PM`}
-                        >
-                          {mc.pTotal > 0 ? mc.pTotal.toFixed(2) : ''}
-                        </td>
-                      ))}
-                      <td className={cn('px-3 py-0.5 text-right text-[10px] tabular-nums font-semibold', heatmapText(yearUtil))}>
+                    <th
+                      key={m}
+                      className={cn(
+                        'px-1 py-2.5 text-center text-xs font-semibold uppercase tracking-wider w-[62px] min-w-[62px]',
+                        locked && 'text-amber-600 dark:text-amber-400',
+                        isCurrent && !locked && 'text-primary',
+                        !isCurrent && !locked && 'text-muted-foreground',
+                      )}
+                    >
+                      <span className="flex items-center justify-center gap-0.5">
+                        {m}
+                        {locked && <span className="text-[9px]">🔒</span>}
+                      </span>
+                      {isCurrent && <div className="h-0.5 mt-1 mx-auto w-4 rounded-full bg-primary" />}
+                    </th>
+                  )
+                })}
+                <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground min-w-[72px]">
+                  {t('common.total')}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {groupedByPerson.map((group) => {
+                const collapsed = collapsedPersons.has(group.personId)
+                const projectCount = group.rows.length
+
+                // Compute person year totals for the header
+                let personYearTotal = 0
+                const monthTotals = MONTHS.map((_, i) => {
+                  const month = i + 1
+                  const pTotal = personMonthTotals[`${group.personId}:${month}`] ?? 0
+                  const absPm = absencePmMap[`${group.personId}:${month}`] ?? 0
+                  const cap = Math.max(0, group.person.fte - absPm)
+                  const util = cap > 0 ? pTotal / cap : pTotal > 0 ? 2 : 0
+                  personYearTotal += pTotal
+                  return { month, pTotal, cap, util }
+                })
+                const yearCap = group.person.fte * 12
+                const yearUtil = yearCap > 0 ? personYearTotal / yearCap : 0
+                const badge = utilisationBadge(yearUtil)
+
+                return (
+                  <Fragment key={group.personId}>
+                    {/* Person group header */}
+                    <tr
+                      className="border-b bg-slate-50/80 dark:bg-slate-900/30 cursor-pointer select-none group/person hover:bg-slate-100/80 dark:hover:bg-slate-800/30 transition-colors"
+                      onClick={() => togglePerson(group.personId)}
+                    >
+                      <td className="px-3 py-2 sticky left-0 z-10 bg-slate-50/80 dark:bg-slate-900/30 group-hover/person:bg-slate-100/80 dark:group-hover/person:bg-slate-800/30 transition-colors">
+                        <div className="flex items-center gap-2">
+                          {collapsed
+                            ? <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          }
+                          <PersonAvatar name={group.person.full_name} avatarUrl={group.person.avatar_url} size="xs" />
+                          <div className="min-w-0">
+                            <span className="font-semibold text-sm truncate block">{group.person.full_name}</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              FTE {group.person.fte} · {projectCount} {projectCount === 1 ? 'project' : 'projects'}
+                            </span>
+                          </div>
+                          <span className={cn('ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0', badge.className)}>
+                            {badge.label}
+                          </span>
+                        </div>
+                      </td>
+                      {/* Summary month cells in person header */}
+                      {monthTotals.map((mc) => {
+                        const isCurrent = isCurrentYear && mc.month === CURRENT_MONTH
+                        return (
+                          <td
+                            key={mc.month}
+                            className={cn(
+                              'px-1 py-2 text-center tabular-nums text-xs',
+                              isCurrent && 'bg-primary/[0.04]',
+                              heatmapText(mc.util),
+                            )}
+                            title={`${(mc.util * 100).toFixed(0)}% — ${mc.pTotal.toFixed(2)} / ${mc.cap.toFixed(2)} PM`}
+                          >
+                            {mc.pTotal > 0 ? mc.pTotal.toFixed(2) : ''}
+                          </td>
+                        )
+                      })}
+                      <td className={cn('px-3 py-2 text-right tabular-nums text-xs font-bold', heatmapText(yearUtil))}>
                         {personYearTotal > 0 ? `${personYearTotal.toFixed(2)}` : ''}
                       </td>
                     </tr>
-                  )
-                })()}
-              </Fragment>
-              )
-            })}
-          </tbody>
-        </table>
+
+                    {/* Project rows (hidden when collapsed) */}
+                    {!collapsed && group.rows.map((row) => {
+                      let rowTotal = 0
+                      return (
+                        <tr
+                          key={`${row.person.id}:${row.project.id}:${row.wpId}`}
+                          className="border-b border-dashed border-muted/60 last:border-b-0 hover:bg-muted/10 transition-colors"
+                        >
+                          <td className="py-0.5 sticky left-0 z-10 bg-card">
+                            <div className="flex items-center pl-10 pr-3">
+                              <span className="font-medium text-xs text-primary">{row.project.acronym}</span>
+                              {row.wpName && (
+                                <span className="ml-1.5 text-[10px] text-muted-foreground truncate max-w-[90px]">/ {row.wpName}</span>
+                              )}
+                            </div>
+                          </td>
+                          {MONTHS.map((_, i) => {
+                            const month = i + 1
+                            const key = makeCellKey(row.person.id, row.project.id, row.wpId, month)
+                            const value = cells[key] ?? 0
+                            rowTotal += value
+                            const locked = isLocked(month)
+                            const isCurrent = isCurrentYear && month === CURRENT_MONTH
+                            const personTotal = personMonthTotals[`${row.person.id}:${month}`] ?? 0
+                            const absencePm = absencePmMap[`${row.person.id}:${month}`] ?? 0
+                            const availableCapacity = Math.max(0, row.person.fte - absencePm)
+
+                            return (
+                              <td
+                                key={month}
+                                className={cn(
+                                  'px-0 py-0 text-center relative',
+                                  locked && 'bg-amber-50/40 dark:bg-amber-950/10',
+                                  isCurrent && !locked && 'bg-primary/[0.03]',
+                                  !locked && !isCurrent && availableCapacity > 0 && heatmapBg(personTotal / availableCapacity),
+                                  !locked && availableCapacity === 0 && personTotal > 0 && 'bg-red-50 dark:bg-red-950/20',
+                                )}
+                                title={`${row.project.acronym} · ${MONTHS[i]} — ${value.toFixed(2)} PM\n${(availableCapacity > 0 ? (personTotal / availableCapacity * 100) : personTotal > 0 ? 999 : 0).toFixed(0)}% person utilisation`}
+                              >
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max="1"
+                                  value={value || ''}
+                                  placeholder=""
+                                  disabled={locked || timesheetDriven}
+                                  onChange={(e) => {
+                                    const v = Math.min(1, Math.max(0, Number(e.target.value) || 0))
+                                    updateCell(row.person.id, row.project.id, row.wpId, month, v)
+                                  }}
+                                  onContextMenu={(e) => {
+                                    if (timesheetDriven) return
+                                    e.preventDefault()
+                                    setBulkFillTarget({ personId: row.person.id, projectId: row.project.id, wpId: row.wpId })
+                                    setBulkFillOpen(true)
+                                  }}
+                                  className={cn(
+                                    'w-full h-8 text-center text-xs tabular-nums bg-transparent border-0 outline-none',
+                                    'focus:ring-2 focus:ring-primary/40 focus:bg-white dark:focus:bg-slate-900 rounded-sm transition-shadow',
+                                    (locked || timesheetDriven) && 'opacity-40 cursor-not-allowed',
+                                    value > 0 && 'font-semibold text-foreground',
+                                    !value && 'text-muted-foreground/30',
+                                  )}
+                                />
+                              </td>
+                            )
+                          })}
+                          <td className="px-3 py-0.5 text-right tabular-nums text-xs">
+                            {rowTotal > 0 ? (
+                              <div>
+                                <span className="font-semibold">{rowTotal.toFixed(2)}</span>
+                                <span className="text-[10px] text-muted-foreground font-normal ml-0.5">PM</span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground/30">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </Fragment>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Heatmap legend */}
+      <div className="flex items-center gap-3 text-[10px] text-muted-foreground px-1 flex-wrap">
+        <span className="font-medium text-foreground mr-1">Utilisation:</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded-sm bg-emerald-100" />0–50%</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded-sm bg-yellow-100" />50–75%</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded-sm bg-amber-100" />75–95%</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded-sm bg-orange-100" />95–100%</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded-sm bg-red-100" />&gt;100%</span>
+        <span className="ml-auto text-muted-foreground/60">Right-click cell to bulk fill</span>
       </div>
 
       {addRowPanel}

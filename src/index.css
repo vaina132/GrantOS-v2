@@ -69,6 +69,16 @@
 }
 
 @layer utilities {
+  /* Hide number input spinners for allocation grid */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
   .animate-fade-in {
     animation: fadeIn 0.15s ease-out;
   }
