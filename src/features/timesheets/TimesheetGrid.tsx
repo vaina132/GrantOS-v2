@@ -14,7 +14,7 @@ import { useProjects } from '@/hooks/useProjects'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/use-toast'
-import { Copy, Sparkles, ChevronLeft, ChevronRight, Trash2, Plus, RotateCcw, CalendarDays, X, Send, PenTool, CheckCircle2, Clock, Undo2, FileSignature, Loader2, Shield, Plane, FileDown } from 'lucide-react'
+import { Copy, Sparkles, ChevronLeft, ChevronRight, Trash2, Plus, RotateCcw, CalendarDays, X, Send, PenTool, CheckCircle2, Clock, Undo2, FileSignature, Loader2, Shield, Plane, FileDown, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { hoursToPm, formatPm, pmToHours } from '@/lib/pmUtils'
 import type { Holiday, Absence, Assignment, TimesheetDay, TimesheetEntry, Travel } from '@/types'
@@ -88,6 +88,7 @@ export function TimesheetGrid() {
   // Fill Month Full state
   const [fillFullOpen, setFillFullOpen] = useState(false)
   const [fillFullSelectedIds, setFillFullSelectedIds] = useState<string[]>([])
+  const [fillFullPcts, setFillFullPcts] = useState<Record<string, number>>({})
   const [fillFullBusy, setFillFullBusy] = useState(false)
 
   // Grid state (local edits before save)
@@ -358,22 +359,40 @@ export function TimesheetGrid() {
   const capacityPct = totalCapacity > 0 ? Math.round((grandTotal / totalCapacity) * 100) : 0
   const grandTotalPm = hoursToPm(grandTotal, availableDays.length, hoursPerDay)
 
-  // Grid cell change handler with debounced auto-save
+  // Grid cell change handler with debounced auto-save + daily cap enforcement
   const handleCellChange = useCallback((projectId: string, wpId: string | null, dateStr: string, value: number) => {
     const key = `${projectId}:${wpId ?? ''}:${dateStr}`
-    setGrid(prev => ({ ...prev, [key]: value }))
+
+    // Enforce daily cap: sum of all projects for this day must not exceed hoursPerDay
+    const otherHours = projectRows.reduce((sum, row) => {
+      const rKey = `${row.project_id}:${row.work_package_id ?? ''}:${dateStr}`
+      if (rKey === key) return sum
+      return sum + (grid[rKey] || 0)
+    }, 0)
+    const maxAllowed = Math.max(0, hoursPerDay - otherHours)
+    const capped = Math.min(value, maxAllowed)
+
+    if (value > maxAllowed) {
+      toast({
+        title: 'Daily limit reached',
+        description: `Maximum ${hoursPerDay}h per day. You can enter up to ${maxAllowed}h for this project today.`,
+        variant: 'destructive',
+      })
+    }
+
+    setGrid(prev => ({ ...prev, [key]: capped }))
 
     // Debounced save
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(async () => {
       if (!orgId || !currentPersonId) return
       try {
-        await timesheetService.upsertDay(orgId, currentPersonId, projectId, wpId, dateStr, value)
+        await timesheetService.upsertDay(orgId, currentPersonId, projectId, wpId, dateStr, capped)
       } catch (err) {
         console.error('Auto-save failed:', err)
       }
     }, 800)
-  }, [orgId, currentPersonId])
+  }, [orgId, currentPersonId, grid, projectRows, hoursPerDay])
 
   // National project cell change handler (start_time + end_time + description)
   const nationalSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -543,27 +562,40 @@ export function TimesheetGrid() {
     }
   }
 
-  // Fill Month Full: distribute hoursPerDay across selected projects for all available days (whole numbers only)
+  // Fill Month Full: distribute hoursPerDay across selected projects using custom percentages
   const handleFillMonthFull = async () => {
     if (!orgId || !currentPersonId || fillFullSelectedIds.length === 0) return
     setFillFullBusy(true)
     try {
       const n = fillFullSelectedIds.length
-      // Split hoursPerDay into n whole-number chunks
-      // e.g. 8h / 3 projects = [3, 3, 2] — no decimals
-      const baseHours = Math.floor(hoursPerDay / n)
-      const remainder = hoursPerDay - baseHours * n
-      const hoursPerProject = fillFullSelectedIds.map((_, i) => baseHours + (i < remainder ? 1 : 0))
+      // Use custom percentages; compute hours per project from percentages
+      // Round to whole hours, distribute remainder to projects with highest percentages
+      const rawHours = fillFullSelectedIds.map(id => {
+        const pct = fillFullPcts[id] ?? Math.round(100 / n)
+        return { id, hours: (pct / 100) * hoursPerDay }
+      })
+      // Floor all, then distribute remainder
+      const floored = rawHours.map(r => ({ ...r, whole: Math.floor(r.hours) }))
+      let remaining = hoursPerDay - floored.reduce((s, r) => s + r.whole, 0)
+      // Sort by fractional part descending to distribute remainder
+      const sorted = [...floored].sort((a, b) => (b.hours - b.whole) - (a.hours - a.whole))
+      for (const item of sorted) {
+        if (remaining <= 0) break
+        item.whole += 1
+        remaining -= 1
+      }
+      const hoursMap = new Map(floored.map(r => [r.id, r.whole]))
 
       const entries: { projectId: string; wpId: string | null; dateStr: string; hours: number }[] = []
       for (const day of availableDays) {
-        for (let i = 0; i < n; i++) {
-          if (hoursPerProject[i] > 0) {
+        for (const id of fillFullSelectedIds) {
+          const h = hoursMap.get(id) ?? 0
+          if (h > 0) {
             entries.push({
-              projectId: fillFullSelectedIds[i],
-              wpId: null, // fill at project level
+              projectId: id,
+              wpId: null,
               dateStr: day.dateStr,
-              hours: hoursPerProject[i],
+              hours: h,
             })
           }
         }
@@ -588,9 +620,10 @@ export function TimesheetGrid() {
         setManualProjectIds(prev => [...prev, ...newIds])
       }
 
-      toast({ title: 'Month filled', description: `${availableDays.length} days × ${n} projects filled with whole hours.` })
+      toast({ title: 'Month filled', description: `${availableDays.length} days × ${n} projects filled.` })
       setFillFullOpen(false)
       setFillFullSelectedIds([])
+      setFillFullPcts({})
       await loadData()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fill month'
@@ -605,6 +638,14 @@ export function TimesheetGrid() {
     if (!orgId || !currentPersonId || !user?.id) return
     if (grandTotal <= 0) {
       toast({ title: 'Cannot submit', description: 'Please enter hours before submitting.', variant: 'destructive' })
+      return
+    }
+    if (grandTotal > totalCapacity) {
+      toast({
+        title: 'Over-allocated',
+        description: `Total hours (${grandTotal}h) exceed monthly capacity (${totalCapacity}h / 1 PM). Please reduce hours before submitting.`,
+        variant: 'destructive',
+      })
       return
     }
     const proceed = window.confirm(`Submit your timesheet for ${MONTHS[selectedMonth - 1]} ${globalYear}? You won't be able to edit hours after submission.`)
@@ -961,6 +1002,19 @@ export function TimesheetGrid() {
         <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">{grandTotal.toFixed(1)} / {totalCapacity}h</span>
       </div>
 
+      {/* Over-capacity warning */}
+      {capacityPct > 100 && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30 px-4 py-2.5">
+          <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
+          <div>
+            <div className="text-sm font-semibold text-red-700 dark:text-red-400">Over-allocated</div>
+            <div className="text-[11px] text-red-600 dark:text-red-400/80">
+              Total hours ({grandTotal}h) exceed monthly capacity ({totalCapacity}h / 1 PM). Reduce hours to 100% or below before submitting.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add project to timesheet */}
       {availableProjects.length > 0 && !isLocked && (
         <div className="flex items-center gap-2">
@@ -1233,83 +1287,172 @@ export function TimesheetGrid() {
       })}
 
       {/* Fill Month Full Dialog */}
-      {fillFullOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setFillFullOpen(false)}>
-          <div className="bg-background rounded-lg border shadow-lg w-full max-w-md mx-4 p-6 space-y-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-sm">Fill Month Full</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Select projects to distribute {hoursPerDay}h/day across {availableDays.length} working days. Hours are whole numbers, no decimals.
-                </p>
-              </div>
-              <button onClick={() => setFillFullOpen(false)} className="text-muted-foreground hover:text-foreground p-1 rounded">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+      {fillFullOpen && (() => {
+        const n = fillFullSelectedIds.length
+        const totalPct = fillFullSelectedIds.reduce((s, id) => s + (fillFullPcts[id] ?? (n > 0 ? Math.round(100 / n) : 0)), 0)
+        const pctValid = n > 0 && totalPct === 100
 
-            <div className="border rounded-lg max-h-60 overflow-y-auto divide-y">
-              {allProjects.map(p => {
-                const checked = fillFullSelectedIds.includes(p.id)
-                return (
-                  <label key={p.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => {
-                        setFillFullSelectedIds(prev =>
-                          checked ? prev.filter(id => id !== p.id) : [...prev, p.id]
-                        )
-                      }}
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">{p.acronym}</div>
-                      <div className="text-[11px] text-muted-foreground truncate">{p.title}</div>
-                    </div>
-                  </label>
-                )
-              })}
-            </div>
+        // Compute hour preview per project
+        const hourPreview = fillFullSelectedIds.map(id => {
+          const pct = fillFullPcts[id] ?? Math.round(100 / n)
+          const rawH = (pct / 100) * hoursPerDay
+          return { id, pct, rawH, whole: Math.floor(rawH) }
+        })
+        let rem = hoursPerDay - hourPreview.reduce((s, r) => s + r.whole, 0)
+        const sortedPreview = [...hourPreview].sort((a, b) => (b.rawH - b.whole) - (a.rawH - a.whole))
+        for (const item of sortedPreview) {
+          if (rem <= 0) break
+          item.whole += 1
+          rem -= 1
+        }
+        const previewMap = new Map(hourPreview.map(r => [r.id, r]))
 
-            {fillFullSelectedIds.length > 0 && (
-              <div className="rounded-lg bg-muted/50 border p-3 text-xs space-y-1">
-                <div className="font-semibold">Distribution preview:</div>
-                {(() => {
-                  const n = fillFullSelectedIds.length
-                  const base = Math.floor(hoursPerDay / n)
-                  const rem = hoursPerDay - base * n
-                  return fillFullSelectedIds.map((id, i) => {
-                    const proj = allProjects.find(p => p.id === id)
-                    const h = base + (i < rem ? 1 : 0)
-                    return (
-                      <div key={id} className="flex justify-between">
-                        <span className="truncate">{proj?.acronym ?? '—'}</span>
-                        <span className="font-bold tabular-nums">{h}h / day</span>
-                      </div>
-                    )
-                  })
-                })()}
-                <div className="border-t pt-1 mt-1 flex justify-between font-semibold">
-                  <span>Total</span>
-                  <span>{hoursPerDay}h / day × {availableDays.length} days = {hoursPerDay * availableDays.length}h</span>
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setFillFullOpen(false)}>
+            <div className="bg-background rounded-lg border shadow-lg w-full max-w-lg mx-4 p-6 space-y-4" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-sm">Fill Month Full</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Select projects and set distribution percentages. {hoursPerDay}h/day × {availableDays.length} working days = {hoursPerDay * availableDays.length}h total.
+                  </p>
                 </div>
+                <button onClick={() => setFillFullOpen(false)} className="text-muted-foreground hover:text-foreground p-1 rounded">
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-            )}
 
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setFillFullOpen(false)}>Cancel</Button>
-              <Button
-                size="sm"
-                onClick={handleFillMonthFull}
-                disabled={fillFullSelectedIds.length === 0 || fillFullBusy}
-              >
-                {fillFullBusy ? 'Filling...' : `Fill ${fillFullSelectedIds.length} project${fillFullSelectedIds.length !== 1 ? 's' : ''}`}
-              </Button>
+              {/* Project selection */}
+              <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
+                {allProjects.map(p => {
+                  const checked = fillFullSelectedIds.includes(p.id)
+                  return (
+                    <label key={p.id} className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          if (checked) {
+                            const next = fillFullSelectedIds.filter(id => id !== p.id)
+                            setFillFullSelectedIds(next)
+                            // Redistribute percentages equally among remaining
+                            if (next.length > 0) {
+                              const eqPct = Math.round(100 / next.length)
+                              const newPcts: Record<string, number> = {}
+                              next.forEach((id, i) => { newPcts[id] = i === next.length - 1 ? 100 - eqPct * (next.length - 1) : eqPct })
+                              setFillFullPcts(newPcts)
+                            } else {
+                              setFillFullPcts({})
+                            }
+                          } else {
+                            const next = [...fillFullSelectedIds, p.id]
+                            setFillFullSelectedIds(next)
+                            // Distribute equally
+                            const eqPct = Math.round(100 / next.length)
+                            const newPcts: Record<string, number> = {}
+                            next.forEach((id, i) => { newPcts[id] = i === next.length - 1 ? 100 - eqPct * (next.length - 1) : eqPct })
+                            setFillFullPcts(newPcts)
+                          }
+                        }}
+                        className="h-4 w-4 rounded border-gray-300 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">{p.acronym}</div>
+                        <div className="text-[11px] text-muted-foreground truncate">{p.title}</div>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+
+              {/* Percentage distribution */}
+              {n > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold">Distribution</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const eqPct = Math.round(100 / n)
+                        const newPcts: Record<string, number> = {}
+                        fillFullSelectedIds.forEach((id, i) => { newPcts[id] = i === n - 1 ? 100 - eqPct * (n - 1) : eqPct })
+                        setFillFullPcts(newPcts)
+                      }}
+                      className="text-[10px] text-primary hover:underline"
+                    >
+                      Reset to equal
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {fillFullSelectedIds.map(id => {
+                      const proj = allProjects.find(p => p.id === id)
+                      const pct = fillFullPcts[id] ?? Math.round(100 / n)
+                      const preview = previewMap.get(id)
+                      return (
+                        <div key={id} className="flex items-center gap-2">
+                          <span className="text-xs font-medium w-20 truncate shrink-0">{proj?.acronym ?? '—'}</span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={pct}
+                            onChange={(e) => {
+                              const newVal = Number(e.target.value)
+                              setFillFullPcts(prev => ({ ...prev, [id]: newVal }))
+                            }}
+                            className="flex-1 h-1.5 accent-primary cursor-pointer"
+                          />
+                          <div className="flex items-center gap-1 shrink-0">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              value={pct}
+                              onChange={(e) => {
+                                const newVal = Math.max(0, Math.min(100, Number(e.target.value) || 0))
+                                setFillFullPcts(prev => ({ ...prev, [id]: newVal }))
+                              }}
+                              className="w-12 h-7 text-center text-xs tabular-nums rounded border border-input bg-background"
+                            />
+                            <span className="text-[10px] text-muted-foreground">%</span>
+                          </div>
+                          <span className="text-[11px] tabular-nums font-medium w-14 text-right shrink-0">
+                            {preview?.whole ?? 0}h/day
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Total indicator */}
+                  <div className={cn(
+                    'flex items-center justify-between rounded-md px-3 py-1.5 text-xs font-semibold border',
+                    pctValid ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-400' : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-950/20 dark:border-red-800 dark:text-red-400',
+                  )}>
+                    <span>Total: {totalPct}%</span>
+                    <span>{hoursPerDay}h/day × {availableDays.length} days = {hoursPerDay * availableDays.length}h</span>
+                  </div>
+                  {!pctValid && totalPct !== 100 && (
+                    <p className="text-[10px] text-red-500">Percentages must add up to 100%. Currently {totalPct}%.</p>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setFillFullOpen(false)}>Cancel</Button>
+                <Button
+                  size="sm"
+                  onClick={handleFillMonthFull}
+                  disabled={!pctValid || fillFullBusy}
+                >
+                  {fillFullBusy ? 'Filling...' : `Fill ${n} project${n !== 1 ? 's' : ''}`}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Bottom hint */}
       <div className="text-[11px] text-muted-foreground">

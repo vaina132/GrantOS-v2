@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useAuthStore } from '@/stores/authStore'
+import { timesheetApproverService } from '@/services/timesheetApproverService'
 import { TimesheetGrid } from './TimesheetGrid'
 import { AllTimesheets } from './AllTimesheets'
 import { TravelTracker } from './TravelTracker'
@@ -11,18 +12,29 @@ import { cn } from '@/lib/utils'
 type TimesheetTab = 'my' | 'approvals' | 'all' | 'travels'
 
 export function TimesheetsPage() {
-  const { can } = useAuthStore()
+  const { can, orgId, user } = useAuthStore()
   const isAdmin = can('canApproveTimesheets') || can('canManageProjects')
   const [tab, setTab] = useState<TimesheetTab>('my')
+  const [isApprover, setIsApprover] = useState(false)
 
-  const tabs: { id: TimesheetTab; label: string; icon: typeof ClipboardCheck; adminOnly?: boolean }[] = [
-    { id: 'my', label: 'My Timesheet', icon: ClipboardCheck },
-    { id: 'approvals', label: 'Approval Requests', icon: ShieldCheck, adminOnly: true },
-    { id: 'all', label: 'All Timesheets', icon: Users, adminOnly: true },
-    { id: 'travels', label: 'Travels', icon: Plane },
+  // Check if current user is a configured timesheet approver
+  useEffect(() => {
+    if (!orgId || !user?.id) return
+    timesheetApproverService.getApproverUserIds(orgId).then(ids => {
+      setIsApprover(ids.includes(user.id))
+    }).catch(() => {})
+  }, [orgId, user?.id])
+
+  const showApprovals = isApprover || isAdmin
+
+  const tabs: { id: TimesheetTab; label: string; icon: typeof ClipboardCheck; show: boolean }[] = [
+    { id: 'my', label: 'My Timesheet', icon: ClipboardCheck, show: true },
+    { id: 'approvals', label: 'Approval Requests', icon: ShieldCheck, show: showApprovals },
+    { id: 'all', label: 'All Timesheets', icon: Users, show: isAdmin },
+    { id: 'travels', label: 'Travels', icon: Plane, show: true },
   ]
 
-  const visibleTabs = tabs.filter(t => !t.adminOnly || isAdmin)
+  const visibleTabs = tabs.filter(t => t.show)
 
   return (
     <div className="space-y-0">
