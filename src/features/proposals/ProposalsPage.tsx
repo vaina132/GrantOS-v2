@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { useInvalidateProjects } from '@/hooks/useProjects'
-import { useProposals, useInvalidateProposals } from '@/hooks/useProposals'
+import { useProposals } from '@/hooks/useProposals'
 import { proposalService } from '@/services/proposalService'
 import { generateProposalsPipelinePDF } from '@/services/reportGenerator'
 import { ImportExportButtons } from '@/components/common/ImportExportButtons'
@@ -75,7 +75,6 @@ export function ProposalsPage() {
   const navigate = useNavigate()
   const { orgId, user } = useAuthStore()
   const invalidateProjects = useInvalidateProjects()
-  const invalidateProposals = useInvalidateProposals()
   const { proposals, isLoading: loading, refetch: refetchProposals } = useProposals()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)

@@ -19,7 +19,7 @@ import { Plus, Search, Trash2, Pencil, FolderKanban, Globe } from 'lucide-react'
 import { generateProjectsListPDF } from '@/services/reportGenerator'
 import { ImportExportButtons } from '@/components/common/ImportExportButtons'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
-import type { Project, ProjectStatus, CollabProject } from '@/types'
+import type { Project, ProjectStatus } from '@/types'
 import { ImportDialog } from '@/components/import/ImportDialog'
 import { exportToExcel } from '@/lib/exportUtils'
 

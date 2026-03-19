@@ -5,7 +5,7 @@ import { logger } from '@/lib/logger'
 import { useUiStore } from '@/stores/uiStore'
 import { YearSelector } from '@/components/common/YearSelector'
 import { useStaff } from '@/hooks/useStaff'
-import { useTimesheetEnvelopes, useInvalidateTimesheets } from '@/hooks/useTimesheets'
+import { useTimesheetEnvelopes } from '@/hooks/useTimesheets'
 import { settingsService } from '@/services/settingsService'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -43,7 +43,6 @@ export function AllTimesheets() {
   const [hasDocuSign, setHasDocuSign] = useState(false)
 
   const { envelopes, isLoading: envelopesLoading, refetch: refetchEnvelopes } = useTimesheetEnvelopes(selectedMonth)
-  const invalidateTimesheets = useInvalidateTimesheets()
 
   // Load org settings
   useEffect(() => {

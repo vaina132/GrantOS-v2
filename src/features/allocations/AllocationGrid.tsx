@@ -685,7 +685,6 @@ export function AllocationGrid() {
                     const personTotal = personMonthTotals[`${row.person.id}:${month}`] ?? 0
                     const absencePm = absencePmMap[`${row.person.id}:${month}`] ?? 0
                     const availableCapacity = Math.max(0, row.person.fte - absencePm)
-                    const overAllocated = personTotal > availableCapacity
 
                     return (
                       <td

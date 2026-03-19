@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useStaff } from '@/hooks/useStaff'
 import { useProjects } from '@/hooks/useProjects'
-import { useTravels, useInvalidateTravels } from '@/hooks/useTravels'
+import { useTravels } from '@/hooks/useTravels'
 import { YearSelector } from '@/components/common/YearSelector'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
@@ -38,7 +38,6 @@ export function TravelTracker() {
   const currentPersonId = selectedPersonId || staff.find(p => p.email === user?.email)?.id || ''
 
   const { travels, isLoading: loading, refetch: refetchTravels } = useTravels({ person_id: currentPersonId || undefined, month: selectedMonth })
-  const invalidateTravels = useInvalidateTravels()
 
   const handleAdd = async () => {
     if (!orgId || !currentPersonId || !newDate || !newLocation.trim()) return
