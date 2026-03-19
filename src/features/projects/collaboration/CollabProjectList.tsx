@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Plus, Users, Globe, FileText, MoreHorizontal, Trash2, Rocket, Search, Archive, ArchiveRestore, Sparkles } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { collabProjectService } from '@/services/collabProjectService'
+import { useCollabProjects } from '@/hooks/useCollabProjects'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -24,36 +25,12 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function CollabProjectList() {
   const { t } = useTranslation()
-  const { orgId, accessType, user, aiEnabled } = useAuthStore()
+  const { accessType, aiEnabled } = useAuthStore()
   const navigate = useNavigate()
-  const [projects, setProjects] = useState<CollabProject[]>([])
-  const [loading, setLoading] = useState(true)
+  const { collabProjects: projects, isLoading: loading, refetch } = useCollabProjects()
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'active' | 'archived'>('all')
   const [search, setSearch] = useState('')
   const isCollabOnly = accessType === 'collab_partner'
-
-  const load = async () => {
-    setLoading(true)
-    try {
-      let data: CollabProject[]
-      if (isCollabOnly && user) {
-        // Collab-only users: fetch projects they're invited to
-        data = await collabProjectService.listForPartner(user.id)
-      } else if (orgId) {
-        // Org members: fetch projects owned by this org
-        data = await collabProjectService.list(orgId)
-      } else {
-        data = []
-      }
-      setProjects(data)
-    } catch (err) {
-      toast({ title: t('common.error'), description: t('collaboration.failedToLoadProjects'), variant: 'destructive' })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { load() }, [orgId, user?.id])
 
   const handleDelete = async (id: string) => {
     const name = projects.find(p => p.id === id)?.acronym ?? ''
@@ -61,7 +38,7 @@ export function CollabProjectList() {
     try {
       await collabProjectService.remove(id)
       toast({ title: t('common.deleted'), description: t('collaboration.deletedProject', { name }) })
-      load()
+      refetch()
     } catch {
       toast({ title: t('common.error'), description: t('collaboration.failedToDeleteProject'), variant: 'destructive' })
     }
@@ -72,7 +49,7 @@ export function CollabProjectList() {
     try {
       await collabProjectService.launch(id)
       toast({ title: t('collaboration.launched'), description: t('collaboration.projectNowActive') })
-      load()
+      refetch()
     } catch {
       toast({ title: t('common.error'), description: t('collaboration.failedToLaunchProject'), variant: 'destructive' })
     }
@@ -85,7 +62,7 @@ export function CollabProjectList() {
     try {
       await collabProjectService.update(id, { status: newStatus } as any)
       toast({ title: label, description: newStatus === 'archived' ? t('collaboration.projectArchived') : t('collaboration.projectRestoredActive') })
-      load()
+      refetch()
     } catch {
       toast({ title: t('common.error'), description: t('collaboration.failedToArchiveProject'), variant: 'destructive' })
     }

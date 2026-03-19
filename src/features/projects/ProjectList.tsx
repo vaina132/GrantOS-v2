@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useProjects } from '@/hooks/useProjects'
 import type { ProjectFilters } from '@/services/projectsService'
 import { projectsService } from '@/services/projectsService'
-import { collabProjectService } from '@/services/collabProjectService'
 import { useAuthStore } from '@/stores/authStore'
+import { useCollabProjects } from '@/hooks/useCollabProjects'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -43,18 +43,7 @@ export function ProjectList() {
   const { projects, isLoading, refetch } = useProjects(filters)
 
   // Collaboration projects
-  const { orgId } = useAuthStore()
-  const [collabProjects, setCollabProjects] = useState<CollabProject[]>([])
-  const [collabLoading, setCollabLoading] = useState(true)
-
-  useEffect(() => {
-    if (!orgId) return
-    setCollabLoading(true)
-    collabProjectService.list(orgId)
-      .then(setCollabProjects)
-      .catch(() => setCollabProjects([]))
-      .finally(() => setCollabLoading(false))
-  }, [orgId])
+  const { collabProjects, isLoading: collabLoading } = useCollabProjects()
 
   const filteredCollab = collabProjects.filter(cp => {
     if (search) {

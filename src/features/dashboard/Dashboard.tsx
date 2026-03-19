@@ -1,13 +1,12 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
 import { useStaff } from '@/hooks/useStaff'
 import { useAssignments, usePmBudgets } from '@/hooks/useAllocations'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
-import { proposalService } from '@/services/proposalService'
-import { collabProjectService } from '@/services/collabProjectService'
-import type { Proposal, CollabProject } from '@/types'
+import { useProposals } from '@/hooks/useProposals'
+import { useCollabProjects } from '@/hooks/useCollabProjects'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusBadge } from '@/components/common/StatusBadge'
@@ -46,22 +45,15 @@ const STATUS_COLORS: Record<string, string> = {
 export function Dashboard() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { can, orgId } = useAuthStore()
+  const { can } = useAuthStore()
   const { globalYear } = useUiStore()
   const { projects, isLoading: loadingProjects } = useProjects()
   const { staff, isLoading: loadingStaff } = useStaff({})
   const { assignments, isLoading: loadingAssignments } = useAssignments('actual')
   const { budgets: pmBudgets, isLoading: loadingBudgets } = usePmBudgets('actual')
 
-  const [proposals, setProposals] = useState<Proposal[]>([])
-  const [collabProjects, setCollabProjects] = useState<CollabProject[]>([])
-
-  useEffect(() => {
-    if (orgId) {
-      proposalService.list(orgId).then(setProposals).catch(() => {})
-      collabProjectService.list(orgId).then(setCollabProjects).catch(() => {})
-    }
-  }, [orgId])
+  const { proposals } = useProposals()
+  const { collabProjects } = useCollabProjects()
 
   const isLoading = loadingProjects || loadingStaff || loadingAssignments || loadingBudgets
 

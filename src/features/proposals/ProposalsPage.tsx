@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { useInvalidateProjects } from '@/hooks/useProjects'
+import { useProposals, useInvalidateProposals } from '@/hooks/useProposals'
 import { proposalService } from '@/services/proposalService'
 import { generateProposalsPipelinePDF } from '@/services/reportGenerator'
 import { ImportExportButtons } from '@/components/common/ImportExportButtons'
@@ -74,8 +75,8 @@ export function ProposalsPage() {
   const navigate = useNavigate()
   const { orgId, user } = useAuthStore()
   const invalidateProjects = useInvalidateProjects()
-  const [proposals, setProposals] = useState<Proposal[]>([])
-  const [loading, setLoading] = useState(true)
+  const invalidateProposals = useInvalidateProposals()
+  const { proposals, isLoading: loading, refetch: refetchProposals } = useProposals()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -107,29 +108,9 @@ export function ProposalsPage() {
     }
   }, [])
 
-  const fetchProposals = useCallback(async () => {
-    if (!orgId) {
-      setLoading(false)
-      return
-    }
-    setLoading(true)
-    try {
-      const data = await proposalService.list(orgId)
-      setProposals(data)
-    } catch (err) {
-      console.error('[ProposalsPage] fetchProposals error:', err)
-      const message = err instanceof Error ? err.message : t('common.failedToSave')
-      toast({ title: t('common.error'), description: message, variant: 'destructive' })
-    } finally {
-      setLoading(false)
-    }
-  }, [orgId, t])
-
-  // Load all page data in parallel
+  // Load supporting data (staff list, funding schemes)
   useEffect(() => {
-    if (!orgId) { setLoading(false); return }
-    // Fire all fetches concurrently
-    fetchProposals()
+    if (!orgId) return
     staffService.list(orgId, { is_active: true }).then(setStaffList).catch(() => {})
     supabase
       .from('funding_schemes')
@@ -147,7 +128,7 @@ export function ProposalsPage() {
           )
         }
       })
-  }, [orgId, fetchProposals])
+  }, [orgId])
 
   const filtered = useMemo(() => {
     if (filterStatus === 'All') return proposals
@@ -256,7 +237,7 @@ export function ProposalsPage() {
         toast({ title: t('proposals.proposalCreated') })
       }
       setDialogOpen(false)
-      fetchProposals()
+      refetchProposals()
     } catch (err) {
       const message = err instanceof Error ? err.message : t('common.failedToSave')
       toast({ title: t('common.error'), description: message, variant: 'destructive' })
@@ -271,7 +252,7 @@ export function ProposalsPage() {
       await proposalService.remove(deleteTarget.id)
       toast({ title: t('proposals.proposalDeleted') })
       setDeleteTarget(null)
-      fetchProposals()
+      refetchProposals()
     } catch (err) {
       const message = err instanceof Error ? err.message : t('common.failedToDelete')
       toast({ title: t('common.error'), description: message, variant: 'destructive' })
@@ -641,14 +622,14 @@ export function ProposalsPage() {
         open={importOpen}
         onOpenChange={setImportOpen}
         importType="proposals"
-        onImportComplete={() => fetchProposals()}
+        onImportComplete={() => refetchProposals()}
       />
       <ImportDialog
         open={importAiOpen}
         onOpenChange={setImportAiOpen}
         importType="proposals"
         aiMode
-        onImportComplete={() => fetchProposals()}
+        onImportComplete={() => refetchProposals()}
       />
     </div>
   )
