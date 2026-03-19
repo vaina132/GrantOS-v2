@@ -137,12 +137,16 @@ export function ProposalsPage() {
   }, [])
 
   const fetchProposals = async () => {
-    if (!orgId) return
+    if (!orgId) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     try {
       const data = await proposalService.list(orgId)
       setProposals(data)
     } catch (err) {
+      console.error('[ProposalsPage] fetchProposals error:', err)
       const message = err instanceof Error ? err.message : t('common.failedToSave')
       toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {

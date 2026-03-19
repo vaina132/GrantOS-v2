@@ -3,14 +3,29 @@ import type { Proposal } from '@/types'
 
 export const proposalService = {
   async list(orgId: string): Promise<Proposal[]> {
+    // Try with person join first, fall back to simple query
+    try {
+      const { data, error } = await supabase
+        .from('proposals')
+        .select('*, responsible_person:persons!proposals_responsible_person_id_fkey(id, full_name, avatar_url)')
+        .eq('org_id', orgId)
+        .order('created_at', { ascending: false })
+
+      if (!error && data) return data as Proposal[]
+      console.warn('[ProposalService] Join query failed, using fallback:', error?.message)
+    } catch (e) {
+      console.warn('[ProposalService] Join query threw:', e)
+    }
+
+    // Fallback: no join
     const { data, error } = await supabase
       .from('proposals')
-      .select('*, responsible_person:persons!proposals_responsible_person_id_fkey(id, full_name, avatar_url)')
+      .select('*')
       .eq('org_id', orgId)
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return (data ?? []) as Proposal[]
+    return (data ?? []).map((p: any) => ({ ...p, responsible_person: null })) as Proposal[]
   },
 
   async create(proposal: Omit<Proposal, 'id' | 'created_at' | 'updated_at' | 'converted_project_id' | 'responsible_person'>): Promise<Proposal> {
