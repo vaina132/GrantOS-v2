@@ -15,7 +15,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/use-toast'
-import { Plus, Search, Trash2, Pencil, FolderKanban, Sparkles, Globe, Upload, Download } from 'lucide-react'
+import { Plus, Search, Trash2, Pencil, FolderKanban, Globe } from 'lucide-react'
+import { generateProjectsListPDF } from '@/services/reportGenerator'
+import { ImportExportButtons } from '@/components/common/ImportExportButtons'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import type { Project, ProjectStatus, CollabProject } from '@/types'
 import { ImportDialog } from '@/components/import/ImportDialog'
@@ -26,7 +28,7 @@ const STATUS_OPTIONS: (ProjectStatus | 'All')[] = ['All', 'Upcoming', 'Active', 
 export function ProjectList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { can, aiEnabled } = useAuthStore()
+  const { can } = useAuthStore()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
@@ -89,16 +91,10 @@ export function ProjectList() {
               <Button variant="outline" onClick={() => navigate('/projects/collaboration')}>
                 <Globe className="mr-2 h-4 w-4" /> {t('projects.collaboration')}
               </Button>
-              <Button variant="outline" onClick={() => setImportOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" /> {t('import.importProjects')}
-              </Button>
-              {aiEnabled && (
-                <Button variant="outline" onClick={() => setImportAiOpen(true)}>
-                  <Sparkles className="mr-2 h-4 w-4" /> {t('import.importWithAI')}
-                </Button>
-              )}
-              {projects.length > 0 && (
-                <Button variant="outline" onClick={() => exportToExcel(
+              <ImportExportButtons
+                onImportFile={() => setImportOpen(true)}
+                onImportAI={() => setImportAiOpen(true)}
+                onExportExcel={() => exportToExcel(
                   projects,
                   [
                     { header: 'Acronym', accessor: (p) => p.acronym },
@@ -113,10 +109,10 @@ export function ProjectList() {
                   ],
                   'projects_export',
                   'Projects',
-                )}>
-                  <Download className="mr-2 h-4 w-4" /> {t('common.export')}
-                </Button>
-              )}
+                )}
+                onExportPDF={() => generateProjectsListPDF(projects, '')}
+                hasData={projects.length > 0}
+              />
               <Button onClick={() => navigate('/projects/new')}>
                 <Plus className="mr-2 h-4 w-4" /> {t('projects.newProject')}
               </Button>

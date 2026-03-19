@@ -423,6 +423,101 @@ export function generateProposalsPipelinePDF(proposals: Proposal[], orgName: str
   doc.save('proposals_pipeline.pdf')
 }
 
+export function generateStaffListPDF(staff: Person[], orgName: string) {
+  const doc = setupDoc('Staff Directory', orgName)
+  let y = 40
+
+  // Summary
+  y = addSectionTitle(doc, y, 'Overview')
+  const active = staff.filter(p => p.is_active).length
+  y = addKeyValue(doc, y, 'Total Staff', String(staff.length))
+  y = addKeyValue(doc, y, 'Active', String(active))
+  y = addKeyValue(doc, y, 'Inactive', String(staff.length - active))
+  y += 6
+
+  // Table
+  y = checkPageBreak(doc, y, 40)
+  y = addSectionTitle(doc, y, 'Staff List')
+
+  const cols = [
+    { label: 'Full Name', x: 14, width: 42 },
+    { label: 'Email', x: 56, width: 44 },
+    { label: 'Department', x: 100, width: 28 },
+    { label: 'Role', x: 128, width: 24 },
+    { label: 'FTE', x: 152, width: 14, align: 'right' as const },
+    { label: 'Start Date', x: 166, width: 22, align: 'right' as const },
+    { label: 'Status', x: 188, width: 8 },
+  ]
+  y = drawTableHeader(doc, y, cols)
+
+  staff.forEach((p, i) => {
+    y = checkPageBreak(doc, y)
+    y = drawTableRow(doc, y, [
+      { value: p.full_name, x: 14, width: 42, bold: true },
+      { value: p.email ?? '—', x: 56, width: 44 },
+      { value: p.department ?? '—', x: 100, width: 28 },
+      { value: p.role ?? '—', x: 128, width: 24 },
+      { value: p.fte != null ? String(p.fte) : '—', x: 152, width: 14, align: 'right' },
+      { value: p.start_date ?? '—', x: 166, width: 22, align: 'right' },
+      { value: p.is_active ? '✓' : '✗', x: 188, width: 8 },
+    ], i % 2 === 1)
+  })
+
+  addFooter(doc)
+  doc.save('staff_directory.pdf')
+}
+
+export function generateProjectsListPDF(projects: Project[], orgName: string) {
+  const doc = setupDoc('Projects Overview', orgName)
+  let y = 40
+
+  // Summary
+  y = addSectionTitle(doc, y, 'Overview')
+  const statusCounts: Record<string, number> = {}
+  let totalBudget = 0
+  for (const p of projects) {
+    statusCounts[p.status] = (statusCounts[p.status] ?? 0) + 1
+    totalBudget += p.total_budget ?? 0
+  }
+  y = addKeyValue(doc, y, 'Total Projects', String(projects.length))
+  y = addKeyValue(doc, y, 'Active', String(statusCounts['Active'] ?? 0))
+  y = addKeyValue(doc, y, 'Upcoming', String(statusCounts['Upcoming'] ?? 0))
+  y = addKeyValue(doc, y, 'Completed', String(statusCounts['Completed'] ?? 0))
+  y = addKeyValue(doc, y, 'Total Budget', formatCurrency(totalBudget))
+  y += 6
+
+  // Table
+  y = checkPageBreak(doc, y, 40)
+  y = addSectionTitle(doc, y, 'All Projects')
+
+  const cols = [
+    { label: 'Acronym', x: 14, width: 24 },
+    { label: 'Title', x: 38, width: 52 },
+    { label: 'Status', x: 90, width: 22 },
+    { label: 'Start', x: 112, width: 22 },
+    { label: 'End', x: 134, width: 22 },
+    { label: 'Grant #', x: 156, width: 20 },
+    { label: 'Budget', x: 176, width: 20, align: 'right' as const },
+  ]
+  y = drawTableHeader(doc, y, cols)
+
+  projects.forEach((p, i) => {
+    y = checkPageBreak(doc, y)
+    y = drawTableRow(doc, y, [
+      { value: p.acronym, x: 14, width: 24, bold: true },
+      { value: p.title, x: 38, width: 52 },
+      { value: p.status, x: 90, width: 22 },
+      { value: p.start_date ?? '—', x: 112, width: 22 },
+      { value: p.end_date ?? '—', x: 134, width: 22 },
+      { value: p.grant_number ?? '—', x: 156, width: 20 },
+      { value: p.total_budget ? formatCurrency(p.total_budget) : '—', x: 176, width: 20, align: 'right' },
+    ], i % 2 === 1)
+  })
+
+  addFooter(doc)
+  doc.save('projects_overview.pdf')
+}
+
 export function generateCollabBudgetPDF(
   acronym: string,
   partners: CollabPartner[],

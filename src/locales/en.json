@@ -1149,7 +1149,9 @@
     "importProjects": "Import Projects",
     "importProposals": "Import Proposals",
     "importWithAI": "Import with AI",
-    "importWithAITitle": "Import {{type}} with AI"
+    "importWithAITitle": "Import {{type}} with AI",
+    "fromFile": "From Spreadsheet",
+    "withAI": "With AI"
   },
   "documents": {
     "title": "Documents",

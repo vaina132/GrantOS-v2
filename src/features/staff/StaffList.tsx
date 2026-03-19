@@ -6,6 +6,8 @@ import type { StaffFilters } from '@/services/staffService'
 import { staffService } from '@/services/staffService'
 import { absenceService } from '@/services/absenceService'
 import { useAuthStore } from '@/stores/authStore'
+import { generateStaffListPDF } from '@/services/reportGenerator'
+import { ImportExportButtons } from '@/components/common/ImportExportButtons'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -14,7 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
-import { Plus, Search, Trash2, Pencil, Users, Upload, Sparkles, Download } from 'lucide-react'
+import { Plus, Search, Trash2, Pencil, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
 import type { Person } from '@/types'
@@ -24,7 +26,7 @@ import { exportToExcel } from '@/lib/exportUtils'
 export function StaffList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { can, aiEnabled } = useAuthStore()
+  const { can } = useAuthStore()
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<boolean | undefined>(true)
   const [deleteTarget, setDeleteTarget] = useState<Person | null>(null)
@@ -81,16 +83,10 @@ export function StaffList() {
         actions={
           can('canWrite') ? (
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setImportOpen(true)}>
-                <Upload className="mr-2 h-4 w-4" /> {t('import.importStaff')}
-              </Button>
-              {aiEnabled && (
-                <Button variant="outline" onClick={() => setImportAiOpen(true)}>
-                  <Sparkles className="mr-2 h-4 w-4" /> {t('import.importWithAI')}
-                </Button>
-              )}
-              {staff.length > 0 && (
-                <Button variant="outline" onClick={() => exportToExcel(
+              <ImportExportButtons
+                onImportFile={() => setImportOpen(true)}
+                onImportAI={() => setImportAiOpen(true)}
+                onExportExcel={() => exportToExcel(
                   staff,
                   [
                     { header: 'Full Name', accessor: (p) => p.full_name },
@@ -105,10 +101,10 @@ export function StaffList() {
                   ],
                   'staff_export',
                   'Staff',
-                )}>
-                  <Download className="mr-2 h-4 w-4" /> {t('common.export')}
-                </Button>
-              )}
+                )}
+                onExportPDF={() => generateStaffListPDF(staff, '')}
+                hasData={staff.length > 0}
+              />
               <Button onClick={() => navigate('/staff/new')}>
                 <Plus className="mr-2 h-4 w-4" /> {t('staff.addPerson')}
               </Button>

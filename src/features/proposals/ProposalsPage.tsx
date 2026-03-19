@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useInvalidateProjects } from '@/hooks/useProjects'
 import { proposalService } from '@/services/proposalService'
 import { generateProposalsPipelinePDF } from '@/services/reportGenerator'
+import { ImportExportButtons } from '@/components/common/ImportExportButtons'
 import { staffService } from '@/services/staffService'
 import { emailService } from '@/services/emailService'
 import { notificationService } from '@/services/notificationService'
@@ -36,9 +37,6 @@ import {
   CheckCircle2,
   XCircle,
   Send,
-  Download,
-  Upload,
-  Sparkles,
 } from 'lucide-react'
 import type { Proposal, ProposalStatus, Person } from '@/types'
 import { ImportDialog } from '@/components/import/ImportDialog'
@@ -74,7 +72,7 @@ const EMPTY_FORM = {
 export function ProposalsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { orgId, user, aiEnabled } = useAuthStore()
+  const { orgId, user } = useAuthStore()
   const invalidateProjects = useInvalidateProjects()
   const [proposals, setProposals] = useState<Proposal[]>([])
   const [loading, setLoading] = useState(true)
@@ -316,49 +314,28 @@ export function ProposalsPage() {
         description="Track grant proposal applications and convert granted ones into projects"
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setImportOpen(true)}>
-              <Upload className="h-4 w-4" /> {t('import.importProposals')}
-            </Button>
-            {aiEnabled && (
-              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setImportAiOpen(true)}>
-                <Sparkles className="h-4 w-4" /> {t('import.importWithAI')}
-              </Button>
-            )}
-            {proposals.length > 0 && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => exportToExcel(
-                    proposals,
-                    [
-                      { header: 'Title', accessor: (p) => p.project_name },
-                      { header: 'Call ID', accessor: (p) => p.call_identifier ?? '' },
-                      { header: 'Programme', accessor: (p) => p.funding_scheme ?? '' },
-                      { header: 'Status', accessor: (p) => p.status },
-                      { header: 'Submission Deadline', accessor: (p) => p.submission_deadline ?? '' },
-                      { header: 'Our PMs', accessor: (p) => p.our_pms ?? '' },
-                      { header: 'Personnel Budget', accessor: (p) => p.personnel_budget ?? '' },
-                      { header: 'Travel Budget', accessor: (p) => p.travel_budget ?? '' },
-                      { header: 'Notes', accessor: (p) => p.notes ?? '' },
-                    ],
-                    'proposals_export',
-                    'Proposals',
-                  )}
-                >
-                  <Download className="h-4 w-4" /> {t('common.export')}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={() => generateProposalsPipelinePDF(proposals, '')}
-                >
-                  <Download className="h-4 w-4" /> Export PDF
-                </Button>
-              </>
-            )}
+            <ImportExportButtons
+              onImportFile={() => setImportOpen(true)}
+              onImportAI={() => setImportAiOpen(true)}
+              onExportExcel={() => exportToExcel(
+                proposals,
+                [
+                  { header: 'Title', accessor: (p) => p.project_name },
+                  { header: 'Call ID', accessor: (p) => p.call_identifier ?? '' },
+                  { header: 'Programme', accessor: (p) => p.funding_scheme ?? '' },
+                  { header: 'Status', accessor: (p) => p.status },
+                  { header: 'Submission Deadline', accessor: (p) => p.submission_deadline ?? '' },
+                  { header: 'Our PMs', accessor: (p) => p.our_pms ?? '' },
+                  { header: 'Personnel Budget', accessor: (p) => p.personnel_budget ?? '' },
+                  { header: 'Travel Budget', accessor: (p) => p.travel_budget ?? '' },
+                  { header: 'Notes', accessor: (p) => p.notes ?? '' },
+                ],
+                'proposals_export',
+                'Proposals',
+              )}
+              onExportPDF={() => generateProposalsPipelinePDF(proposals, '')}
+              hasData={proposals.length > 0}
+            />
             <Button onClick={openCreate} size="sm" className="gap-1.5">
               <Plus className="h-4 w-4" /> New Proposal
             </Button>
