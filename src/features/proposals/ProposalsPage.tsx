@@ -91,33 +91,6 @@ export function ProposalsPage() {
   const [fundingSchemeOptions, setFundingSchemeOptions] = useState<ComboOption[]>([])
   const [staffList, setStaffList] = useState<Person[]>([])
 
-  // Load staff for responsible person selector
-  useEffect(() => {
-    if (!orgId) return
-    staffService.list(orgId, { is_active: true }).then(setStaffList).catch(() => {})
-  }, [orgId])
-
-  // Load funding schemes from the org's existing data
-  useEffect(() => {
-    if (!orgId) return
-    supabase
-      .from('funding_schemes')
-      .select('id, name, type')
-      .eq('org_id', orgId)
-      .order('name')
-      .then(({ data }) => {
-        if (data) {
-          setFundingSchemeOptions(
-            data.map((fs: any) => ({
-              value: fs.name,
-              label: fs.name,
-              description: fs.type || undefined,
-            })),
-          )
-        }
-      })
-  }, [orgId])
-
   // Search EU Funding & Tenders Portal for call identifiers
   const searchEuCalls = useCallback(async (query: string): Promise<ComboOption[]> => {
     try {
@@ -136,7 +109,7 @@ export function ProposalsPage() {
     }
   }, [])
 
-  const fetchProposals = async () => {
+  const fetchProposals = useCallback(async () => {
     if (!orgId) {
       setLoading(false)
       return
@@ -152,11 +125,31 @@ export function ProposalsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [orgId, t])
 
+  // Load all page data in parallel
   useEffect(() => {
+    if (!orgId) { setLoading(false); return }
+    // Fire all fetches concurrently
     fetchProposals()
-  }, [orgId])
+    staffService.list(orgId, { is_active: true }).then(setStaffList).catch(() => {})
+    supabase
+      .from('funding_schemes')
+      .select('id, name, type')
+      .eq('org_id', orgId)
+      .order('name')
+      .then(({ data }) => {
+        if (data) {
+          setFundingSchemeOptions(
+            data.map((fs: any) => ({
+              value: fs.name,
+              label: fs.name,
+              description: fs.type || undefined,
+            })),
+          )
+        }
+      })
+  }, [orgId, fetchProposals])
 
   const filtered = useMemo(() => {
     if (filterStatus === 'All') return proposals

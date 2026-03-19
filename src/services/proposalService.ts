@@ -3,21 +3,6 @@ import type { Proposal } from '@/types'
 
 export const proposalService = {
   async list(orgId: string): Promise<Proposal[]> {
-    // Try with person join first, fall back to simple query
-    try {
-      const { data, error } = await supabase
-        .from('proposals')
-        .select('*, responsible_person:persons!proposals_responsible_person_id_fkey(id, full_name, avatar_url)')
-        .eq('org_id', orgId)
-        .order('created_at', { ascending: false })
-
-      if (!error && data) return data as Proposal[]
-      console.warn('[ProposalService] Join query failed, using fallback:', error?.message)
-    } catch (e) {
-      console.warn('[ProposalService] Join query threw:', e)
-    }
-
-    // Fallback: no join
     const { data, error } = await supabase
       .from('proposals')
       .select('*')
@@ -25,7 +10,25 @@ export const proposalService = {
       .order('created_at', { ascending: false })
 
     if (error) throw error
-    return (data ?? []).map((p: any) => ({ ...p, responsible_person: null })) as Proposal[]
+    const proposals = (data ?? []) as any[]
+
+    // Batch-resolve responsible person names
+    const personIds = [...new Set(proposals.map(p => p.responsible_person_id).filter(Boolean))]
+    let personMap: Record<string, { id: string; full_name: string; avatar_url?: string }> = {}
+    if (personIds.length > 0) {
+      const { data: persons } = await supabase
+        .from('persons')
+        .select('id, full_name, avatar_url')
+        .in('id', personIds)
+      if (persons) {
+        for (const p of persons) personMap[p.id] = p
+      }
+    }
+
+    return proposals.map(p => ({
+      ...p,
+      responsible_person: p.responsible_person_id ? personMap[p.responsible_person_id] ?? null : null,
+    })) as Proposal[]
   },
 
   async create(proposal: Omit<Proposal, 'id' | 'created_at' | 'updated_at' | 'converted_project_id' | 'responsible_person'>): Promise<Proposal> {
