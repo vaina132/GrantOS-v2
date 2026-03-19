@@ -1913,6 +1913,59 @@ export type Database = {
         }
         Relationships: []
       }
+      report_templates: {
+        Row: {
+          id: string
+          org_id: string
+          name: string
+          description: string | null
+          data_source: string
+          config: Json
+          is_shared: boolean
+          is_pinned: boolean
+          created_by: string | null
+          created_by_name: string | null
+          updated_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          name: string
+          description?: string | null
+          data_source: string
+          config?: Json
+          is_shared?: boolean
+          is_pinned?: boolean
+          created_by?: string | null
+          created_by_name?: string | null
+          updated_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          name?: string
+          description?: string | null
+          data_source?: string
+          config?: Json
+          is_shared?: boolean
+          is_pinned?: boolean
+          created_by?: string | null
+          created_by_name?: string | null
+          updated_at?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_templates_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       collab_report_events: {
         Row: {
           id: string

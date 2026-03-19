@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { reportService, REPORT_TYPES, type ReportType } from '@/services/reportService'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
-import { YearSelector } from '@/components/common/YearSelector'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/components/ui/use-toast'
@@ -33,13 +31,7 @@ export function ReportsList() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Reports"
-        description={`Generate and export reports for ${globalYear}`}
-        actions={<YearSelector />}
-      />
-
+    <div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {(Object.entries(REPORT_TYPES) as [ReportType, typeof REPORT_TYPES[ReportType]][]).map(
           ([type, config]) => (

@@ -808,6 +808,49 @@ export interface AiQuotaLimits {
   monthly_requests: number  // max requests per month
 }
 
+// ── Report Builder ─────────────────────────────────────────────
+export type ReportDataSource =
+  | 'projects'
+  | 'staff'
+  | 'effort'
+  | 'timesheets'
+  | 'financials'
+  | 'expenses'
+  | 'absences'
+  | 'travel'
+  | 'proposals'
+  | 'project_health'
+
+export type ReportChartType = 'table' | 'bar' | 'line' | 'pie' | 'stacked_bar'
+
+export interface ReportSortConfig {
+  field: string
+  direction: 'asc' | 'desc'
+}
+
+export interface ReportConfig {
+  columns: string[]
+  filters: Record<string, unknown>
+  group_by: string | null
+  sort_by: ReportSortConfig | null
+  chart_type: ReportChartType
+}
+
+export interface ReportTemplate {
+  id: string
+  org_id: string
+  name: string
+  description: string | null
+  data_source: ReportDataSource
+  config: ReportConfig
+  is_shared: boolean
+  is_pinned: boolean
+  created_by: string | null
+  created_by_name: string | null
+  updated_at: string
+  created_at: string
+}
+
 /** Monthly AI limits per plan tier */
 export const AI_PLAN_LIMITS: Record<OrgPlan, AiQuotaLimits> = {
   trial:      { monthly_tokens: 200_000,   monthly_requests: 10 },
