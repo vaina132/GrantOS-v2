@@ -14,7 +14,7 @@ export const proposalService = {
 
     // Batch-resolve responsible person names
     const personIds = [...new Set(proposals.map(p => p.responsible_person_id).filter(Boolean))]
-    let personMap: Record<string, { id: string; full_name: string; avatar_url?: string }> = {}
+    let personMap: Record<string, { id: string; full_name: string; avatar_url?: string | null }> = {}
     if (personIds.length > 0) {
       const { data: persons } = await supabase
         .from('persons')
