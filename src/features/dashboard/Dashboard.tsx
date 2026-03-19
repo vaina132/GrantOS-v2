@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProjects } from '@/hooks/useProjects'
 import { useStaff } from '@/hooks/useStaff'
@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   Lightbulb,
   Globe,
+  LayoutDashboard,
 } from 'lucide-react'
 import {
   BarChart,
@@ -35,6 +36,9 @@ import { SalaryCoverageChart } from './SalaryCoverageChart'
 import { YearSelector } from '@/components/common/YearSelector'
 import { AiQuotaWidget } from '@/components/ai/AiQuotaWidget'
 import { SetupChecklist } from './SetupChecklist'
+import { reportTemplateService } from '@/services/reportTemplateService'
+import { ReportWidget } from '@/features/reports/ReportWidget'
+import type { ReportTemplate } from '@/types'
 
 const STATUS_COLORS: Record<string, string> = {
   Upcoming: '#3b82f6',
@@ -46,7 +50,7 @@ const STATUS_COLORS: Record<string, string> = {
 export function Dashboard() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { can } = useAuthStore()
+  const { orgId, can } = useAuthStore()
   const { globalYear } = useUiStore()
   const { projects, isLoading: loadingProjects } = useProjects()
   const { staff, isLoading: loadingStaff } = useStaff({})
@@ -57,6 +61,32 @@ export function Dashboard() {
   const { collabProjects } = useCollabProjects()
 
   const isLoading = loadingProjects || loadingStaff || loadingAssignments || loadingBudgets
+
+  // Pinned report widgets
+  const [pinnedReports, setPinnedReports] = useState<ReportTemplate[]>([])
+  const [pinnedLoading, setPinnedLoading] = useState(true)
+
+  const loadPinned = useCallback(async () => {
+    if (!orgId) return
+    setPinnedLoading(true)
+    try {
+      const data = await reportTemplateService.listPinned(orgId)
+      setPinnedReports(data)
+    } catch {
+      setPinnedReports([])
+    } finally {
+      setPinnedLoading(false)
+    }
+  }, [orgId])
+
+  useEffect(() => { loadPinned() }, [loadPinned])
+
+  const handleToggleDashboard = useCallback(async (t: ReportTemplate) => {
+    try {
+      await reportTemplateService.update(t.id, { is_pinned: false })
+      setPinnedReports(prev => prev.filter(p => p.id !== t.id))
+    } catch { /* ignore */ }
+  }, [])
 
   // KPI data
   const kpis = useMemo(() => {
@@ -306,6 +336,28 @@ export function Dashboard() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Pinned Report Widgets */}
+      {!pinnedLoading && pinnedReports.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <LayoutDashboard className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold">Pinned Reports</h2>
+            <span className="text-[10px] text-muted-foreground">({pinnedReports.length})</span>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {pinnedReports.map(r => (
+              <ReportWidget
+                key={r.id}
+                template={r}
+                compact
+                showDashboardToggle
+                onToggleDashboard={handleToggleDashboard}
+              />
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )

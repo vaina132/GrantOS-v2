@@ -656,6 +656,172 @@ async function fetchProjectHealth(orgId: string, year: number, config: ReportCon
 }
 
 // ════════════════════════════════════════════════════════════════
+// 10 System Default Report Templates
+// ════════════════════════════════════════════════════════════════
+
+export interface SystemReportDef {
+  name: string
+  description: string
+  data_source: ReportDataSource
+  config: ReportConfig
+}
+
+export const SYSTEM_REPORT_TEMPLATES: SystemReportDef[] = [
+  {
+    name: 'Project Portfolio Overview',
+    description: 'All projects with status, budget, and timeline — grouped by status',
+    data_source: 'projects',
+    config: {
+      columns: ['acronym', 'title', 'status', 'total_budget', 'start_date', 'end_date', 'funding_scheme'],
+      filters: {},
+      group_by: 'status',
+      sort_by: { field: 'acronym', direction: 'asc' },
+      chart_type: 'bar',
+    },
+  },
+  {
+    name: 'Budget vs Actuals',
+    description: 'Financial budget utilisation across all projects by category',
+    data_source: 'financials',
+    config: {
+      columns: ['project_acronym', 'category', 'budgeted', 'actual', 'variance', 'utilisation'],
+      filters: {},
+      group_by: 'project_acronym',
+      sort_by: { field: 'variance', direction: 'desc' },
+      chart_type: 'bar',
+    },
+  },
+  {
+    name: 'Staff Directory',
+    description: 'Complete staff list with department, FTE, and employment status',
+    data_source: 'staff',
+    config: {
+      columns: ['full_name', 'department', 'role', 'employment_type', 'fte', 'is_active'],
+      filters: {},
+      group_by: 'department',
+      sort_by: { field: 'full_name', direction: 'asc' },
+      chart_type: 'pie',
+    },
+  },
+  {
+    name: 'Monthly Effort Allocation',
+    description: 'Person-month allocations by staff and project for the current year',
+    data_source: 'effort',
+    config: {
+      columns: ['person_name', 'project_acronym', 'month', 'actual_pms', 'official_pms', 'difference'],
+      filters: {},
+      group_by: 'person_name',
+      sort_by: { field: 'month', direction: 'asc' },
+      chart_type: 'bar',
+    },
+  },
+  {
+    name: 'Timesheet Status Tracker',
+    description: 'Timesheet submission and approval status across all staff',
+    data_source: 'timesheets',
+    config: {
+      columns: ['person_name', 'project_acronym', 'month', 'actual_hours', 'status'],
+      filters: {},
+      group_by: 'status',
+      sort_by: { field: 'month', direction: 'asc' },
+      chart_type: 'pie',
+    },
+  },
+  {
+    name: 'Absence Summary',
+    description: 'All leave records grouped by type — annual leave, sick leave, etc.',
+    data_source: 'absences',
+    config: {
+      columns: ['person_name', 'type', 'start_date', 'end_date', 'days', 'status'],
+      filters: {},
+      group_by: 'type',
+      sort_by: { field: 'start_date', direction: 'desc' },
+      chart_type: 'pie',
+    },
+  },
+  {
+    name: 'Expense Breakdown',
+    description: 'All recorded expenses by project and category',
+    data_source: 'expenses',
+    config: {
+      columns: ['project_acronym', 'category', 'description', 'amount', 'expense_date'],
+      filters: {},
+      group_by: 'category',
+      sort_by: { field: 'amount', direction: 'desc' },
+      chart_type: 'bar',
+    },
+  },
+  {
+    name: 'Travel Log',
+    description: 'Travel records by person and project',
+    data_source: 'travel',
+    config: {
+      columns: ['person_name', 'project_acronym', 'date', 'location', 'notes'],
+      filters: {},
+      group_by: 'project_acronym',
+      sort_by: { field: 'date', direction: 'desc' },
+      chart_type: 'table',
+    },
+  },
+  {
+    name: 'Proposal Pipeline',
+    description: 'All proposals with status, budget, and deadlines',
+    data_source: 'proposals',
+    config: {
+      columns: ['project_name', 'call_identifier', 'status', 'total_budget', 'our_pms', 'submission_deadline'],
+      filters: {},
+      group_by: 'status',
+      sort_by: { field: 'submission_deadline', direction: 'asc' },
+      chart_type: 'pie',
+    },
+  },
+  {
+    name: 'Project Health Dashboard',
+    description: 'Cross-entity view showing budget utilisation, effort, and progress per project',
+    data_source: 'project_health',
+    config: {
+      columns: ['acronym', 'status', 'total_budget', 'total_spent', 'budget_utilisation', 'total_pms_actual', 'deliverables_count', 'days_remaining'],
+      filters: {},
+      group_by: 'status',
+      sort_by: { field: 'budget_utilisation', direction: 'desc' },
+      chart_type: 'bar',
+    },
+  },
+]
+
+/**
+ * Seeds the 10 system default reports for an org if none exist yet.
+ * Called on first load of the reports page. Idempotent — checks first.
+ */
+export async function seedSystemTemplates(orgId: string, userId: string, _userName?: string): Promise<boolean> {
+  // Check if this org already has system-seeded templates
+  const { data: existing, error: checkErr } = await supabase
+    .from('report_templates')
+    .select('id')
+    .eq('org_id', orgId)
+    .eq('created_by_name', '__system__')
+    .limit(1)
+  if (checkErr) throw checkErr
+  if (existing && existing.length > 0) return false // already seeded
+
+  // Seed all 10
+  const inserts = SYSTEM_REPORT_TEMPLATES.map(t => ({
+    org_id: orgId,
+    name: t.name,
+    description: t.description,
+    data_source: t.data_source,
+    config: t.config as any,
+    is_shared: true,
+    is_pinned: false,
+    created_by: userId,
+    created_by_name: '__system__',
+  }))
+  const { error } = await supabase.from('report_templates').insert(inserts)
+  if (error) throw error
+  return true // seeded
+}
+
+// ════════════════════════════════════════════════════════════════
 // Template CRUD
 // ════════════════════════════════════════════════════════════════
 
@@ -722,6 +888,17 @@ export const reportTemplateService = {
       .delete()
       .eq('id', id)
     if (error) throw error
+  },
+
+  async listPinned(orgId: string): Promise<ReportTemplate[]> {
+    const { data, error } = await supabase
+      .from('report_templates')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('is_pinned', true)
+      .order('name')
+    if (error) throw error
+    return (data ?? []).map(parseTemplate)
   },
 }
 

@@ -22,6 +22,9 @@ CREATE INDEX IF NOT EXISTS idx_report_templates_org ON report_templates(org_id);
 -- Index for finding user's own reports
 CREATE INDEX IF NOT EXISTS idx_report_templates_created_by ON report_templates(created_by);
 
+-- Index for pinned reports (dashboard widgets)
+CREATE INDEX IF NOT EXISTS idx_report_templates_pinned ON report_templates(org_id) WHERE is_pinned = TRUE;
+
 -- RLS
 ALTER TABLE report_templates ENABLE ROW LEVEL SECURITY;
 
