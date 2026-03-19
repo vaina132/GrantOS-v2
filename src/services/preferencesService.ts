@@ -46,6 +46,7 @@ function makeDefaults(userId: string, orgId: string): UserPreferences {
     user_id: userId,
     org_id: orgId,
     display_name: null,
+    unsubscribe_token: '',
     email_timesheet_reminders: true,
     email_timesheet_submitted: true,
     email_project_alerts: true,

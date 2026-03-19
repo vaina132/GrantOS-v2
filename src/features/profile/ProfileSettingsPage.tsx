@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
 import { Switch } from '@/components/ui/switch'
-import { User, Bell, Lock, Save, Info, Globe, Check } from 'lucide-react'
+import { User, Bell, Lock, Save, Info, Globe, Check, ExternalLink } from 'lucide-react'
 import { MfaEnrollment } from './MfaEnrollment'
 import { writeSecurityAudit } from '@/services/auditWriter'
 import { SUPPORTED_LANGUAGES } from '@/lib/i18n'
@@ -296,6 +296,27 @@ export function ProfileSettingsPage() {
                 )
               })}
             </div>
+
+            {/* Unsubscribe link info */}
+            {prefs?.unsubscribe_token && (
+              <div className="mt-5 pt-4 border-t">
+                <div className="flex items-start gap-2 rounded-lg bg-muted/50 p-3">
+                  <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p>Every email from GrantLume includes a <strong>"Manage notification preferences"</strong> link in the footer. You or your team members can use it to change email settings without logging in.</p>
+                    <a
+                      href={`/email-preferences?token=${prefs.unsubscribe_token}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline font-medium"
+                    >
+                      Preview your preferences page
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

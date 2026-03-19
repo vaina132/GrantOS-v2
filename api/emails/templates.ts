@@ -33,7 +33,8 @@ const WORDMARK = `<span style="font-size:20px;font-weight:700;letter-spacing:-0.
 
 // ── Shared helpers ─────────────────────────────────────
 
-function layout(title: string, body: string): string {
+function layout(title: string, body: string, unsubscribeUrl?: string): string {
+  const prefsLink = unsubscribeUrl || 'https://app.grantlume.com/profile'
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
@@ -57,7 +58,9 @@ function layout(title: string, body: string): string {
     This is an automated message from GrantLume. Please do not reply directly.
   </p>
   <p style="margin:0;font-size:11px;color:${MUTED};text-align:center;">
-    <a href="https://app.grantlume.com/profile" style="color:${BRAND};text-decoration:underline;">Manage notification preferences</a>
+    <a href="${prefsLink}" style="color:${BRAND};text-decoration:underline;">Manage notification preferences</a>
+    &nbsp;&middot;&nbsp;
+    <a href="${prefsLink}${unsubscribeUrl ? '&action=unsubscribe-all' : ''}" style="color:${MUTED};text-decoration:underline;">Unsubscribe</a>
     &nbsp;&middot;&nbsp;
     <a href="https://grantlume.com" style="color:${BRAND};text-decoration:underline;">grantlume.com</a>
   </p>

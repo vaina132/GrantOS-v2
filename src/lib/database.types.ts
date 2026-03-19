@@ -1024,6 +1024,7 @@ export type Database = {
           user_id: string
           org_id: string
           display_name: string | null
+          unsubscribe_token: string
           email_timesheet_reminders: boolean
           email_timesheet_submitted: boolean
           email_project_alerts: boolean
@@ -1033,6 +1034,9 @@ export type Database = {
           email_invitations: boolean
           email_welcome: boolean
           email_trial_expiring: boolean
+          email_substitute_notifications: boolean
+          email_absence_notifications: boolean
+          email_collab_notifications: boolean
           created_at: string
           updated_at: string
         }
@@ -1041,6 +1045,7 @@ export type Database = {
           user_id: string
           org_id: string
           display_name?: string | null
+          unsubscribe_token?: string
           email_timesheet_reminders?: boolean
           email_timesheet_submitted?: boolean
           email_project_alerts?: boolean
@@ -1050,6 +1055,9 @@ export type Database = {
           email_invitations?: boolean
           email_welcome?: boolean
           email_trial_expiring?: boolean
+          email_substitute_notifications?: boolean
+          email_absence_notifications?: boolean
+          email_collab_notifications?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -1058,6 +1066,7 @@ export type Database = {
           user_id?: string
           org_id?: string
           display_name?: string | null
+          unsubscribe_token?: string
           email_timesheet_reminders?: boolean
           email_timesheet_submitted?: boolean
           email_project_alerts?: boolean
@@ -1067,6 +1076,9 @@ export type Database = {
           email_invitations?: boolean
           email_welcome?: boolean
           email_trial_expiring?: boolean
+          email_substitute_notifications?: boolean
+          email_absence_notifications?: boolean
+          email_collab_notifications?: boolean
           created_at?: string
           updated_at?: string
         }

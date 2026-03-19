@@ -28,6 +28,7 @@ import { PrivacyPage } from '@/features/legal/PrivacyPage'
 import { LandingPage } from '@/features/landing/LandingPage'
 import { HelpPage } from '@/features/help/HelpPage'
 import { CollabAcceptInvite } from '@/features/projects/collaboration/CollabAcceptInvite'
+import { EmailPreferencesPage } from '@/features/email/EmailPreferencesPage'
 import { CollabPages } from '@/features/projects/collaboration/CollabPages'
 import { InviteSignupPage } from '@/features/auth/InviteSignupPage'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
@@ -107,6 +108,7 @@ export default function App() {
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/collab/accept" element={<CollabAcceptInvite />} />
+        <Route path="/email-preferences" element={<EmailPreferencesPage />} />
         <Route path="/invite/accept" element={user ? <Navigate to={userHome} replace /> : <InviteSignupPage />} />
 
         <Route

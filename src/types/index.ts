@@ -341,6 +341,7 @@ export interface UserPreferences {
   user_id: string
   org_id: string
   display_name: string | null
+  unsubscribe_token: string
   email_timesheet_reminders: boolean
   email_timesheet_submitted: boolean
   email_project_alerts: boolean

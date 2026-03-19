@@ -108,45 +108,64 @@ const PREF_COLUMN_MAP: Record<string, string> = {
 
 const FROM_ADDRESS = 'GrantLume <notifications@grantlume.com>'
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.grantlume.com'
+
 /**
  * Check if a recipient has opted out of a given template.
- * Returns true if the email should be sent, false if opted out.
- * Uses the service role key to bypass RLS and read user_preferences.
+ * Also returns the user's unsubscribe_token for personalized email links.
  */
-async function shouldSend(
+async function checkRecipient(
   recipientEmail: string,
   templateName: string,
-): Promise<boolean> {
-  const prefCol = PREF_COLUMN_MAP[templateName]
-  if (!prefCol) return true // No preference column = always send
-
+): Promise<{ allowed: boolean; unsubscribeToken: string | null }> {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !serviceKey) return true // Can't check, default to send
+  if (!supabaseUrl || !serviceKey) return { allowed: true, unsubscribeToken: null }
 
   try {
     const sb = createClient(supabaseUrl, serviceKey)
 
-    // Find user ID by email via org_members join (email lives on persons table linked by org_members)
-    // Simpler: query org_members → auth.users via the admin API
     const { data: listData } = await sb.auth.admin.listUsers({ perPage: 1000 })
     const authUser = listData?.users?.find((u: any) => u.email === recipientEmail)
-    if (!authUser) return true // Unknown user, send anyway
+    if (!authUser) return { allowed: true, unsubscribeToken: null }
 
-    // Query their preferences across all orgs
+    // Query their preferences across all orgs (select preference column + token)
+    const prefCol = PREF_COLUMN_MAP[templateName]
+    const selectCols = prefCol ? `${prefCol}, unsubscribe_token` : 'unsubscribe_token'
+
     const { data: prefs } = await sb
       .from('user_preferences')
-      .select(prefCol)
+      .select(selectCols)
       .eq('user_id', authUser.id)
 
-    if (!prefs || prefs.length === 0) return true // No prefs set, default to send
+    if (!prefs || prefs.length === 0) return { allowed: true, unsubscribeToken: null }
 
-    // If any org preference has this template disabled, don't send
-    return prefs.every((p: any) => p[prefCol] !== false)
+    // Use the first row's token (user may have prefs in multiple orgs)
+    const token = (prefs[0] as any)?.unsubscribe_token ?? null
+
+    // Check opt-out if there's a preference column for this template
+    if (prefCol) {
+      const optedOut = prefs.some((p: any) => p[prefCol] === false)
+      if (optedOut) return { allowed: false, unsubscribeToken: token }
+    }
+
+    return { allowed: true, unsubscribeToken: token }
   } catch {
-    // If anything fails, default to sending
-    return true
+    return { allowed: true, unsubscribeToken: null }
   }
+}
+
+/**
+ * Inject personalized unsubscribe URL into email HTML.
+ * Replaces the default profile link with a token-based link.
+ */
+function injectUnsubscribeUrl(html: string, token: string): string {
+  const prefsUrl = `${APP_URL}/email-preferences?token=${token}`
+  // Replace the default profile link in the footer
+  return html.replace(
+    /href="https:\/\/app\.grantlume\.com\/profile"/g,
+    `href="${prefsUrl}"`
+  )
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -181,25 +200,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Filter recipients by their email preferences
+    // Filter recipients by their email preferences and collect unsubscribe tokens
     const recipients = Array.isArray(to) ? to : [to]
-    const allowedRecipients: string[] = []
+    const allowedRecipients: { email: string; unsubscribeToken: string | null }[] = []
 
     for (const email of recipients) {
-      const allowed = await shouldSend(email, template)
-      if (allowed) allowedRecipients.push(email)
+      const { allowed, unsubscribeToken } = await checkRecipient(email, template)
+      if (allowed) allowedRecipients.push({ email, unsubscribeToken })
     }
 
     if (allowedRecipients.length === 0) {
       return res.status(200).json({ success: true, skipped: true, reason: 'All recipients opted out' })
     }
 
-    const { subject, html } = templateFn(params ?? {})
+    const { subject, html: rawHtml } = templateFn(params ?? {})
     const resend = new Resend(apiKey)
+
+    // For single recipient, inject personalized unsubscribe URL
+    // For multiple recipients, use the first available token (batch emails)
+    const firstToken = allowedRecipients.find(r => r.unsubscribeToken)?.unsubscribeToken
+    const html = firstToken ? injectUnsubscribeUrl(rawHtml, firstToken) : rawHtml
 
     const { data, error } = await resend.emails.send({
       from: FROM_ADDRESS,
-      to: allowedRecipients,
+      to: allowedRecipients.map(r => r.email),
       subject,
       html,
       ...(replyTo ? { replyTo } : {}),
