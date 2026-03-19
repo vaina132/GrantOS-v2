@@ -469,10 +469,10 @@ async function fetchTimesheets(orgId: string, year: number, config: ReportConfig
     .eq('org_id', orgId)
     .eq('year', y)
     .order('month')
-  if (config.filters.month) q = q.eq('month', config.filters.month)
-  if (config.filters.status) q = q.eq('status', config.filters.status)
-  if (config.filters.project_id) q = q.eq('project_id', config.filters.project_id)
-  if (config.filters.person_id) q = q.eq('person_id', config.filters.person_id)
+  if (config.filters.month) q = q.eq('month', Number(config.filters.month))
+  if (config.filters.status) q = q.eq('status', String(config.filters.status))
+  if (config.filters.project_id) q = q.eq('project_id', String(config.filters.project_id))
+  if (config.filters.person_id) q = q.eq('person_id', String(config.filters.person_id))
 
   const { data, error } = await q
   if (error) throw error
@@ -497,8 +497,8 @@ async function fetchFinancials(orgId: string, year: number, config: ReportConfig
     .select('*, projects(acronym)')
     .eq('org_id', orgId)
     .eq('year', y)
-  if (config.filters.project_id) q = q.eq('project_id', config.filters.project_id)
-  if (config.filters.category) q = q.eq('category', config.filters.category)
+  if (config.filters.project_id) q = q.eq('project_id', String(config.filters.project_id))
+  if (config.filters.category) q = q.eq('category', String(config.filters.category))
 
   const { data, error } = await q
   if (error) throw error
@@ -518,8 +518,8 @@ async function fetchExpenses(orgId: string, config: ReportConfig): Promise<Repor
     .select('*, projects(acronym), persons(full_name)')
     .eq('org_id', orgId)
     .order('expense_date', { ascending: false })
-  if (config.filters.project_id) q = q.eq('project_id', config.filters.project_id)
-  if (config.filters.category) q = q.eq('category', config.filters.category)
+  if (config.filters.project_id) q = q.eq('project_id', String(config.filters.project_id))
+  if (config.filters.category) q = q.eq('category', String(config.filters.category))
 
   const { data, error } = await q
   if (error) throw error
@@ -541,9 +541,9 @@ async function fetchAbsences(orgId: string, config: ReportConfig): Promise<Repor
     .select('*, persons!absences_person_id_fkey(full_name, department), substitute:persons!absences_substitute_person_id_fkey(full_name)')
     .eq('org_id', orgId)
     .order('start_date', { ascending: false })
-  if (config.filters.type) q = q.eq('type', config.filters.type)
-  if (config.filters.status) q = q.eq('status', config.filters.status)
-  if (config.filters.person_id) q = q.eq('person_id', config.filters.person_id)
+  if (config.filters.type) q = q.eq('type', String(config.filters.type))
+  if (config.filters.status) q = q.eq('status', String(config.filters.status))
+  if (config.filters.person_id) q = q.eq('person_id', String(config.filters.person_id))
 
   const { data, error } = await q
   if (error) throw error
@@ -560,13 +560,13 @@ async function fetchAbsences(orgId: string, config: ReportConfig): Promise<Repor
 }
 
 async function fetchTravel(orgId: string, config: ReportConfig): Promise<ReportRow[]> {
-  let q = supabase
+  let q = (supabase as any)
     .from('travels')
     .select('*, persons(full_name), projects(acronym)')
     .eq('org_id', orgId)
     .order('date', { ascending: false })
-  if (config.filters.project_id) q = q.eq('project_id', config.filters.project_id)
-  if (config.filters.person_id) q = q.eq('person_id', config.filters.person_id)
+  if (config.filters.project_id) q = q.eq('project_id', String(config.filters.project_id))
+  if (config.filters.person_id) q = q.eq('person_id', String(config.filters.person_id))
 
   const { data, error } = await q
   if (error) throw error
@@ -610,8 +610,8 @@ async function fetchProjectHealth(orgId: string, year: number, config: ReportCon
     supabase.from('financial_budgets').select('project_id, actual').eq('org_id', orgId).eq('year', y),
     supabase.from('assignments').select('project_id, pms').eq('org_id', orgId).eq('year', y).eq('type', 'actual'),
     supabase.from('assignments').select('project_id, pms').eq('org_id', orgId).eq('year', y).eq('type', 'official'),
-    supabase.from('deliverables').select('project_id').eq('org_id', orgId),
-    supabase.from('milestones').select('project_id').eq('org_id', orgId),
+    (supabase as any).from('deliverables').select('project_id').eq('org_id', orgId),
+    (supabase as any).from('milestones').select('project_id').eq('org_id', orgId),
   ])
   if (projectsRes.error) throw projectsRes.error
 

@@ -18,7 +18,7 @@ import { toast } from '@/components/ui/use-toast'
 import * as XLSX from 'xlsx'
 import {
   FolderKanban, Users, CalendarDays, ClipboardCheck, DollarSign, Lightbulb,
-  Plane, Receipt, Activity, ArrowLeft, ArrowRight, Play, Share2,
+  Plane, Receipt, Activity, ArrowLeft, ArrowRight, Play, Save, Share2,
   Table2, BarChart3, LineChart, PieChart, Layers,
   GripVertical, X, Check, ChevronDown, Loader2, FileSpreadsheet, FileText,
   CalendarOff,
