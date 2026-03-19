@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import { allocationsService } from '@/services/allocationsService'
 import type { AllocationCell } from '@/services/allocationsService'
 import { useAuthStore } from '@/stores/authStore'
+import { logger } from '@/lib/logger'
 import { useUiStore } from '@/stores/uiStore'
 import { useStaff } from '@/hooks/useStaff'
 import { useProjects } from '@/hooks/useProjects'
@@ -26,6 +27,24 @@ import { projectsService } from '@/services/projectsService'
 import type { AssignmentType, Person, Project, WorkPackage } from '@/types'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** Returns a heatmap background class based on utilisation % (allocated / capacity). */
+function heatmapBg(utilisation: number): string {
+  if (utilisation <= 0) return ''
+  if (utilisation <= 0.5) return 'bg-emerald-50 dark:bg-emerald-950/20'
+  if (utilisation <= 0.8) return 'bg-yellow-50 dark:bg-yellow-950/20'
+  if (utilisation <= 1.0) return 'bg-amber-50 dark:bg-amber-950/20'
+  return 'bg-red-50 dark:bg-red-950/20'
+}
+
+/** Returns a heatmap text color class for summary row utilisation values. */
+function heatmapText(utilisation: number): string {
+  if (utilisation <= 0) return 'text-muted-foreground'
+  if (utilisation <= 0.5) return 'text-emerald-700 dark:text-emerald-400'
+  if (utilisation <= 0.8) return 'text-yellow-700 dark:text-yellow-400'
+  if (utilisation <= 1.0) return 'text-amber-700 dark:text-amber-400'
+  return 'text-red-700 dark:text-red-400 font-bold'
+}
 
 type CellKey = string // "personId:projectId:wpId:month"
 
@@ -60,7 +79,7 @@ export function AllocationGrid() {
     settingsService.getOrganisation(orgId).then(org => {
       if (org?.working_hours_per_day) setHoursPerDay(org.working_hours_per_day)
       setTimesheetsDriveAllocations(org?.timesheets_drive_allocations ?? false)
-    }).catch(() => {})
+    }).catch((err) => logger.warn('Failed to load org settings', { source: 'AllocationGrid' }, err))
   }, [orgId])
 
   // When timesheets drive allocations: load aggregated timesheet hours
@@ -82,7 +101,7 @@ export function AllocationGrid() {
       const map: Record<string, WorkPackage[]> = {}
       for (const r of results) if (r.wps.length > 0) map[r.pid] = r.wps
       setWpsByProject(map)
-    }).catch(() => {})
+    }).catch((err) => logger.warn('Failed to load work packages', { source: 'AllocationGrid' }, err))
   }, [projects])
 
   const assignments = actualAssignments
@@ -639,10 +658,12 @@ export function AllocationGrid() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
+            {rows.map((row, rowIdx) => {
               let rowTotal = 0
-              return (
-                <tr key={`${row.person.id}:${row.project.id}:${row.wpId}`} className="border-b last:border-0 hover:bg-muted/20">
+              const nextRow = rows[rowIdx + 1]
+              const isLastRowForPerson = !nextRow || nextRow.person.id !== row.person.id
+              return (<Fragment key={`${row.person.id}:${row.project.id}:${row.wpId}`}>
+                <tr className={cn('border-b last:border-0 hover:bg-muted/20', isLastRowForPerson && 'border-b-0')}>
                   <td className="px-3 py-1 sticky left-0 bg-background font-medium text-xs max-w-[160px]">
                     <div className="flex items-center gap-1.5">
                       <PersonAvatar name={row.person.full_name} avatarUrl={row.person.avatar_url} size="xs" />
@@ -672,10 +693,10 @@ export function AllocationGrid() {
                         className={cn(
                           'px-0 py-0 text-center relative',
                           locked && 'bg-amber-50/50',
-                          overAllocated && 'bg-red-50',
-                          absencePm > 0 && !overAllocated && 'bg-orange-50/50',
+                          !locked && availableCapacity > 0 && heatmapBg(personTotal / availableCapacity),
+                          !locked && availableCapacity === 0 && personTotal > 0 && 'bg-red-50 dark:bg-red-950/20',
                         )}
-                        title={absencePm > 0 ? `Capacity: ${availableCapacity.toFixed(2)} PM (${(absencePm * 22).toFixed(0)}d absent)` : undefined}
+                        title={`${(availableCapacity > 0 ? (personTotal / availableCapacity * 100) : personTotal > 0 ? 999 : 0).toFixed(0)}% utilised — ${personTotal.toFixed(2)} / ${availableCapacity.toFixed(2)} PM${absencePm > 0 ? ` (${(absencePm * 22).toFixed(0)}d absent)` : ''}`}
                       >
                         <input
                           type="number"
@@ -723,6 +744,39 @@ export function AllocationGrid() {
                     ) : '—'}
                   </td>
                 </tr>
+                {isLastRowForPerson && (() => {
+                  let personYearTotal = 0
+                  const monthCells = MONTHS.map((_, i) => {
+                    const month = i + 1
+                    const pTotal = personMonthTotals[`${row.person.id}:${month}`] ?? 0
+                    const absPm = absencePmMap[`${row.person.id}:${month}`] ?? 0
+                    const cap = Math.max(0, row.person.fte - absPm)
+                    const util = cap > 0 ? pTotal / cap : pTotal > 0 ? 2 : 0
+                    personYearTotal += pTotal
+                    return { month, pTotal, cap, util }
+                  })
+                  const yearCap = row.person.fte * 12
+                  const yearUtil = yearCap > 0 ? personYearTotal / yearCap : 0
+                  return (
+                    <tr key={`summary:${row.person.id}`} className="border-b bg-muted/30">
+                      <td className="px-3 py-0.5 sticky left-0 bg-muted/30" />
+                      <td className="px-3 py-0.5 text-[10px] text-muted-foreground font-medium">{t('common.total')}</td>
+                      {monthCells.map((mc) => (
+                        <td
+                          key={mc.month}
+                          className={cn('px-1 py-0.5 text-center text-[10px] tabular-nums', heatmapText(mc.util))}
+                          title={`${(mc.util * 100).toFixed(0)}% — ${mc.pTotal.toFixed(2)} / ${mc.cap.toFixed(2)} PM`}
+                        >
+                          {mc.pTotal > 0 ? mc.pTotal.toFixed(2) : ''}
+                        </td>
+                      ))}
+                      <td className={cn('px-3 py-0.5 text-right text-[10px] tabular-nums font-semibold', heatmapText(yearUtil))}>
+                        {personYearTotal > 0 ? `${personYearTotal.toFixed(2)}` : ''}
+                      </td>
+                    </tr>
+                  )
+                })()}
+              </Fragment>
               )
             })}
           </tbody>

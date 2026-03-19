@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { settingsService } from '@/services/settingsService'
 import { useAuthStore } from '@/stores/authStore'
+import { logger } from '@/lib/logger'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -47,7 +48,10 @@ export function OrgSettings() {
         setTimesheetsDriveAllocations(org.timesheets_drive_allocations ?? false)
         setAiEnabled((org as any).ai_enabled ?? true)
       }
-    }).catch(() => {}).finally(() => setLoading(false))
+    }).catch((err) => {
+      logger.warn('Failed to load organisation settings', { source: 'OrgSettings' }, err)
+      toast({ title: 'Error', description: 'Failed to load organisation settings.', variant: 'destructive' })
+    }).finally(() => setLoading(false))
   }, [orgId])
 
   const handleSave = async () => {

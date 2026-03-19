@@ -1,9 +1,11 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { timesheetService, getWorkingDays } from '@/services/timesheetService'
 import { useAuthStore } from '@/stores/authStore'
+import { logger } from '@/lib/logger'
 import { useUiStore } from '@/stores/uiStore'
 import { YearSelector } from '@/components/common/YearSelector'
 import { useStaff } from '@/hooks/useStaff'
+import { useTimesheetEnvelopes, useInvalidateTimesheets } from '@/hooks/useTimesheets'
 import { settingsService } from '@/services/settingsService'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
 import { EmptyState } from '@/components/common/EmptyState'
@@ -37,10 +39,11 @@ export function AllTimesheets() {
   const { globalYear } = useUiStore()
   const { staff, isLoading: staffLoading } = useStaff({ is_active: true })
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
-  const [envelopes, setEnvelopes] = useState<TimesheetEntry[]>([])
-  const [loading, setLoading] = useState(true)
   const [hoursPerDay, setHoursPerDay] = useState(8)
   const [hasDocuSign, setHasDocuSign] = useState(false)
+
+  const { envelopes, isLoading: envelopesLoading, refetch: refetchEnvelopes } = useTimesheetEnvelopes(selectedMonth)
+  const invalidateTimesheets = useInvalidateTimesheets()
 
   // Load org settings
   useEffect(() => {
@@ -48,28 +51,8 @@ export function AllTimesheets() {
     settingsService.getOrganisation(orgId).then(org => {
       if (org?.working_hours_per_day) setHoursPerDay(org.working_hours_per_day)
       setHasDocuSign(!!(org?.docusign_integration_key && org?.docusign_user_id && org?.docusign_account_id && org?.docusign_rsa_private_key))
-    }).catch(() => {})
+    }).catch((err) => logger.warn('Failed to load org settings for timesheets', { source: 'AllTimesheets' }, err))
   }, [orgId])
-
-  // Load envelopes for all staff
-  const loadEnvelopes = useCallback(async () => {
-    if (!orgId) { setLoading(false); return }
-    setLoading(true)
-    try {
-      const data = await timesheetService.listEnvelopes(orgId, {
-        year: globalYear,
-        month: selectedMonth,
-      })
-      setEnvelopes(data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load envelopes'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
-    } finally {
-      setLoading(false)
-    }
-  }, [orgId, globalYear, selectedMonth])
-
-  useEffect(() => { loadEnvelopes() }, [loadEnvelopes])
 
   // Build person + envelope pairs
   const personSummaries: PersonSummary[] = useMemo(() => {
@@ -101,7 +84,7 @@ export function AllTimesheets() {
   const prevMonth = () => setSelectedMonth(m => m > 1 ? m - 1 : 12)
   const nextMonth = () => setSelectedMonth(m => m < 12 ? m + 1 : 1)
 
-  const isLoading = loading || staffLoading
+  const isLoading = envelopesLoading || staffLoading
 
   return (
     <div className="space-y-5">
@@ -230,7 +213,7 @@ export function AllTimesheets() {
                           try {
                             await timesheetService.updateEnvelopeStatus(orgId, pe.person.id, globalYear, selectedMonth, 'Approved', user.id)
                             toast({ title: 'Approved', description: `${pe.person.full_name}'s timesheet approved.` })
-                            await loadEnvelopes()
+                            await refetchEnvelopes()
                           } catch (err) {
                             toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' })
                           }
@@ -248,7 +231,7 @@ export function AllTimesheets() {
                           try {
                             await timesheetService.updateEnvelopeStatus(orgId, pe.person.id, globalYear, selectedMonth, 'Rejected', user.id)
                             toast({ title: 'Rejected', description: `${pe.person.full_name}'s timesheet rejected.` })
-                            await loadEnvelopes()
+                            await refetchEnvelopes()
                           } catch (err) {
                             toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed', variant: 'destructive' })
                           }

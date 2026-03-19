@@ -34,6 +34,7 @@ import {
 import { SalaryCoverageChart } from './SalaryCoverageChart'
 import { YearSelector } from '@/components/common/YearSelector'
 import { AiQuotaWidget } from '@/components/ai/AiQuotaWidget'
+import { SetupChecklist } from './SetupChecklist'
 
 const STATUS_COLORS: Record<string, string> = {
   Upcoming: '#3b82f6',
@@ -137,6 +138,9 @@ export function Dashboard() {
   return (
     <div className="space-y-6">
       <PageHeader title={t('dashboard.title')} description={t('dashboard.portfolioOverview', { year: globalYear })} actions={<YearSelector />} />
+
+      {/* Setup Checklist — shown for new orgs until dismissed */}
+      <SetupChecklist />
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

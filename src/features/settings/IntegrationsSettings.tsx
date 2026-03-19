@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { settingsService } from '@/services/settingsService'
 import { useAuthStore } from '@/stores/authStore'
+import { logger } from '@/lib/logger'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -36,7 +37,9 @@ export function IntegrationsSettings() {
         setBaseUrl(org.docusign_base_url ?? 'https://demo.docusign.net/restapi')
         setOauthBaseUrl(org.docusign_oauth_base_url ?? 'https://account-d.docusign.com')
       }
-    }).catch(() => {}).finally(() => setLoading(false))
+    }).catch((err) => {
+      logger.warn('Failed to load integration settings', { source: 'IntegrationsSettings' }, err)
+    }).finally(() => setLoading(false))
   }, [orgId])
 
   const handleSave = async () => {

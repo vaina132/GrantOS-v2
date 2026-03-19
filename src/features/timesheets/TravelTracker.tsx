@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { travelService } from '@/services/travelService'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useStaff } from '@/hooks/useStaff'
 import { useProjects } from '@/hooks/useProjects'
+import { useTravels, useInvalidateTravels } from '@/hooks/useTravels'
 import { YearSelector } from '@/components/common/YearSelector'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
 import { SkeletonTable } from '@/components/common/SkeletonTable'
@@ -26,8 +27,6 @@ export function TravelTracker() {
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [selectedPersonId, setSelectedPersonId] = useState('')
-  const [travels, setTravels] = useState<Travel[]>([])
-  const [loading, setLoading] = useState(true)
 
   // New travel form
   const [newDate, setNewDate] = useState('')
@@ -38,25 +37,8 @@ export function TravelTracker() {
 
   const currentPersonId = selectedPersonId || staff.find(p => p.email === user?.email)?.id || ''
 
-  const loadTravels = useCallback(async () => {
-    if (!orgId) { setLoading(false); return }
-    setLoading(true)
-    try {
-      const data = await travelService.list(orgId, {
-        person_id: currentPersonId || undefined,
-        year: globalYear,
-        month: selectedMonth,
-      })
-      setTravels(data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load travels'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
-    } finally {
-      setLoading(false)
-    }
-  }, [orgId, currentPersonId, globalYear, selectedMonth])
-
-  useEffect(() => { loadTravels() }, [loadTravels])
+  const { travels, isLoading: loading, refetch: refetchTravels } = useTravels({ person_id: currentPersonId || undefined, month: selectedMonth })
+  const invalidateTravels = useInvalidateTravels()
 
   const handleAdd = async () => {
     if (!orgId || !currentPersonId || !newDate || !newLocation.trim()) return
@@ -75,7 +57,7 @@ export function TravelTracker() {
       setNewProjectId('')
       setNewLocation('')
       setNewNotes('')
-      loadTravels()
+      refetchTravels()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to add travel'
       toast({ title: 'Error', description: message, variant: 'destructive' })
@@ -88,7 +70,7 @@ export function TravelTracker() {
     try {
       await travelService.remove(travel.id)
       toast({ title: 'Travel removed' })
-      loadTravels()
+      refetchTravels()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to remove travel'
       toast({ title: 'Error', description: message, variant: 'destructive' })

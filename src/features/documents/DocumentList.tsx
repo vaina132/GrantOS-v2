@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { documentService, type ProjectDocument } from '@/services/documentService'
+import { useDocuments } from '@/hooks/useDocuments'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,31 +24,13 @@ interface DocumentListProps {
 
 export function DocumentList({ projectId }: DocumentListProps) {
   const { orgId, user, can } = useAuthStore()
-  const [documents, setDocuments] = useState<ProjectDocument[]>([])
-  const [loading, setLoading] = useState(true)
+  const { documents, isLoading: loading, refetch } = useDocuments(projectId)
   const [uploadOpen, setUploadOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<ProjectDocument | null>(null)
   const [deleting, setDeleting] = useState(false)
-
-  const fetch = async () => {
-    setLoading(true)
-    try {
-      const data = await documentService.listByProject(projectId)
-      setDocuments(data)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load documents'
-      toast({ title: 'Error', description: message, variant: 'destructive' })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetch()
-  }, [projectId])
 
   const handleUpload = async () => {
     if (!orgId || !user || !file) return
@@ -58,7 +41,7 @@ export function DocumentList({ projectId }: DocumentListProps) {
       setUploadOpen(false)
       setTitle('')
       setFile(null)
-      fetch()
+      refetch()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed'
       toast({ title: 'Error', description: message, variant: 'destructive' })
@@ -74,7 +57,7 @@ export function DocumentList({ projectId }: DocumentListProps) {
       await documentService.remove(deleteTarget.id, deleteTarget.file_url)
       toast({ title: 'Deleted', description: 'Document removed.' })
       setDeleteTarget(null)
-      fetch()
+      refetch()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete'
       toast({ title: 'Error', description: message, variant: 'destructive' })
