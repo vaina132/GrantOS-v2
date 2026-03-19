@@ -8,26 +8,26 @@ export function useTimesheets(filters?: Omit<TimesheetFilters, 'year'>) {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['timesheets', orgId, globalYear, filters?.person_id, filters?.project_id, filters?.month, filters?.status],
     queryFn: () => timesheetService.list(orgId, { ...filters, year: globalYear }),
     enabled: !!orgId,
   })
 
-  return { entries: data ?? [] as TimesheetEntry[], isLoading, refetch }
+  return { entries: data ?? [] as TimesheetEntry[], isLoading, isError, error, refetch }
 }
 
 export function useTimesheetEnvelopes(month?: number) {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['timesheet-envelopes', orgId, globalYear, month],
     queryFn: () => timesheetService.listEnvelopes(orgId, { year: globalYear, month }),
     enabled: !!orgId,
   })
 
-  return { envelopes: data ?? [] as TimesheetEntry[], isLoading, refetch }
+  return { envelopes: data ?? [] as TimesheetEntry[], isLoading, isError, error, refetch }
 }
 
 /** Invalidate all timesheet-related queries */

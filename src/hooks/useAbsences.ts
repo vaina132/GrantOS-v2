@@ -8,13 +8,13 @@ export function useAbsences(filters?: Omit<AbsenceFilters, 'year'>) {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['absences', orgId, globalYear, filters?.person_id, filters?.type],
     queryFn: () => absenceService.list(orgId, { ...filters, year: globalYear }),
     enabled: !!orgId,
   })
 
-  return { absences: data ?? [] as Absence[], isLoading, refetch }
+  return { absences: data ?? [] as Absence[], isLoading, isError, error, refetch }
 }
 
 /** Invalidate all absence-related queries */

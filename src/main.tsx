@@ -22,11 +22,12 @@ if (prefersDark) document.documentElement.classList.add('dark')
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 2 * 60 * 1000, // 2 minutes
+      staleTime: 30 * 1000, // 30 seconds — keeps cache useful for quick tab switches but refetches reliably on navigation
       gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true, // Re-fetch when user tabs back to the app
       refetchOnMount: 'always', // Always refetch when a component mounts (e.g. navigating back to a list)
-      retry: 1,
+      retry: 2, // Retry twice on failure (handles transient network/auth errors)
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000), // Exponential backoff: 1s, 2s, 4s…
     },
   },
 })

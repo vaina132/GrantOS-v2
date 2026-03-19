@@ -10,33 +10,33 @@ export function useAssignments(type: AssignmentType) {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['assignments', orgId, globalYear, type],
     queryFn: () => allocationsService.listAssignments(orgId, globalYear, type),
     enabled: !!orgId,
   })
 
-  return { assignments: data ?? [] as Assignment[], isLoading, refetch }
+  return { assignments: data ?? [] as Assignment[], isLoading, isError, error, refetch }
 }
 
 export function usePmBudgets(type: AssignmentType) {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['pmBudgets', orgId, globalYear, type],
     queryFn: () => allocationsService.listPmBudgets(orgId, globalYear, type),
     enabled: !!orgId,
   })
 
-  return { budgets: data ?? [] as PmBudget[], isLoading, refetch }
+  return { budgets: data ?? [] as PmBudget[], isLoading, isError, error, refetch }
 }
 
 export function usePeriodLocks() {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['periodLocks', orgId, globalYear],
     queryFn: () => allocationsService.listPeriodLocks(orgId, globalYear),
     enabled: !!orgId,
@@ -49,7 +49,7 @@ export function usePeriodLocks() {
     [locks],
   )
 
-  return { locks, isLoading, isLocked, refetch }
+  return { locks, isLoading, isError, error, isLocked, refetch }
 }
 
 /** Invalidate all allocation-related queries */

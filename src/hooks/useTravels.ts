@@ -8,7 +8,7 @@ export function useTravels(filters?: { person_id?: string; month?: number }) {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['travels', orgId, globalYear, filters?.person_id, filters?.month],
     queryFn: () => travelService.list(orgId!, {
       person_id: filters?.person_id,
@@ -18,7 +18,7 @@ export function useTravels(filters?: { person_id?: string; month?: number }) {
     enabled: !!orgId,
   })
 
-  return { travels: data ?? [] as Travel[], isLoading, refetch }
+  return { travels: data ?? [] as Travel[], isLoading, isError, error, refetch }
 }
 
 export function useInvalidateTravels() {

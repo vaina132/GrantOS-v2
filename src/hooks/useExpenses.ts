@@ -7,7 +7,7 @@ import type { ProjectExpense, ExpenseCategory } from '@/types'
 export function useProjectExpenses(projectId?: string) {
   const { orgId } = useAuthStore()
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['expenses', orgId, projectId],
     queryFn: async () => {
       const [expenseData, totals] = await Promise.all([
@@ -29,7 +29,7 @@ export function useProjectExpenses(projectId?: string) {
     [categoryTotals],
   )
 
-  return { expenses, categoryTotals, isLoading, refetch, getTotalForCategory }
+  return { expenses, categoryTotals, isLoading, isError, error, refetch, getTotalForCategory }
 }
 
 /** Invalidate expense queries */

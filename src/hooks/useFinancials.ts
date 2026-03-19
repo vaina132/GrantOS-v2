@@ -8,26 +8,26 @@ export function useFinancialBudgets() {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['financialBudgets', orgId, globalYear],
     queryFn: () => financialService.listBudgets(orgId, globalYear),
     enabled: !!orgId,
   })
 
-  return { budgets: data ?? [] as FinancialBudget[], isLoading, refetch }
+  return { budgets: data ?? [] as FinancialBudget[], isLoading, isError, error, refetch }
 }
 
 export function useBudgetSummary() {
   const { orgId } = useAuthStore()
   const { globalYear } = useUiStore()
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['budgetSummary', orgId, globalYear],
     queryFn: () => financialService.getProjectBudgetSummary(orgId, globalYear),
     enabled: !!orgId,
   })
 
-  return { rows: data ?? [] as BudgetRow[], isLoading, refetch }
+  return { rows: data ?? [] as BudgetRow[], isLoading, isError, error, refetch }
 }
 
 /** Invalidate all financial-related queries */

@@ -59,7 +59,7 @@ interface NationalDayState {
 export function TimesheetGrid() {
   const { orgId, user, can } = useAuthStore()
   const { globalYear } = useUiStore()
-  const { staff } = useStaff({ is_active: true })
+  const { staff, isLoading: staffLoading } = useStaff({ is_active: true })
   const { projects: allProjects } = useProjects()
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [selectedPersonId, setSelectedPersonId] = useState('')
@@ -111,7 +111,11 @@ export function TimesheetGrid() {
 
   // Load all data when person/month changes
   const loadData = useCallback(async () => {
-    if (!orgId || !currentPersonId) { setLoading(false); return }
+    if (!orgId) { setLoading(false); return }
+    // If staff is still loading, keep the spinner — don't prematurely show empty state
+    if (staffLoading) { setLoading(true); return }
+    // Staff loaded but no person found (e.g. user has no person record)
+    if (!currentPersonId) { setLoading(false); return }
     setLoading(true)
     try {
       // Load assignments across ALL months of the year (not just selected month)
@@ -157,7 +161,7 @@ export function TimesheetGrid() {
     } finally {
       setLoading(false)
     }
-  }, [orgId, currentPersonId, globalYear, selectedMonth])
+  }, [orgId, currentPersonId, staffLoading, globalYear, selectedMonth])
 
   useEffect(() => { loadData() }, [loadData])
 
