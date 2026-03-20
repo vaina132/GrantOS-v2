@@ -74,8 +74,6 @@ const i18n = {
         { name: 'Free Trial', price: '0', unit: '/ 30 days', desc: 'Full Pro access to try it out', badge: '', features: ['All features', 'Unlimited projects', 'Unlimited staff', '5 AI requests'] },
         { name: 'Pro', price: '149', unit: '€/mo', desc: 'Everything, unlimited', badge: 'Recommended', features: ['Unlimited projects & staff', 'Unlimited user seats', '100 AI requests/mo', 'Collaboration & custom roles'] },
       ],
-      enterprise: 'Need 50+ users?',
-      enterpriseCta: 'Contact us',
       cta: 'Start free',
     },
     trust: {
@@ -88,12 +86,11 @@ const i18n = {
       note: 'No credit card · Cancel anytime',
     },
     footer: {
-      tagline: 'Grant management for research organisations.',
+      tagline: 'Grant management software for organisations of all sizes.',
       product: 'Product',
       legal: 'Legal',
       terms: 'Terms',
       privacy: 'Privacy',
-      copy: '© 2025 GrantLume',
     },
   },
   de: {
@@ -143,8 +140,6 @@ const i18n = {
         { name: 'Testversion', price: '0', unit: '/ 30 Tage', desc: 'Voller Pro-Zugang zum Testen', badge: '', features: ['Alle Funktionen', 'Unbegrenzte Projekte', 'Unbegrenzte Mitarbeiter', '5 KI-Anfragen'] },
         { name: 'Pro', price: '149', unit: '€/Monat', desc: 'Alles, unbegrenzt', badge: 'Empfohlen', features: ['Unbegrenzte Projekte & Mitarbeiter', 'Unbegrenzte Benutzer', '100 KI-Anfragen/Mo', 'Kollaboration & eigene Rollen'] },
       ],
-      enterprise: '50+ Benutzer?',
-      enterpriseCta: 'Kontaktieren Sie uns',
       cta: 'Kostenlos starten',
     },
     trust: {
@@ -157,12 +152,11 @@ const i18n = {
       note: 'Keine Kreditkarte · Jederzeit kündbar',
     },
     footer: {
-      tagline: 'Fördermittel-Software für Forschungsorganisationen.',
+      tagline: 'Fördermittel-Software für Organisationen jeder Größe.',
       product: 'Produkt',
       legal: 'Rechtliches',
       terms: 'Nutzungsbedingungen',
       privacy: 'Datenschutz',
-      copy: '© 2025 GrantLume',
     },
   },
 }
@@ -484,10 +478,6 @@ export function LandingPage() {
             })}
           </div>
 
-          <p className="text-center mt-6 text-xs text-gray-400">
-            {c.pricing.enterprise}{' '}
-            <a href="mailto:hello@grantlume.com" className="font-semibold text-emerald-600 hover:underline">{c.pricing.enterpriseCta}</a>
-          </p>
         </div>
       </section>
 
@@ -561,7 +551,7 @@ export function LandingPage() {
             </div>
           </div>
           <div className="mt-6 pt-4 border-t border-gray-100 text-center">
-            <p className="text-[10px] text-gray-300">{c.footer.copy}</p>
+            <p className="text-[10px] text-gray-300">© {new Date().getFullYear()} GrantLume</p>
           </div>
         </div>
       </footer>
