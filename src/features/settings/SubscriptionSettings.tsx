@@ -34,11 +34,6 @@ import { AI_PLAN_LIMITS } from '@/types'
 
 // ── Pricing ──────────────────────────────────────────────
 
-const PRICING = {
-  monthly: { amount: 149, label: '149€', period: '/month' },
-  yearly:  { amount: 1490, label: '1,490€', period: '/year', savings: '2 months free' },
-} as const
-
 type BillingInterval = 'monthly' | 'yearly'
 
 const PRO_FEATURES = [
@@ -51,14 +46,6 @@ const PRO_FEATURES = [
   'Custom role permissions',
   'Excel & CSV exports',
   'Priority email support',
-]
-
-const TRIAL_FEATURES = [
-  'All features included for 14 days',
-  '3 projects',
-  '5 staff members',
-  '2 user seats',
-  '10 AI requests / 200K tokens',
 ]
 
 function formatTokens(n: number): string {
@@ -75,7 +62,6 @@ export function SubscriptionSettings() {
   const [loading, setLoading] = useState(true)
   const [currentPlan, setCurrentPlan] = useState<OrgPlan>('trial')
   const [trialEnd, setTrialEnd] = useState<string | null>(null)
-  const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null)
   const [stripeSubscriptionId, setStripeSubscriptionId] = useState<string | null>(null)
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [aiUsage, setAiUsage] = useState<AiUsage | null>(null)
@@ -97,7 +83,6 @@ export function SubscriptionSettings() {
         const plan = org.plan === 'pro' ? 'pro' : 'trial'
         setCurrentPlan(plan as OrgPlan)
         setTrialEnd(org.trial_ends_at)
-        setStripeCustomerId((org as any).stripe_customer_id ?? null)
         setStripeSubscriptionId((org as any).stripe_subscription_id ?? null)
         setSubscriptionStatus((org as any).subscription_status ?? null)
       }
