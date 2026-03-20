@@ -24,6 +24,7 @@ function formatTokens(n: number): string {
 function planLabel(plan: OrgPlan): string {
   const map: Record<OrgPlan, string> = {
     trial: 'Free Trial',
+    free: 'Free',
     pro: 'Pro',
   }
   return map[plan] || plan
@@ -53,11 +54,13 @@ export function AiQuotaWidget({ variant = 'full', className, onQuotaExhausted }:
     }).catch(() => setLoading(false))
   }, [orgId, limits.monthly_tokens, limits.monthly_requests, onQuotaExhausted])
 
-  const tokenPct = Math.min((tokensUsed / limits.monthly_tokens) * 100, 100)
-  const requestPct = Math.min((requestsUsed / limits.monthly_requests) * 100, 100)
+  // Free plan has 0 limits — treat as fully exhausted
+  const hasAiAccess = limits.monthly_requests > 0
+  const tokenPct = limits.monthly_tokens > 0 ? Math.min((tokensUsed / limits.monthly_tokens) * 100, 100) : 100
+  const requestPct = limits.monthly_requests > 0 ? Math.min((requestsUsed / limits.monthly_requests) * 100, 100) : 100
   const tokensRemaining = Math.max(limits.monthly_tokens - tokensUsed, 0)
   const requestsRemaining = Math.max(limits.monthly_requests - requestsUsed, 0)
-  const isExhausted = tokensRemaining === 0 || requestsRemaining === 0
+  const isExhausted = !hasAiAccess || tokensRemaining === 0 || requestsRemaining === 0
   const isWarning = tokenPct >= 80 || requestPct >= 80
 
   // Color based on usage level

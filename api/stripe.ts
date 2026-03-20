@@ -281,16 +281,16 @@ async function handleSubscriptionDeleted(
   const orgId = subscription.metadata?.org_id || (await findOrgByStripeCustomer(supabase, customerId))?.id
   if (!orgId) return res.status(200).json({ received: true })
 
-  // Downgrade to trial
+  // Downgrade to free plan
   await supabase.from('organisations').update({
-    plan: 'trial',
+    plan: 'free',
     subscription_status: 'cancelled',
     updated_at: new Date().toISOString(),
   }).eq('id', orgId)
 
   await notifyAdmins(supabase, orgId, 'subscription_cancelled',
     'Subscription Cancelled',
-    'Your GrantLume Pro subscription has ended. You are now on the Free Trial plan with limited features.',
+    'Your GrantLume Pro subscription has ended. You are now on the Free plan with limited features. Upgrade anytime to restore full access.',
     '/settings?tab=subscription',
   )
 
@@ -348,7 +348,7 @@ async function updateOrg(
   if (customerId) update.stripe_customer_id = customerId
 
   // Clear trial_ends_at when moving to a paid plan
-  if (plan !== 'trial') {
+  if (plan === 'pro') {
     update.trial_ends_at = null
   }
 

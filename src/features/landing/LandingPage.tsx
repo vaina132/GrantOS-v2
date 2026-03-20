@@ -37,7 +37,7 @@ const i18n = {
       h1: 'Grant management,',
       h1Accent: 'finally simple.',
       sub: 'Projects, budgets, timesheets, and partner collaboration — one platform built for the way research organisations actually work.',
-      cta: 'Start 14-day free trial',
+      cta: 'Start 30-day free trial',
       ctaNote: 'No credit card required',
       login: 'Sign in',
     },
@@ -75,9 +75,8 @@ const i18n = {
     pricing: {
       title: 'One price per org. Not per seat.',
       plans: [
-        { name: 'Trial', price: '0', unit: '/ 14 days', desc: 'Full access to try it out', badge: '', features: ['All features', '3 projects', '5 staff', '2 users'] },
-        { name: 'Starter', price: '49', unit: '€/mo', desc: 'Small research groups', badge: 'Popular', features: ['10 projects', '20 staff', '5 users', '20 AI parses/mo'] },
-        { name: 'Growth', price: '99', unit: '€/mo', desc: 'Departments & partners', badge: '', features: ['Unlimited projects', 'Unlimited staff', '20 users', 'Collaboration module'] },
+        { name: 'Free Trial', price: '0', unit: '/ 30 days', desc: 'Full Pro access to try it out', badge: '', features: ['All features', 'Unlimited projects', 'Unlimited staff', '5 AI requests'] },
+        { name: 'Pro', price: '149', unit: '€/mo', desc: 'Everything, unlimited', badge: 'Recommended', features: ['Unlimited projects & staff', 'Unlimited user seats', '100 AI requests/mo', 'Collaboration & custom roles'] },
       ],
       enterprise: 'Need 50+ users?',
       enterpriseCta: 'Contact us',
@@ -108,7 +107,7 @@ const i18n = {
       h1: 'Fördermittelmanagement,',
       h1Accent: 'endlich einfach.',
       sub: 'Projekte, Budgets, Zeiterfassung und Partnerkooperationen — eine Plattform, die so funktioniert, wie Forschungsorganisationen tatsächlich arbeiten.',
-      cta: '14 Tage kostenlos testen',
+      cta: '30 Tage kostenlos testen',
       ctaNote: 'Keine Kreditkarte erforderlich',
       login: 'Anmelden',
     },
@@ -146,9 +145,8 @@ const i18n = {
     pricing: {
       title: 'Ein Preis pro Organisation. Nicht pro Benutzer.',
       plans: [
-        { name: 'Test', price: '0', unit: '/ 14 Tage', desc: 'Voller Zugang zum Testen', badge: '', features: ['Alle Funktionen', '3 Projekte', '5 Mitarbeiter', '2 Benutzer'] },
-        { name: 'Starter', price: '49', unit: '€/Monat', desc: 'Kleine Forschungsgruppen', badge: 'Beliebt', features: ['10 Projekte', '20 Mitarbeiter', '5 Benutzer', '20 KI-Analysen/Mo'] },
-        { name: 'Growth', price: '99', unit: '€/Monat', desc: 'Abteilungen & Partner', badge: '', features: ['Unbegrenzte Projekte', 'Unbegrenzte Mitarbeiter', '20 Benutzer', 'Kollaborationsmodul'] },
+        { name: 'Testversion', price: '0', unit: '/ 30 Tage', desc: 'Voller Pro-Zugang zum Testen', badge: '', features: ['Alle Funktionen', 'Unbegrenzte Projekte', 'Unbegrenzte Mitarbeiter', '5 KI-Anfragen'] },
+        { name: 'Pro', price: '149', unit: '€/Monat', desc: 'Alles, unbegrenzt', badge: 'Empfohlen', features: ['Unbegrenzte Projekte & Mitarbeiter', 'Unbegrenzte Benutzer', '100 KI-Anfragen/Mo', 'Kollaboration & eigene Rollen'] },
       ],
       enterprise: '50+ Benutzer?',
       enterpriseCta: 'Kontaktieren Sie uns',

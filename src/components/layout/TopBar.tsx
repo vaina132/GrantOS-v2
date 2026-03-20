@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { differenceInDays } from 'date-fns'
 import { NotificationBell } from '@/components/layout/NotificationBell'
+import { Crown } from 'lucide-react'
 
 export function TopBar() {
   const navigate = useNavigate()
@@ -30,6 +31,8 @@ export function TopBar() {
       ? Math.max(0, differenceInDays(new Date(trialEndsAt), new Date()))
       : null
 
+  const isFree = orgPlan === 'free'
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-4 lg:px-6">
       <Button
@@ -43,9 +46,19 @@ export function TopBar() {
       </Button>
 
       {trialDaysLeft !== null && (
-        <div className="hidden items-center gap-2 rounded-md bg-amber-50 px-3 py-1 text-sm text-amber-800 sm:flex">
-          <span>Trial: {trialDaysLeft} days remaining</span>
+        <div className="hidden items-center gap-2 rounded-md bg-amber-50 dark:bg-amber-950/30 px-3 py-1 text-sm text-amber-800 dark:text-amber-300 sm:flex">
+          <span>{t('topbar.trialDaysRemaining', { days: trialDaysLeft })}</span>
         </div>
+      )}
+
+      {isFree && (
+        <button
+          onClick={() => navigate('/settings?tab=subscription')}
+          className="hidden items-center gap-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-1 text-sm text-amber-800 dark:text-amber-300 sm:flex hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors cursor-pointer"
+        >
+          <Crown className="h-3.5 w-3.5" />
+          <span>Free plan — Upgrade to Pro</span>
+        </button>
       )}
 
       <div className="ml-auto flex items-center gap-3">

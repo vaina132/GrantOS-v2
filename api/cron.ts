@@ -285,8 +285,9 @@ async function runProjectAlerts(
       }
     }
 
-    // ── 2. Trial expiring reminders (7, 3, 1 days) + expired (0 days) ──
-    const trialAlertDays = [7, 3, 1, 0]
+    // ── 2. Trial expiring reminders (14, 7, 3, 1 days) + expired (0 days) ──
+    //    Trial duration is 30 days. On expiry (0), downgrade plan to 'free'.
+    const trialAlertDays = [14, 7, 3, 1, 0]
 
     for (const days of trialAlertDays) {
       const targetDate = new Date(now)
@@ -295,8 +296,9 @@ async function runProjectAlerts(
 
       const { data: orgs } = await supabase
         .from('organisations')
-        .select('id, name, trial_ends_at')
+        .select('id, name, plan, trial_ends_at')
         .eq('is_active', true)
+        .eq('plan', 'trial')
         .not('trial_ends_at', 'is', null)
 
       if (!orgs) continue
@@ -305,6 +307,14 @@ async function runProjectAlerts(
         if (!org.trial_ends_at) continue
         const trialDate = org.trial_ends_at.split('T')[0]
         if (trialDate !== dateStr) continue
+
+        // On expiry day, downgrade to 'free' plan in the database
+        if (days === 0) {
+          await supabase.from('organisations').update({
+            plan: 'free',
+            updated_at: new Date().toISOString(),
+          }).eq('id', org.id)
+        }
 
         const { data: admins } = await supabase
           .from('org_members')
@@ -358,8 +368,8 @@ async function runProjectAlerts(
               ? 'Your free trial has expired'
               : `Trial expires in ${days} day${days === 1 ? '' : 's'}`
             const notifMessage = days === 0
-              ? `Your free trial for ${org.name} has ended. Upgrade to continue using all features.`
-              : `Your free trial for ${org.name} expires in ${days} day${days === 1 ? '' : 's'}. Upgrade now to avoid interruption.`
+              ? `Your free trial for ${org.name} has ended. You are now on the Free plan. Upgrade to Pro to restore full access.`
+              : `Your free trial for ${org.name} expires in ${days} day${days === 1 ? '' : 's'}. Upgrade now to avoid losing features.`
             await supabase.from('notifications').insert({
               user_id: admin.user_id,
               org_id: org.id,

@@ -37,6 +37,6 @@ UPDATE organisations
 SET plan = 'pro'
 WHERE plan IN ('starter', 'growth', 'enterprise');
 
--- Add new check constraint (trial | pro only)
+-- Add new check constraint (trial | free | pro)
 ALTER TABLE organisations ADD CONSTRAINT organisations_plan_check
-  CHECK (plan IN ('trial', 'pro'));
+  CHECK (plan IN ('trial', 'free', 'pro'));

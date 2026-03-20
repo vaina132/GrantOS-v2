@@ -78,7 +78,7 @@ After signing up, you'll be guided through the onboarding wizard to set up your 
     { q: 'How do I invite team members?', a: 'Go to Settings → Users, click "Add User", enter their email and select a role. They\'ll receive a branded invitation email with a link to join your organisation.' },
     { q: 'What roles are available?', a: 'GrantLume has three internal roles: **Administrator** (full access to everything), **Project Manager** (manages projects, allocations, timesheets, and reports), and **Finance Officer** (manages budgets, financials, approves timesheets, and tracks expenses). External partners are invited via the Collaboration module. Admins can customise permissions for each role in Settings → Role Permissions.' },
     { q: 'Can I change my organisation name later?', a: 'Yes. Go to Settings → Organisation and update the name, working hours, or other settings at any time.' },
-    { q: 'Is there a free trial?', a: 'Yes! GrantLume offers a 14-day free trial with full access to all features. No credit card required.' },
+    { q: 'Is there a free trial?', a: 'Yes! GrantLume offers a 30-day free trial with full Pro access to all features. No credit card required. After the trial, you continue on the Free plan with limited features, or upgrade to Pro.' },
     { q: 'What browsers are supported?', a: 'GrantLume works in all modern browsers: Chrome, Firefox, Safari, Edge. We recommend keeping your browser updated to the latest version.' },
   ],
   tips: [

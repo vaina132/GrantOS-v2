@@ -22,6 +22,8 @@ import { Plus, Trash2 } from 'lucide-react'
 import { emailService } from '@/services/emailService'
 import { notificationService } from '@/services/notificationService'
 import type { OrgRole, InvitableRole } from '@/types'
+import { usePlanLimits } from '@/hooks/usePlanLimits'
+import { UpgradeBanner } from '@/components/ui/UpgradeBanner'
 
 interface OrgMember {
   id: string
@@ -38,6 +40,7 @@ const ALL_ROLES: OrgRole[] = ['Admin', 'Project Manager', 'Finance Officer', 'Ex
 export function UsersSettings() {
   const { t } = useTranslation()
   const { orgId, orgName, user } = useAuthStore()
+  const planLimits = usePlanLimits()
   const [members, setMembers] = useState<OrgMember[]>([])
   const [loading, setLoading] = useState(true)
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -274,11 +277,14 @@ export function UsersSettings() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base">{t('settings.members')}</CardTitle>
-          <Button size="sm" onClick={() => setInviteOpen(true)}>
+          <Button size="sm" onClick={() => setInviteOpen(true)} disabled={!planLimits.canInviteMember(members.length)}>
             <Plus className="mr-1 h-4 w-4" /> {t('settings.addMember')}
           </Button>
         </CardHeader>
         <CardContent>
+          {!planLimits.canInviteMember(members.length) && (
+            <UpgradeBanner message={`You have ${members.length} user seats. Your plan allows ${planLimits.limits.maxSeats}. Upgrade to Pro for unlimited seats.`} className="mb-4" />
+          )}
           {members.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">{t('common.noResults')}</p>
           ) : (

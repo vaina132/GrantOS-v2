@@ -329,9 +329,10 @@ async function loadUserContext(
       return
     }
 
-    if (org && org.trial_ends_at && new Date(org.trial_ends_at) < new Date()) {
-      set({ isLoading: false, error: 'Trial expired. Please upgrade.', aiEnabled: true })
-      return
+    // Compute effective plan: if trial has expired and plan is still 'trial', treat as 'free'
+    let effectivePlan: OrgPlan = (org?.plan as OrgPlan) ?? 'trial'
+    if (effectivePlan === 'trial' && org?.trial_ends_at && new Date(org.trial_ends_at) < new Date()) {
+      effectivePlan = 'free'
     }
 
     // Try loading configurable permissions from role_permissions table
@@ -362,7 +363,7 @@ async function loadUserContext(
       role,
       permissions,
       accessType: 'member',
-      orgPlan: (org?.plan as OrgPlan) ?? null,
+      orgPlan: effectivePlan,
       trialEndsAt: org?.trial_ends_at ?? null,
       aiEnabled: (org as any)?.ai_enabled ?? true,
       isLoading: false,

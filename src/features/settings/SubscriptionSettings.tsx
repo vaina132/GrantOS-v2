@@ -40,11 +40,10 @@ const PRO_FEATURES = [
   'Unlimited projects',
   'Unlimited staff members',
   'Unlimited user seats',
-  '200 AI requests / 5M tokens per month',
-  'Advanced report builder',
+  '100 AI requests per month',
+  'Full report builder & export',
   'Collaboration module',
   'Custom role permissions',
-  'Excel & CSV exports',
   'Priority email support',
 ]
 
@@ -80,8 +79,13 @@ export function SubscriptionSettings() {
       ])
       if (org) {
         // Map legacy plan values to new type
-        const plan = org.plan === 'pro' ? 'pro' : 'trial'
-        setCurrentPlan(plan as OrgPlan)
+        const rawPlan = org.plan as OrgPlan
+        let plan: OrgPlan = rawPlan === 'pro' ? 'pro' : rawPlan === 'free' ? 'free' : 'trial'
+        // If trial has expired, treat as free
+        if (plan === 'trial' && org.trial_ends_at && new Date(org.trial_ends_at) < new Date()) {
+          plan = 'free'
+        }
+        setCurrentPlan(plan)
         setTrialEnd(org.trial_ends_at)
         setStripeSubscriptionId((org as any).stripe_subscription_id ?? null)
         setSubscriptionStatus((org as any).subscription_status ?? null)
@@ -228,7 +232,7 @@ export function SubscriptionSettings() {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-bold">
-                    {isPro ? 'GrantLume Pro' : 'Free Trial'}
+                    {isPro ? 'GrantLume Pro' : currentPlan === 'free' ? 'Free Plan' : 'Free Trial'}
                   </h3>
                   <Badge variant={isPro ? 'default' : 'secondary'} className="text-xs">
                     {subscriptionStatus === 'active' ? t('subscription.active') :
@@ -240,17 +244,17 @@ export function SubscriptionSettings() {
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {isPro ? (
                     <span className="font-semibold">Active subscription</span>
+                  ) : currentPlan === 'free' ? (
+                    <span className="text-amber-600 dark:text-amber-400 font-medium">Trial expired — upgrade to unlock all features</span>
                   ) : currentPlan === 'trial' && trialDaysLeft !== null ? (
-                    trialExpired
-                      ? <span className="text-destructive font-medium">{t('subscription.trialExpired')}</span>
-                      : <span>{t('subscription.trialDaysLeft', { count: trialDaysLeft })}</span>
+                    <span>{t('subscription.trialDaysLeft', { count: trialDaysLeft })}</span>
                   ) : null}
                 </p>
               </div>
             </div>
 
             {/* Trial warning */}
-            {currentPlan === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 7 && (
+            {(currentPlan === 'free' || (currentPlan === 'trial' && trialDaysLeft !== null && trialDaysLeft <= 7)) && (
               <div className={cn(
                 'flex items-center gap-3 rounded-lg px-4 py-3 flex-1',
                 trialExpired
@@ -268,7 +272,7 @@ export function SubscriptionSettings() {
                   <p className={cn('mt-0.5', trialExpired ? 'text-destructive/80' : 'text-amber-700 dark:text-amber-300')}>
                     {trialExpired
                       ? t('subscription.trialExpiredDesc')
-                      : t('subscription.trialExpiringDesc', { count: trialDaysLeft })}
+                      : t('subscription.trialExpiringDesc', { count: trialDaysLeft ?? 0 })}
                   </p>
                 </div>
               </div>
@@ -414,7 +418,7 @@ export function SubscriptionSettings() {
                   type="text"
                   value={promoCode}
                   onChange={e => setPromoCode(e.target.value.toUpperCase())}
-                  placeholder="e.g. FOUNDINGCUSTOMER26"
+                  placeholder="Enter code"
                   className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 uppercase tracking-wider"
                 />
               </div>
@@ -444,10 +448,11 @@ export function SubscriptionSettings() {
         </Card>
       )}
 
-      {/* ── Feature Comparison (Trial vs Pro) ── */}
+      {/* ── Feature Comparison (Free vs Pro) ── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t('subscription.featureComparison')}</CardTitle>
+          <CardDescription>Free Trial gives full Pro access for 30 days. After that, the Free plan limits apply.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border overflow-x-auto">
@@ -455,8 +460,8 @@ export function SubscriptionSettings() {
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('subscription.feature')}</th>
-                  <th className={cn('px-4 py-2.5 text-center font-medium', currentPlan === 'trial' && 'bg-primary/5')}>
-                    Free Trial
+                  <th className={cn('px-4 py-2.5 text-center font-medium', (currentPlan === 'free' || currentPlan === 'trial') && 'bg-primary/5')}>
+                    Free
                   </th>
                   <th className={cn('px-4 py-2.5 text-center font-medium', currentPlan === 'pro' && 'bg-primary/5')}>
                     Pro
@@ -464,16 +469,16 @@ export function SubscriptionSettings() {
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { icon: FolderKanban, label: t('subscription.limitProjects'), trial: '3', pro: 'Unlimited' },
-                  { icon: Users, label: t('subscription.limitStaff'), trial: '5', pro: 'Unlimited' },
-                  { icon: Users, label: t('subscription.limitUsers'), trial: '2', pro: 'Unlimited' },
-                  { icon: Bot, label: t('subscription.limitAi'), trial: '10 req / 200K tokens', pro: '200 req / 5M tokens' },
-                  { icon: FileText, label: t('subscription.limitReports'), trial: 'Basic', pro: 'Full' },
-                  { icon: Globe, label: t('subscription.limitCollab'), trial: '—', pro: '✓' },
-                  { icon: Lock, label: t('subscription.limitRoles'), trial: 'Default', pro: 'Custom' },
-                  { icon: Shield, label: t('subscription.limitSupport'), trial: 'Community', pro: 'Priority Email' },
-                ].map((row, i) => {
+                {([
+                  { icon: FolderKanban, label: t('subscription.limitProjects'), free: '5', pro: 'Unlimited' },
+                  { icon: Users, label: t('subscription.limitStaff'), free: '10', pro: 'Unlimited' },
+                  { icon: Users, label: t('subscription.limitUsers'), free: '1', pro: 'Unlimited' },
+                  { icon: Bot, label: t('subscription.limitAi'), free: '\u2014', pro: '100 requests' },
+                  { icon: FileText, label: t('subscription.limitReports'), free: 'View only', pro: 'Full export' },
+                  { icon: Globe, label: t('subscription.limitCollab'), free: '\u2014', pro: '\u2713' },
+                  { icon: Lock, label: t('subscription.limitRoles'), free: 'Default', pro: 'Custom' },
+                  { icon: Shield, label: t('subscription.limitSupport'), free: 'Email', pro: 'Priority Email' },
+                ] as const).map((row, i) => {
                   const RowIcon = row.icon
                   return (
                     <tr key={i} className="border-b last:border-0">
@@ -481,11 +486,11 @@ export function SubscriptionSettings() {
                         <RowIcon className="h-3.5 w-3.5 text-muted-foreground" />
                         <span>{row.label}</span>
                       </td>
-                      <td className={cn('px-4 py-2.5 text-center text-xs', currentPlan === 'trial' && 'bg-primary/5 font-medium')}>
-                        {row.trial === '✓' ? <Check className="h-4 w-4 text-emerald-500 mx-auto" /> : row.trial}
+                      <td className={cn('px-4 py-2.5 text-center text-xs', (currentPlan === 'free' || currentPlan === 'trial') && 'bg-primary/5 font-medium')}>
+                        {row.free}
                       </td>
                       <td className={cn('px-4 py-2.5 text-center text-xs', currentPlan === 'pro' && 'bg-primary/5 font-medium')}>
-                        {row.pro === '✓' ? <Check className="h-4 w-4 text-emerald-500 mx-auto" />
+                        {row.pro === '\u2713' ? <Check className="h-4 w-4 text-emerald-500 mx-auto" />
                           : row.pro === 'Unlimited' ? <span className="inline-flex items-center gap-0.5"><Infinity className="h-3.5 w-3.5" /> Unlimited</span>
                           : row.pro}
                       </td>

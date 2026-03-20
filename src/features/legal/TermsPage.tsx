@@ -62,11 +62,11 @@ export function TermsPage() {
           <section>
             <h2 className="text-xl font-semibold mt-8 mb-3">4. Free Trial</h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              New organisations may be eligible for a 14-day free trial. During the trial period, you will
+              New organisations may be eligible for a 30-day free trial. During the trial period, you will
               have access to all features of the Service. No payment information is required to start
-              a trial. The trial period ends automatically after 14 days. If you do not subscribe to a
-              paid plan before the trial expires, your access to the Service will be limited. Your data
-              will be retained for 30 days after trial expiration, after which it may be permanently deleted.
+              a trial. The trial period ends automatically after 30 days. If you do not subscribe to a
+              paid plan before the trial expires, your account will continue on the Free plan with limited
+              features. Your data will be retained indefinitely on the Free plan.
             </p>
           </section>
 

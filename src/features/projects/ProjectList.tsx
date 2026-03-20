@@ -22,6 +22,8 @@ import { formatCurrency, formatDate, cn } from '@/lib/utils'
 import type { Project, ProjectStatus } from '@/types'
 import { ImportDialog } from '@/components/import/ImportDialog'
 import { exportToExcel } from '@/lib/exportUtils'
+import { usePlanLimits } from '@/hooks/usePlanLimits'
+import { UpgradeBanner } from '@/components/ui/UpgradeBanner'
 
 const STATUS_OPTIONS: (ProjectStatus | 'All')[] = ['All', 'Upcoming', 'Active', 'Completed', 'Suspended']
 
@@ -29,6 +31,7 @@ export function ProjectList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { can } = useAuthStore()
+  const planLimits = usePlanLimits()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
@@ -102,13 +105,17 @@ export function ProjectList() {
                 onExportPDF={() => generateProjectsListPDF(projects, '')}
                 hasData={projects.length > 0}
               />
-              <Button onClick={() => navigate('/projects/new')}>
+              <Button onClick={() => navigate('/projects/new')} disabled={!planLimits.canCreateProject(projects.length)}>
                 <Plus className="mr-2 h-4 w-4" /> {t('projects.newProject')}
               </Button>
             </div>
           ) : undefined
         }
       />
+
+      {!planLimits.canCreateProject(projects.length) && (
+        <UpgradeBanner message={`You have ${projects.length} projects. Your plan allows up to ${planLimits.limits.maxProjects}. Upgrade to Pro for unlimited projects.`} />
+      )}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1">

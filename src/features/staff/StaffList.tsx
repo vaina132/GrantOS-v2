@@ -22,11 +22,14 @@ import { PersonAvatar } from '@/components/common/PersonAvatar'
 import type { Person } from '@/types'
 import { ImportDialog } from '@/components/import/ImportDialog'
 import { exportToExcel } from '@/lib/exportUtils'
+import { usePlanLimits } from '@/hooks/usePlanLimits'
+import { UpgradeBanner } from '@/components/ui/UpgradeBanner'
 
 export function StaffList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { can } = useAuthStore()
+  const planLimits = usePlanLimits()
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<boolean | undefined>(true)
   const [deleteTarget, setDeleteTarget] = useState<Person | null>(null)
@@ -105,13 +108,17 @@ export function StaffList() {
                 onExportPDF={() => generateStaffListPDF(staff, '')}
                 hasData={staff.length > 0}
               />
-              <Button onClick={() => navigate('/staff/new')}>
+              <Button onClick={() => navigate('/staff/new')} disabled={!planLimits.canCreateStaff(staff.length)}>
                 <Plus className="mr-2 h-4 w-4" /> {t('staff.addPerson')}
               </Button>
             </div>
           ) : undefined
         }
       />
+
+      {!planLimits.canCreateStaff(staff.length) && (
+        <UpgradeBanner message={`You have ${staff.length} staff members. Your plan allows up to ${planLimits.limits.maxStaff}. Upgrade to Pro for unlimited staff.`} />
+      )}
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1">

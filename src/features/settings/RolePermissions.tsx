@@ -10,6 +10,8 @@ import { Save, Shield, RotateCcw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { computePermissions } from '@/lib/permissions'
 import type { OrgRole, RolePermission } from '@/types'
+import { usePlanLimits } from '@/hooks/usePlanLimits'
+import { UpgradeBanner } from '@/components/ui/UpgradeBanner'
 
 const CONFIGURABLE_ROLES: OrgRole[] = ['Project Manager', 'Finance Officer']
 
@@ -229,7 +231,25 @@ export function RolePermissions() {
     setDirty(true)
   }
 
+  const planLimits = usePlanLimits()
+
   if (loading) return <Skeleton className="h-96 w-full" />
+
+  if (!planLimits.hasCustomRoles) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Shield className="h-4 w-4" />
+            {t('settings.rolePermissions')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <UpgradeBanner message="Custom role permissions are available on the Pro plan. Default roles are applied automatically." />
+        </CardContent>
+      </Card>
+    )
+  }
 
   const renderPermissionGroup = (title: string, description: string, items: PermissionItem[]) => (
     <div className="space-y-3">

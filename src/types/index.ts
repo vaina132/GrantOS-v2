@@ -3,7 +3,7 @@ export type OrgRole = 'Admin' | 'Project Manager' | 'Finance Officer' | 'Externa
 /** Roles that can be selected when inviting internal org members */
 export type InvitableRole = 'Admin' | 'Project Manager' | 'Finance Officer'
 export type AccessType = 'member' | 'collab_partner'
-export type OrgPlan = 'trial' | 'pro'
+export type OrgPlan = 'trial' | 'free' | 'pro'
 
 export type ProjectStatus = 'Upcoming' | 'Active' | 'Completed' | 'Suspended'
 export type AssignmentType = 'actual' | 'official'
@@ -853,6 +853,56 @@ export interface ReportTemplate {
 
 /** Monthly AI limits per plan tier */
 export const AI_PLAN_LIMITS: Record<OrgPlan, AiQuotaLimits> = {
-  trial: { monthly_tokens: 200_000,   monthly_requests: 10 },
-  pro:   { monthly_tokens: 5_000_000, monthly_requests: 200 },
+  trial: { monthly_tokens: 500_000,   monthly_requests: 5 },
+  free:  { monthly_tokens: 0,         monthly_requests: 0 },
+  pro:   { monthly_tokens: 10_000_000, monthly_requests: 100 },
+}
+
+/** Feature limits per plan tier (Infinity = unlimited) */
+export interface PlanLimits {
+  maxProjects: number
+  maxStaff: number
+  maxSeats: number
+  maxAiRequests: number
+  hasReportExport: boolean
+  hasCollaboration: boolean
+  hasCustomRoles: boolean
+  supportLevel: 'email' | 'priority_email'
+  trialDays: number
+}
+
+export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
+  trial: {
+    maxProjects: Infinity,
+    maxStaff: Infinity,
+    maxSeats: Infinity,
+    maxAiRequests: 5,
+    hasReportExport: true,
+    hasCollaboration: true,
+    hasCustomRoles: true,
+    supportLevel: 'email',
+    trialDays: 30,
+  },
+  free: {
+    maxProjects: 5,
+    maxStaff: 10,
+    maxSeats: 1,
+    maxAiRequests: 0,
+    hasReportExport: false,
+    hasCollaboration: false,
+    hasCustomRoles: false,
+    supportLevel: 'email',
+    trialDays: 0,
+  },
+  pro: {
+    maxProjects: Infinity,
+    maxStaff: Infinity,
+    maxSeats: Infinity,
+    maxAiRequests: 100,
+    hasReportExport: true,
+    hasCollaboration: true,
+    hasCustomRoles: true,
+    supportLevel: 'priority_email',
+    trialDays: 0,
+  },
 }

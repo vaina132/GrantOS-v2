@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
+import { usePlanLimits } from '@/hooks/usePlanLimits'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -26,6 +27,7 @@ export function ImportExportButtons({
 }: ImportExportButtonsProps) {
   const { t } = useTranslation()
   const { aiEnabled } = useAuthStore()
+  const { hasReportExport, hasAi } = usePlanLimits()
 
   return (
     <>
@@ -42,7 +44,7 @@ export function ImportExportButtons({
             <FileSpreadsheet className="h-4 w-4" />
             {t('import.fromFile')}
           </DropdownMenuItem>
-          {aiEnabled && (
+          {aiEnabled && hasAi && (
             <DropdownMenuItem onClick={onImportAI} className="gap-2 cursor-pointer">
               <Sparkles className="h-4 w-4" />
               {t('import.withAI')}
@@ -61,13 +63,13 @@ export function ImportExportButtons({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={onExportExcel} className="gap-2 cursor-pointer">
+            <DropdownMenuItem onClick={onExportExcel} disabled={!hasReportExport} className="gap-2 cursor-pointer">
               <FileSpreadsheet className="h-4 w-4" />
-              Excel (.xlsx)
+              Excel (.xlsx){!hasReportExport && ' (Pro)'}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onExportPDF} className="gap-2 cursor-pointer">
+            <DropdownMenuItem onClick={onExportPDF} disabled={!hasReportExport} className="gap-2 cursor-pointer">
               <FileText className="h-4 w-4" />
-              PDF
+              PDF{!hasReportExport && ' (Pro)'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

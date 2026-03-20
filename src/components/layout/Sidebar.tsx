@@ -25,6 +25,7 @@ import { GrantLumeLogo } from '@/components/common/GrantLumeLogo'
 import type { PermissionKey } from '@/lib/permissions'
 import type { LucideIcon } from 'lucide-react'
 import { AiQuotaWidget } from '@/components/ai/AiQuotaWidget'
+import { usePlanLimits } from '@/hooks/usePlanLimits'
 
 interface NavItem {
   path: string
@@ -75,11 +76,16 @@ export function Sidebar() {
   const location = useLocation()
   const { t } = useTranslation()
 
+  const planLimits = usePlanLimits()
+
   const visibleGroups = NAV_GROUPS.map((group) => ({
       ...group,
       items: group.items.filter((item) => {
         if (!item.permission) return true
-        return can(item.permission)
+        if (!can(item.permission)) return false
+        // Hide collaboration module on free plan
+        if (item.path === '/projects/collaboration' && !planLimits.hasCollaboration) return false
+        return true
       }),
     })).filter((group) => group.items.length > 0)
 
