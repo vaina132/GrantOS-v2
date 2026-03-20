@@ -134,7 +134,7 @@ export function SubscriptionSettings() {
     if (!orgId || !user?.email) return
     setUpgrading(true)
     try {
-      const resp = await fetch('/api/create-checkout', {
+      const resp = await fetch('/api/stripe?action=create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -166,7 +166,7 @@ export function SubscriptionSettings() {
     if (!orgId) return
     setManagingBilling(true)
     try {
-      const resp = await fetch('/api/create-portal', {
+      const resp = await fetch('/api/stripe?action=create-portal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ org_id: orgId }),

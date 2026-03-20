@@ -89,7 +89,7 @@ async function handleInviteMember(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    const existing = listData?.users?.find(
+    const existing = (listData?.users as any[])?.find(
       (u) => u.email?.toLowerCase() === email.toLowerCase(),
     )
 
