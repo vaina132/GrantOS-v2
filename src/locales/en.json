@@ -309,7 +309,8 @@
     "stepAllocations": "Allocate staff to projects",
     "stepAllocationsDesc": "Assign person-months to your projects",
     "stepTimesheets": "Set up timesheets",
-    "stepTimesheetsDesc": "Configure timesheet tracking for your team"
+    "stepTimesheetsDesc": "Configure timesheet tracking for your team",
+    "dontShowAgain": "Don't show this again"
   },
   "callback": {
     "verifying": "Verifying...",

@@ -22,7 +22,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const DISMISSED_KEY = 'grantlume_setup_checklist_dismissed'
+const DISMISSED_KEY = 'grantlume_setup_checklist_dismissed_v2'
 
 interface ChecklistStep {
   id: string
@@ -36,9 +36,10 @@ interface ChecklistStep {
 export function SetupChecklist() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { orgId, orgName } = useAuthStore()
+  const { orgId, orgName, user } = useAuthStore()
   const { projects } = useProjects()
   const { staff } = useStaff({})
+  const dismissKey = orgId && user?.id ? `${orgId}::${user.id}` : orgId ?? ''
 
   // Year-independent existence checks for allocations & timesheets
   const [hasAllocations, setHasAllocations] = useState(false)
@@ -52,7 +53,6 @@ export function SetupChecklist() {
       .from('assignments')
       .select('id', { count: 'exact', head: true })
       .eq('org_id', orgId)
-      .eq('type', 'actual')
       .limit(1)
       .then(({ count }) => { if (!cancelled) setHasAllocations((count ?? 0) > 0) })
     // Check if ANY timesheet_days entry exists for this org
@@ -69,25 +69,25 @@ export function SetupChecklist() {
   const [dismissed, setDismissed] = useState(() => {
     try {
       const stored = localStorage.getItem(DISMISSED_KEY)
-      if (!stored || !orgId) return false
+      if (!stored || !dismissKey) return false
       const parsed = JSON.parse(stored) as Record<string, boolean>
-      return parsed[orgId] === true
+      return parsed[dismissKey] === true
     } catch { return false }
   })
 
-  // Re-check dismissal when orgId changes
+  // Re-check dismissal when orgId or user changes
   useEffect(() => {
-    if (!orgId) return
+    if (!dismissKey) return
     try {
       const stored = localStorage.getItem(DISMISSED_KEY)
       if (stored) {
         const parsed = JSON.parse(stored) as Record<string, boolean>
-        setDismissed(parsed[orgId] === true)
+        setDismissed(parsed[dismissKey] === true)
       } else {
         setDismissed(false)
       }
     } catch { setDismissed(false) }
-  }, [orgId])
+  }, [dismissKey])
 
   const steps: ChecklistStep[] = useMemo(() => [
     {
@@ -137,12 +137,12 @@ export function SetupChecklist() {
   const progress = Math.round((completedCount / steps.length) * 100)
 
   const handleDismiss = () => {
-    if (!orgId) return
+    if (!dismissKey) return
     setDismissed(true)
     try {
       const stored = localStorage.getItem(DISMISSED_KEY)
       const parsed = stored ? JSON.parse(stored) : {}
-      parsed[orgId] = true
+      parsed[dismissKey] = true
       localStorage.setItem(DISMISSED_KEY, JSON.stringify(parsed))
     } catch { /* ignore */ }
   }
@@ -197,6 +197,14 @@ export function SetupChecklist() {
           ))}
         </div>
       </CardContent>
+      <div className="px-6 pb-4 pt-0 flex justify-end">
+        <button
+          onClick={handleDismiss}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {t('onboarding.dontShowAgain')}
+        </button>
+      </div>
     </Card>
   )
 }
