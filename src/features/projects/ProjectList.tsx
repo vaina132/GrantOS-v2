@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useProjects } from '@/hooks/useProjects'
 import type { ProjectFilters } from '@/services/projectsService'
 import { projectsService } from '@/services/projectsService'
@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/use-toast'
-import { Plus, Search, Trash2, Pencil, FolderKanban, Globe } from 'lucide-react'
+import { Plus, Search, Trash2, Pencil, FolderKanban, Globe, List, GanttChart as GanttChartIcon } from 'lucide-react'
 import { generateProjectsListPDF } from '@/services/reportGenerator'
 import { ImportExportButtons } from '@/components/common/ImportExportButtons'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
@@ -24,12 +24,16 @@ import { ImportDialog } from '@/components/import/ImportDialog'
 import { exportToExcel } from '@/lib/exportUtils'
 import { usePlanLimits } from '@/hooks/usePlanLimits'
 import { UpgradeBanner } from '@/components/ui/UpgradeBanner'
+import { GanttChart } from '@/features/timeline/GanttChart'
+
+type ProjectView = 'list' | 'timeline'
 
 const STATUS_OPTIONS: (ProjectStatus | 'All')[] = ['All', 'Upcoming', 'Active', 'Completed', 'Suspended']
 
 export function ProjectList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { can } = useAuthStore()
   const planLimits = usePlanLimits()
   const [search, setSearch] = useState('')
@@ -38,6 +42,13 @@ export function ProjectList() {
   const [importOpen, setImportOpen] = useState(false)
   const [importAiOpen, setImportAiOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const view: ProjectView = (searchParams.get('view') as ProjectView) || 'list'
+  const setView = (v: ProjectView) => {
+    const params = new URLSearchParams(searchParams)
+    if (v === 'list') params.delete('view')
+    else params.set('view', v)
+    setSearchParams(params, { replace: true })
+  }
 
   const filters: ProjectFilters = {
     search: search || undefined,
@@ -117,6 +128,38 @@ export function ProjectList() {
         <UpgradeBanner message={`You have ${projects.length} projects. Your plan allows up to ${planLimits.limits.maxProjects}. Upgrade to Pro for unlimited projects.`} />
       )}
 
+      {/* View toggle: List / Timeline */}
+      <div className="flex items-center gap-1 border-b">
+        <button
+          onClick={() => setView('list')}
+          className={cn(
+            'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
+            view === 'list'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
+          )}
+        >
+          <List className="h-4 w-4" />
+          {t('common.list')}
+        </button>
+        <button
+          onClick={() => setView('timeline')}
+          className={cn(
+            'flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px',
+            view === 'timeline'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border',
+          )}
+        >
+          <GanttChartIcon className="h-4 w-4" />
+          {t('nav.timeline')}
+        </button>
+      </div>
+
+      {view === 'timeline' ? (
+        <GanttChart />
+      ) : (
+      <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -319,6 +362,8 @@ export function ProjectList() {
         aiMode
         onImportComplete={() => refetch()}
       />
+      </>
+      )}
     </div>
   )
 }

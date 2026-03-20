@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, useCallback, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
@@ -19,6 +19,20 @@ export function AppShell({ children }: AppShellProps) {
   const loadOrg = useOrgStore((s) => s.load)
   const { showWarning, secondsLeft, dismissWarning } = useIdleTimeout()
   const location = useLocation()
+  const [focusKey, setFocusKey] = useState(0)
+
+  // Re-mount page content when the browser tab becomes visible again
+  // This ensures useState/useEffect-based pages reload their data
+  const handleVisibilityChange = useCallback(() => {
+    if (document.visibilityState === 'visible') {
+      setFocusKey(k => k + 1)
+    }
+  }, [])
+
+  useEffect(() => {
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [handleVisibilityChange])
 
   useEffect(() => {
     if (orgId) loadOrg(orgId)
@@ -28,7 +42,7 @@ export function AppShell({ children }: AppShellProps) {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main key={location.pathname} className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main key={`${location.pathname}:${focusKey}`} className="flex-1 overflow-y-auto p-4 lg:p-6">
           <Breadcrumbs />
           {children}
         </main>

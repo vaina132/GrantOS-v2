@@ -81,16 +81,19 @@ export function AiQuotaWidget({ variant = 'full', className, onQuotaExhausted }:
 
   if (variant === 'compact') {
     return (
-      <div className="flex items-center gap-2 text-xs">
-        <Sparkles className={cn('h-3.5 w-3.5 shrink-0', iconColor)} />
-        <div className="flex-1 min-w-[80px]">
-          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-            <div className={cn('h-full rounded-full transition-all', barColor)} style={{ width: `${requestPct}%` }} />
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-[11px]">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className={cn('h-3 w-3 shrink-0', iconColor)} />
+            <span className="font-medium text-muted-foreground">{t('ai.quota')}</span>
           </div>
+          <span className={cn('font-semibold tabular-nums', isExhausted ? 'text-red-500' : isWarning ? 'text-amber-500' : 'text-muted-foreground')}>
+            {remainingPct}% {t('ai.requestsRemaining')}
+          </span>
         </div>
-        <span className={cn('whitespace-nowrap font-medium', isExhausted ? 'text-red-500' : isWarning ? 'text-amber-500' : 'text-muted-foreground')}>
-          {remainingPct}% {t('ai.requestsRemaining')}
-        </span>
+        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+          <div className={cn('h-full rounded-full transition-all', barColor)} style={{ width: `${requestPct}%` }} />
+        </div>
       </div>
     )
   }

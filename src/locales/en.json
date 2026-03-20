@@ -1115,6 +1115,7 @@
     "requests": "Requests",
     "tokensLeft": "left",
     "creditsLeft": "credits left",
+    "requestsRemaining": "remaining",
     "quotaExhausted": "Monthly AI limit reached. Upgrade your plan for more.",
     "quotaWarning": "{{remaining}} tokens remaining this month — use wisely.",
     "quotaOk": "{{remaining}} tokens and {{requests}} requests remaining this month.",
