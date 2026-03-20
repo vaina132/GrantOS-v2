@@ -1729,7 +1729,7 @@
     "faqCancelAnswer": "You can cancel anytime. Your data remains accessible in read-only mode until the end of your billing period.",
     "faqData": "Is my data safe if my trial expires?",
     "faqDataAnswer": "Yes. Your data is preserved for 90 days after trial expiry. Upgrade anytime to regain full access.",
-    "paymentNote": "Payments are processed securely by Paddle. For billing questions, contact"
+    "paymentNote": "Payments are processed securely by Stripe. For billing questions, contact"
   },
   "invite": {
     "youveBeenInvited": "You've been invited!",

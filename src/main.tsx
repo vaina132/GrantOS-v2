@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { initSentry } from './lib/sentry'
-import { initPaddle } from './lib/paddle'
+import { getStripe } from './lib/stripe'
 import App from './App'
 import './index.css'
 import './lib/i18n'
@@ -11,8 +11,8 @@ import './lib/i18n'
 // Initialize Sentry error tracking (no-op if VITE_SENTRY_DSN not set)
 initSentry()
 
-// Initialize Paddle billing (no-op if VITE_PADDLE_CLIENT_TOKEN not set)
-initPaddle()
+// Pre-warm Stripe.js (no-op if VITE_STRIPE_PUBLISHABLE_KEY not set)
+getStripe()
 
 // Apply dark mode class before first render to avoid flash
 const stored = localStorage.getItem('grantlume-dark-mode')

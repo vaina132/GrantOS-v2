@@ -12,8 +12,6 @@ import {
   Check,
   Crown,
   Sparkles,
-  Zap,
-  Building2,
   AlertTriangle,
   ExternalLink,
   CreditCard,
@@ -25,139 +23,43 @@ import {
   FileText,
   Globe,
   Lock,
+  Loader2,
+  Tag,
+  Infinity,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { differenceInDays } from 'date-fns'
 import type { OrgPlan, AiUsage } from '@/types'
 import { AI_PLAN_LIMITS } from '@/types'
 
-// ── Plan definitions ─────────────────────────────────────
+// ── Pricing ──────────────────────────────────────────────
 
-interface PlanDef {
-  id: OrgPlan
-  name: string
-  price: string
-  period: string
-  description: string
-  icon: typeof Crown
-  color: string
-  bgColor: string
-  borderColor: string
-  features: string[]
-  limits: { projects: string; staff: string; users: string; ai: string; extras: string[] }
-  paddlePriceId?: string // Will be set once Paddle is integrated
-  highlighted?: boolean
-}
+const PRICING = {
+  monthly: { amount: 149, label: '149€', period: '/month' },
+  yearly:  { amount: 1490, label: '1,490€', period: '/year', savings: '2 months free' },
+} as const
 
-const PLANS: PlanDef[] = [
-  {
-    id: 'trial',
-    name: 'Free Trial',
-    price: '0',
-    period: '14 days',
-    description: 'See if GrantLume fits your team',
-    icon: Sparkles,
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-50',
-    borderColor: 'border-gray-200',
-    features: [
-      'All features included',
-      '3 projects',
-      '5 staff members',
-      '2 user seats',
-      '5 AI document parses',
-    ],
-    limits: {
-      projects: '3',
-      staff: '5',
-      users: '2',
-      ai: '10 requests / 200K tokens',
-      extras: [],
-    },
-  },
-  {
-    id: 'starter',
-    name: 'Starter',
-    price: '49',
-    period: '/mo',
-    description: 'For small research groups',
-    icon: Zap,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-200',
-    features: [
-      '10 projects',
-      '20 staff members',
-      '5 user seats',
-      '20 AI parses/month',
-      'PDF reports & export',
-    ],
-    limits: {
-      projects: '10',
-      staff: '20',
-      users: '5',
-      ai: '30 requests / 500K tokens',
-      extras: ['PDF reports & export'],
-    },
-    paddlePriceId: '', // TODO: Set Paddle price ID
-    highlighted: true,
-  },
-  {
-    id: 'growth',
-    name: 'Growth',
-    price: '99',
-    period: '/mo',
-    description: 'For departments with partners',
-    icon: Crown,
-    color: 'text-emerald-600',
-    bgColor: 'bg-emerald-50',
-    borderColor: 'border-emerald-200',
-    features: [
-      'Unlimited projects',
-      'Unlimited staff',
-      '20 user seats',
-      '100 AI parses/month',
-      'Collaboration module',
-      'Custom role permissions',
-    ],
-    limits: {
-      projects: 'Unlimited',
-      staff: 'Unlimited',
-      users: '20',
-      ai: '100 requests / 2M tokens',
-      extras: ['Collaboration module', 'Custom role permissions'],
-    },
-    paddlePriceId: '', // TODO: Set Paddle price ID
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 'Custom',
-    period: '',
-    description: 'For large institutions',
-    icon: Building2,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50',
-    borderColor: 'border-purple-200',
-    features: [
-      'Everything in Growth',
-      'Unlimited user seats',
-      '500 AI parses/month',
-      'Priority support',
-      'SSO integration',
-      'Custom onboarding',
-    ],
-    limits: {
-      projects: 'Unlimited',
-      staff: 'Unlimited',
-      users: 'Unlimited',
-      ai: '500 requests / 10M tokens',
-      extras: ['Priority support', 'SSO', 'Custom onboarding'],
-    },
-  },
+type BillingInterval = 'monthly' | 'yearly'
+
+const PRO_FEATURES = [
+  'Unlimited projects',
+  'Unlimited staff members',
+  'Unlimited user seats',
+  '200 AI requests / 5M tokens per month',
+  'Advanced report builder',
+  'Collaboration module',
+  'Custom role permissions',
+  'Excel & CSV exports',
+  'Priority email support',
 ]
 
-const PLAN_ORDER: OrgPlan[] = ['trial', 'starter', 'growth', 'enterprise']
+const TRIAL_FEATURES = [
+  'All features included for 14 days',
+  '3 projects',
+  '5 staff members',
+  '2 user seats',
+  '10 AI requests / 200K tokens',
+]
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`
@@ -169,15 +71,18 @@ function formatTokens(n: number): string {
 
 export function SubscriptionSettings() {
   const { t } = useTranslation()
-  const { orgId, trialEndsAt } = useAuthStore()
+  const { orgId, user, trialEndsAt } = useAuthStore()
   const [loading, setLoading] = useState(true)
   const [currentPlan, setCurrentPlan] = useState<OrgPlan>('trial')
   const [trialEnd, setTrialEnd] = useState<string | null>(null)
-  const [paddleCustomerId, setPaddleCustomerId] = useState<string | null>(null)
-  const [paddleSubscriptionId, setPaddleSubscriptionId] = useState<string | null>(null)
+  const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null)
+  const [stripeSubscriptionId, setStripeSubscriptionId] = useState<string | null>(null)
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [aiUsage, setAiUsage] = useState<AiUsage | null>(null)
-  const [upgrading, setUpgrading] = useState<OrgPlan | null>(null)
+  const [upgrading, setUpgrading] = useState(false)
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>('monthly')
+  const [promoCode, setPromoCode] = useState('')
+  const [managingBilling, setManagingBilling] = useState(false)
 
   const fetchData = useCallback(async () => {
     if (!orgId) return
@@ -188,10 +93,12 @@ export function SubscriptionSettings() {
         aiUsageService.getCurrentUsage(orgId),
       ])
       if (org) {
-        setCurrentPlan((org.plan as OrgPlan) || 'trial')
+        // Map legacy plan values to new type
+        const plan = org.plan === 'pro' ? 'pro' : 'trial'
+        setCurrentPlan(plan as OrgPlan)
         setTrialEnd(org.trial_ends_at)
-        setPaddleCustomerId((org as any).paddle_customer_id ?? null)
-        setPaddleSubscriptionId((org as any).paddle_subscription_id ?? null)
+        setStripeCustomerId((org as any).stripe_customer_id ?? null)
+        setStripeSubscriptionId((org as any).stripe_subscription_id ?? null)
         setSubscriptionStatus((org as any).subscription_status ?? null)
       }
       setAiUsage(usage)
@@ -204,6 +111,23 @@ export function SubscriptionSettings() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  // Check for ?upgraded=true in URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('upgraded') === 'true') {
+      toast({
+        title: 'Welcome to GrantLume Pro!',
+        description: 'Your subscription is now active. Enjoy unlimited access to all features.',
+      })
+      // Clean up URL
+      const url = new URL(window.location.href)
+      url.searchParams.delete('upgraded')
+      window.history.replaceState({}, '', url.toString())
+      // Refresh data
+      fetchData()
+    }
+  }, [fetchData])
+
   // Trial days remaining
   const trialDaysLeft = currentPlan === 'trial' && (trialEnd || trialEndsAt)
     ? Math.max(0, differenceInDays(new Date(trialEnd || trialEndsAt!), new Date()))
@@ -211,92 +135,71 @@ export function SubscriptionSettings() {
 
   const trialExpired = trialDaysLeft !== null && trialDaysLeft <= 0
 
-  // Current plan index for comparison
-  const currentPlanIdx = PLAN_ORDER.indexOf(currentPlan)
-
   // AI usage stats
-  const limits = AI_PLAN_LIMITS[currentPlan]
+  const limits = AI_PLAN_LIMITS[currentPlan] || AI_PLAN_LIMITS.trial
   const tokensUsed = aiUsage ? (aiUsage.tokens_in + aiUsage.tokens_out) : 0
   const requestsUsed = aiUsage?.request_count ?? 0
   const tokenPct = limits.monthly_tokens > 0 ? Math.min(100, (tokensUsed / limits.monthly_tokens) * 100) : 0
   const requestPct = limits.monthly_requests > 0 ? Math.min(100, (requestsUsed / limits.monthly_requests) * 100) : 0
 
-  // Handle upgrade click
-  const handleUpgrade = async (targetPlan: OrgPlan) => {
-    if (targetPlan === 'enterprise') {
-      window.location.href = 'mailto:hello@grantlume.com?subject=Enterprise%20Plan%20Inquiry'
-      return
-    }
+  const isPro = currentPlan === 'pro' && subscriptionStatus === 'active'
 
-    setUpgrading(targetPlan)
-
-    // Check if Paddle.js is loaded and price IDs are set
-    const planDef = PLANS.find(p => p.id === targetPlan)
-    if (!planDef?.paddlePriceId) {
-      // Paddle not yet configured — show a helpful message
-      toast({
-        title: t('subscription.upgradeComingSoon'),
-        description: t('subscription.upgradeComingSoonDesc'),
-      })
-      setUpgrading(null)
-      return
-    }
-
+  // Handle upgrade → Stripe Checkout
+  const handleUpgrade = async () => {
+    if (!orgId || !user?.email) return
+    setUpgrading(true)
     try {
-      // Open Paddle checkout overlay
-      const Paddle = (window as any).Paddle
-      if (!Paddle) {
-        toast({
-          title: t('subscription.paymentUnavailable'),
-          description: t('subscription.paymentUnavailableDesc'),
-          variant: 'destructive',
-        })
-        setUpgrading(null)
-        return
-      }
-
-      Paddle.Checkout.open({
-        items: [{ priceId: planDef.paddlePriceId, quantity: 1 }],
-        customData: { org_id: orgId },
-        customer: paddleCustomerId ? { id: paddleCustomerId } : undefined,
-        settings: {
-          displayMode: 'overlay',
-          theme: 'light',
-          locale: 'en',
-          successUrl: `${window.location.origin}/settings?tab=subscription&upgraded=true`,
-        },
+      const resp = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          org_id: orgId,
+          user_email: user.email,
+          billing_interval: billingInterval,
+          promo_code: promoCode.trim() || undefined,
+        }),
       })
+      const data = await resp.json()
+      if (!resp.ok) throw new Error(data.error || 'Checkout failed')
+      if (data.url) {
+        window.location.href = data.url
+      }
     } catch (err) {
-      console.error('Paddle checkout error:', err)
+      console.error('Checkout error:', err)
       toast({
         title: t('common.error'),
-        description: t('subscription.checkoutFailed'),
+        description: err instanceof Error ? err.message : 'Failed to start checkout. Please try again.',
         variant: 'destructive',
       })
     } finally {
-      setUpgrading(null)
+      setUpgrading(false)
     }
   }
 
-  // Handle manage subscription (Paddle customer portal)
-  const handleManageSubscription = () => {
-    // For now link to Paddle customer portal if subscription exists
-    if (paddleSubscriptionId) {
-      const Paddle = (window as any).Paddle
-      if (Paddle) {
-        try {
-          Paddle.Checkout.open({
-            transactionId: paddleSubscriptionId,
-            settings: { displayMode: 'overlay' },
-          })
-          return
-        } catch { /* fallthrough */ }
+  // Handle manage subscription → Stripe Customer Portal
+  const handleManageSubscription = async () => {
+    if (!orgId) return
+    setManagingBilling(true)
+    try {
+      const resp = await fetch('/api/create-portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ org_id: orgId }),
+      })
+      const data = await resp.json()
+      if (!resp.ok) throw new Error(data.error || 'Portal failed')
+      if (data.url) {
+        window.location.href = data.url
       }
+    } catch (err) {
+      toast({
+        title: t('common.error'),
+        description: err instanceof Error ? err.message : 'Failed to open billing portal.',
+        variant: 'destructive',
+      })
+    } finally {
+      setManagingBilling(false)
     }
-    toast({
-      title: t('subscription.manageSubscription'),
-      description: t('subscription.manageSubscriptionDesc'),
-    })
   }
 
   if (loading) return <Skeleton className="h-96 w-full" />
@@ -316,10 +219,10 @@ export function SubscriptionSettings() {
                 {t('subscription.currentPlanDesc')}
               </CardDescription>
             </div>
-            {subscriptionStatus === 'active' && paddleSubscriptionId && (
-              <Button variant="outline" size="sm" onClick={handleManageSubscription}>
+            {isPro && stripeSubscriptionId && (
+              <Button variant="outline" size="sm" onClick={handleManageSubscription} disabled={managingBilling}>
+                {managingBilling ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <ExternalLink className="mr-1 h-3.5 w-3.5" />}
                 {t('subscription.manageSubscription')}
-                <ExternalLink className="ml-1 h-3.5 w-3.5" />
               </Button>
             )}
           </div>
@@ -330,36 +233,32 @@ export function SubscriptionSettings() {
             <div className="flex items-center gap-4">
               <div className={cn(
                 'flex h-14 w-14 items-center justify-center rounded-xl',
-                PLANS.find(p => p.id === currentPlan)?.bgColor ?? 'bg-muted',
+                isPro ? 'bg-primary/10' : 'bg-muted',
               )}>
-                {(() => {
-                  const Icon = PLANS.find(p => p.id === currentPlan)?.icon ?? Sparkles
-                  const color = PLANS.find(p => p.id === currentPlan)?.color ?? 'text-muted-foreground'
-                  return <Icon className={cn('h-7 w-7', color)} />
-                })()}
+                {isPro
+                  ? <Crown className="h-7 w-7 text-primary" />
+                  : <Sparkles className="h-7 w-7 text-muted-foreground" />
+                }
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="text-lg font-bold">
-                    {PLANS.find(p => p.id === currentPlan)?.name ?? currentPlan}
+                    {isPro ? 'GrantLume Pro' : 'Free Trial'}
                   </h3>
-                  <Badge variant={currentPlan === 'trial' ? 'secondary' : 'default'} className="text-xs">
+                  <Badge variant={isPro ? 'default' : 'secondary'} className="text-xs">
                     {subscriptionStatus === 'active' ? t('subscription.active') :
                      subscriptionStatus === 'past_due' ? t('subscription.pastDue') :
-                     currentPlan === 'trial' ? t('subscription.trial') :
-                     t('subscription.active')}
+                     subscriptionStatus === 'cancelled' ? 'Cancelled' :
+                     t('subscription.trial')}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {currentPlan === 'trial' && trialDaysLeft !== null ? (
+                  {isPro ? (
+                    <span className="font-semibold">Active subscription</span>
+                  ) : currentPlan === 'trial' && trialDaysLeft !== null ? (
                     trialExpired
                       ? <span className="text-destructive font-medium">{t('subscription.trialExpired')}</span>
                       : <span>{t('subscription.trialDaysLeft', { count: trialDaysLeft })}</span>
-                  ) : currentPlan !== 'trial' ? (
-                    <>
-                      <span className="font-semibold">{PLANS.find(p => p.id === currentPlan)?.price}€</span>
-                      <span>{PLANS.find(p => p.id === currentPlan)?.period}</span>
-                    </>
                   ) : null}
                 </p>
               </div>
@@ -385,6 +284,19 @@ export function SubscriptionSettings() {
                     {trialExpired
                       ? t('subscription.trialExpiredDesc')
                       : t('subscription.trialExpiringDesc', { count: trialDaysLeft })}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Past-due warning */}
+            {subscriptionStatus === 'past_due' && (
+              <div className="flex items-center gap-3 rounded-lg px-4 py-3 flex-1 bg-destructive/10 border border-destructive/20">
+                <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
+                <div className="text-sm">
+                  <p className="font-medium text-destructive">Payment Failed</p>
+                  <p className="mt-0.5 text-destructive/80">
+                    Your last payment could not be processed. Please update your payment method to avoid service interruption.
                   </p>
                 </div>
               </div>
@@ -433,98 +345,121 @@ export function SubscriptionSettings() {
         </CardContent>
       </Card>
 
-      {/* ── Plan Comparison Cards ── */}
-      <div>
-        <h3 className="text-base font-semibold mb-4">{t('subscription.comparePlans')}</h3>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {PLANS.map((plan) => {
-            const isCurrent = plan.id === currentPlan
-            const planIdx = PLAN_ORDER.indexOf(plan.id)
-            const isUpgrade = planIdx > currentPlanIdx
-            const isDowngrade = planIdx < currentPlanIdx
-            const PlanIcon = plan.icon
+      {/* ── Upgrade to Pro (shown only on trial) ── */}
+      {!isPro && (
+        <Card className="ring-1 ring-primary/30 shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg p-2 bg-primary/10">
+                <Crown className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Upgrade to GrantLume Pro</CardTitle>
+                <CardDescription>Unlock everything. No limits on projects, staff, or users.</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Billing interval toggle */}
+            <div className="flex items-center justify-center gap-2">
+              <div className="flex bg-muted rounded-lg p-0.5">
+                <button
+                  onClick={() => setBillingInterval('monthly')}
+                  className={cn(
+                    'px-4 py-2 rounded-md text-sm font-medium transition-all',
+                    billingInterval === 'monthly'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setBillingInterval('yearly')}
+                  className={cn(
+                    'px-4 py-2 rounded-md text-sm font-medium transition-all',
+                    billingInterval === 'yearly'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  Annual
+                  <Badge variant="secondary" className="ml-1.5 text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400">
+                    Save 298€
+                  </Badge>
+                </button>
+              </div>
+            </div>
 
-            return (
-              <Card
-                key={plan.id}
-                className={cn(
-                  'relative flex flex-col transition-shadow',
-                  isCurrent && 'ring-2 ring-primary shadow-md',
-                  plan.highlighted && !isCurrent && 'ring-1 ring-blue-300',
-                )}
-              >
-                {plan.highlighted && !isCurrent && (
-                  <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
-                    <Badge className="bg-blue-600 text-white text-[10px] px-2 py-0.5">{t('subscription.popular')}</Badge>
-                  </div>
-                )}
-                {isCurrent && (
-                  <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10">
-                    <Badge className="bg-primary text-primary-foreground text-[10px] px-2 py-0.5">{t('subscription.currentBadge')}</Badge>
-                  </div>
-                )}
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <div className={cn('rounded-lg p-1.5', plan.bgColor)}>
-                      <PlanIcon className={cn('h-4 w-4', plan.color)} />
-                    </div>
-                    <CardTitle className="text-sm">{plan.name}</CardTitle>
-                  </div>
-                  <CardDescription className="text-xs">{plan.description}</CardDescription>
-                  <div className="mt-2">
-                    {plan.price === 'Custom' ? (
-                      <span className="text-2xl font-bold">{t('subscription.custom')}</span>
-                    ) : (
-                      <>
-                        <span className="text-2xl font-bold">{plan.price}€</span>
-                        {plan.period && <span className="text-sm text-muted-foreground ml-0.5">{plan.period}</span>}
-                      </>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 pb-4">
-                  <ul className="space-y-1.5">
-                    {plan.features.map((f, i) => (
-                      <li key={i} className="flex items-start gap-1.5 text-xs">
-                        <Check className="h-3.5 w-3.5 mt-0.5 shrink-0 text-emerald-500" />
-                        <span className="text-muted-foreground">{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-                <div className="px-6 pb-5">
-                  {isCurrent ? (
-                    <Button variant="outline" size="sm" className="w-full" disabled>
-                      {t('subscription.currentPlanBtn')}
-                    </Button>
-                  ) : isUpgrade ? (
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      onClick={() => handleUpgrade(plan.id)}
-                      disabled={upgrading !== null}
-                    >
-                      {upgrading === plan.id ? (
-                        t('subscription.processing')
-                      ) : (
-                        <>
-                          {t('subscription.upgrade')} <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                        </>
-                      )}
-                    </Button>
-                  ) : isDowngrade ? (
-                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground" disabled>
-                      {t('subscription.downgrade')}
-                    </Button>
-                  ) : null}
+            {/* Price display */}
+            <div className="text-center">
+              <div className="flex items-baseline justify-center gap-1">
+                <span className="text-4xl font-bold tracking-tight">
+                  {billingInterval === 'monthly' ? '149' : '1,490'}€
+                </span>
+                <span className="text-lg text-muted-foreground">
+                  {billingInterval === 'monthly' ? '/month' : '/year'}
+                </span>
+              </div>
+              {billingInterval === 'yearly' && (
+                <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+                  That's ~124€/month — 2 months free!
+                </p>
+              )}
+            </div>
+
+            {/* Features grid */}
+            <div className="grid sm:grid-cols-2 gap-2">
+              {PRO_FEATURES.map((f, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm">
+                  <Check className="h-4 w-4 mt-0.5 shrink-0 text-emerald-500" />
+                  <span className="text-muted-foreground">{f}</span>
                 </div>
-              </Card>
-            )
-          })}
-        </div>
-      </div>
+              ))}
+            </div>
 
-      {/* ── Feature Comparison Table ── */}
+            {/* Promo code input */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 pt-2 border-t">
+              <div className="flex-1">
+                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1.5">
+                  <Tag className="h-3 w-3" />
+                  Promo Code (optional)
+                </label>
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={e => setPromoCode(e.target.value.toUpperCase())}
+                  placeholder="e.g. FOUNDINGCUSTOMER26"
+                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 uppercase tracking-wider"
+                />
+              </div>
+              <Button
+                size="lg"
+                className="sm:w-auto w-full h-10"
+                onClick={handleUpgrade}
+                disabled={upgrading}
+              >
+                {upgrading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Redirecting to checkout...
+                  </>
+                ) : (
+                  <>
+                    Subscribe Now <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <p className="text-[10px] text-muted-foreground text-center">
+              Secure payment via Stripe. Cancel anytime from the billing portal.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Feature Comparison (Trial vs Pro) ── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">{t('subscription.featureComparison')}</CardTitle>
@@ -535,26 +470,24 @@ export function SubscriptionSettings() {
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('subscription.feature')}</th>
-                  {PLANS.map(p => (
-                    <th key={p.id} className={cn(
-                      'px-4 py-2.5 text-center font-medium',
-                      p.id === currentPlan && 'bg-primary/5',
-                    )}>
-                      {p.name}
-                    </th>
-                  ))}
+                  <th className={cn('px-4 py-2.5 text-center font-medium', currentPlan === 'trial' && 'bg-primary/5')}>
+                    Free Trial
+                  </th>
+                  <th className={cn('px-4 py-2.5 text-center font-medium', currentPlan === 'pro' && 'bg-primary/5')}>
+                    Pro
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {[
-                  { icon: FolderKanban, label: t('subscription.limitProjects'), values: PLANS.map(p => p.limits.projects) },
-                  { icon: Users, label: t('subscription.limitStaff'), values: PLANS.map(p => p.limits.staff) },
-                  { icon: Users, label: t('subscription.limitUsers'), values: PLANS.map(p => p.limits.users) },
-                  { icon: Bot, label: t('subscription.limitAi'), values: PLANS.map(p => p.limits.ai) },
-                  { icon: FileText, label: t('subscription.limitReports'), values: ['Basic', 'Full', 'Full', 'Full'] },
-                  { icon: Globe, label: t('subscription.limitCollab'), values: ['—', '—', '✓', '✓'] },
-                  { icon: Lock, label: t('subscription.limitRoles'), values: ['Default', 'Default', 'Custom', 'Custom'] },
-                  { icon: Shield, label: t('subscription.limitSupport'), values: ['Community', 'Email', 'Priority', 'Dedicated'] },
+                  { icon: FolderKanban, label: t('subscription.limitProjects'), trial: '3', pro: 'Unlimited' },
+                  { icon: Users, label: t('subscription.limitStaff'), trial: '5', pro: 'Unlimited' },
+                  { icon: Users, label: t('subscription.limitUsers'), trial: '2', pro: 'Unlimited' },
+                  { icon: Bot, label: t('subscription.limitAi'), trial: '10 req / 200K tokens', pro: '200 req / 5M tokens' },
+                  { icon: FileText, label: t('subscription.limitReports'), trial: 'Basic', pro: 'Full' },
+                  { icon: Globe, label: t('subscription.limitCollab'), trial: '—', pro: '✓' },
+                  { icon: Lock, label: t('subscription.limitRoles'), trial: 'Default', pro: 'Custom' },
+                  { icon: Shield, label: t('subscription.limitSupport'), trial: 'Community', pro: 'Priority Email' },
                 ].map((row, i) => {
                   const RowIcon = row.icon
                   return (
@@ -563,14 +496,14 @@ export function SubscriptionSettings() {
                         <RowIcon className="h-3.5 w-3.5 text-muted-foreground" />
                         <span>{row.label}</span>
                       </td>
-                      {row.values.map((v, j) => (
-                        <td key={j} className={cn(
-                          'px-4 py-2.5 text-center text-xs',
-                          PLANS[j].id === currentPlan && 'bg-primary/5 font-medium',
-                        )}>
-                          {v === '✓' ? <Check className="h-4 w-4 text-emerald-500 mx-auto" /> : v}
-                        </td>
-                      ))}
+                      <td className={cn('px-4 py-2.5 text-center text-xs', currentPlan === 'trial' && 'bg-primary/5 font-medium')}>
+                        {row.trial === '✓' ? <Check className="h-4 w-4 text-emerald-500 mx-auto" /> : row.trial}
+                      </td>
+                      <td className={cn('px-4 py-2.5 text-center text-xs', currentPlan === 'pro' && 'bg-primary/5 font-medium')}>
+                        {row.pro === '✓' ? <Check className="h-4 w-4 text-emerald-500 mx-auto" />
+                          : row.pro === 'Unlimited' ? <span className="inline-flex items-center gap-0.5"><Infinity className="h-3.5 w-3.5" /> Unlimited</span>
+                          : row.pro}
+                      </td>
                     </tr>
                   )
                 })}
@@ -587,12 +520,12 @@ export function SubscriptionSettings() {
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground">
           <div>
-            <p className="font-medium text-foreground">{t('subscription.faqUpgrade')}</p>
-            <p>{t('subscription.faqUpgradeAnswer')}</p>
+            <p className="font-medium text-foreground">How does the annual plan work?</p>
+            <p>You pay 1,490€ upfront for the full year — that's 2 months free compared to monthly billing (149€ × 12 = 1,788€).</p>
           </div>
           <div>
-            <p className="font-medium text-foreground">{t('subscription.faqDowngrade')}</p>
-            <p>{t('subscription.faqDowngradeAnswer')}</p>
+            <p className="font-medium text-foreground">Can I use a promo code?</p>
+            <p>Yes! Enter your promo code before checkout. Founding customer discounts and special promotions are applied automatically via Stripe.</p>
           </div>
           <div>
             <p className="font-medium text-foreground">{t('subscription.faqCancel')}</p>
@@ -601,6 +534,10 @@ export function SubscriptionSettings() {
           <div>
             <p className="font-medium text-foreground">{t('subscription.faqData')}</p>
             <p>{t('subscription.faqDataAnswer')}</p>
+          </div>
+          <div>
+            <p className="font-medium text-foreground">How do I update my payment method?</p>
+            <p>Click "Manage Subscription" above to open the Stripe billing portal where you can update your card, download invoices, and manage your subscription.</p>
           </div>
           <div className="pt-2 border-t">
             <p className="text-xs">

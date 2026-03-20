@@ -3,7 +3,7 @@ export type OrgRole = 'Admin' | 'Project Manager' | 'Finance Officer' | 'Externa
 /** Roles that can be selected when inviting internal org members */
 export type InvitableRole = 'Admin' | 'Project Manager' | 'Finance Officer'
 export type AccessType = 'member' | 'collab_partner'
-export type OrgPlan = 'trial' | 'starter' | 'growth' | 'enterprise'
+export type OrgPlan = 'trial' | 'pro'
 
 export type ProjectStatus = 'Upcoming' | 'Active' | 'Completed' | 'Suspended'
 export type AssignmentType = 'actual' | 'official'
@@ -34,9 +34,9 @@ export interface Organisation {
   plan: OrgPlan
   trial_ends_at: string | null
   is_active: boolean
-  // Paddle billing
-  paddle_customer_id: string | null
-  paddle_subscription_id: string | null
+  // Stripe billing
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
   subscription_status: string | null
   // DocuSign integration
   docusign_integration_key: string | null
@@ -853,8 +853,6 @@ export interface ReportTemplate {
 
 /** Monthly AI limits per plan tier */
 export const AI_PLAN_LIMITS: Record<OrgPlan, AiQuotaLimits> = {
-  trial:      { monthly_tokens: 200_000,   monthly_requests: 10 },
-  starter:    { monthly_tokens: 500_000,   monthly_requests: 30 },
-  growth:     { monthly_tokens: 2_000_000, monthly_requests: 100 },
-  enterprise: { monthly_tokens: 10_000_000, monthly_requests: 500 },
+  trial: { monthly_tokens: 200_000,   monthly_requests: 10 },
+  pro:   { monthly_tokens: 5_000_000, monthly_requests: 200 },
 }

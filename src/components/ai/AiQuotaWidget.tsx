@@ -24,9 +24,7 @@ function formatTokens(n: number): string {
 function planLabel(plan: OrgPlan): string {
   const map: Record<OrgPlan, string> = {
     trial: 'Free Trial',
-    starter: 'Starter',
-    growth: 'Growth',
-    enterprise: 'Enterprise',
+    pro: 'Pro',
   }
   return map[plan] || plan
 }
