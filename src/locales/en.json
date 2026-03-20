@@ -111,6 +111,7 @@
     "noProjectsFound": "No projects found",
     "tryAdjusting": "Try adjusting your search.",
     "createFirstProject": "Create your first project to get started.",
+    "list": "List",
     "showingCount": "Showing {{count}} project(s)",
     "deleteProject": "Delete Project",
     "deleteProjectConfirm": "Are you sure you want to delete \"{{name}}\"? This will also delete all associated work packages, allocations, and timesheets.",

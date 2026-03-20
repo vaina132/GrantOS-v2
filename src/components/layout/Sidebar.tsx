@@ -10,7 +10,6 @@ import {
   ClipboardCheck,
   CalendarOff,
   DollarSign,
-  GanttChart,
   FileText,
   Shield,
   Settings,
@@ -57,7 +56,6 @@ const NAV_GROUPS: NavGroup[] = [
       { path: '/timesheets', labelKey: 'nav.timesheets', icon: ClipboardCheck, permission: 'canSeeTimesheets' },
       { path: '/absences', labelKey: 'nav.absences', icon: CalendarOff, permission: 'canSeeAbsences' },
       { path: '/financials', labelKey: 'nav.financials', icon: DollarSign, permission: 'canSeeFinancials' },
-      { path: '/timeline', labelKey: 'nav.timeline', icon: GanttChart, permission: 'canSeeTimeline' },
     ],
   },
   {

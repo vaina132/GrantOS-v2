@@ -17,7 +17,7 @@ import { AllocationsPage } from '@/features/allocations/AllocationsPage'
 import { TimesheetsPage } from '@/features/timesheets/TimesheetsPage'
 import { AbsencesPage } from '@/features/absences/AbsencesPage'
 import { FinancialsPage } from '@/features/financials/FinancialsPage'
-import { TimelinePage } from '@/features/timeline/TimelinePage'
+// TimelinePage is now a view within ProjectList — keep redirect for old bookmarks
 import { ReportsPage } from '@/features/reports/ReportsPage'
 import { AuditPage } from '@/features/audit/AuditPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
@@ -189,11 +189,7 @@ export default function App() {
                       />
                       <Route
                         path="/timeline"
-                        element={
-                          <ProtectedRoute permission="canSeeTimeline">
-                            <TimelinePage />
-                          </ProtectedRoute>
-                        }
+                        element={<Navigate to="/projects?view=timeline" replace />}
                       />
                       <Route
                         path="/reports"
