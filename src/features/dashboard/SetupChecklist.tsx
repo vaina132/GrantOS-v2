@@ -56,13 +56,13 @@ export function SetupChecklist() {
       .limit(1)
       .then(({ count }) => { if (!cancelled) setHasAllocations((count ?? 0) > 0) })
     // Check if ANY timesheet_days entry exists for this org
-    supabase
+    ;(supabase as any)
       .from('timesheet_days')
       .select('id', { count: 'exact', head: true })
       .eq('org_id', orgId)
       .gt('hours', 0)
       .limit(1)
-      .then(({ count }) => { if (!cancelled) setHasTimesheets((count ?? 0) > 0) })
+      .then(({ count }: { count: number | null }) => { if (!cancelled) setHasTimesheets((count ?? 0) > 0) })
     return () => { cancelled = true }
   }, [orgId])
 
