@@ -47,12 +47,6 @@ const PRO_FEATURES = [
   'Priority email support',
 ]
 
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
-  return String(n)
-}
-
 // ── Component ────────────────────────────────────────────
 
 export function SubscriptionSettings() {
@@ -126,10 +120,10 @@ export function SubscriptionSettings() {
 
   // AI usage stats
   const limits = AI_PLAN_LIMITS[currentPlan] || AI_PLAN_LIMITS.trial
-  const tokensUsed = aiUsage ? (aiUsage.tokens_in + aiUsage.tokens_out) : 0
   const requestsUsed = aiUsage?.request_count ?? 0
-  const tokenPct = limits.monthly_tokens > 0 ? Math.min(100, (tokensUsed / limits.monthly_tokens) * 100) : 0
   const requestPct = limits.monthly_requests > 0 ? Math.min(100, (requestsUsed / limits.monthly_requests) * 100) : 0
+  const remainingPct = Math.max(0, Math.round(100 - requestPct))
+  const resetDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
 
   const isPro = currentPlan === 'pro' && subscriptionStatus === 'active'
 
@@ -298,36 +292,25 @@ export function SubscriptionSettings() {
               <Bot className="h-4 w-4 text-muted-foreground" />
               {t('subscription.aiUsageThisMonth')}
             </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                  <span>{t('ai.tokens')}</span>
-                  <span>{formatTokens(tokensUsed)} / {formatTokens(limits.monthly_tokens)}</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                  <div
-                    className={cn(
-                      'h-full rounded-full transition-all',
-                      tokenPct >= 100 ? 'bg-destructive' : tokenPct >= 80 ? 'bg-amber-500' : 'bg-primary',
-                    )}
-                    style={{ width: `${tokenPct}%` }}
-                  />
-                </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Usage</span>
+                <span className={cn('font-medium', requestPct >= 100 ? 'text-red-600' : '')}>
+                  {Math.round(requestPct)}% used
+                </span>
               </div>
-              <div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                  <span>{t('ai.requests')}</span>
-                  <span>{requestsUsed} / {limits.monthly_requests}</span>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                  <div
-                    className={cn(
-                      'h-full rounded-full transition-all',
-                      requestPct >= 100 ? 'bg-destructive' : requestPct >= 80 ? 'bg-amber-500' : 'bg-primary',
-                    )}
-                    style={{ width: `${requestPct}%` }}
-                  />
-                </div>
+              <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all',
+                    requestPct >= 100 ? 'bg-destructive' : requestPct >= 80 ? 'bg-amber-500' : 'bg-primary',
+                  )}
+                  style={{ width: `${requestPct}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>{remainingPct}% remaining</span>
+                <span>Resets {resetDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
               </div>
             </div>
           </div>

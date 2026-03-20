@@ -199,7 +199,7 @@ export function CollabGanttChart({
                       <span className="text-[9px] text-cyan-700 dark:text-cyan-400 font-medium truncate px-1">
                         {rp.title}
                       </span>
-                      <div className="hidden group-hover/rp:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 pointer-events-none">
+                      <div className="hidden group-hover/rp:block absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-[100] pointer-events-none">
                         <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                           <div className="font-semibold text-cyan-600">{rp.title}</div>
                           <div className="text-muted-foreground">M{rp.start_month} – M{rp.end_month} ({rp.period_type})</div>
@@ -267,7 +267,7 @@ export function CollabGanttChart({
                           <svg width="10" height="10" viewBox="0 0 10 10">
                             <polygon points="5,0 10,5 5,10 0,5" className="fill-orange-500" />
                           </svg>
-                          <div className="hidden group-hover/del:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 pointer-events-none">
+                          <div className="hidden group-hover/del:block absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[100] pointer-events-none">
                             <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                               <div className="font-semibold text-orange-600">{d.number}</div>
                               <div className="font-medium">{d.title}</div>
@@ -287,7 +287,7 @@ export function CollabGanttChart({
                           <svg width="10" height="10" viewBox="0 0 10 10">
                             <polygon points="5,0 10,5 5,10 0,5" className="fill-violet-500" />
                           </svg>
-                          <div className="hidden group-hover/ms:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 pointer-events-none">
+                          <div className="hidden group-hover/ms:block absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[100] pointer-events-none">
                             <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                               <div className="font-semibold text-violet-600">{m.number}</div>
                               <div className="font-medium">{m.title}</div>
@@ -368,7 +368,7 @@ export function CollabGanttChart({
                         <svg width="10" height="10" viewBox="0 0 10 10">
                           <polygon points="5,0 10,5 5,10 0,5" className="fill-orange-500" />
                         </svg>
-                        <div className="hidden group-hover/del:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 pointer-events-none">
+                        <div className="hidden group-hover/del:block absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[100] pointer-events-none">
                           <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                             <div className="font-semibold text-orange-600">{d.number}</div>
                             <div className="font-medium">{d.title}</div>
@@ -385,7 +385,7 @@ export function CollabGanttChart({
                         <svg width="10" height="10" viewBox="0 0 10 10">
                           <polygon points="5,0 10,5 5,10 0,5" className="fill-violet-500" />
                         </svg>
-                        <div className="hidden group-hover/ms:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 pointer-events-none">
+                        <div className="hidden group-hover/ms:block absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[100] pointer-events-none">
                           <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                             <div className="font-semibold text-violet-600">{m.number}</div>
                             <div className="font-medium">{m.title}</div>

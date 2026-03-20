@@ -15,12 +15,6 @@ interface AiQuotaWidgetProps {
   onQuotaExhausted?: (exhausted: boolean) => void
 }
 
-function formatTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`
-  return String(n)
-}
-
 function planLabel(plan: OrgPlan): string {
   const map: Record<OrgPlan, string> = {
     trial: 'Free Trial',
@@ -30,13 +24,18 @@ function planLabel(plan: OrgPlan): string {
   return map[plan] || plan
 }
 
+/** Returns the 1st day of the next month as the reset date */
+function getResetDate(): Date {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1)
+}
+
 export function AiQuotaWidget({ variant = 'full', className, onQuotaExhausted }: AiQuotaWidgetProps) {
   const { t } = useTranslation()
   const { orgId, orgPlan } = useAuthStore()
   const plan = orgPlan || 'trial'
   const limits = AI_PLAN_LIMITS[plan] || AI_PLAN_LIMITS.trial
 
-  const [tokensUsed, setTokensUsed] = useState(0)
   const [requestsUsed, setRequestsUsed] = useState(0)
   const [loading, setLoading] = useState(true)
 
@@ -44,24 +43,19 @@ export function AiQuotaWidget({ variant = 'full', className, onQuotaExhausted }:
     if (!orgId) return
     setLoading(true)
     aiUsageService.getCurrentUsage(orgId).then((usage) => {
-      const tIn = usage?.tokens_in || 0
-      const tOut = usage?.tokens_out || 0
       const reqs = usage?.request_count || 0
-      setTokensUsed(tIn + tOut)
       setRequestsUsed(reqs)
-      onQuotaExhausted?.(tIn + tOut >= limits.monthly_tokens || reqs >= limits.monthly_requests)
+      onQuotaExhausted?.(reqs >= limits.monthly_requests)
       setLoading(false)
     }).catch(() => setLoading(false))
-  }, [orgId, limits.monthly_tokens, limits.monthly_requests, onQuotaExhausted])
+  }, [orgId, limits.monthly_requests, onQuotaExhausted])
 
   // Free plan has 0 limits — treat as fully exhausted
   const hasAiAccess = limits.monthly_requests > 0
-  const tokenPct = limits.monthly_tokens > 0 ? Math.min((tokensUsed / limits.monthly_tokens) * 100, 100) : 100
   const requestPct = limits.monthly_requests > 0 ? Math.min((requestsUsed / limits.monthly_requests) * 100, 100) : 100
-  const tokensRemaining = Math.max(limits.monthly_tokens - tokensUsed, 0)
   const requestsRemaining = Math.max(limits.monthly_requests - requestsUsed, 0)
-  const isExhausted = !hasAiAccess || tokensRemaining === 0 || requestsRemaining === 0
-  const isWarning = tokenPct >= 80 || requestPct >= 80
+  const isExhausted = !hasAiAccess || requestsRemaining === 0
+  const isWarning = requestPct >= 80
 
   // Color based on usage level
   const barColor = isExhausted
@@ -82,19 +76,20 @@ export function AiQuotaWidget({ variant = 'full', className, onQuotaExhausted }:
     )
   }
 
-  const remainingPct = Math.max(0, Math.round(100 - Math.max(tokenPct, requestPct)))
+  const remainingPct = Math.max(0, Math.round(100 - requestPct))
+  const resetDate = getResetDate()
 
   if (variant === 'compact') {
     return (
-      <div className={cn('flex items-center gap-2 text-xs', className)}>
+      <div className="flex items-center gap-2 text-xs">
         <Sparkles className={cn('h-3.5 w-3.5 shrink-0', iconColor)} />
         <div className="flex-1 min-w-[80px]">
           <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-            <div className={cn('h-full rounded-full transition-all', barColor)} style={{ width: `${tokenPct}%` }} />
+            <div className={cn('h-full rounded-full transition-all', barColor)} style={{ width: `${requestPct}%` }} />
           </div>
         </div>
         <span className={cn('whitespace-nowrap font-medium', isExhausted ? 'text-red-500' : isWarning ? 'text-amber-500' : 'text-muted-foreground')}>
-          {remainingPct}% {t('ai.creditsLeft')}
+          {remainingPct}% {t('ai.requestsRemaining')}
         </span>
       </div>
     )
@@ -119,38 +114,20 @@ export function AiQuotaWidget({ variant = 'full', className, onQuotaExhausted }:
         </span>
       </div>
 
-      {/* Token bar */}
+      {/* Usage bar */}
       <div className="space-y-1">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">{t('ai.tokens')}</span>
-          <span className={cn('font-medium', isExhausted ? 'text-red-600 dark:text-red-400' : '')}>
-            {Math.round(tokenPct)}% used
-          </span>
-        </div>
-        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-          <div className={cn('h-full rounded-full transition-all duration-500', barColor)} style={{ width: `${tokenPct}%` }} />
-        </div>
-        <div className="text-[10px] text-muted-foreground">
-          {formatTokens(tokensRemaining)} of {formatTokens(limits.monthly_tokens)} remaining
-        </div>
-      </div>
-
-      {/* Request count */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">{t('ai.requests')}</span>
+          <span className="text-muted-foreground">Usage</span>
           <span className={cn('font-medium', isExhausted ? 'text-red-600 dark:text-red-400' : '')}>
             {Math.round(requestPct)}% used
           </span>
         </div>
         <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-          <div
-            className={cn('h-full rounded-full transition-all duration-500', requestPct >= 100 ? 'bg-red-500' : requestPct >= 80 ? 'bg-amber-500' : 'bg-emerald-500')}
-            style={{ width: `${requestPct}%` }}
-          />
+          <div className={cn('h-full rounded-full transition-all duration-500', barColor)} style={{ width: `${requestPct}%` }} />
         </div>
-        <div className="text-[10px] text-muted-foreground">
-          {requestsRemaining} of {limits.monthly_requests} requests remaining
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+          <span>{remainingPct}% remaining</span>
+          <span>Resets {resetDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
         </div>
       </div>
 

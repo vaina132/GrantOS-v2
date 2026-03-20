@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { Breadcrumbs } from './Breadcrumbs'
@@ -17,6 +18,7 @@ export function AppShell({ children }: AppShellProps) {
   const { orgId } = useAuthStore()
   const loadOrg = useOrgStore((s) => s.load)
   const { showWarning, secondsLeft, dismissWarning } = useIdleTimeout()
+  const location = useLocation()
 
   useEffect(() => {
     if (orgId) loadOrg(orgId)
@@ -26,7 +28,7 @@ export function AppShell({ children }: AppShellProps) {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main key={location.pathname} className="flex-1 overflow-y-auto p-4 lg:p-6">
           <Breadcrumbs />
           {children}
         </main>

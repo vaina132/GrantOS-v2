@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { useProjects } from '@/hooks/useProjects'
 import { useStaff } from '@/hooks/useStaff'
-import { useAssignments } from '@/hooks/useAllocations'
 import { useAuthStore } from '@/stores/authStore'
+import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -39,7 +39,32 @@ export function SetupChecklist() {
   const { orgId, orgName } = useAuthStore()
   const { projects } = useProjects()
   const { staff } = useStaff({})
-  const { assignments } = useAssignments('actual')
+
+  // Year-independent existence checks for allocations & timesheets
+  const [hasAllocations, setHasAllocations] = useState(false)
+  const [hasTimesheets, setHasTimesheets] = useState(false)
+
+  useEffect(() => {
+    if (!orgId) return
+    let cancelled = false
+    // Check if ANY assignment exists for this org (across all years)
+    supabase
+      .from('assignments')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .eq('type', 'actual')
+      .limit(1)
+      .then(({ count }) => { if (!cancelled) setHasAllocations((count ?? 0) > 0) })
+    // Check if ANY timesheet_days entry exists for this org
+    supabase
+      .from('timesheet_days')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .gt('hours', 0)
+      .limit(1)
+      .then(({ count }) => { if (!cancelled) setHasTimesheets((count ?? 0) > 0) })
+    return () => { cancelled = true }
+  }, [orgId])
 
   const [dismissed, setDismissed] = useState(() => {
     try {
@@ -95,7 +120,7 @@ export function SetupChecklist() {
       description: t('onboarding.stepAllocationsDesc'),
       icon: CalendarDays,
       href: '/allocations',
-      completed: assignments.length > 0,
+      completed: hasAllocations,
     },
     {
       id: 'timesheets',
@@ -103,9 +128,9 @@ export function SetupChecklist() {
       description: t('onboarding.stepTimesheetsDesc'),
       icon: ClipboardCheck,
       href: '/timesheets',
-      completed: false, // Will become true once user visits timesheets — simplified check
+      completed: hasTimesheets,
     },
-  ], [orgName, staff.length, projects.length, assignments.length, t])
+  ], [orgName, staff.length, projects.length, hasAllocations, hasTimesheets, t])
 
   const completedCount = steps.filter((s) => s.completed).length
   const allDone = completedCount === steps.length

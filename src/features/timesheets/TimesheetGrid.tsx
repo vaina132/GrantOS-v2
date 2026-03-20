@@ -57,7 +57,7 @@ interface NationalDayState {
 }
 
 export function TimesheetGrid() {
-  const { orgId, user, can } = useAuthStore()
+  const { orgId, orgName, user, can } = useAuthStore()
   const { globalYear } = useUiStore()
   const { staff, isLoading: staffLoading } = useStaff({ is_active: true })
   const { projects: allProjects } = useProjects()
@@ -941,7 +941,7 @@ export function TimesheetGrid() {
                 person: currentPerson,
                 year: globalYear,
                 month: selectedMonth,
-                orgName: '', // filled from settings if available
+                orgName: orgName ?? '',
                 days: existingDays,
                 projects: allProjects,
                 envelope,

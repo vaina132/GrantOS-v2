@@ -189,7 +189,7 @@ export function ProjectGanttChart({ project, workPackages, projectMonthCount }: 
                       <span className="text-[9px] text-cyan-700 dark:text-cyan-400 font-medium truncate px-1">
                         RP{rp.period_number}
                       </span>
-                      <div className="hidden group-hover/rp:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 pointer-events-none">
+                      <div className="hidden group-hover/rp:block absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-[100] pointer-events-none">
                         <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                           <div className="font-semibold text-cyan-600">RP{rp.period_number}</div>
                           <div className="text-muted-foreground">M{rp.start_month} – M{rp.end_month}</div>
@@ -215,7 +215,7 @@ export function ProjectGanttChart({ project, workPackages, projectMonthCount }: 
 
             return (
               <div key={wp.id}>
-                <div className="flex border-b hover:bg-muted/10">
+                <div className="flex border-b hover:bg-muted/10 relative hover:z-40">
                   <div className="w-[240px] shrink-0 px-4 py-2 border-r">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-[10px] shrink-0 font-mono">WP{wp.number}</Badge>
@@ -250,7 +250,7 @@ export function ProjectGanttChart({ project, workPackages, projectMonthCount }: 
                           <svg width="10" height="10" viewBox="0 0 10 10">
                             <polygon points="5,0 10,5 5,10 0,5" className="fill-orange-500" />
                           </svg>
-                          <div className="hidden group-hover/del:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 pointer-events-none">
+                          <div className="hidden group-hover/del:block absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[100] pointer-events-none">
                             <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                               <div className="font-semibold text-orange-600">{d.number}</div>
                               <div className="font-medium">{d.title}</div>
@@ -269,7 +269,7 @@ export function ProjectGanttChart({ project, workPackages, projectMonthCount }: 
                           <svg width="10" height="10" viewBox="0 0 10 10">
                             <polygon points="5,0 10,5 5,10 0,5" className="fill-violet-500" />
                           </svg>
-                          <div className="hidden group-hover/ms:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 pointer-events-none">
+                          <div className="hidden group-hover/ms:block absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[100] pointer-events-none">
                             <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                               <div className="font-semibold text-violet-600">{m.number}</div>
                               <div className="font-medium">{m.title}</div>
@@ -297,7 +297,7 @@ export function ProjectGanttChart({ project, workPackages, projectMonthCount }: 
             const unassignedMs = milestones.filter((m): m is Milestone & { due_month: number } => !m.work_package_id && m.due_month != null)
             if (unassignedDels.length === 0 && unassignedMs.length === 0) return null
             return (
-              <div className="flex border-b bg-muted/[0.04]">
+              <div className="flex border-b bg-muted/[0.04] relative hover:z-40">
                 <div className="w-[240px] shrink-0 px-4 py-2 border-r">
                   <span className="text-xs text-muted-foreground italic">{t('collaboration.unassignedItems')}</span>
                 </div>
@@ -312,7 +312,7 @@ export function ProjectGanttChart({ project, workPackages, projectMonthCount }: 
                         <svg width="10" height="10" viewBox="0 0 10 10">
                           <polygon points="5,0 10,5 5,10 0,5" className="fill-orange-500" />
                         </svg>
-                        <div className="hidden group-hover/del:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 pointer-events-none">
+                        <div className="hidden group-hover/del:block absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[100] pointer-events-none">
                           <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                             <div className="font-semibold text-orange-600">{d.number}</div>
                             <div className="font-medium">{d.title}</div>
@@ -329,7 +329,7 @@ export function ProjectGanttChart({ project, workPackages, projectMonthCount }: 
                         <svg width="10" height="10" viewBox="0 0 10 10">
                           <polygon points="5,0 10,5 5,10 0,5" className="fill-violet-500" />
                         </svg>
-                        <div className="hidden group-hover/ms:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 pointer-events-none">
+                        <div className="hidden group-hover/ms:block absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[100] pointer-events-none">
                           <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                             <div className="font-semibold text-violet-600">{m.number}</div>
                             <div className="font-medium">{m.title}</div>

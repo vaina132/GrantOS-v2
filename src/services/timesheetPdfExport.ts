@@ -378,28 +378,60 @@ export function generateTimesheetPdf(data: TimesheetPdfData): void {
   }
 
   // ── Signature area ──
-  if (y + 40 > pageH - 10) { doc.addPage(); y = 15 }
-  y = Math.max(y, pageH - 45)
+  const sigBlockH = 65
+  if (y + sigBlockH > pageH - 12) { doc.addPage(); y = 15 }
+  y = Math.max(y, pageH - sigBlockH - 8)
+
+  // Declaration
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(6.5)
+  doc.setTextColor(...DARK)
+  doc.text(
+    'I hereby confirm that the hours recorded above are a true and accurate account of the work performed during the stated period.',
+    marginL, y, { maxWidth: usableW }
+  )
+  y += 10
 
   doc.setDrawColor(...BORDER)
   doc.setLineWidth(0.3)
 
+  const sigColW = (usableW - 10) / 2
+
   // Employee signature
-  doc.setFont('helvetica', 'normal')
+  doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
   doc.setTextColor(...MUTED)
-  doc.text('Employee Signature', marginL, y)
-  doc.line(marginL, y + 12, marginL + 80, y + 12)
-  doc.setFontSize(6)
-  doc.text(person.full_name, marginL, y + 16)
-  doc.text('Date: _______________', marginL, y + 21)
+  doc.text('Employee', marginL, y)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(6.5)
+  doc.setTextColor(...DARK)
+  y += 5
+  doc.text(`Name: ${person.full_name}`, marginL, y)
+  y += 5
+  doc.text(`Position: ${(person as any).position ?? '___________________________'}`, marginL, y)
+  y += 8
+  doc.text('Signature:', marginL, y)
+  doc.line(marginL + 18, y, marginL + sigColW, y)
+  y += 7
+  doc.text('Date:', marginL, y)
+  doc.line(marginL + 12, y, marginL + 60, y)
 
-  // Approver signature
-  doc.text('Approver Signature', marginL + 120, y)
-  doc.line(marginL + 120, y + 12, marginL + 200, y + 12)
-  doc.setFontSize(6)
-  doc.text('Name: _______________', marginL + 120, y + 16)
-  doc.text('Date: _______________', marginL + 120, y + 21)
+  // Approver signature (right column, same vertical position)
+  const appY = y - 25
+  const appX = marginL + sigColW + 10
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7)
+  doc.setTextColor(...MUTED)
+  doc.text('Supervisor / Approver', appX, appY)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(6.5)
+  doc.setTextColor(...DARK)
+  doc.text('Name: ___________________________', appX, appY + 5)
+  doc.text('Position: ___________________________', appX, appY + 10)
+  doc.text('Signature:', appX, appY + 18)
+  doc.line(appX + 18, appY + 18, appX + sigColW, appY + 18)
+  doc.text('Date:', appX, appY + 25)
+  doc.line(appX + 12, appY + 25, appX + 60, appY + 25)
 
   // ── Footer ──
   const totalPages = doc.getNumberOfPages()

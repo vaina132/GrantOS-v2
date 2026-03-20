@@ -219,7 +219,7 @@ export function GanttChart() {
             }[bar.status] || 'bg-primary'
 
             return (
-              <div key={bar.projectId} className="flex border-b last:border-0 hover:bg-muted/10">
+              <div key={bar.projectId} className="flex border-b last:border-0 hover:bg-muted/10 relative hover:z-40">
                 <div className="w-[200px] shrink-0 px-4 py-2 border-r">
                   <div className="font-semibold text-xs text-primary">{bar.acronym}</div>
                   <div className="text-[10px] text-muted-foreground truncate">{bar.title}</div>
@@ -258,7 +258,7 @@ export function GanttChart() {
                         className="absolute bottom-0 h-[6px] bg-cyan-400/40 border border-cyan-500/50 rounded-sm group/rp cursor-pointer"
                         style={{ left: rpLeft, width: rpWidth, zIndex: 2 }}
                       >
-                        <div className="hidden group-hover/rp:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 pointer-events-none">
+                        <div className="hidden group-hover/rp:block absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-[100] pointer-events-none">
                           <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                             <div className="font-semibold text-cyan-600">RP{rp.period_number}</div>
                             <div className="text-muted-foreground">M{rp.start_month} – M{rp.end_month}</div>
@@ -284,7 +284,7 @@ export function GanttChart() {
                         <svg width="10" height="10" viewBox="0 0 10 10">
                           <polygon points="5,0 10,5 5,10 0,5" className="fill-orange-500" />
                         </svg>
-                        <div className="hidden group-hover/del:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 pointer-events-none">
+                        <div className="hidden group-hover/del:block absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[100] pointer-events-none">
                           <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                             <div className="font-semibold text-orange-600">{d.number}</div>
                             <div className="font-medium">{d.title}</div>
@@ -311,7 +311,7 @@ export function GanttChart() {
                         <svg width="10" height="10" viewBox="0 0 10 10">
                           <polygon points="5,0 10,5 5,10 0,5" className="fill-violet-500" />
                         </svg>
-                        <div className="hidden group-hover/ms:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 z-50 pointer-events-none">
+                        <div className="hidden group-hover/ms:block absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[100] pointer-events-none">
                           <div className="bg-popover text-popover-foreground border rounded-md shadow-lg px-3 py-2 text-xs whitespace-nowrap">
                             <div className="font-semibold text-violet-600">{m.number}</div>
                             <div className="font-medium">{m.title}</div>
