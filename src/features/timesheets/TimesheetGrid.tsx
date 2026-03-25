@@ -111,11 +111,7 @@ export function TimesheetGrid() {
 
   // Load all data when person/month changes
   const loadData = useCallback(async () => {
-    if (!orgId) { setLoading(false); return }
-    // If staff is still loading, keep the spinner — don't prematurely show empty state
-    if (staffLoading) { setLoading(true); return }
-    // Staff loaded but no person found (e.g. user has no person record)
-    if (!currentPersonId) { setLoading(false); return }
+    if (!orgId || !currentPersonId) { setLoading(false); return }
     setLoading(true)
     try {
       // Load assignments across ALL months of the year (not just selected month)
@@ -161,9 +157,18 @@ export function TimesheetGrid() {
     } finally {
       setLoading(false)
     }
-  }, [orgId, currentPersonId, staffLoading, globalYear, selectedMonth])
+  }, [orgId, currentPersonId, globalYear, selectedMonth])
 
   useEffect(() => { loadData() }, [loadData])
+
+  // Re-fetch data when the browser tab becomes visible again
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadData()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [loadData])
 
   // Reset manual project additions when person changes
   useEffect(() => { setManualProjectIds([]); setRemovedProjectIds([]); setFillFullOpen(false) }, [currentPersonId])
@@ -722,7 +727,7 @@ export function TimesheetGrid() {
     return allProjects.filter(p => !inGrid.has(p.id))
   }, [allProjects, projectRows])
 
-  if (loading) return <SkeletonTable columns={6} rows={6} />
+  if (loading || staffLoading) return <SkeletonTable columns={6} rows={6} />
 
   return (
     <div className="space-y-4">
