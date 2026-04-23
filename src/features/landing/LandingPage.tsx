@@ -54,13 +54,14 @@ const i18n = {
       h1a: 'Run Horizon Europe projects',
       h1b: 'without the spreadsheets.',
       lede:
-        'Timesheets, absences, budgets, partner reporting, and deliverables in one EU-hosted workspace — built for research administrators and PIs.',
+        'One workspace for the timesheets, budgets, and reports your funder asks for. EU-hosted and built for research administrators and project leads.',
       primary: 'Start 30-day trial',
       secondary: 'See what\'s inside',
-      note: 'No credit card. EU-hosted in Frankfurt. Cancel anytime.',
+      note: 'No credit card. Cancel anytime. Your data stays in the EU.',
     },
     trust: {
-      label: 'In use at research organisations across Germany, Austria, and the Netherlands',
+      label: 'Built for European research teams',
+      pills: ['GDPR-compliant', 'EU-hosted', 'Audit-ready', 'No third-party trackers', 'One price per org'],
     },
     features: {
       eyebrow: 'What\'s inside',
@@ -93,22 +94,22 @@ const i18n = {
         {
           icon: 'CalendarX2',
           title: 'Absences',
-          desc: 'Leave and sickness feed the WP effort plan.',
+          desc: 'Leave and sickness feed straight into your WP effort plan.',
         },
         {
           icon: 'Plug',
           title: 'Integrations',
-          desc: 'DATEV, SAP, Microsoft 365, EU Funding Portal.',
+          desc: 'Connect your payroll, HR, and SSO — no custom build required.',
         },
         {
           icon: 'UsersRound',
           title: 'Roles',
-          desc: 'PI, coordinator, finance, partner — scoped access.',
+          desc: 'PI, coordinator, finance, partner — each sees only what they need.',
         },
         {
           icon: 'ShieldCheck',
           title: 'Privacy',
-          desc: 'GDPR, ISO 27001, Frankfurt-hosted, no US sub-processors.',
+          desc: 'EU-hosted, encrypted at rest, with a full audit log.',
         },
       ],
     },
@@ -176,11 +177,11 @@ const i18n = {
       reassure: 'No per-seat upsell. No module paywall. Cancel anytime. Full data export (CSV + JSON).',
     },
     cta: {
-      h2: 'See your next grant run in GrantLume.',
+      h2: 'Try it on your next project.',
       lede:
-        'Start the trial with a real Grant Agreement. If it doesn\'t save your project office time in 30 days, don\'t continue.',
+        'Bring one live Grant Agreement. If GrantLume doesn\'t save your team time in 30 days, walk away.',
       primary: 'Start 30-day trial',
-      note: 'No credit card. EU-hosted. Export anytime.',
+      note: 'No credit card. Full export anytime. Your data stays in the EU.',
     },
     footer: {
       tagline: 'Grant management for European research teams.',
@@ -198,7 +199,7 @@ const i18n = {
         privacy: 'Privacy',
         imprint: 'Imprint',
       },
-      madeIn: 'Built in Europe. Hosted in Frankfurt.',
+      madeIn: 'Built in Europe. Hosted in the EU.',
     },
   },
   de: {
@@ -213,13 +214,14 @@ const i18n = {
       h1a: 'Horizon-Europe-Projekte steuern',
       h1b: '— ohne Excel-Tabellen.',
       lede:
-        'Stundenzettel, Abwesenheiten, Budgets, Partnerberichte und Deliverables in einem EU-gehosteten Arbeitsbereich — für Forschungsadministration und Projektleitungen.',
+        'Ein Arbeitsbereich für die Stundenzettel, Budgets und Berichte, die Ihr Fördergeber verlangt. EU-gehostet und gebaut für Forschungsadministration und Projektleitungen.',
       primary: '30 Tage kostenlos testen',
       secondary: 'Funktionen ansehen',
-      note: 'Keine Kreditkarte. Gehostet in Frankfurt. Jederzeit kündbar.',
+      note: 'Keine Kreditkarte. Jederzeit kündbar. Ihre Daten bleiben in der EU.',
     },
     trust: {
-      label: 'Im Einsatz bei Forschungseinrichtungen in Deutschland, Österreich und den Niederlanden',
+      label: 'Gebaut für europäische Forschungsteams',
+      pills: ['DSGVO-konform', 'EU-gehostet', 'Prüfungsfähig', 'Kein Tracking', 'Ein Preis je Organisation'],
     },
     features: {
       eyebrow: 'Funktionsumfang',
@@ -252,22 +254,22 @@ const i18n = {
         {
           icon: 'CalendarX2',
           title: 'Abwesenheiten',
-          desc: 'Urlaub und Krankheit fließen in den AP-Plan ein.',
+          desc: 'Urlaub und Krankheit fließen direkt in den AP-Aufwandsplan ein.',
         },
         {
           icon: 'Plug',
           title: 'Integrationen',
-          desc: 'DATEV, SAP, Microsoft 365, EU Funding Portal.',
+          desc: 'Lohnbuchhaltung, HR und SSO anbinden — ohne Eigenentwicklung.',
         },
         {
           icon: 'UsersRound',
           title: 'Rollen',
-          desc: 'PI, Koordination, Finanzen, Partner — feingranular.',
+          desc: 'PI, Koordination, Finanzen, Partner — jeder sieht nur das Nötige.',
         },
         {
           icon: 'ShieldCheck',
           title: 'Datenschutz',
-          desc: 'DSGVO, ISO 27001, Hosting in Frankfurt, keine US-Auftragsverarbeiter.',
+          desc: 'EU-gehostet, verschlüsselt, mit vollständigem Audit-Log.',
         },
       ],
     },
@@ -335,11 +337,11 @@ const i18n = {
       reassure: 'Kein Seat-Upsell. Keine Modulsperre. Jederzeit kündbar. Vollständiger Datenexport (CSV + JSON).',
     },
     cta: {
-      h2: 'Ihr nächstes Projekt in GrantLume ansehen.',
+      h2: 'Mit Ihrem nächsten Projekt ausprobieren.',
       lede:
-        'Testen Sie mit einem echten Grant Agreement. Spart es Ihrem Projektbüro in 30 Tagen keine Zeit, kündigen Sie.',
+        'Bringen Sie ein laufendes Grant Agreement mit. Spart GrantLume Ihrem Team in 30 Tagen keine Zeit, gehen Sie.',
       primary: '30 Tage kostenlos testen',
-      note: 'Keine Kreditkarte. EU-Hosting. Daten jederzeit exportierbar.',
+      note: 'Keine Kreditkarte. Jederzeit Datenexport. Ihre Daten bleiben in der EU.',
     },
     footer: {
       tagline: 'Fördermittelverwaltung für europäische Forschungsteams.',
@@ -357,7 +359,7 @@ const i18n = {
         privacy: 'Datenschutz',
         imprint: 'Impressum',
       },
-      madeIn: 'Gebaut in Europa. Gehostet in Frankfurt.',
+      madeIn: 'Gebaut in Europa. Gehostet in der EU.',
     },
   },
 }
@@ -566,20 +568,20 @@ export function LandingPage() {
 
         {/* ═══════════════════ TRUST STRIP ═══════════════════ */}
         <section className="border-y border-rule bg-canvas-raised">
-          <div className="max-w-6xl mx-auto px-6 lg:px-10 py-8 flex flex-col sm:flex-row items-center gap-6 sm:gap-10">
+          <div className="max-w-6xl mx-auto px-6 lg:px-10 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="font-mono text-[11px] uppercase tracking-label text-foreground2-muted">
-              {c.trust.label}
+              — {c.trust.label}
             </p>
-            <div className="flex items-center gap-6 sm:gap-8 opacity-60">
-              {['TU Delft', 'Fraunhofer', 'KTH', 'Charité', 'ETH Zürich'].map((mark) => (
-                <span
-                  key={mark}
-                  className="font-display text-sm font-semibold tracking-snug text-foreground2/80 whitespace-nowrap"
+            <ul className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+              {c.trust.pills.map((pill) => (
+                <li
+                  key={pill}
+                  className="font-mono text-[11px] uppercase tracking-label text-foreground2/80"
                 >
-                  {mark}
-                </span>
+                  {pill}
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </section>
 
@@ -913,7 +915,7 @@ function DashboardMockup() {
           </div>
           <div className="text-left">
             <div className="text-[11px] font-medium text-foreground2">Partner invited</div>
-            <div className="text-[10px] text-foreground2-muted font-mono">TU Delft · 2 min ago</div>
+            <div className="text-[10px] text-foreground2-muted font-mono">Consortium · 2 min ago</div>
           </div>
         </div>
       </div>
@@ -928,7 +930,7 @@ function DashboardMockup() {
             <span className="h-2.5 w-2.5 rounded-full bg-rule" />
           </div>
           <div className="font-mono text-[10px] text-foreground2-muted tracking-snug">
-            app.grantlume.com / Horizon Europe / CLIMATE-2028
+            app.grantlume.com  ·  Project overview
           </div>
           <span className="w-10" />
         </div>
@@ -957,17 +959,17 @@ function DashboardMockup() {
                   Overview
                 </div>
                 <div className="font-display text-sm font-semibold text-foreground2 mt-0.5">
-                  CLIMATE-2028 · Overview
+                  Project — Overview
                 </div>
               </div>
-              <span className="font-mono text-[10px] text-foreground2-muted">M14 / M48</span>
+              <span className="font-mono text-[10px] text-foreground2-muted">Month 14 / 48</span>
             </div>
 
             <div className="grid grid-cols-3 gap-2.5">
               {[
                 { label: 'Budget burn',  val: '62%',     sub: '€2.4M of €3.9M' },
                 { label: 'Hours / month', val: '1,284',   sub: '38 researchers' },
-                { label: 'Partners on track', val: '7 / 9', sub: 'TU Delft, KTH, Charité…' },
+                { label: 'Partners on track', val: '7 / 9', sub: 'across the consortium' },
               ].map((k) => (
                 <div key={k.label} className="rounded-lg border border-rule bg-canvas px-3 py-2.5">
                   <div className="font-mono text-[9px] uppercase tracking-label text-foreground2-muted">
