@@ -245,33 +245,45 @@ export const proposalSubmissionService = {
   },
 
   /** Upsert a submission row (idempotent). Called when a partner starts
-   *  working on a document — creates the row if missing. */
+   *  working on a document — creates the row if missing. Race-safe: uses
+   *  ON CONFLICT against the unique index `(proposal_id, partner_id,
+   *  document_id)` so two concurrent callers never double-insert. */
   async ensure(params: {
     proposal_id: string
     partner_id: string
     document_id: string
   }): Promise<ProposalSubmission> {
-    const { data: existing } = await sb
+    const { data, error } = await sb
+      .from('proposal_submissions')
+      .upsert(
+        {
+          proposal_id: params.proposal_id,
+          partner_id: params.partner_id,
+          document_id: params.document_id,
+          status: 'not_started',
+        },
+        {
+          onConflict: 'proposal_id,partner_id,document_id',
+          // Don't overwrite an existing row's state.
+          ignoreDuplicates: true,
+        },
+      )
+      .select()
+      .maybeSingle()
+    if (error) throw error
+    if (data) return data as ProposalSubmission
+
+    // `ignoreDuplicates` returned no row because the row already existed —
+    // fetch it explicitly.
+    const { data: existing, error: selErr } = await sb
       .from('proposal_submissions')
       .select('*')
       .eq('proposal_id', params.proposal_id)
       .eq('partner_id', params.partner_id)
       .eq('document_id', params.document_id)
-      .maybeSingle()
-    if (existing) return existing as ProposalSubmission
-
-    const { data, error } = await sb
-      .from('proposal_submissions')
-      .insert({
-        proposal_id: params.proposal_id,
-        partner_id: params.partner_id,
-        document_id: params.document_id,
-        status: 'not_started',
-      })
-      .select()
       .single()
-    if (error) throw error
-    return data as ProposalSubmission
+    if (selErr) throw selErr
+    return existing as ProposalSubmission
   },
 
   async setStatus(

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { proposalService } from '@/services/proposalService'
+import { proposalAuditService } from '@/services/proposalWorkflowService'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,7 +20,11 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { toast } from '@/components/ui/use-toast'
-import type { Proposal } from '@/types'
+import type { Proposal, ProposalAuditEvent } from '@/types'
+import { ProposalPartnersTab } from './ProposalPartnersTab'
+import { ProposalWorkPackagesTab } from './ProposalWorkPackagesTab'
+import { ProposalDocumentsTab } from './ProposalDocumentsTab'
+import { ProposalConvertDialog } from './ProposalConvertDialog'
 
 /**
  * Proposal detail — consortium workspace.
@@ -34,24 +39,40 @@ export function ProposalDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { orgId } = useAuthStore()
+  const { orgId, can } = useAuthStore()
+  const canManage = can('canManageProjects') || can('canManageOrg')
 
   const [loading, setLoading] = useState(true)
   const [proposal, setProposal] = useState<Proposal | null>(null)
+  const [convertOpen, setConvertOpen] = useState(false)
+  const [auditEvents, setAuditEvents] = useState<ProposalAuditEvent[]>([])
+  const [activeTab, setActiveTab] = useState('overview')
+
+  const reload = async () => {
+    if (!id) return
+    try {
+      const p = await proposalService.getById(id)
+      setProposal(p)
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to load proposal',
+        variant: 'destructive',
+      })
+    }
+  }
 
   useEffect(() => {
     if (!id || !orgId) return
     setLoading(true)
-    proposalService
-      .getById(id)
-      .then(p => setProposal(p))
-      .catch(err => toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to load proposal',
-        variant: 'destructive',
-      }))
-      .finally(() => setLoading(false))
+    reload().finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, orgId])
+
+  useEffect(() => {
+    if (!id || activeTab !== 'activity') return
+    proposalAuditService.list(id).then(setAuditEvents).catch(() => setAuditEvents([]))
+  }, [id, activeTab])
 
   const convertedLabel = useMemo(() => {
     if (!proposal?.converted_project_id) return null
@@ -89,8 +110,8 @@ export function ProposalDetail() {
             <Button variant="outline" size="sm" onClick={() => navigate('/proposals')}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back
             </Button>
-            {proposal.status === 'Granted' && !proposal.converted_project_id && (
-              <Button size="sm" className="gap-1.5">
+            {proposal.status === 'Granted' && !proposal.converted_project_id && canManage && (
+              <Button size="sm" className="gap-1.5" onClick={() => setConvertOpen(true)}>
                 <ArrowRightCircle className="h-4 w-4" /> Convert to Project
               </Button>
             )}
@@ -118,7 +139,7 @@ export function ProposalDetail() {
         </Card>
       )}
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList>
           <TabsTrigger value="overview"><FileText className="h-4 w-4 mr-1" /> Overview</TabsTrigger>
           <TabsTrigger value="partners"><Users className="h-4 w-4 mr-1" /> Partners</TabsTrigger>
@@ -150,21 +171,32 @@ export function ProposalDetail() {
         </TabsContent>
 
         <TabsContent value="partners" className="mt-4">
-          <PlaceholderPanel title="Partners" note="Invite external partners and track acceptance. Coming in the next commit." />
+          <ProposalPartnersTab proposal={proposal} canManage={canManage && !proposal.converted_project_id} />
         </TabsContent>
 
         <TabsContent value="documents" className="mt-4">
-          <PlaceholderPanel title="Document matrix" note="Per-partner × document checklist with review flow. Coming in the next commit." />
+          <ProposalDocumentsTab proposal={proposal} canManage={canManage && !proposal.converted_project_id} />
         </TabsContent>
 
         <TabsContent value="wps" className="mt-4">
-          <PlaceholderPanel title="Work packages" note="Minimal WP skeleton (number + title + lead partner). Coming in the next commit." />
+          <ProposalWorkPackagesTab proposal={proposal} canManage={canManage && !proposal.converted_project_id} />
         </TabsContent>
 
         <TabsContent value="activity" className="mt-4">
-          <PlaceholderPanel title="Activity log" note="Timeline of invites, submissions, approvals. Coming in the next commit." />
+          <ActivityLog events={auditEvents} />
         </TabsContent>
       </Tabs>
+
+      <ProposalConvertDialog
+        open={convertOpen}
+        onOpenChange={setConvertOpen}
+        proposal={proposal}
+        onConverted={(newProjectId) => {
+          setConvertOpen(false)
+          void reload()
+          navigate(`/projects/${newProjectId}`)
+        }}
+      />
     </div>
   )
 }
@@ -178,12 +210,30 @@ function KpiStat({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-function PlaceholderPanel({ title, note }: { title: string; note: string }) {
+function ActivityLog({ events }: { events: ProposalAuditEvent[] }) {
+  if (events.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          No activity yet. Invites, submissions and reviews will appear here.
+        </CardContent>
+      </Card>
+    )
+  }
   return (
     <Card>
-      <CardContent className="py-12 text-center">
-        <p className="font-medium mb-1">{title}</p>
-        <p className="text-sm text-muted-foreground">{note}</p>
+      <CardContent className="pt-4 space-y-2">
+        {events.map((e) => (
+          <div key={e.id} className="flex items-start gap-3 text-sm border-b last:border-0 py-2">
+            <div className="text-xs text-muted-foreground w-36 shrink-0">
+              {new Date(e.created_at).toLocaleString()}
+            </div>
+            <div className="flex-1">
+              <span className="font-medium capitalize">{e.event_type.replace(/_/g, ' ')}</span>
+              {e.note && <span className="text-muted-foreground"> — {e.note}</span>}
+            </div>
+          </div>
+        ))}
       </CardContent>
     </Card>
   )

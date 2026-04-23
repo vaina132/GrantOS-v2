@@ -22,6 +22,7 @@ import { ReportsPage } from '@/features/reports/ReportsPage'
 import { AuditPage } from '@/features/audit/AuditPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { ProposalsPage } from '@/features/proposals/ProposalsPage'
+import { ProposalPartnerPage } from '@/features/proposals/ProposalPartnerPage'
 import { CallsPage } from '@/features/calls/CallsPage'
 import { ProfileSettingsPage } from '@/features/profile/ProfileSettingsPage'
 import { TermsPage } from '@/features/legal/TermsPage'
@@ -205,6 +206,19 @@ export default function App() {
                         element={
                           <ProtectedRoute permission="canSeeAudit">
                             <AuditPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      {/* External-partner view of an invited proposal.
+                          Declared BEFORE the coordinator route below so the
+                          more specific path wins matching. No permission
+                          gate — authenticated users land here; RLS gates
+                          the data they can actually see. */}
+                      <Route
+                        path="/proposals/partner/:id"
+                        element={
+                          <ProtectedRoute>
+                            <ProposalPartnerPage />
                           </ProtectedRoute>
                         }
                       />

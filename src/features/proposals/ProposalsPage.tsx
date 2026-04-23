@@ -46,6 +46,11 @@ import { exportToExcel } from '@/lib/exportUtils'
 import { ComboInput, type ComboOption } from '@/components/common/ComboInput'
 import { supabase } from '@/lib/supabase'
 import { apiFetch } from '@/lib/apiClient'
+import {
+  proposalCallTemplateService,
+  proposalDocumentService,
+} from '@/services/proposalWorkflowService'
+import type { ProposalCallTemplate } from '@/types'
 
 const STATUS_OPTIONS: ProposalStatus[] = ['In Preparation', 'Submitted', 'Rejected', 'Granted']
 
@@ -70,6 +75,7 @@ const EMPTY_FORM = {
   status: 'In Preparation' as ProposalStatus,
   responsible_person_id: '',
   notes: '',
+  call_template_id: '',
 }
 
 export function ProposalsPage() {
@@ -100,6 +106,7 @@ function ProposalsList() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [fundingSchemeOptions, setFundingSchemeOptions] = useState<ComboOption[]>([])
   const [staffList, setStaffList] = useState<Person[]>([])
+  const [callTemplates, setCallTemplates] = useState<ProposalCallTemplate[]>([])
 
   // Search EU Funding & Tenders Portal for call identifiers
   const searchEuCalls = useCallback(async (query: string): Promise<ComboOption[]> => {
@@ -139,10 +146,11 @@ function ProposalsList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Load supporting data (staff list, funding schemes)
+  // Load supporting data (staff list, funding schemes, call templates)
   useEffect(() => {
     if (!orgId) return
     staffService.list(orgId, { is_active: true }).then(setStaffList).catch(() => {})
+    proposalCallTemplateService.list().then(setCallTemplates).catch(() => setCallTemplates([]))
     supabase
       .from('funding_schemes')
       .select('id, name, type')
@@ -199,6 +207,7 @@ function ProposalsList() {
       status: p.status,
       responsible_person_id: p.responsible_person_id ?? '',
       notes: p.notes ?? '',
+      call_template_id: p.call_template_id ?? '',
     })
     setDialogOpen(true)
   }
@@ -226,6 +235,7 @@ function ProposalsList() {
         responsible_person_id: form.responsible_person_id || null,
         notes: form.notes.trim() || null,
         created_by: user?.id ?? null,
+        call_template_id: form.call_template_id || null,
       }
 
       if (editingId) {
@@ -264,7 +274,20 @@ function ProposalsList() {
           }).catch(() => {})
         }
       } else {
-        await proposalService.create(payload)
+        const created = await proposalService.create(payload)
+        // Seed the required-documents checklist from the picked template.
+        // Non-fatal: if seeding fails we keep the proposal and log — the user
+        // can add documents manually from the Documents tab.
+        if (form.call_template_id) {
+          const template = callTemplates.find(tpl => tpl.id === form.call_template_id)
+          if (template) {
+            try {
+              await proposalDocumentService.seedFromTemplate(created.id, template)
+            } catch (seedErr) {
+              console.warn('[Proposals] Failed to seed document checklist:', seedErr)
+            }
+          }
+        }
         toast({ title: t('proposals.proposalCreated') })
       }
       setDialogOpen(false)
@@ -539,6 +562,28 @@ function ProposalsList() {
                   emptyMessage="No matching schemes — type to enter custom"
                 />
               </div>
+              {!editingId && (
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Call template</Label>
+                  <select
+                    value={form.call_template_id}
+                    onChange={(e) => setField('call_template_id', e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">— None (no document checklist seeded) —</option>
+                    {callTemplates.map((tpl) => (
+                      <option key={tpl.id} value={tpl.id}>
+                        {tpl.name}
+                        {tpl.is_builtin ? '' : ' (custom)'}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Picking a template pre-populates the required-document checklist for this proposal.
+                    You can still add or remove documents afterwards.
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Status</Label>
                 <select
