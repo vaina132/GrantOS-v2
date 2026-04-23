@@ -11,9 +11,14 @@ import {
   X,
   Plus,
   Trash2,
+  ArrowUp,
+  ArrowDown,
+  GripVertical,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
@@ -29,6 +34,7 @@ import {
 import type {
   Proposal,
   ProposalDocument,
+  ProposalDocumentHandler,
   ProposalPartner,
   ProposalSubmission,
   ProposalSubmissionStatus,
@@ -60,6 +66,7 @@ export function ProposalDocumentsTab({ proposal, canManage }: Props) {
   const [submissions, setSubmissions] = useState<ProposalSubmission[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<{ partner: ProposalPartner; doc: ProposalDocument; submission: ProposalSubmission | null } | null>(null)
+  const [managing, setManaging] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -166,7 +173,7 @@ export function ProposalDocumentsTab({ proposal, canManage }: Props) {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => alert('Editing the checklist lands in a follow-up commit — for now, documents come from the call template.')}
+              onClick={() => setManaging(true)}
               title="Edit the checklist of required documents"
             >
               <Plus className="h-4 w-4 mr-1" /> Manage documents
@@ -257,6 +264,14 @@ export function ProposalDocumentsTab({ proposal, canManage }: Props) {
           onClose={() => setSelected(null)}
           onReview={handleReview}
           onRefresh={() => void load()}
+        />
+      )}
+
+      {managing && (
+        <ManageDocumentsPanel
+          proposalId={proposal.id}
+          onClose={() => setManaging(false)}
+          onChanged={() => void load()}
         />
       )}
     </>
@@ -449,6 +464,369 @@ function ReviewPanel({ proposal, partner, doc, submission, canReview, onClose, o
       </div>
     </div>
   )
-  void Trash2
   void proposal
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Manage-documents side drawer — CRUD for the per-proposal document checklist
+// ────────────────────────────────────────────────────────────────────────────
+
+const HANDLER_OPTIONS: Array<{ value: ProposalDocumentHandler; label: string }> = [
+  { value: 'upload',                label: 'File upload' },
+  { value: 'upload_with_template',  label: 'File upload (with template link)' },
+  { value: 'form',                  label: 'Built-in form' },
+]
+
+interface ManagePanelProps {
+  proposalId: string
+  onClose: () => void
+  onChanged: () => void
+}
+
+function ManageDocumentsPanel({ proposalId, onClose, onChanged }: ManagePanelProps) {
+  const [docs, setDocs] = useState<ProposalDocument[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const list = await proposalDocumentService.list(proposalId)
+      setDocs(list)
+    } catch (err) {
+      toast({
+        title: 'Error loading documents',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proposalId])
+
+  const handleAdd = async () => {
+    setAdding(true)
+    try {
+      const maxOrder = docs.length === 0 ? 0 : Math.max(...docs.map((d) => d.sort_order)) + 1
+      const created = await proposalDocumentService.create({
+        proposal_id: proposalId,
+        document_type: `custom_${Date.now()}`,
+        label: 'New document',
+        description: null,
+        handler: 'upload',
+        template_url: null,
+        required: true,
+        sort_order: maxOrder,
+      })
+      setDocs((prev) => [...prev, created])
+      onChanged()
+      toast({ title: 'Document added' })
+    } catch (err) {
+      toast({
+        title: 'Add failed',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      })
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  const handlePatch = async (id: string, patch: Partial<ProposalDocument>) => {
+    setBusyId(id)
+    // Optimistic update
+    setDocs((prev) => prev.map((d) => (d.id === id ? ({ ...d, ...patch } as ProposalDocument) : d)))
+    try {
+      const updated = await proposalDocumentService.update(id, patch)
+      setDocs((prev) => prev.map((d) => (d.id === id ? updated : d)))
+      onChanged()
+    } catch (err) {
+      toast({
+        title: 'Save failed',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      })
+      // Reload from server on failure so UI matches truth.
+      await load()
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleDelete = async (id: string, label: string) => {
+    const ok = window.confirm(
+      `Delete "${label}" from the checklist? Partners will no longer see this row. Any existing submissions for it will also be removed.`,
+    )
+    if (!ok) return
+    setBusyId(id)
+    try {
+      await proposalDocumentService.remove(id)
+      setDocs((prev) => prev.filter((d) => d.id !== id))
+      onChanged()
+      toast({ title: 'Document removed' })
+    } catch (err) {
+      toast({
+        title: 'Delete failed',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleMove = async (id: string, direction: -1 | 1) => {
+    const ordered = [...docs].sort((a, b) => a.sort_order - b.sort_order)
+    const idx = ordered.findIndex((d) => d.id === id)
+    const targetIdx = idx + direction
+    if (idx < 0 || targetIdx < 0 || targetIdx >= ordered.length) return
+    const current = ordered[idx]
+    const target = ordered[targetIdx]
+    setBusyId(id)
+    try {
+      // Swap sort_order values
+      await Promise.all([
+        proposalDocumentService.update(current.id, { sort_order: target.sort_order }),
+        proposalDocumentService.update(target.id,  { sort_order: current.sort_order }),
+      ])
+      await load()
+      onChanged()
+    } catch (err) {
+      toast({
+        title: 'Reorder failed',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const sorted = [...docs].sort((a, b) => a.sort_order - b.sort_order)
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/30" onClick={onClose} />
+      <div className="w-full max-w-2xl h-full bg-background border-l shadow-xl overflow-y-auto">
+        <div className="sticky top-0 z-10 bg-background border-b p-4 flex items-start justify-between gap-2">
+          <div>
+            <div className="text-base font-semibold">Manage documents</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              What each partner is asked to submit. Drag-equivalent ordering via the arrows.
+            </div>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="p-4 space-y-3">
+          {loading ? (
+            <div className="py-10 text-center">
+              <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+            </div>
+          ) : sorted.length === 0 ? (
+            <div className="rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+              No documents yet. Add one to start the checklist, or create the proposal with a call template pre-selected.
+            </div>
+          ) : (
+            sorted.map((doc, i) => (
+              <DocRow
+                key={doc.id}
+                doc={doc}
+                isFirst={i === 0}
+                isLast={i === sorted.length - 1}
+                busy={busyId === doc.id}
+                onPatch={(patch) => handlePatch(doc.id, patch)}
+                onDelete={() => handleDelete(doc.id, doc.label)}
+                onMoveUp={() => handleMove(doc.id, -1)}
+                onMoveDown={() => handleMove(doc.id, 1)}
+              />
+            ))
+          )}
+
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleAdd}
+            disabled={adding}
+          >
+            {adding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
+            Add document
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Single row in the Manage Documents panel.
+// Local state holds text inputs; changes flush to the parent on blur.
+// Toggles (required) and selects (handler) flush immediately.
+// ────────────────────────────────────────────────────────────────────────────
+
+interface DocRowProps {
+  doc: ProposalDocument
+  isFirst: boolean
+  isLast: boolean
+  busy: boolean
+  onPatch: (patch: Partial<ProposalDocument>) => void
+  onDelete: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+}
+
+function DocRow({ doc, isFirst, isLast, busy, onPatch, onDelete, onMoveUp, onMoveDown }: DocRowProps) {
+  const [label, setLabel] = useState(doc.label)
+  const [description, setDescription] = useState(doc.description ?? '')
+  const [templateUrl, setTemplateUrl] = useState(doc.template_url ?? '')
+
+  // Re-sync local state if the parent hands us a fresh copy (e.g. after reorder).
+  useEffect(() => { setLabel(doc.label) }, [doc.label])
+  useEffect(() => { setDescription(doc.description ?? '') }, [doc.description])
+  useEffect(() => { setTemplateUrl(doc.template_url ?? '') }, [doc.template_url])
+
+  const isBuiltIn = doc.document_type === 'part_a' || doc.document_type === 'budget'
+
+  return (
+    <div className={cn(
+      'rounded-lg border bg-background p-3 space-y-3',
+      busy && 'opacity-60 pointer-events-none',
+    )}>
+      {/* Top row: order arrows · label · delete */}
+      <div className="flex items-start gap-2">
+        <div className="flex flex-col items-center text-muted-foreground pt-1">
+          <GripVertical className="h-3.5 w-3.5 mb-0.5" />
+          <button
+            className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+            onClick={onMoveUp}
+            disabled={isFirst}
+            aria-label="Move up"
+            type="button"
+          >
+            <ArrowUp className="h-3.5 w-3.5" />
+          </button>
+          <button
+            className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+            onClick={onMoveDown}
+            disabled={isLast}
+            aria-label="Move down"
+            type="button"
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div className="flex-1 min-w-0 space-y-2">
+          <div>
+            <Label className="text-xs font-medium">Label</Label>
+            <Input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              onBlur={() => {
+                const trimmed = label.trim()
+                if (!trimmed) {
+                  setLabel(doc.label)
+                  toast({ title: 'Label cannot be empty', variant: 'destructive' })
+                  return
+                }
+                if (trimmed !== doc.label) onPatch({ label: trimmed })
+              }}
+              placeholder="e.g. Ownership declaration"
+            />
+          </div>
+
+          {isBuiltIn && (
+            <div className="rounded bg-muted/40 border border-dashed px-2.5 py-1.5 text-xs text-muted-foreground">
+              Built-in form ({doc.document_type === 'part_a' ? 'Part A' : 'Budget'}) —
+              label and required-state are editable; handler is locked.
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-red-600 p-1 disabled:opacity-30"
+          onClick={onDelete}
+          aria-label="Delete document"
+          disabled={busy}
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Second row: handler · required · template URL */}
+      <div className="grid sm:grid-cols-2 gap-3 pl-6">
+        <div>
+          <Label className="text-xs font-medium">Handler</Label>
+          <select
+            value={doc.handler}
+            onChange={(e) => onPatch({ handler: e.target.value as ProposalDocumentHandler })}
+            disabled={isBuiltIn}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {HANDLER_OPTIONS.map((h) => (
+              <option key={h.value} value={h.value}>{h.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-end gap-4 pb-1">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={doc.required}
+              onChange={(e) => onPatch({ required: e.target.checked })}
+            />
+            Required
+          </label>
+          {busy && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+        </div>
+
+        {(doc.handler === 'upload_with_template' || doc.template_url) && (
+          <div className="sm:col-span-2">
+            <Label className="text-xs font-medium">Template URL</Label>
+            <Input
+              type="url"
+              value={templateUrl}
+              onChange={(e) => setTemplateUrl(e.target.value)}
+              onBlur={() => {
+                const trimmed = templateUrl.trim()
+                const next = trimmed || null
+                if (next !== (doc.template_url ?? null)) {
+                  onPatch({ template_url: next })
+                }
+              }}
+              placeholder="https://ec.europa.eu/…"
+            />
+          </div>
+        )}
+
+        <div className="sm:col-span-2">
+          <Label className="text-xs font-medium">Description (optional)</Label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            onBlur={() => {
+              const trimmed = description.trim()
+              const next = trimmed || null
+              if (next !== (doc.description ?? null)) {
+                onPatch({ description: next })
+              }
+            }}
+            rows={2}
+            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            placeholder="A short note partners see alongside the upload button."
+          />
+        </div>
+      </div>
+    </div>
+  )
 }
