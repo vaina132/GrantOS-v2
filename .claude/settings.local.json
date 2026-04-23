@@ -2,7 +2,40 @@
   "permissions": {
     "allow": [
       "Bash(npx tsc *)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(curl -sI -A \"Mozilla/5.0\" \"https://ec.europa.eu/info/funding-tenders/opportunities/data/topic-list.json\")",
+      "Bash(curl -sIL -A \"Mozilla/5.0\" \"https://ec.europa.eu/info/funding-tenders/opportunities/data/topic-list.json\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=*&pageSize=5&pageNumber=1&type=1\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=horizon&pageSize=3&pageNumber=1&type=1\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" -X POST \"https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=*&pageSize=3&pageNumber=1\" -H \"Content-Type: application/x-www-form-urlencoded\" --data-urlencode 'query={\"bool\":{\"must\":[{\"terms\":{\"type\":[\"1\"]}},{\"terms\":{\"status\":[\"31094501\",\"31094502\"]}}]}}')",
+      "Bash(curl -s -A \"Mozilla/5.0\" -X POST \"https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=*&pageSize=3&pageNumber=1\" -H \"Content-Type: application/x-www-form-urlencoded\" --data-urlencode 'query={\"bool\":{\"must\":[{\"terms\":{\"type\":[\"1\"]}},{\"terms\":{\"status\":[\"31094501\",\"31094502\"]}}]}}' --data-urlencode 'sort={\"field\":\"sortStatus\",\"order\":\"ASC\"}')",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('total:',d['totalResults']\\); [print\\(r['metadata'].get\\('identifier',['?']\\)[0], '|', r['metadata'].get\\('status',['?']\\)[0], '|', r['metadata'].get\\('deadlineDatesLong',['?']\\)[0] if r['metadata'].get\\('deadlineDatesLong'\\) else '?'\\) for r in d['results']]\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" -X POST \"https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=*&pageSize=3&pageNumber=1&sortField=sortStatus&sortOrder=ASC\" -H \"Content-Type: application/x-www-form-urlencoded\" --data-urlencode 'languages=en' --data-urlencode 'query={\"bool\":{\"must\":[{\"terms\":{\"type\":[\"1\"]}},{\"terms\":{\"status\":[\"31094501\",\"31094502\"]}}]}}')",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('total:',d['totalResults']\\); [print\\(r['metadata'].get\\('identifier',['?']\\)[0], '|', r['metadata'].get\\('status',['?']\\)[0]\\) for r in d['results']]\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" -X POST \"https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=***&pageSize=3&pageNumber=1\" -H \"Content-Type: application/x-www-form-urlencoded\" --data-urlencode 'languages=en' --data-urlencode 'query={\"bool\":{\"must\":[{\"terms\":{\"type\":[\"1\"]}}]}}')",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('total:',d['totalResults']\\)\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" -X POST \"https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=%28status%3D%2731094501%27%29&pageSize=3&pageNumber=1\" -H \"Content-Type: application/x-www-form-urlencoded\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('total:',d['totalResults']\\); [print\\(r['metadata'].get\\('identifier',['?']\\)[0], '|', r['metadata'].get\\('status',['?']\\)[0], '|', r['metadata'].get\\('type',['?']\\)[0]\\) for r in d['results']]\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" -X POST \"https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&pageSize=3&pageNumber=1\" -H \"Content-Type: application/x-www-form-urlencoded\" --data-urlencode \"text=type='1' AND status='31094501'\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" -X POST \"https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&pageSize=3&pageNumber=1\" -H \"Content-Type: application/x-www-form-urlencoded\" --data-urlencode \"text=type=1\" --data-urlencode 'languages=en')",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('total:',d['totalResults']\\); [print\\(r['metadata'].get\\('identifier',['?']\\)[0], '|', r['metadata'].get\\('status',['?']\\)[0], '|', r['metadata'].get\\('type',['?']\\)[0]\\) for r in d['results'][:3]]\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" -X POST \"https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&pageSize=3&pageNumber=1\" -H \"Content-Type: application/x-www-form-urlencoded\" --data-urlencode \"text=\\(type='1'\\) AND \\(status='31094502'\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('total:',d['totalResults']\\); [print\\(r['metadata'].get\\('identifier',['?']\\)[0], '|', r['metadata'].get\\('status',['?']\\)[0], '|', r['metadata'].get\\('type',['?']\\)[0], '|', r['metadata'].get\\('deadlineDatesLong',['?']\\)\\) for r in d['results'][:3]]\")",
+      "Bash(curl -sI -A \"Mozilla/5.0\" \"https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/topic-search\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" -X POST \"https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&pageSize=5&pageNumber=1&text=*\" -H \"Content-Type: application/x-www-form-urlencoded\" --data-urlencode 'query={\"bool\":{\"must\":[{\"terms\":{\"type\":[\"1\"]}},{\"terms\":{\"status\":[\"31094501\",\"31094502\"]}}]}}' --data-urlencode \"text=*\")",
+      "Bash(python -c ' *)",
+      "WebSearch",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:github.com)",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ajruben/sedia-api-fetchers/main/sedia_api_fetchers/fetchers/fetchers.py\")",
+      "Bash(curl -s \"https://api.github.com/repos/ajruben/sedia-api-fetchers/contents/\")",
+      "Bash(python -c \"import sys,json; print\\(json.dumps\\([x['path'] for x in json.load\\(sys.stdin\\)], indent=2\\)\\)\")",
+      "Bash(curl -s \"https://api.github.com/repos/ajruben/sedia-api-fetchers/contents/sedia_api_fetchers\")",
+      "Bash(curl -s \"https://raw.githubusercontent.com/ajruben/sedia-api-fetchers/main/sedia_api_fetchers/EUFT_retrieve_funding_tenders.py\")",
+      "Bash(curl -s -X POST 'https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=***&pageSize=5&pageNumber=1' -F 'query=@/tmp/query.json;type=application/json' -F 'sort=@/tmp/sort.json;type=application/json' -F 'languages=@/tmp/languages.json;type=application/json')",
+      "Read(//c/tmp/**)",
+      "Bash(curl -s -X POST 'https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=***&pageSize=5&pageNumber=1' -F 'query=@query.json;type=application/json' -F 'sort=@sort.json;type=application/json' -F 'languages=@languages.json;type=application/json')",
+      "Bash(curl -s -X POST 'https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=***&pageSize=2&pageNumber=1' -F 'query=@query.json;type=application/json' -F 'sort=@sort.json;type=application/json' -F 'languages=@languages.json;type=application/json')"
     ]
   }
 }

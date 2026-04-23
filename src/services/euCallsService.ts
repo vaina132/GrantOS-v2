@@ -8,14 +8,17 @@ export interface EuCallTopic {
   identifier: string
   title: string
   callIdentifier: string
+  callTitle?: string
   programme: string
-  destination: string
+  programmeId?: string
+  programmePeriod?: string
+  typeOfAction?: string
   status: string
+  statusLabel: string
   openingDate?: string
   deadlineDate?: string
   deadlineModel?: string
-  budgetOverview?: string
-  trl?: string
+  summary?: string
   keywords: string[]
   url?: string
 }
@@ -25,7 +28,7 @@ export interface EuCallListResponse {
   total: number
   pageSize: number
   pageNumber: number
-  cachedAt: number | null
+  source?: string
 }
 
 export interface WatchlistEntry {

@@ -693,169 +693,302 @@ async function handleParseImport(req: VercelRequest, res: VercelResponse) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// eu-calls — proxy to EC Funding & Tenders Portal
+// eu-calls / eu-calls-list — proxy to EC Funding & Tenders (SEDIA) search API
 // ════════════════════════════════════════════════════════════════════════════
+//
+// The F&T portal exposes search via a JSON-over-multipart/form-data endpoint.
+// The `topic-list.json` file linked from older integrations has been removed
+// (ec.europa.eu → commission.europa.eu migration), so we hit the live search
+// API directly. Confirmed request shape:
+//
+//   POST https://api.tech.ec.europa.eu/search-api/prod/rest/search
+//        ?apiKey=SEDIA&text=***&pageSize=N&pageNumber=M
+//   Content-Type: multipart/form-data; boundary=...
+//        query     (application/json) → Elasticsearch bool filter
+//        sort      (application/json) → { field, order }
+//        languages (application/json) → ["en"]
+//
+// See https://github.com/ajruben/sedia-api-fetchers for the canonical shape.
 
-interface EuTopic {
-  identifier: string
-  title: string
-  callIdentifier?: string
-  deadlineDate?: string
-  status?: string
+const SEDIA_SEARCH_URL = 'https://api.tech.ec.europa.eu/search-api/prod/rest/search'
+
+// Status codes the SEDIA index uses.
+const SEDIA_STATUS = {
+  forthcoming: '31094502',
+  open: '31094501',
+  closed: '31094503',
 }
 
+// Type codes: 0 = tenders, 1/2/8 = grants.
+const SEDIA_GRANT_TYPES = ['1', '2', '8']
+
+// Known framework-programme IDs → readable labels for UI display.
+// Extracted from the SEDIA PROGRAMME_IDS map in the upstream fetcher library.
+const PROGRAMME_LABELS: Record<string, string> = {
+  '31045243': 'Horizon 2020',
+  '43108390': 'Horizon Europe',
+  '43152860': 'Digital Europe',
+  '44181033': 'European Defence Fund',
+  '43353764': 'Erasmus+',
+  '43251814': 'Creative Europe',
+  '43251589': 'CERV',
+  '43252476': 'Single Market Programme',
+  '43252405': 'LIFE',
+  '31059643': 'COSME',
+  '43251567': 'Connecting Europe Facility',
+  '31076817': 'REC',
+  '43089234': 'Innovation Fund',
+  '43298916': 'Euratom',
+  '43332642': 'EU4Health',
+  '43254037': 'European Solidarity Corps',
+  '43392145': 'EMFAF',
+  '43254019': 'ESF+',
+  '43251447': 'AMIF',
+  '43253706': 'TSI',
+  '43251842': 'EUAF',
+  '43298203': 'UCPM',
+  '43253979': 'Customs',
+  '43253995': 'Fiscalis',
+  '43251530': 'BMVI',
+  '43252368': 'ISF',
+  '43298664': 'AGRIP',
+  '44416173': 'I3',
+  '44773066': 'JTM',
+}
+
+function programmeLabel(id: string | null | undefined): string {
+  if (!id) return ''
+  return PROGRAMME_LABELS[id] ?? ''
+}
+
+/** Translate a SEDIA status code to a human-readable label. */
+function statusLabel(code: string | null | undefined): string {
+  switch (code) {
+    case SEDIA_STATUS.open: return 'Open'
+    case SEDIA_STATUS.forthcoming: return 'Forthcoming'
+    case SEDIA_STATUS.closed: return 'Closed'
+    default: return ''
+  }
+}
+
+/** The earliest future deadline in an array of ISO datetimes, or the first. */
+function pickDeadline(list: unknown): string | undefined {
+  if (!Array.isArray(list) || list.length === 0) return undefined
+  const now = Date.now()
+  const parsed = list
+    .map(v => (typeof v === 'string' ? { s: v, t: Date.parse(v) } : null))
+    .filter((x): x is { s: string; t: number } => !!x && !isNaN(x.t))
+  if (parsed.length === 0) return undefined
+  const future = parsed.filter(p => p.t >= now).sort((a, b) => a.t - b.t)
+  const picked = future[0] ?? parsed.sort((a, b) => b.t - a.t)[0]
+  return picked.s.slice(0, 10)
+}
+
+/**
+ * Post a search to the SEDIA API. Query/sort/languages are sent as JSON blobs
+ * in a multipart/form-data body (the SEDIA endpoint insists on this shape).
+ */
+async function sediaSearch(params: {
+  query: Record<string, any>
+  sort: Record<string, any>
+  text?: string
+  pageSize: number
+  pageNumber: number
+}): Promise<any> {
+  const url = new URL(SEDIA_SEARCH_URL)
+  url.searchParams.set('apiKey', 'SEDIA')
+  url.searchParams.set('text', params.text ?? '***')
+  url.searchParams.set('pageSize', String(params.pageSize))
+  url.searchParams.set('pageNumber', String(params.pageNumber))
+
+  const form = new FormData()
+  form.append(
+    'query',
+    new Blob([JSON.stringify(params.query)], { type: 'application/json' }),
+  )
+  form.append(
+    'sort',
+    new Blob([JSON.stringify(params.sort)], { type: 'application/json' }),
+  )
+  form.append(
+    'languages',
+    new Blob([JSON.stringify(['en'])], { type: 'application/json' }),
+  )
+
+  const res = await fetch(url.toString(), {
+    method: 'POST',
+    headers: { 'User-Agent': 'GrantLume/1.0', Accept: 'application/json' },
+    body: form,
+  })
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    throw new Error(`SEDIA API returned ${res.status}: ${body.slice(0, 200)}`)
+  }
+  return await res.json()
+}
+
+/** Normalise a SEDIA result row into the shape the client expects. */
+function shapeTopic(r: any) {
+  const m = r.metadata ?? {}
+  const firstOf = (v: any) => (Array.isArray(v) ? v[0] ?? '' : v ?? '')
+  const identifier = firstOf(m.identifier) || r.reference || ''
+  const frameworkId = firstOf(m.frameworkProgramme)
+  return {
+    identifier,
+    title: firstOf(m.title) || r.summary || '',
+    callIdentifier: firstOf(m.callIdentifier),
+    callTitle: firstOf(m.callTitle),
+    programme: programmeLabel(frameworkId) || frameworkId,
+    programmeId: frameworkId,
+    programmePeriod: firstOf(m.programmePeriod),
+    typeOfAction: Array.isArray(m.typesOfAction)
+      ? m.typesOfAction.join(', ')
+      : firstOf(m.typesOfAction),
+    status: firstOf(m.status),
+    statusLabel: statusLabel(firstOf(m.status)),
+    openingDate: firstOf(m.startDate)?.slice?.(0, 10) || undefined,
+    deadlineDate: pickDeadline(m.deadlineDate),
+    deadlineModel: firstOf(m.deadlineModel),
+    summary: r.summary || '',
+    keywords: Array.isArray(m.keywords) ? m.keywords.slice(0, 20) : [],
+    url: identifier
+      ? `https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/topic-details/${identifier}`
+      : undefined,
+  }
+}
+
+// ── Simple in-memory cache so filter changes don't hit SEDIA every time ───
+const sediaResponseCache = new Map<string, { fetchedAt: number; data: any }>()
+const SEDIA_CACHE_TTL_MS = 10 * 60 * 1000  // 10 minutes
+
+async function cachedSediaSearch(params: Parameters<typeof sediaSearch>[0]) {
+  const key = JSON.stringify(params)
+  const hit = sediaResponseCache.get(key)
+  const now = Date.now()
+  if (hit && now - hit.fetchedAt < SEDIA_CACHE_TTL_MS) return hit.data
+  const data = await sediaSearch(params)
+  sediaResponseCache.set(key, { fetchedAt: now, data })
+  // Bound cache size.
+  if (sediaResponseCache.size > 200) {
+    const firstKey = sediaResponseCache.keys().next().value
+    if (firstKey !== undefined) sediaResponseCache.delete(firstKey)
+  }
+  return data
+}
+
+/**
+ * eu-calls — lightweight keyword lookup used by the Proposals combo-box.
+ * Returns up to `pageSize` topic-level matches for the given query string.
+ */
 async function handleEuCalls(req: VercelRequest, res: VercelResponse) {
-  const query = (req.query.q as string) ?? ''
-  const pageSize = parseInt((req.query.pageSize as string) ?? '20', 10)
+  const query = ((req.query.q as string) ?? '').trim()
+  const pageSize = Math.min(parseInt((req.query.pageSize as string) ?? '15', 10) || 15, 50)
 
   if (query.length < 2) {
     return res.status(200).json({ topics: [] })
   }
 
   try {
-    const searchUrl = new URL('https://api.tech.ec.europa.eu/search-api/prod/rest/search')
-    searchUrl.searchParams.set('apiKey', 'SEDIA')
-    searchUrl.searchParams.set('text', query)
-    searchUrl.searchParams.set('pageSize', String(pageSize))
-    searchUrl.searchParams.set('pageNumber', '1')
-    searchUrl.searchParams.set('type', '1')
-
-    const response = await fetch(searchUrl.toString(), {
-      method: 'GET',
-      headers: { Accept: 'application/json', 'User-Agent': 'GrantLume/1.0' },
+    const data = await cachedSediaSearch({
+      query: {
+        bool: {
+          must: [
+            { terms: { type: SEDIA_GRANT_TYPES } },
+          ],
+        },
+      },
+      sort: { field: 'sortStatus', order: 'ASC' },
+      text: query,
+      pageSize,
+      pageNumber: 1,
     })
 
-    if (!response.ok) {
-      return await euCallsFallback(query, pageSize, res)
-    }
+    const topics = ((data.results ?? []) as any[])
+      .map(shapeTopic)
+      .filter(t => t.identifier)
 
-    const data = await response.json()
-    const topics: EuTopic[] = (data.results ?? []).map((r: any) => ({
-      identifier: r.metadata?.identifier?.[0] ?? r.reference ?? '',
-      title: r.title ?? r.metadata?.title?.[0] ?? '',
-      callIdentifier: r.metadata?.callIdentifier?.[0] ?? '',
-      deadlineDate: r.metadata?.deadlineDatesLong?.[0]
-        ? new Date(parseInt(r.metadata.deadlineDatesLong[0])).toISOString().slice(0, 10)
-        : undefined,
-      status: r.metadata?.status?.[0] ?? '',
-    })).filter((t: EuTopic) => t.identifier)
-
-    return res.status(200).json({ topics, source: 'ec-search-api' })
-  } catch {
-    return await euCallsFallback(query, pageSize, res)
+    return res.status(200).json({ topics, source: 'sedia' })
+  } catch (err: any) {
+    console.error('[eu-calls] search failed:', err?.message)
+    return res.status(502).json({ error: `EU search failed: ${err?.message ?? 'unknown'}` })
   }
 }
 
-async function euCallsFallback(query: string, pageSize: number, res: VercelResponse) {
-  try {
-    const listUrl = 'https://ec.europa.eu/info/funding-tenders/opportunities/data/topic-list.json'
-    const response = await fetch(listUrl, {
-      headers: { Accept: 'application/json', 'User-Agent': 'GrantLume/1.0' },
-    })
-
-    if (!response.ok) return res.status(200).json({ topics: [], source: 'none' })
-
-    const data = await response.json()
-    const all: any[] = data.topicData?.Topics ?? data ?? []
-
-    const q = query.toLowerCase()
-    const filtered = all
-      .filter((t: any) =>
-        (t.identifier ?? '').toLowerCase().includes(q) ||
-        (t.title ?? '').toLowerCase().includes(q) ||
-        (t.callIdentifier ?? '').toLowerCase().includes(q),
-      )
-      .slice(0, pageSize)
-      .map((t: any) => ({
-        identifier: t.identifier ?? '',
-        title: t.title ?? '',
-        callIdentifier: t.callIdentifier ?? '',
-        deadlineDate: t.deadlineDate ?? undefined,
-        status: t.status ?? '',
-      }))
-
-    return res.status(200).json({ topics: filtered, source: 'topic-list' })
-  } catch {
-    return res.status(200).json({ topics: [], source: 'error' })
-  }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// eu-calls-list — paginated browse view for the Calls module
-// ════════════════════════════════════════════════════════════════════════════
-
-// In-memory cache for the topic list so we don't hammer the F&T portal for
-// every filter change. Cache is shared across concurrent requests to the
-// same serverless instance and expires after 6 hours.
-let topicListCache: { fetchedAt: number; topics: any[] } | null = null
-const TOPIC_LIST_TTL_MS = 6 * 60 * 60 * 1000
-
-async function fetchTopicList(): Promise<any[]> {
-  const now = Date.now()
-  if (topicListCache && now - topicListCache.fetchedAt < TOPIC_LIST_TTL_MS) {
-    return topicListCache.topics
-  }
-  const listUrl = 'https://ec.europa.eu/info/funding-tenders/opportunities/data/topic-list.json'
-  const response = await fetch(listUrl, {
-    headers: { Accept: 'application/json', 'User-Agent': 'GrantLume/1.0' },
-  })
-  if (!response.ok) {
-    if (topicListCache) return topicListCache.topics
-    throw new Error(`F&T portal returned ${response.status}`)
-  }
-  const data = await response.json()
-  const topics: any[] = data.topicData?.Topics ?? data?.Topics ?? []
-  topicListCache = { fetchedAt: now, topics }
-  return topics
-}
-
+/**
+ * eu-calls-list — paginated browse for the Calls module. Accepts q, programme,
+ * status, pageNumber, pageSize. `status` defaults to open + forthcoming.
+ */
 async function handleEuCallsList(req: VercelRequest, res: VercelResponse) {
-  const query = ((req.query.q as string) ?? '').trim().toLowerCase()
-  const programme = ((req.query.programme as string) ?? '').trim().toLowerCase()
-  const status = ((req.query.status as string) ?? '').trim().toLowerCase()
-  const pageSize = Math.min(parseInt((req.query.pageSize as string) ?? '100', 10) || 100, 500)
+  const q = ((req.query.q as string) ?? '').trim()
+  const programmeRaw = ((req.query.programme as string) ?? '').trim()
+  const statusFilter = ((req.query.status as string) ?? '').trim().toLowerCase()
+  const pageSize = Math.min(parseInt((req.query.pageSize as string) ?? '50', 10) || 50, 100)
   const pageNumber = Math.max(parseInt((req.query.pageNumber as string) ?? '1', 10) || 1, 1)
 
-  try {
-    const all = await fetchTopicList()
+  // Translate readable filters into SEDIA codes.
+  let statusCodes: string[] = [SEDIA_STATUS.open, SEDIA_STATUS.forthcoming]
+  if (statusFilter === 'open') statusCodes = [SEDIA_STATUS.open]
+  else if (statusFilter === 'forthcoming') statusCodes = [SEDIA_STATUS.forthcoming]
+  else if (statusFilter === 'closed') statusCodes = [SEDIA_STATUS.closed]
+  else if (statusFilter === 'any' || statusFilter === 'all') {
+    statusCodes = [SEDIA_STATUS.open, SEDIA_STATUS.forthcoming, SEDIA_STATUS.closed]
+  }
 
-    const filtered = all.filter((t: any) => {
-      if (query) {
-        const haystack = `${t.identifier ?? ''} ${t.title ?? ''} ${t.callIdentifier ?? ''} ${(t.keywords ?? []).join(' ')}`.toLowerCase()
-        if (!haystack.includes(query)) return false
-      }
-      if (programme) {
-        const prog = (t.frameworkProgramme ?? t.programmeDivision ?? '').toLowerCase()
-        if (!prog.includes(programme)) return false
-      }
-      if (status) {
-        if (!((t.status ?? '') as string).toLowerCase().includes(status)) return false
-      }
-      return true
+  // Resolve programme filter — accept either an ID or a known short/long name.
+  let programmeIds: string[] | null = null
+  if (programmeRaw) {
+    const lower = programmeRaw.toLowerCase()
+    // First try exact ID
+    if (/^\d+$/.test(programmeRaw)) {
+      programmeIds = [programmeRaw]
+    } else {
+      // Match known labels (partial, case-insensitive)
+      const hits = Object.entries(PROGRAMME_LABELS)
+        .filter(([, label]) => label.toLowerCase().includes(lower))
+        .map(([id]) => id)
+      if (hits.length > 0) programmeIds = hits
+      // Otherwise leave as null and pass the string as a text filter below.
+    }
+  }
+
+  const must: any[] = [
+    { terms: { type: SEDIA_GRANT_TYPES } },
+    { terms: { status: statusCodes } },
+  ]
+  if (programmeIds && programmeIds.length > 0) {
+    must.push({ terms: { frameworkProgramme: programmeIds } })
+  }
+
+  // Use `text` for free-text keyword search; fall back to wildcard.
+  const text = q || (programmeIds ? '***' : (programmeRaw || '***'))
+
+  try {
+    const data = await cachedSediaSearch({
+      query: { bool: { must } },
+      sort: statusFilter === 'closed'
+        ? { field: 'deadlineDate', order: 'DESC' }
+        : { field: 'sortStatus', order: 'ASC' },
+      text,
+      pageSize,
+      pageNumber,
     })
 
-    const total = filtered.length
-    const start = (pageNumber - 1) * pageSize
-    const slice = filtered.slice(start, start + pageSize).map((t: any) => ({
-      identifier: t.identifier ?? '',
-      title: t.title ?? '',
-      callIdentifier: t.callIdentifier ?? '',
-      programme: t.frameworkProgramme ?? t.programmeDivision ?? '',
-      destination: t.destinationDetails ?? t.destinationGroup ?? '',
-      status: t.status ?? '',
-      openingDate: t.plannedOpeningDate ?? t.openingDate ?? undefined,
-      deadlineDate: t.deadlineDate ?? undefined,
-      deadlineModel: t.deadlineModel ?? undefined,
-      budgetOverview: t.budgetOverview ?? undefined,
-      trl: t.trl ?? undefined,
-      keywords: t.keywords ?? [],
-      url: t.identifier
-        ? `https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/topic-details/${t.identifier}`
-        : undefined,
-    }))
+    const topics = ((data.results ?? []) as any[])
+      .map(shapeTopic)
+      .filter(t => t.identifier)
 
-    return res.status(200).json({ topics: slice, total, pageSize, pageNumber, cachedAt: topicListCache?.fetchedAt ?? null })
+    return res.status(200).json({
+      topics,
+      total: data.totalResults ?? topics.length,
+      pageSize,
+      pageNumber,
+      source: 'sedia',
+    })
   } catch (err: any) {
-    return res.status(502).json({ error: `Failed to load F&T topic list: ${err?.message ?? 'unknown'}` })
+    console.error('[eu-calls-list] search failed:', err?.message)
+    return res.status(502).json({
+      error: `Failed to load F&T topic list: ${err?.message ?? 'unknown'}`,
+    })
   }
 }

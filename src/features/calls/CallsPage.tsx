@@ -17,7 +17,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
 import { cn } from '@/lib/utils'
 
-const STATUS_OPTIONS = ['', 'Forthcoming', 'Open', 'Closed']
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'Open + Forthcoming' },
+  { value: 'open', label: 'Open' },
+  { value: 'forthcoming', label: 'Forthcoming' },
+  { value: 'closed', label: 'Closed' },
+  { value: 'any', label: 'Any status' },
+]
 
 export function CallsPage() {
   const { t } = useTranslation()
@@ -157,16 +163,29 @@ export function CallsPage() {
         </td>
         <td className="px-3 py-2 max-w-md">
           <div className="text-sm font-medium truncate" title={topic.title}>{topic.title}</div>
-          {topic.destination && (
-            <div className="text-xs text-muted-foreground truncate">{topic.destination}</div>
+          {topic.callIdentifier && (
+            <div className="text-xs text-muted-foreground truncate">
+              {topic.callIdentifier}
+              {topic.typeOfAction ? ` · ${topic.typeOfAction}` : ''}
+            </div>
           )}
         </td>
         <td className="px-3 py-2 text-xs text-muted-foreground">
           {topic.programme || '—'}
         </td>
         <td className="px-3 py-2">
-          {topic.status ? (
-            <Badge variant="outline" className="text-[10px]">{topic.status}</Badge>
+          {topic.statusLabel ? (
+            <Badge
+              variant="outline"
+              className={cn(
+                'text-[10px]',
+                topic.statusLabel === 'Open' && 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                topic.statusLabel === 'Forthcoming' && 'bg-blue-50 text-blue-700 border-blue-200',
+                topic.statusLabel === 'Closed' && 'bg-zinc-100 text-zinc-600 border-zinc-200',
+              )}
+            >
+              {topic.statusLabel}
+            </Badge>
           ) : (
             '—'
           )}
@@ -197,8 +216,12 @@ export function CallsPage() {
         title: w.title ?? w.topic_identifier,
         callIdentifier: w.call_identifier ?? '',
         programme: w.programme ?? '',
-        destination: '',
         status: w.status ?? '',
+        statusLabel:
+          w.status === '31094501' ? 'Open'
+            : w.status === '31094502' ? 'Forthcoming'
+            : w.status === '31094503' ? 'Closed'
+            : '',
         deadlineDate: w.deadline_date ?? undefined,
         keywords: [],
         url: `https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/topic-details/${w.topic_identifier}`,
@@ -282,8 +305,8 @@ export function CallsPage() {
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   {STATUS_OPTIONS.map(s => (
-                    <option key={s} value={s}>
-                      {s || 'Any status'}
+                    <option key={s.value} value={s.value}>
+                      {s.label}
                     </option>
                   ))}
                 </select>
