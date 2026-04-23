@@ -144,10 +144,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return handleAuthError(err, res)
     }
 
-    // Inject authenticated user context into request body for downstream handlers
+    // Override any org_id / user_id present in the request body with the
+    // authenticated values. The client must never be able to charge AI
+    // quota (or read data) against a different organisation by stuffing a
+    // foreign org_id into the body.
     if (req.body && typeof req.body === 'object') {
-      if (!req.body.org_id && auth.orgId) req.body.org_id = auth.orgId
-      if (!req.body.user_id) req.body.user_id = auth.userId
+      if (auth.orgId) req.body.org_id = auth.orgId
+      req.body.user_id = auth.userId
     }
 
     switch (action) {
@@ -723,37 +726,41 @@ const SEDIA_STATUS = {
 const SEDIA_GRANT_TYPES = ['1', '2', '8']
 
 // Known framework-programme IDs → readable labels for UI display.
-// Extracted from the SEDIA PROGRAMME_IDS map in the upstream fetcher library.
+// Keep in sync with src/lib/euProgrammes.ts on the client side.
 const PROGRAMME_LABELS: Record<string, string> = {
-  '31045243': 'Horizon 2020',
   '43108390': 'Horizon Europe',
   '43152860': 'Digital Europe',
-  '44181033': 'European Defence Fund',
   '43353764': 'Erasmus+',
   '43251814': 'Creative Europe',
-  '43251589': 'CERV',
-  '43252476': 'Single Market Programme',
-  '43252405': 'LIFE',
-  '31059643': 'COSME',
-  '43251567': 'Connecting Europe Facility',
-  '31076817': 'REC',
-  '43089234': 'Innovation Fund',
-  '43298916': 'Euratom',
+  '43252405': 'LIFE Programme',
+  '44181033': 'European Defence Fund',
+  '43251567': 'Connecting Europe Facility (CEF)',
   '43332642': 'EU4Health',
+  '43089234': 'Innovation Fund',
+  '43298916': 'Euratom Research and Training',
+  '43252476': 'Single Market Programme',
+  '43251589': 'Citizens, Equality, Rights and Values',
+  '43252386': 'Justice Programme',
+  '43254019': 'European Social Fund Plus (ESF+)',
+  '43392145': 'EMFAF (Maritime, Fisheries & Aquaculture)',
   '43254037': 'European Solidarity Corps',
-  '43392145': 'EMFAF',
-  '43254019': 'ESF+',
-  '43251447': 'AMIF',
-  '43253706': 'TSI',
-  '43251842': 'EUAF',
-  '43298203': 'UCPM',
-  '43253979': 'Customs',
-  '43253995': 'Fiscalis',
-  '43251530': 'BMVI',
-  '43252368': 'ISF',
-  '43298664': 'AGRIP',
-  '44416173': 'I3',
-  '44773066': 'JTM',
+  '43253706': 'Technical Support Instrument (TSI)',
+  '44416173': 'Interregional Innovation Investments (I3)',
+  '44773066': 'Just Transition Mechanism',
+  '43251530': 'Border Management and Visa Policy (BMVI)',
+  '43252368': 'Internal Security Fund (ISF)',
+  '43251447': 'Asylum, Migration and Integration Fund (AMIF)',
+  '43253979': 'Customs Programme',
+  '43253995': 'Fiscalis Programme',
+  '43298203': 'Union Civil Protection Mechanism',
+  '43298664': 'Promotion of Agricultural Products',
+  '43251842': 'Union Anti-Fraud Programme',
+  // Legacy / closed programmes
+  '31045243': 'Horizon 2020 (legacy 2014–2020)',
+  '31059643': 'COSME (legacy 2014–2020)',
+  '31076817': 'Rights, Equality and Citizenship (REC, legacy)',
+  '31059093': 'Erasmus+ (legacy 2014–2020)',
+  '31107710': 'LIFE (legacy 2014–2020)',
 }
 
 function programmeLabel(id: string | null | undefined): string {

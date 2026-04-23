@@ -400,26 +400,37 @@ async function loadUserContext(
     return
   }
 
-  // Not yet accepted — but check user_metadata for invite_context.
-  // This handles the race condition where AuthCallbackPage hasn't finished
-  // calling collab-accept yet, but we know this user is a collab invitee.
-  const inviteCtx = user.user_metadata?.invite_context as
-    | { type?: string } | undefined
-  if (inviteCtx?.type === 'collab') {
-    console.log('[GrantLume] Collab invite_context found in metadata — treating as collab partner (pending accept)')
-    set({
-      user,
-      orgId: null,
-      orgName: null,
-      role: 'External Participant',
-      permissions: computePermissions('External Participant'),
-      accessType: 'collab_partner',
-      orgPlan: null,
-      trialEndsAt: null,
-      isLoading: false,
-      error: null,
-    })
-    return
+  // Not yet accepted — look for a pending partner row matching the user's
+  // email. `user_metadata.invite_context` is client-writable, so we cannot
+  // trust it alone (an attacker could craft it to gain External Participant
+  // role). We require a matching pending invite on the server side.
+  if (user.email) {
+    // Supabase normalises the auth email to lowercase, but contact_email on
+    // project_partners may have been stored with whatever casing the inviter
+    // typed. Use case-insensitive matching so "Alice@Example.com" matches
+    // an invite stored as "alice@example.com".
+    const { data: pendingInvite } = await (supabase as any)
+      .from('project_partners')
+      .select('id')
+      .ilike('contact_email', user.email)
+      .eq('invite_status', 'pending')
+      .limit(1)
+      .maybeSingle()
+    if (pendingInvite) {
+      set({
+        user,
+        orgId: null,
+        orgName: null,
+        role: 'External Participant',
+        permissions: computePermissions('External Participant'),
+        accessType: 'collab_partner',
+        orgPlan: null,
+        trialEndsAt: null,
+        isLoading: false,
+        error: null,
+      })
+      return
+    }
   }
 
   // No membership and not a collab partner — user needs to create an org (onboarding wizard)

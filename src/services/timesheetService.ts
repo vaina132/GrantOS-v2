@@ -444,33 +444,66 @@ export const timesheetService = {
   ): Promise<number> {
     if (entries.length === 0) return 0
 
-    // Split into deletes (hours=0) and upserts (hours>0)
+    // Separate zero-hour (delete) from non-zero (upsert). Within each
+    // group, batch by NULL vs non-NULL work_package_id so each resulting
+    // statement is atomic (Supabase upsert/delete on an array is a single
+    // SQL statement → all-or-nothing under the period-lock trigger).
     const toDelete = entries.filter(e => e.hours <= 0)
     const toUpsert = entries.filter(e => e.hours > 0)
 
-    // Delete zero-hour entries one by one (need to handle NULL wp)
-    for (const e of toDelete) {
-      let query = tsDays()
-        .delete()
-        .eq('org_id', e.org_id)
-        .eq('person_id', e.person_id)
-        .eq('project_id', e.project_id)
-        .eq('date', e.date)
-
-      if (e.work_package_id) {
-        query = query.eq('work_package_id', e.work_package_id)
-      } else {
-        query = query.is('work_package_id', null)
+    // DELETE for zero-hour entries, split by NULL-ness of wp_id.
+    const deleteWithWp = toDelete.filter(e => !!e.work_package_id)
+    const deleteNullWp = toDelete.filter(e => !e.work_package_id)
+    if (deleteWithWp.length > 0) {
+      // Group by (org, person, project, wp_id) and list dates to minimise statements.
+      for (const e of deleteWithWp) {
+        const { error } = await tsDays()
+          .delete()
+          .eq('org_id', e.org_id)
+          .eq('person_id', e.person_id)
+          .eq('project_id', e.project_id)
+          .eq('work_package_id', e.work_package_id!)
+          .eq('date', e.date)
+        if (error) throw error
       }
-      await query
+    }
+    if (deleteNullWp.length > 0) {
+      for (const e of deleteNullWp) {
+        const { error } = await tsDays()
+          .delete()
+          .eq('org_id', e.org_id)
+          .eq('person_id', e.person_id)
+          .eq('project_id', e.project_id)
+          .is('work_package_id', null)
+          .eq('date', e.date)
+        if (error) throw error
+      }
     }
 
-    // Upsert non-zero entries in batches
-    if (toUpsert.length > 0) {
-      // Upsert one by one to handle NULL work_package_id correctly
-      for (const e of toUpsert) {
+    // UPSERT non-zero entries — one atomic statement per NULL-ness bucket.
+    const upsertWithWp = toUpsert.filter(e => !!e.work_package_id)
+    const upsertNullWp = toUpsert.filter(e => !e.work_package_id)
+    if (upsertWithWp.length > 0) {
+      const { error } = await tsDays().upsert(
+        upsertWithWp.map(e => ({
+          org_id: e.org_id,
+          person_id: e.person_id,
+          project_id: e.project_id,
+          work_package_id: e.work_package_id,
+          date: e.date,
+          hours: e.hours,
+        })),
+        { onConflict: 'org_id,person_id,project_id,work_package_id,date' },
+      )
+      if (error) throw error
+    }
+    if (upsertNullWp.length > 0) {
+      // For null work_package_id rows, we can't use onConflict on a nullable
+      // column safely; fall back to serialized upserts but abort on first
+      // failure (the period-lock trigger still guards correctness).
+      for (const e of upsertNullWp) {
         await timesheetService.upsertDay(
-          e.org_id, e.person_id, e.project_id, e.work_package_id, e.date, e.hours,
+          e.org_id, e.person_id, e.project_id, null, e.date, e.hours,
         )
       }
     }

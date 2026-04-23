@@ -180,7 +180,10 @@ function autoMap(csvHeaders: string[], columns: ColumnDef[]): Record<string, str
         if (s > bestScore) { bestScore = s; bestHeader = csvH }
       }
     }
-    if (bestScore >= 30 && bestHeader) {
+    // Keep this threshold in sync with src/features/import/BulkImport.tsx.
+    // 30 was too permissive and caused silent misbindings (e.g. "Amount"
+    // auto-mapping to "annual_salary").
+    if (bestScore >= 60 && bestHeader) {
       mapping[col.field] = bestHeader
       usedHeaders.add(bestHeader)
     }

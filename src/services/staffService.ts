@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/stores/authStore'
 import { writeAudit } from './auditWriter'
 import type { Person } from '@/types'
 
@@ -9,10 +10,29 @@ export interface StaffFilters {
   is_active?: boolean
 }
 
+/**
+ * Salary and overhead_rate are sensitive. We expose them only to callers
+ * whose `canSeeSalary` permission is true. Everyone else reads from the
+ * `persons_masked` view which omits those columns server-side. A malicious
+ * caller who hits `from('persons')` directly is still bounded by RLS, but
+ * the masked read is the correct default.
+ */
+function canSeeSalary(): boolean {
+  try {
+    return !!useAuthStore.getState().can('canSeeSalary')
+  } catch {
+    return false
+  }
+}
+
+function personsSource() {
+  return canSeeSalary() ? 'persons' : 'persons_masked'
+}
+
 export const staffService = {
   async list(orgId: string | null, filters?: StaffFilters): Promise<Person[]> {
-    let query = supabase
-      .from('persons')
+    let query = (supabase as any)
+      .from(personsSource())
       .select('*')
       .order('full_name')
 
@@ -43,8 +63,8 @@ export const staffService = {
   },
 
   async getById(id: string): Promise<Person | null> {
-    const { data, error } = await supabase
-      .from('persons')
+    const { data, error } = await (supabase as any)
+      .from(personsSource())
       .select('*')
       .eq('id', id)
       .single()

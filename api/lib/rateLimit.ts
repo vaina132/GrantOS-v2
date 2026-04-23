@@ -34,13 +34,27 @@ export interface RateLimitConfig {
 }
 
 /**
- * Returns the client IP from common Vercel/proxy headers.
+ * Returns the client IP from Vercel's trusted headers.
+ *
+ * `x-forwarded-for` CAN contain the entire chain, with the LEFTMOST entry
+ * being whatever the client's browser sent — which is attacker-controllable.
+ * On Vercel, the LAST entry is the edge's view of the client, and
+ * `x-real-ip` is set by Vercel's edge and is NOT client-controllable.
+ *
+ * Preference order: x-real-ip → last entry of x-forwarded-for → 0.0.0.0.
  */
 function getClientIp(req: VercelRequest): string {
-  const forwarded = req.headers['x-forwarded-for']
-  if (typeof forwarded === 'string') return forwarded.split(',')[0].trim()
   const real = req.headers['x-real-ip']
-  if (typeof real === 'string') return real
+  if (typeof real === 'string' && real.length > 0) return real.trim()
+
+  const forwarded = req.headers['x-forwarded-for']
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
+    // Take the LAST entry — on Vercel this is the edge's observation of the
+    // connecting client, not any header the client injected.
+    const parts = forwarded.split(',').map(p => p.trim()).filter(Boolean)
+    if (parts.length > 0) return parts[parts.length - 1]
+  }
+
   return '0.0.0.0'
 }
 

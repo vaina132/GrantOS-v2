@@ -174,7 +174,11 @@ function autoMap(csvHeaders: string[], columns: ColumnDef[]): Record<string, str
         if (s > bestScore) { bestScore = s; bestHeader = csvH }
       }
     }
-    if (bestScore >= 30 && bestHeader) {
+    // Require a reasonably strong match before auto-mapping. 30 was far too
+    // permissive — "amount" would auto-map to "annual_salary" silently.
+    // 60 still catches genuine typos and light variation ("first name" →
+    // "firstname") but rejects alias-overlap false positives.
+    if (bestScore >= 60 && bestHeader) {
       mapping[col.field] = bestHeader
       usedHeaders.add(bestHeader)
     }

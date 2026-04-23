@@ -120,12 +120,25 @@ export const allocationsService = {
     cells: (AllocationCell & { org_id: string })[],
   ): Promise<Assignment[]> {
     if (cells.length === 0) return []
-    const results: Assignment[] = []
-    for (const cell of cells) {
-      const result = await allocationsService.upsertAssignment(cell)
-      results.push(result)
-    }
-    return results
+    // Atomic upsert at the statement level — if any row fails the whole
+    // statement rolls back. Much safer than looping one-by-one, which
+    // partially persisted state on the first error.
+    const rows = cells.map(c => ({
+      org_id: c.org_id,
+      person_id: c.person_id,
+      project_id: c.project_id,
+      work_package_id: c.work_package_id ?? null,
+      year: c.year,
+      month: c.month,
+      pms: c.pms,
+      type: c.type,
+    }))
+    const { data, error } = await supabase
+      .from('assignments')
+      .upsert(rows, { onConflict: 'person_id,project_id,work_package_id,year,month,type' })
+      .select()
+    if (error) throw error
+    return (data ?? []) as Assignment[]
   },
 
   async deleteAssignment(id: string): Promise<void> {

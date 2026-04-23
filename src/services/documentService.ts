@@ -34,7 +34,16 @@ export const documentService = {
     title: string,
     userId: string,
   ): Promise<ProjectDocument> {
-    const filePath = `${orgId}/${projectId}/${Date.now()}_${file.name}`
+    // Sanitise the file name so it can't break out of the org/project prefix
+    // via "../" or contain separators / control characters. Keep only
+    // letters, digits, dot, dash, underscore; everything else → underscore.
+    // Cap at 120 chars to avoid hitting Supabase Storage path limits.
+    const safeName = (file.name || 'upload')
+      .replace(/[^a-zA-Z0-9._-]+/g, '_')
+      .replace(/_{2,}/g, '_')
+      .replace(/^\.+/, '')
+      .slice(0, 120) || 'upload'
+    const filePath = `${orgId}/${projectId}/${Date.now()}_${safeName}`
 
     // Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage

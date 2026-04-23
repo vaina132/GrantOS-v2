@@ -411,19 +411,26 @@ async function handleSign(req: VercelRequest, res: VercelResponse) {
 // ════════════════════════════════════════════════════════════════════════════
 
 async function handleWebhook(req: VercelRequest, res: VercelResponse) {
-  // Optional HMAC verification
+  // HMAC verification is mandatory. Without it, any POST to this endpoint
+  // could forge an envelope status change.
   const hmacKey = process.env.DOCUSIGN_CONNECT_HMAC_KEY
-  if (hmacKey) {
-    const hmacHeader = req.headers['x-docusign-signature-1'] as string
-    if (hmacHeader) {
-      const { createHmac } = await import('crypto')
-      const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
-      const computed = createHmac('sha256', hmacKey).update(body).digest('base64')
-      if (computed !== hmacHeader) {
-        console.warn('[docusign] HMAC mismatch — rejecting')
-        return res.status(401).json({ error: 'Invalid signature' })
-      }
-    }
+  if (!hmacKey) {
+    console.error('[docusign] DOCUSIGN_CONNECT_HMAC_KEY not set — refusing webhook')
+    return res.status(500).json({ error: 'Webhook HMAC key not configured' })
+  }
+  const hmacHeader = req.headers['x-docusign-signature-1'] as string
+  if (!hmacHeader) {
+    return res.status(401).json({ error: 'Missing x-docusign-signature-1 header' })
+  }
+  const { createHmac, timingSafeEqual } = await import('crypto')
+  const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
+  const computed = createHmac('sha256', hmacKey).update(body).digest('base64')
+  // Constant-time comparison to avoid timing oracle attacks.
+  const a = Buffer.from(computed)
+  const b = Buffer.from(hmacHeader)
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    console.warn('[docusign] HMAC mismatch — rejecting')
+    return res.status(401).json({ error: 'Invalid signature' })
   }
 
   const supabase: any = createClient(

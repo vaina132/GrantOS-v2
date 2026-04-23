@@ -162,15 +162,21 @@ async function handleWebhook(
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
   const stripe = new Stripe(stripeSecretKey)
 
+  // Signature verification is mandatory. Without a secret, unsigned events
+  // could be forged by anyone — treat missing env var as a hard 500.
+  if (!webhookSecret) {
+    console.error('[stripe] STRIPE_WEBHOOK_SECRET not set — refusing unsigned events')
+    return res.status(500).json({ error: 'Webhook secret not configured' })
+  }
+
   let event: Stripe.Event
   try {
     const sig = req.headers['stripe-signature'] as string
-    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
-    if (webhookSecret && sig) {
-      event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret)
-    } else {
-      event = req.body as Stripe.Event
+    if (!sig) {
+      return res.status(400).json({ error: 'Missing stripe-signature header' })
     }
+    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret)
   } catch (err: any) {
     console.error('[stripe] Webhook signature verification failed:', err.message)
     return res.status(400).json({ error: 'Invalid signature' })

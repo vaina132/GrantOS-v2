@@ -45,7 +45,8 @@ const PROGRAMME_OPTIONS: ComboOption[] = EU_PROGRAMMES
 export function CallsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { orgId, user } = useAuthStore()
+  const { orgId, user, can } = useAuthStore()
+  const canManageWatchlist = can('canManageProjects') || can('canManageOrg')
 
   const [topics, setTopics] = useState<EuCallTopic[]>([])
   const [total, setTotal] = useState(0)
@@ -169,7 +170,16 @@ export function CallsPage() {
     return (
       <tr key={topic.identifier} className="border-b last:border-0 hover:bg-muted/20">
         <td className="px-3 py-2 w-10">
-          <button onClick={() => toggleStar(topic)} title={starred ? 'Unstar' : 'Star'}>
+          <button
+            onClick={() => toggleStar(topic)}
+            disabled={!canManageWatchlist}
+            title={
+              !canManageWatchlist
+                ? 'Only Admins and Project Managers can manage the watchlist'
+                : starred ? 'Unstar' : 'Star'
+            }
+            className={cn(!canManageWatchlist && 'cursor-not-allowed opacity-50')}
+          >
             <Star
               className={cn(
                 'h-4 w-4 transition',

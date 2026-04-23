@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/apiClient'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, XCircle, Loader2, ArrowRight, Sparkles, Building2, Globe } from 'lucide-react'
@@ -160,17 +161,17 @@ export function AuthCallbackPage() {
         console.log('[AuthCallback] Found invite context:', JSON.stringify(ctx))
 
         if (ctx.type === 'collab' && ctx.token) {
-          // Accept collab invitation
-          console.log('[AuthCallback] Calling collab-accept with token:', ctx.token, 'userId:', user?.id)
-          const res = await fetch('/api/members?action=collab-accept', {
+          // Accept collab invitation. The endpoint now requires a JWT —
+          // apiFetch attaches the session bearer token automatically.
+          // The server binds the partner to `auth.userId` from the JWT;
+          // the old `userId` body field is ignored.
+          const res = await apiFetch('/api/members?action=collab-accept', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: ctx.token, userId: user?.id }),
+            body: JSON.stringify({ token: ctx.token }),
           })
           const body = await res.json().catch(() => ({}))
           if (res.ok) {
             setInviteAccepted(true)
-            console.log('[AuthCallback] Collab invite accepted:', body)
           } else {
             console.error('[AuthCallback] collab-accept failed:', res.status, body)
           }

@@ -21,23 +21,34 @@ function getSupabase() {
   return { client: createClient(supabaseUrl, serviceKey), url: supabaseUrl }
 }
 
-// Actions that don't require JWT (token-based auth for unauthenticated invitees)
-const PUBLIC_ACTIONS = ['collab-accept', 'collab-lookup']
+// Only collab-lookup is truly public — it previews the invite before the user
+// signs in. collab-accept now requires the user to be authenticated so we can
+// bind the partner row to the JWT's userId (not a self-declared body field).
+const PUBLIC_ACTIONS = ['collab-lookup']
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   cors(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  // Rate limit: 30 requests per 60s per IP
-  if (!checkRateLimit(req, res, { limit: 30, windowSeconds: 60, prefix: 'members' })) return
-
   const action = (req.query.action as string) || ''
 
-  // Require JWT for non-public actions
+  // Rate limits: slower on the invite-token endpoints to blunt brute-force,
+  // but not so slow that a user refreshing the invite page a few times trips
+  // the limit. 20 / 60 s = 3 seconds between requests on average — fine for
+  // real users, still orders of magnitude slower than a brute-force attempt.
+  if (action === 'collab-lookup' || action === 'collab-accept') {
+    if (!checkRateLimit(req, res, { limit: 20, windowSeconds: 60, prefix: 'members-invite' })) return
+  } else {
+    if (!checkRateLimit(req, res, { limit: 30, windowSeconds: 60, prefix: 'members' })) return
+  }
+
+  // Require JWT for non-public actions — and forward the authenticated user
+  // context to handlers that need it.
+  let authContext: Awaited<ReturnType<typeof authenticateRequest>> | null = null
   if (!PUBLIC_ACTIONS.includes(action)) {
     try {
-      await authenticateRequest(req)
+      authContext = await authenticateRequest(req)
     } catch (err) {
       return handleAuthError(err, res)
     }
@@ -51,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     case 'collab-send':
       return handleCollabSend(req, res)
     case 'collab-accept':
-      return handleCollabAccept(req, res)
+      return handleCollabAccept(req, res, authContext!)
     case 'collab-lookup':
       return handleCollabLookup(req, res)
     default:
@@ -198,39 +209,67 @@ async function handleResolveEmails(req: VercelRequest, res: VercelResponse) {
 // ════════════════════════════════════════════════════════════════════════════
 // collab-accept
 // ════════════════════════════════════════════════════════════════════════════
+//
+// Security model:
+//  - Caller MUST be authenticated (JWT required upstream).
+//  - The partner row is bound to `auth.userId` from the JWT. Any `userId`
+//    in the body is ignored — otherwise anyone holding the invite URL could
+//    bind it to someone else's account.
+//  - On success the `invite_token` is rotated to a fresh UUID, which makes
+//    the original invite URL single-use even if it's forwarded/leaked.
 
-async function handleCollabAccept(req: VercelRequest, res: VercelResponse) {
+async function handleCollabAccept(
+  req: VercelRequest,
+  res: VercelResponse,
+  auth: Awaited<ReturnType<typeof authenticateRequest>>,
+) {
   const sb = getSupabase()
   if (!sb) return res.status(500).json({ error: 'Server configuration error' })
 
-  const { token, userId } = req.body
+  const { token } = req.body ?? {}
   if (!token) return res.status(400).json({ error: 'Missing token' })
+  if (!auth?.userId) return res.status(401).json({ error: 'Not authenticated' })
 
   const { data: partner, error: findErr } = await sb.client
     .from('project_partners')
-    .select('id, project_id, org_name, invite_status')
+    .select('id, project_id, org_name, invite_status, user_id')
     .eq('invite_token', token)
-    .single()
+    .maybeSingle()
 
   if (findErr || !partner) {
     return res.status(404).json({ error: 'Invitation not found or already used' })
-  }
-
-  if (partner.invite_status === 'accepted') {
-    return res.status(200).json({ success: true, message: 'Already accepted', projectId: partner.project_id })
   }
 
   if (partner.invite_status === 'declined') {
     return res.status(400).json({ error: 'This invitation was declined' })
   }
 
-  const updateData: Record<string, any> = { invite_status: 'accepted' }
-  if (userId) updateData.user_id = userId
+  // If already accepted, only allow the already-bound user to see it. This
+  // prevents an attacker who learns the token after the fact from hijacking.
+  if (partner.invite_status === 'accepted') {
+    if (partner.user_id && partner.user_id !== auth.userId) {
+      return res.status(403).json({ error: 'Invitation already bound to a different account' })
+    }
+    return res.status(200).json({
+      success: true,
+      message: 'Already accepted',
+      projectId: partner.project_id,
+    })
+  }
+
+  const updateData = {
+    invite_status: 'accepted',
+    user_id: auth.userId,
+    // Rotate the token so the invite URL becomes single-use.
+    invite_token: crypto.randomUUID(),
+    updated_at: new Date().toISOString(),
+  }
 
   const { error: updateErr } = await sb.client
     .from('project_partners')
     .update(updateData)
     .eq('id', partner.id)
+    .eq('invite_status', 'pending')  // defensive — only transition pending→accepted
 
   if (updateErr) {
     return res.status(500).json({ error: 'Failed to accept invitation', detail: updateErr.message })

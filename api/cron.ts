@@ -73,8 +73,14 @@ function injectUnsub(html: string, token: string, appUrl: string): string {
  *   /api/cron?job=collab-reminders
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Require CRON_SECRET unconditionally. Missing env var → service
+  // misconfiguration; never silently skip the check.
   const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && req.headers.authorization !== `Bearer ${cronSecret}`) {
+  if (!cronSecret) {
+    console.error('[cron] CRON_SECRET env var is not set — refusing to run')
+    return res.status(500).json({ error: 'Cron secret not configured' })
+  }
+  if (req.headers.authorization !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 

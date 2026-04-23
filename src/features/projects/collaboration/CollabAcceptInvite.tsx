@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle, XCircle, Loader2, Globe } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
+import { apiFetch } from '@/lib/apiClient'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
@@ -68,12 +69,18 @@ export function CollabAcceptInvite() {
 
   const handleAccept = async () => {
     if (!token) return
+    if (!user) {
+      // Can't accept without being signed in — the server now binds the
+      // partner row to the JWT's user id, so we must be authenticated.
+      setError(t('collaboration.signInToAccess'))
+      return
+    }
     setAccepting(true)
     try {
-      const res = await fetch('/api/members?action=collab-accept', {
+      // apiFetch attaches the Supabase Bearer token automatically.
+      const res = await apiFetch('/api/members?action=collab-accept', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, userId: user?.id }),
+        body: JSON.stringify({ token }),
       })
       const data = await res.json()
       if (!res.ok || !data.success) {

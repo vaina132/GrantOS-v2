@@ -22,10 +22,19 @@ export const absenceService = {
     if (filters?.type) query = query.eq('type', filters.type)
 
     if (filters?.year) {
-      const start = `${filters.year}-01-01`
-      const end = `${filters.year}-12-31`
-      query = query.or(`start_date.gte.${start},date.gte.${start}`)
-      query = query.or(`end_date.lte.${end},date.lte.${end}`)
+      // Include any absence that *overlaps* the year. An absence overlaps
+      // if its start is on/before year-end AND its end is on/after year-start.
+      // We also accept rows that only have the legacy `date` column set.
+      const yearStart = `${filters.year}-01-01`
+      const yearEnd   = `${filters.year}-12-31`
+      query = query.or(
+        // Ranged absences — overlap check.
+        `and(start_date.lte.${yearEnd},end_date.gte.${yearStart}),` +
+        // Ranged absences with only start_date set (no end_date).
+        `and(start_date.gte.${yearStart},start_date.lte.${yearEnd}),` +
+        // Legacy point-date absences.
+        `and(date.gte.${yearStart},date.lte.${yearEnd})`
+      )
     }
 
     const { data, error } = await query

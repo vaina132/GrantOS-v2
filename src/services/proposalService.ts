@@ -76,13 +76,14 @@ export const proposalService = {
 
   /** Convert a granted proposal into a project */
   async convertToProject(proposal: Proposal, orgId: string, userId: string): Promise<string> {
-    const totalBudget =
-      proposal.personnel_budget +
-      proposal.travel_budget +
-      proposal.subcontracting_budget +
-      proposal.other_budget
+    const personnel = proposal.personnel_budget ?? 0
+    const travel = proposal.travel_budget ?? 0
+    const subcontracting = proposal.subcontracting_budget ?? 0
+    const other = proposal.other_budget ?? 0
+    const totalBudget = personnel + travel + subcontracting + other
 
-    // Create the project
+    // Create the project with every budget field the proposal holds —
+    // previously only `total_budget` was copied and the breakdown was lost.
     const { data: project, error: projErr } = await supabase
       .from('projects')
       .insert({
@@ -94,6 +95,11 @@ export const proposalService = {
         start_date: new Date().toISOString().split('T')[0],
         end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000 * 3).toISOString().split('T')[0],
         total_budget: totalBudget,
+        budget_personnel: personnel,
+        budget_travel: travel,
+        budget_subcontracting: subcontracting,
+        budget_other: other,
+        responsible_person_id: proposal.responsible_person_id ?? null,
         created_by: userId,
       })
       .select('id')
@@ -101,14 +107,24 @@ export const proposalService = {
 
     if (projErr) throw projErr
 
-    // Mark proposal as converted
-    await supabase
+    // Mark proposal as converted. If this fails we must compensate by
+    // deleting the newly-created project so a retry doesn't produce
+    // duplicates. Previously this step's error was silently ignored.
+    const { error: updateErr } = await supabase
       .from('proposals')
       .update({
         converted_project_id: project.id,
         updated_at: new Date().toISOString(),
       })
       .eq('id', proposal.id)
+
+    if (updateErr) {
+      await supabase.from('projects').delete().eq('id', project.id)
+      throw new Error(
+        `Created project ${project.id} but failed to mark the proposal as converted: ${updateErr.message}. ` +
+          'The project has been rolled back; please retry.',
+      )
+    }
 
     return project.id
   },
