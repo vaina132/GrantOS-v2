@@ -14,7 +14,7 @@ import {
   Shield,
   Settings,
   HelpCircle,
-  X,
+  PanelLeftClose,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
@@ -86,6 +86,14 @@ export function Sidebar() {
     })).filter((group) => group.items.length > 0)
   void planLimits
 
+  // On desktop, clicking a nav item shouldn't collapse the sidebar — users
+  // expect persistent navigation. On mobile, we close the overlay as before.
+  const onNavClick = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      setSidebarOpen(false)
+    }
+  }
+
   return (
     <>
       {sidebarOpen && (
@@ -96,9 +104,15 @@ export function Sidebar() {
       )}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 flex h-full w-64 flex-col border-r bg-background transition-transform lg:static lg:z-auto lg:translate-x-0',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          // Mobile: fixed overlay sliding in from the left edge.
+          'fixed left-0 top-0 z-50 flex h-full flex-col bg-background transition-all duration-200 ease-in-out',
+          // Desktop: static in the flex flow; width collapses to 0 when closed.
+          'lg:static lg:z-auto lg:translate-x-0',
+          sidebarOpen
+            ? 'w-64 translate-x-0 border-r'
+            : '-translate-x-full w-64 border-r lg:-translate-x-0 lg:w-0 lg:border-r-0 lg:overflow-hidden',
         )}
+        aria-hidden={!sidebarOpen ? 'true' : undefined}
       >
         <div className="flex h-16 items-center justify-between border-b px-6">
           <div className="flex items-center gap-2 min-w-0">
@@ -113,11 +127,11 @@ export function Sidebar() {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
             onClick={() => setSidebarOpen(false)}
-            aria-label="Close sidebar"
+            aria-label="Collapse sidebar"
+            title="Collapse sidebar"
           >
-            <X className="h-5 w-5" />
+            <PanelLeftClose className="h-5 w-5" />
           </Button>
         </div>
 
@@ -144,7 +158,7 @@ export function Sidebar() {
                     <NavLink
                       key={item.path}
                       to={item.path}
-                      onClick={() => setSidebarOpen(false)}
+                      onClick={onNavClick}
                       className={cn(
                         'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all',
                         isActive
@@ -169,7 +183,7 @@ export function Sidebar() {
           {can('canSeeDashboard') && <AiQuotaWidget variant="compact" className="px-3 py-1" />}
           <NavLink
             to="/help"
-            onClick={() => setSidebarOpen(false)}
+            onClick={onNavClick}
             className={cn(
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all',
               location.pathname === '/help'

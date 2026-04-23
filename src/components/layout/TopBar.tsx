@@ -1,4 +1,4 @@
-import { Menu, LogOut, ChevronDown, Sun, Moon, Settings } from 'lucide-react'
+import { Menu, LogOut, ChevronDown, Sun, Moon, Settings, PanelLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
@@ -22,7 +22,7 @@ export function TopBar() {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const { user, role, orgPlan, trialEndsAt, signOut } = useAuthStore()
-  const { toggleSidebar, darkMode, toggleDarkMode } = useUiStore()
+  const { toggleSidebar, sidebarOpen, darkMode, toggleDarkMode } = useUiStore()
   const userEmail = user?.email ?? ''
   const initials = userEmail.slice(0, 2).toUpperCase()
 
@@ -38,11 +38,11 @@ export function TopBar() {
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden"
         onClick={toggleSidebar}
-        aria-label="Toggle sidebar"
+        aria-label={sidebarOpen ? 'Collapse sidebar' : 'Open sidebar'}
+        title={sidebarOpen ? 'Collapse sidebar' : 'Open sidebar'}
       >
-        <Menu className="h-5 w-5" />
+        {sidebarOpen ? <Menu className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
       </Button>
 
       {trialDaysLeft !== null && (
