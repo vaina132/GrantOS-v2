@@ -41,8 +41,11 @@ export function TopBar() {
         onClick={toggleSidebar}
         aria-label={sidebarOpen ? 'Collapse sidebar' : 'Open sidebar'}
         title={sidebarOpen ? 'Collapse sidebar' : 'Open sidebar'}
+        className="h-8 w-8 text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40"
       >
-        {sidebarOpen ? <Menu className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
+        {sidebarOpen
+          ? <Menu className="h-4 w-4" strokeWidth={1.5} />
+          : <PanelLeft className="h-4 w-4" strokeWidth={1.5} />}
       </Button>
 
       {trialDaysLeft !== null && (

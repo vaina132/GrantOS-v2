@@ -130,8 +130,9 @@ export function Sidebar() {
             onClick={() => setSidebarOpen(false)}
             aria-label="Collapse sidebar"
             title="Collapse sidebar"
+            className="h-8 w-8 text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40"
           >
-            <PanelLeftClose className="h-5 w-5" />
+            <PanelLeftClose className="h-4 w-4" strokeWidth={1.5} />
           </Button>
         </div>
 
