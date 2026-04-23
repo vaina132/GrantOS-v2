@@ -22,12 +22,18 @@ if (prefersDark) document.documentElement.classList.add('dark')
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30 * 1000, // 30 seconds — keeps cache useful for quick tab switches but refetches reliably on navigation
+      staleTime: 60 * 1000, // 1 minute — data considered fresh
       gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
-      refetchOnWindowFocus: true, // Re-fetch when user tabs back to the app
-      refetchOnMount: 'always', // Always refetch when a component mounts (e.g. navigating back to a list)
-      retry: 2, // Retry twice on failure (handles transient network/auth errors)
-      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000), // Exponential backoff: 1s, 2s, 4s…
+      // Tab returns to GrantLume should NOT trigger a thundering-herd refetch.
+      // Chromium throttles background tabs, so a mid-flight query can be
+      // paused; when the tab regains focus, refetching everything at once
+      // queued behind the auth lock produced the grey-skeleton wedge.
+      // Route navigation (refetchOnMount) still refreshes what's needed.
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+      refetchOnMount: true,
+      retry: 1,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     },
   },
 })

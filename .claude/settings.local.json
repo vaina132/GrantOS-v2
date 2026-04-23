@@ -35,7 +35,10 @@
       "Bash(curl -s -X POST 'https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=***&pageSize=5&pageNumber=1' -F 'query=@/tmp/query.json;type=application/json' -F 'sort=@/tmp/sort.json;type=application/json' -F 'languages=@/tmp/languages.json;type=application/json')",
       "Read(//c/tmp/**)",
       "Bash(curl -s -X POST 'https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=***&pageSize=5&pageNumber=1' -F 'query=@query.json;type=application/json' -F 'sort=@sort.json;type=application/json' -F 'languages=@languages.json;type=application/json')",
-      "Bash(curl -s -X POST 'https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=***&pageSize=2&pageNumber=1' -F 'query=@query.json;type=application/json' -F 'sort=@sort.json;type=application/json' -F 'languages=@languages.json;type=application/json')"
+      "Bash(curl -s -X POST 'https://api.tech.ec.europa.eu/search-api/prod/rest/search?apiKey=SEDIA&text=***&pageSize=2&pageNumber=1' -F 'query=@query.json;type=application/json' -F 'sort=@sort.json;type=application/json' -F 'languages=@languages.json;type=application/json')",
+      "WebFetch(domain:supabase.com)",
+      "Bash(node -e \"console.log\\(require\\('@supabase/supabase-js/package.json'\\).version\\)\")",
+      "Bash(node -e \"const { processLock, navigatorLock } = require\\('@supabase/supabase-js'\\); console.log\\('processLock:', typeof processLock\\); console.log\\('navigatorLock:', typeof navigatorLock\\)\")"
     ]
   }
 }
