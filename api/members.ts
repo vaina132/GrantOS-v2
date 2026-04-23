@@ -230,13 +230,27 @@ async function handleCollabAccept(
   if (!token) return res.status(400).json({ error: 'Missing token' })
   if (!auth?.userId) return res.status(401).json({ error: 'Not authenticated' })
 
-  const { data: partner, error: findErr } = await sb.client
-    .from('project_partners')
-    .select('id, project_id, org_name, invite_status, user_id')
-    .eq('invite_token', token)
-    .maybeSingle()
+  // Look in both project_partners and proposal_partners.
+  let context: 'project' | 'proposal' | null = null
+  let partner: any = null
+  {
+    const { data } = await sb.client
+      .from('project_partners')
+      .select('id, project_id, org_name, invite_status, user_id')
+      .eq('invite_token', token)
+      .maybeSingle()
+    if (data) { partner = data; context = 'project' }
+  }
+  if (!partner) {
+    const { data } = await sb.client
+      .from('proposal_partners')
+      .select('id, proposal_id, org_name, invite_status, user_id')
+      .eq('invite_token', token)
+      .maybeSingle()
+    if (data) { partner = data; context = 'proposal' }
+  }
 
-  if (findErr || !partner) {
+  if (!partner || !context) {
     return res.status(404).json({ error: 'Invitation not found or already used' })
   }
 
@@ -244,8 +258,6 @@ async function handleCollabAccept(
     return res.status(400).json({ error: 'This invitation was declined' })
   }
 
-  // If already accepted, only allow the already-bound user to see it. This
-  // prevents an attacker who learns the token after the fact from hijacking.
   if (partner.invite_status === 'accepted') {
     if (partner.user_id && partner.user_id !== auth.userId) {
       return res.status(403).json({ error: 'Invitation already bound to a different account' })
@@ -253,23 +265,25 @@ async function handleCollabAccept(
     return res.status(200).json({
       success: true,
       message: 'Already accepted',
-      projectId: partner.project_id,
+      context,
+      projectId: context === 'project' ? partner.project_id : undefined,
+      proposalId: context === 'proposal' ? partner.proposal_id : undefined,
     })
   }
 
   const updateData = {
     invite_status: 'accepted',
     user_id: auth.userId,
-    // Rotate the token so the invite URL becomes single-use.
     invite_token: crypto.randomUUID(),
     updated_at: new Date().toISOString(),
   }
 
+  const tableName = context === 'project' ? 'project_partners' : 'proposal_partners'
   const { error: updateErr } = await sb.client
-    .from('project_partners')
+    .from(tableName)
     .update(updateData)
     .eq('id', partner.id)
-    .eq('invite_status', 'pending')  // defensive — only transition pending→accepted
+    .eq('invite_status', 'pending')
 
   if (updateErr) {
     return res.status(500).json({ error: 'Failed to accept invitation', detail: updateErr.message })
@@ -277,7 +291,9 @@ async function handleCollabAccept(
 
   return res.status(200).json({
     success: true,
-    projectId: partner.project_id,
+    context,
+    projectId: context === 'project' ? partner.project_id : undefined,
+    proposalId: context === 'proposal' ? partner.proposal_id : undefined,
     partnerId: partner.id,
     orgName: partner.org_name,
   })
@@ -349,20 +365,54 @@ async function handleCollabLookup(req: VercelRequest, res: VercelResponse) {
   const { token } = req.body
   if (!token) return res.status(400).json({ error: 'Missing token' })
 
-  const { data: partner, error } = await sb.client
-    .from('project_partners')
-    .select(`
-      id, org_name, invite_status, role, participant_number,
-      project:projects(id, acronym, title, org_id, organisations(name))
-    `)
-    .eq('invite_token', token)
-    .single()
+  // Look up the token in BOTH project_partners and proposal_partners —
+  // the same invite token can belong to either context. First hit wins.
+  let partner: any = null
+  let context: 'project' | 'proposal' | null = null
+  let error: any = null
 
-  if (error || !partner) {
+  {
+    const { data } = await sb.client
+      .from('project_partners')
+      .select(`
+        id, org_name, invite_status, role, participant_number,
+        project:projects(id, acronym, title, org_id, organisations(name))
+      `)
+      .eq('invite_token', token)
+      .maybeSingle()
+    if (data) {
+      partner = data
+      context = 'project'
+    }
+  }
+
+  if (!partner) {
+    const { data, error: propErr } = await sb.client
+      .from('proposal_partners')
+      .select(`
+        id, org_name, invite_status, role, participant_number,
+        proposal:proposals(id, project_name, call_identifier, org_id, organisations(name))
+      `)
+      .eq('invite_token', token)
+      .maybeSingle()
+    if (data) {
+      partner = data
+      context = 'proposal'
+    }
+    error = propErr
+  }
+
+  if (error || !partner || !context) {
     return res.status(404).json({ error: 'Invitation not found' })
   }
 
-  // Normalise key name for legacy UI that reads `collab_projects`.
-  const shaped = { ...partner, collab_projects: (partner as any).project }
+  // Shape the response with a `context` field plus legacy aliases the
+  // existing UI still reads. Both `project` and `proposal` may be present
+  // as nested objects on the partner — whichever one matched.
+  const shaped = {
+    ...partner,
+    context,
+    collab_projects: (partner as any).project,  // legacy alias for older UI
+  }
   return res.status(200).json({ success: true, partner: shaped })
 }

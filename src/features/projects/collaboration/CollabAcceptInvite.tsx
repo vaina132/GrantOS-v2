@@ -34,6 +34,9 @@ export function CollabAcceptInvite() {
   const [partner, setPartner] = useState<PartnerInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [accepted, setAccepted] = useState(false)
+  const [acceptedTarget, setAcceptedTarget] = useState<
+    { context: 'project' | 'proposal'; id: string } | null
+  >(null)
 
   useEffect(() => {
     if (!token) {
@@ -87,6 +90,11 @@ export function CollabAcceptInvite() {
         setError(data.error || t('collaboration.failedToAcceptInvitation'))
         return
       }
+      if (data.context === 'proposal' && data.proposalId) {
+        setAcceptedTarget({ context: 'proposal', id: data.proposalId })
+      } else if (data.projectId) {
+        setAcceptedTarget({ context: 'project', id: data.projectId })
+      }
       setAccepted(true)
     } catch {
       setError(t('collaboration.failedToAcceptInvitation'))
@@ -135,7 +143,17 @@ export function CollabAcceptInvite() {
               {project?.title}
             </p>
             {user ? (
-              <Button onClick={() => navigate(`/projects/collaboration/${project?.id}`)}>
+              <Button
+                onClick={() => {
+                  if (acceptedTarget?.context === 'proposal') {
+                    navigate(`/proposals/partner/${acceptedTarget.id}`)
+                  } else if (acceptedTarget?.context === 'project') {
+                    navigate(`/projects/collaboration/${acceptedTarget.id}`)
+                  } else if (project?.id) {
+                    navigate(`/projects/collaboration/${project.id}`)
+                  }
+                }}
+              >
                 {t('collaboration.goToProject')}
               </Button>
             ) : (

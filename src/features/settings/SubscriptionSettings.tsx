@@ -318,7 +318,10 @@ export function SubscriptionSettings() {
       </Card>
 
       {/* ── Upgrade to Pro (shown only on trial) ── */}
-      {!isPro && (
+      {/* Hidden unless Stripe billing is enabled. Without the env vars set,
+          clicking "Subscribe Now" would return a 500 and show a broken
+          toast — flip VITE_STRIPE_ENABLED=true once Stripe is configured. */}
+      {!isPro && import.meta.env.VITE_STRIPE_ENABLED === 'true' && (
         <Card className="ring-1 ring-primary/30 shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-2">

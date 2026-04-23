@@ -374,6 +374,8 @@ export interface Proposal {
   other_budget: number
   status: ProposalStatus
   converted_project_id: string | null
+  converted_at: string | null
+  call_template_id: string | null
   responsible_person_id: string | null
   notes: string | null
   created_by: string | null
@@ -382,42 +384,307 @@ export interface Proposal {
   responsible_person?: Person | null
 }
 
-// ── Proposal phase tracker ──────────────────────────────────────
-export type ProposalPhaseStatus = 'todo' | 'in_progress' | 'done' | 'blocked' | 'skipped'
-export type ProposalTaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked'
+// ── Proposals consortium workflow ───────────────────────────────
 
-export interface ProposalPhase {
+export type ProposalDocumentHandler = 'form' | 'upload' | 'upload_with_template'
+export type ProposalSubmissionStatus =
+  | 'not_started'
+  | 'in_progress'
+  | 'submitted'
+  | 'approved'
+  | 'needs_revision'
+export type ProposalPartnerRole = 'host' | 'coordinator' | 'partner'
+export type ProposalPartnerInviteStatus = 'pending' | 'accepted' | 'declined'
+export type ProposalPartnerBudgetRole = 'lead' | 'partner' | 'contributor'
+
+/** Configuration of one expected document type in a call template. */
+export interface ProposalCallTemplateDoc {
+  type: string
+  label: string
+  handler: ProposalDocumentHandler
+  required: boolean
+  template_url: string | null
+  description: string | null
+}
+
+export interface ProposalCallTemplate {
   id: string
-  org_id: string
-  proposal_id: string
+  org_id: string | null  // null = built-in global template
   name: string
   description: string | null
+  default_documents: ProposalCallTemplateDoc[]
+  is_builtin: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ProposalPartner {
+  id: string
+  proposal_id: string
+  org_name: string
+  role: ProposalPartnerRole
+  participant_number: number | null
+  contact_name: string | null
+  contact_email: string | null
+  country: string | null
+  org_type: string | null
+  pic: string | null
+  user_id: string | null
+  linked_org_id: string | null
+  is_host: boolean
+  invite_status: ProposalPartnerInviteStatus
+  invite_token: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProposalWorkPackage {
+  id: string
+  proposal_id: string
+  wp_number: number
+  title: string
+  description: string | null
+  leader_partner_id: string | null
   sort_order: number
-  status: ProposalPhaseStatus
-  due_date: string | null
-  owner_person_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProposalDocument {
+  id: string
+  proposal_id: string
+  document_type: string
+  label: string
+  description: string | null
+  handler: ProposalDocumentHandler
+  template_url: string | null
+  required: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ProposalSubmissionVersion {
+  id: string
+  submission_id: string
+  storage_bucket: string
+  storage_path: string
+  file_name: string
+  original_file_name: string
+  mime_type: string | null
+  file_size_bytes: number | null
+  uploaded_by: string | null
+  uploaded_at: string
+  note: string | null
+}
+
+export interface ProposalSubmission {
+  id: string
+  proposal_id: string
+  partner_id: string
+  document_id: string
+  status: ProposalSubmissionStatus
+  part_a_id: string | null
+  budget_id: string | null
+  current_version_id: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  review_note: string | null
+  submitted_at: string | null
+  created_at: string
+  updated_at: string
+  // Joined, optional
+  document?: ProposalDocument
+  partner?: ProposalPartner
+  current_version?: ProposalSubmissionVersion | null
+}
+
+/** A single repeated contact / researcher / publication row used in Part A. */
+export interface PartAContact {
+  title?: string
+  first_name?: string
+  last_name?: string
+  gender?: 'woman' | 'man' | 'nonbinary' | 'other'
+  position?: string
+  email?: string
+  phone?: string
+  address?: string
+}
+
+export interface PartAResearcher {
+  title?: string
+  first_name: string
+  last_name: string
+  gender?: 'woman' | 'man' | 'nonbinary' | 'other'
+  nationality?: string
+  email?: string
+  career_stage?: 'A' | 'B' | 'C' | 'D'
+  role?: 'leading' | 'team_member'
+  orcid?: string
+  person_id?: string  // link to persons table when auto-populated
+}
+
+export interface PartAAchievement {
+  kind: 'publication' | 'dataset' | 'software' | 'good' | 'service' | 'other'
+  description: string
+}
+
+export interface PartAProject {
+  name: string
+  description: string
+}
+
+export interface PartAInfrastructure {
+  name: string
+  description: string
+}
+
+export interface PartADirectCost {
+  label: string
+  amount: number | null
+  justification?: string
+}
+
+export interface PartARiAsset {
+  asset_name: string
+  partners?: string
+  reference_projects?: string
+  current_trl?: number
+  target_trl?: number
+  description?: string
+}
+
+export interface PartAAffiliatedEntity {
+  legal_name: string
+  pic?: string
+}
+
+export interface PartAPlannedEvent {
+  kind: string  // e.g. "Workshop", "Training", "Showcase", "Webinar"
+  description: string
+}
+
+export interface ProposalPartA {
+  id: string
+  proposal_id: string
+  partner_id: string
+  // 1.1
+  legal_name: string | null
+  acronym: string | null
+  city: string | null
+  country: string | null
+  website: string | null
+  is_non_profit: boolean | null
+  pic: string | null
+  org_type: 'academic' | 'industrial' | 'rto' | 'public' | 'sme' | 'other' | null
+  org_type_other: string | null
+  // 1.2
+  ubo_location: 'eu' | 'outside_eu' | 'unknown' | null
+  ubo_country: string | null
+  ubo_notes: string | null
+  // 1.3
+  main_contact: PartAContact | null
+  other_contacts: PartAContact[]
+  // 1.4
+  departments: string[]
+  // 1.5
+  researchers: PartAResearcher[]
+  // 1.6
+  roles: string[]
+  // 1.7
+  achievements: PartAAchievement[]
+  // 1.8
+  previous_projects: PartAProject[]
+  // 1.9
+  infrastructure: PartAInfrastructure[]
+  // 1.10
+  has_gep: boolean | null
+  gep_notes: string | null
+  // 2
+  pm_rate_currency: string
+  pm_rate_amount: number | null
+  other_direct_costs: PartADirectCost[]
+  // 3.1
+  standards_bodies: string[]
+  // 3.2
+  ri_assets: PartARiAsset[]
+  similar_projects: string[]
+  // 4
+  dissemination_plan: string | null
+  exploitation_plan: string | null
+  planned_events: PartAPlannedEvent[]
+  planned_publications: string | null
+  dissemination_bodies: string | null
+  standardisation_involvement: string | null
+  patents_planned: string | null
+  // 5.1
+  short_profile: string | null
+  role_description: string | null
+  // 6
+  affiliated_entities: PartAAffiliatedEntity[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ProposalBudget {
+  id: string
+  proposal_id: string
+  partner_id: string
+  pm_rate_currency: string
+  pm_rate_amount: number | null
+  budget_travel: number
+  budget_subcontracting: number
+  budget_equipment: number
+  budget_other_goods: number
+  funding_rate: number
+  indirect_cost_rate: number
+  indirect_cost_base: 'all_direct' | 'personnel_only' | 'all_except_subcontracting'
   notes: string | null
   created_at: string
   updated_at: string
-  owner?: { id: string; full_name: string; avatar_url: string | null } | null
+  // Joined
+  lines?: ProposalBudgetLine[]
 }
 
-export interface ProposalTask {
+export interface ProposalBudgetLine {
   id: string
-  org_id: string
-  proposal_id: string
-  phase_id: string
-  title: string
-  description: string | null
-  sort_order: number
-  status: ProposalTaskStatus
-  owner_person_id: string | null
-  due_date: string | null
-  completed_at: string | null
-  completed_by: string | null
+  budget_id: string
+  wp_id: string
+  person_months: number
+  partner_role: ProposalPartnerBudgetRole
+  notes: string | null
   created_at: string
-  updated_at: string
-  owner?: { id: string; full_name: string; avatar_url: string | null } | null
+  // Joined
+  wp?: ProposalWorkPackage
+}
+
+export type ProposalAuditEventType =
+  | 'partner_invited'
+  | 'partner_accepted'
+  | 'partner_declined'
+  | 'partner_removed'
+  | 'document_added'
+  | 'document_removed'
+  | 'submission_started'
+  | 'submission_updated'
+  | 'submission_submitted'
+  | 'submission_approved'
+  | 'submission_rejected'
+  | 'proposal_status_changed'
+  | 'proposal_converted'
+
+export interface ProposalAuditEvent {
+  id: string
+  proposal_id: string
+  actor_user_id: string | null
+  actor_name: string | null
+  actor_role: 'coordinator' | 'partner' | 'system' | null
+  event_type: ProposalAuditEventType
+  target_partner_id: string | null
+  target_document_id: string | null
+  target_submission_id: string | null
+  note: string | null
+  created_at: string
 }
 
 export type NotificationType = 'info' | 'success' | 'warning' | 'assignment' | 'approval' | 'alert' | 'invitation' | 'system'

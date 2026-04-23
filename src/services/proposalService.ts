@@ -41,7 +41,18 @@ export const proposalService = {
     return (data as Proposal | null) ?? null
   },
 
-  async create(proposal: Omit<Proposal, 'id' | 'created_at' | 'updated_at' | 'converted_project_id' | 'responsible_person'>): Promise<Proposal> {
+  async create(
+    proposal: Omit<
+      Proposal,
+      | 'id'
+      | 'created_at'
+      | 'updated_at'
+      | 'converted_project_id'
+      | 'converted_at'
+      | 'call_template_id'
+      | 'responsible_person'
+    > & { call_template_id?: string | null },
+  ): Promise<Proposal> {
     const { data, error } = await supabase
       .from('proposals')
       .insert(proposal)

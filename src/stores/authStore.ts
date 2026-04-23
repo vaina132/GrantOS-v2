@@ -406,16 +406,26 @@ async function loadUserContext(
   // role). We require a matching pending invite on the server side.
   if (user.email) {
     // Supabase normalises the auth email to lowercase, but contact_email on
-    // project_partners may have been stored with whatever casing the inviter
-    // typed. Use case-insensitive matching so "Alice@Example.com" matches
-    // an invite stored as "alice@example.com".
-    const { data: pendingInvite } = await (supabase as any)
-      .from('project_partners')
-      .select('id')
-      .ilike('contact_email', user.email)
-      .eq('invite_status', 'pending')
-      .limit(1)
-      .maybeSingle()
+    // partner tables may have been stored with whatever casing the inviter
+    // typed. Use case-insensitive matching, and check BOTH project invites
+    // and proposal invites (a user may be pending on either).
+    const [{ data: pendingProject }, { data: pendingProposal }] = await Promise.all([
+      (supabase as any)
+        .from('project_partners')
+        .select('id')
+        .ilike('contact_email', user.email)
+        .eq('invite_status', 'pending')
+        .limit(1)
+        .maybeSingle(),
+      (supabase as any)
+        .from('proposal_partners')
+        .select('id')
+        .ilike('contact_email', user.email)
+        .eq('invite_status', 'pending')
+        .limit(1)
+        .maybeSingle(),
+    ])
+    const pendingInvite = pendingProject ?? pendingProposal
     if (pendingInvite) {
       set({
         user,
