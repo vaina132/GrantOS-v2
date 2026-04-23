@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Star, ExternalLink, Search, Loader2, Rocket, RefreshCw } from 'lucide-react'
@@ -16,6 +16,8 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/use-toast'
 import { cn } from '@/lib/utils'
+import { ComboInput, type ComboOption } from '@/components/common/ComboInput'
+import { EU_PROGRAMMES } from '@/lib/euProgrammes'
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Open + Forthcoming' },
@@ -24,6 +26,21 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'closed', label: 'Closed' },
   { value: 'any', label: 'Any status' },
 ]
+
+// Populate the programme filter with the curated list. Active programmes
+// first, then legacy ones below. We use the label itself as the combo
+// `value` (so the input stays readable) — the server resolves it to the
+// SEDIA ID internally.
+const PROGRAMME_OPTIONS: ComboOption[] = EU_PROGRAMMES
+  .slice()
+  .sort((a, b) => Number(!!a.legacy) - Number(!!b.legacy))
+  .map(p => ({
+    value: p.label,
+    label: p.label,
+    description: p.legacy
+      ? 'Closed programme — archived calls only'
+      : p.aliases?.join(', '),
+  }))
 
 export function CallsPage() {
   const { t } = useTranslation()
@@ -95,6 +112,23 @@ export function CallsPage() {
     void loadWatchlist()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId])
+
+  // Auto-refresh results when the programme or status filter changes.
+  // Debounced so typing partial text doesn't fire a request per keystroke.
+  // Skip the first fire — the `[page]` effect already covers the initial load.
+  const skipFirstFilterFire = useRef(true)
+  useEffect(() => {
+    if (skipFirstFilterFire.current) {
+      skipFirstFilterFire.current = false
+      return
+    }
+    const handle = setTimeout(() => {
+      setPage(1)
+      void loadCalls()
+    }, 350)
+    return () => clearTimeout(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [programme, status])
 
   const runSearch = () => {
     setPage(1)
@@ -290,11 +324,15 @@ export function CallsPage() {
                     className="pl-9"
                   />
                 </div>
-                <Input
-                  placeholder="Programme (e.g. HORIZON)"
+                <ComboInput
                   value={programme}
-                  onChange={e => setProgramme(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && runSearch()}
+                  onChange={(v) => {
+                    setProgramme(v)
+                    setPage(1)
+                  }}
+                  options={PROGRAMME_OPTIONS}
+                  placeholder="Any programme — pick or type…"
+                  emptyMessage="No matching programme — press Search to use as a free-text filter"
                 />
                 <select
                   value={status}
