@@ -207,7 +207,7 @@ async function handleCollabAccept(req: VercelRequest, res: VercelResponse) {
   if (!token) return res.status(400).json({ error: 'Missing token' })
 
   const { data: partner, error: findErr } = await sb.client
-    .from('collab_partners')
+    .from('project_partners')
     .select('id, project_id, org_name, invite_status')
     .eq('invite_token', token)
     .single()
@@ -228,7 +228,7 @@ async function handleCollabAccept(req: VercelRequest, res: VercelResponse) {
   if (userId) updateData.user_id = userId
 
   const { error: updateErr } = await sb.client
-    .from('collab_partners')
+    .from('project_partners')
     .update(updateData)
     .eq('id', partner.id)
 
@@ -256,7 +256,7 @@ async function handleCollabSend(req: VercelRequest, res: VercelResponse) {
   if (!projectId) return res.status(400).json({ error: 'Missing projectId' })
 
   const { data: project, error: projErr } = await sb.client
-    .from('collab_projects')
+    .from('projects')
     .select('acronym, title')
     .eq('id', projectId)
     .single()
@@ -266,7 +266,7 @@ async function handleCollabSend(req: VercelRequest, res: VercelResponse) {
   }
 
   const { data: partners, error: partErr } = await sb.client
-    .from('collab_partners')
+    .from('project_partners')
     .select('id, org_name, contact_email, invite_token, invite_status')
     .eq('project_id', projectId)
     .eq('invite_status', 'pending')
@@ -311,10 +311,10 @@ async function handleCollabLookup(req: VercelRequest, res: VercelResponse) {
   if (!token) return res.status(400).json({ error: 'Missing token' })
 
   const { data: partner, error } = await sb.client
-    .from('collab_partners')
+    .from('project_partners')
     .select(`
       id, org_name, invite_status, role, participant_number,
-      collab_projects(id, acronym, title, host_org_id, organisations(name))
+      project:projects(id, acronym, title, org_id, organisations(name))
     `)
     .eq('invite_token', token)
     .single()
@@ -323,5 +323,7 @@ async function handleCollabLookup(req: VercelRequest, res: VercelResponse) {
     return res.status(404).json({ error: 'Invitation not found' })
   }
 
-  return res.status(200).json({ success: true, partner })
+  // Normalise key name for legacy UI that reads `collab_projects`.
+  const shaped = { ...partner, collab_projects: (partner as any).project }
+  return res.status(200).json({ success: true, partner: shaped })
 }

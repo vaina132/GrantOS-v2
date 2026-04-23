@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Routes, Route, useSearchParams } from 'react-router-dom'
+import { ProposalDetail } from './ProposalDetail'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/authStore'
 import { useInvalidateProjects } from '@/hooks/useProjects'
@@ -71,8 +72,18 @@ const EMPTY_FORM = {
 }
 
 export function ProposalsPage() {
+  return (
+    <Routes>
+      <Route index element={<ProposalsList />} />
+      <Route path=":id" element={<ProposalDetail />} />
+    </Routes>
+  )
+}
+
+function ProposalsList() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { orgId, user } = useAuthStore()
   const invalidateProjects = useInvalidateProjects()
   const { proposals, isLoading: loading, refetch: refetchProposals } = useProposals()
@@ -105,6 +116,26 @@ export function ProposalsPage() {
     } catch {
       return []
     }
+  }, [])
+
+  // Pre-fill from ?call=…&name=… coming from the Calls module.
+  useEffect(() => {
+    const call = searchParams.get('call')
+    const name = searchParams.get('name')
+    if (call || name) {
+      setEditingId(null)
+      setForm({
+        ...EMPTY_FORM,
+        call_identifier: call ?? '',
+        project_name: name ?? '',
+      })
+      setDialogOpen(true)
+      const next = new URLSearchParams(searchParams)
+      next.delete('call')
+      next.delete('name')
+      setSearchParams(next, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Load supporting data (staff list, funding schemes)
@@ -387,7 +418,11 @@ export function ProposalsPage() {
                     const cfg = STATUS_CONFIG[p.status]
                     const StatusIcon = cfg.icon
                     return (
-                      <tr key={p.id} className="border-b last:border-0 hover:bg-muted/20">
+                      <tr
+                        key={p.id}
+                        className="border-b last:border-0 hover:bg-muted/20 cursor-pointer"
+                        onClick={() => navigate(`/proposals/${p.id}`)}
+                      >
                         <td className="px-3 py-2 font-medium max-w-[200px]">
                           <div className="truncate" title={p.project_name}>{p.project_name}</div>
                         </td>
@@ -418,7 +453,7 @@ export function ProposalsPage() {
                             {p.status}
                           </Badge>
                         </td>
-                        <td className="px-3 py-2 text-right">
+                        <td className="px-3 py-2 text-right" onClick={e => e.stopPropagation()}>
                           <div className="flex items-center justify-end gap-1">
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(p)} title="Edit">
                               <Pencil className="h-3.5 w-3.5" />

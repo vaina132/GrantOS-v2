@@ -69,12 +69,12 @@ export function CollabProjectList() {
   }
 
   const getPartnerCount = (p: CollabProject) => {
-    return (p as any).collab_partners?.length ?? 0
+    return p.partners?.length ?? 0
   }
 
   const getCoordinator = (p: CollabProject) => {
-    const partners = (p as any).collab_partners ?? []
-    return partners.find((pt: any) => pt.role === 'coordinator')?.org_name ?? '—'
+    const partners = p.partners ?? []
+    return partners.find((pt: any) => pt.role === 'coordinator' || pt.is_host)?.org_name ?? '—'
   }
 
   const filtered = projects.filter(p => {

@@ -31,6 +31,16 @@ export const proposalService = {
     })) as Proposal[]
   },
 
+  async getById(id: string): Promise<Proposal | null> {
+    const { data, error } = await supabase
+      .from('proposals')
+      .select('*, responsible_person:persons!proposals_responsible_person_id_fkey(id, full_name, avatar_url)')
+      .eq('id', id)
+      .maybeSingle()
+    if (error) throw error
+    return (data as Proposal | null) ?? null
+  },
+
   async create(proposal: Omit<Proposal, 'id' | 'created_at' | 'updated_at' | 'converted_project_id' | 'responsible_person'>): Promise<Proposal> {
     const { data, error } = await supabase
       .from('proposals')

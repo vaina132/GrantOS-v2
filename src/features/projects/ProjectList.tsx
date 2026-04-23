@@ -67,6 +67,12 @@ export function ProjectList() {
     return true
   })
 
+  // After the projects merge, a project with external partners appears in
+  // both `projects` and the collab list. Hide the collab ones from the top
+  // section so we don't show duplicates.
+  const collabIds = new Set(filteredCollab.map(cp => cp.id))
+  const visibleProjects = projects.filter(p => !collabIds.has(p.id))
+
   const handleDelete = async () => {
     if (!deleteTarget) return
     setDeleting(true)
@@ -186,7 +192,7 @@ export function ProjectList() {
 
       {isLoading ? (
         <SkeletonTable columns={6} rows={8} />
-      ) : projects.length === 0 ? (
+      ) : visibleProjects.length === 0 && filteredCollab.length === 0 ? (
         <EmptyState
           icon={FolderKanban}
           title={t('common.noProjectsFound')}
@@ -201,8 +207,10 @@ export function ProjectList() {
         />
       ) : (
         <>
+        {visibleProjects.length > 0 && (
+        <>
         <div className="text-xs text-muted-foreground mb-2">
-          {t('common.showingCount', { count: projects.length })}
+          {t('common.showingCount', { count: visibleProjects.length })}
         </div>
         <div className="rounded-lg border">
           <div className="overflow-x-auto">
@@ -220,7 +228,7 @@ export function ProjectList() {
                 </tr>
               </thead>
               <tbody>
-                {projects.map((project, idx) => (
+                {visibleProjects.map((project, idx) => (
                   <tr
                     key={project.id}
                     className={cn(
@@ -277,6 +285,8 @@ export function ProjectList() {
           </div>
         </div>
         </>
+        )}
+        </>
       )}
 
       {/* Collaboration Projects Section */}
@@ -319,7 +329,7 @@ export function ProjectList() {
                       <td className="px-4 py-2 max-w-xs truncate">{cp.title}</td>
                       <td className="px-4 py-2 text-muted-foreground text-xs">{cp.funding_programme ?? '—'}</td>
                       <td className="px-4 py-2 text-muted-foreground text-xs">
-                        {(cp as any).collab_partners?.length ?? '—'}
+                        {cp.partners?.length ?? '—'}
                       </td>
                       <td className="px-4 py-2">
                         <Badge variant={cp.status === 'active' ? 'default' : 'secondary'} className="text-[10px] capitalize">

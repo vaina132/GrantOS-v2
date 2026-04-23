@@ -22,6 +22,7 @@ import { ReportsPage } from '@/features/reports/ReportsPage'
 import { AuditPage } from '@/features/audit/AuditPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { ProposalsPage } from '@/features/proposals/ProposalsPage'
+import { CallsPage } from '@/features/calls/CallsPage'
 import { ProfileSettingsPage } from '@/features/profile/ProfileSettingsPage'
 import { TermsPage } from '@/features/legal/TermsPage'
 import { PrivacyPage } from '@/features/legal/PrivacyPage'
@@ -208,10 +209,18 @@ export default function App() {
                         }
                       />
                       <Route
-                        path="/proposals"
+                        path="/proposals/*"
                         element={
                           <ProtectedRoute permission="canSeeProposals">
                             <ProposalsPage />
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route
+                        path="/calls"
+                        element={
+                          <ProtectedRoute permission="canSeeProposals">
+                            <CallsPage />
                           </ProtectedRoute>
                         }
                       />

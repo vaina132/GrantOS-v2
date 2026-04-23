@@ -163,6 +163,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case 'eu-calls':
         if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
         return await handleEuCalls(req, res)
+      case 'eu-calls-list':
+        if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
+        return await handleEuCallsList(req, res)
       default:
         return res.status(400).json({ error: `Unknown action: "${action}"` })
     }
@@ -774,5 +777,85 @@ async function euCallsFallback(query: string, pageSize: number, res: VercelRespo
     return res.status(200).json({ topics: filtered, source: 'topic-list' })
   } catch {
     return res.status(200).json({ topics: [], source: 'error' })
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// eu-calls-list — paginated browse view for the Calls module
+// ════════════════════════════════════════════════════════════════════════════
+
+// In-memory cache for the topic list so we don't hammer the F&T portal for
+// every filter change. Cache is shared across concurrent requests to the
+// same serverless instance and expires after 6 hours.
+let topicListCache: { fetchedAt: number; topics: any[] } | null = null
+const TOPIC_LIST_TTL_MS = 6 * 60 * 60 * 1000
+
+async function fetchTopicList(): Promise<any[]> {
+  const now = Date.now()
+  if (topicListCache && now - topicListCache.fetchedAt < TOPIC_LIST_TTL_MS) {
+    return topicListCache.topics
+  }
+  const listUrl = 'https://ec.europa.eu/info/funding-tenders/opportunities/data/topic-list.json'
+  const response = await fetch(listUrl, {
+    headers: { Accept: 'application/json', 'User-Agent': 'GrantLume/1.0' },
+  })
+  if (!response.ok) {
+    if (topicListCache) return topicListCache.topics
+    throw new Error(`F&T portal returned ${response.status}`)
+  }
+  const data = await response.json()
+  const topics: any[] = data.topicData?.Topics ?? data?.Topics ?? []
+  topicListCache = { fetchedAt: now, topics }
+  return topics
+}
+
+async function handleEuCallsList(req: VercelRequest, res: VercelResponse) {
+  const query = ((req.query.q as string) ?? '').trim().toLowerCase()
+  const programme = ((req.query.programme as string) ?? '').trim().toLowerCase()
+  const status = ((req.query.status as string) ?? '').trim().toLowerCase()
+  const pageSize = Math.min(parseInt((req.query.pageSize as string) ?? '100', 10) || 100, 500)
+  const pageNumber = Math.max(parseInt((req.query.pageNumber as string) ?? '1', 10) || 1, 1)
+
+  try {
+    const all = await fetchTopicList()
+
+    const filtered = all.filter((t: any) => {
+      if (query) {
+        const haystack = `${t.identifier ?? ''} ${t.title ?? ''} ${t.callIdentifier ?? ''} ${(t.keywords ?? []).join(' ')}`.toLowerCase()
+        if (!haystack.includes(query)) return false
+      }
+      if (programme) {
+        const prog = (t.frameworkProgramme ?? t.programmeDivision ?? '').toLowerCase()
+        if (!prog.includes(programme)) return false
+      }
+      if (status) {
+        if (!((t.status ?? '') as string).toLowerCase().includes(status)) return false
+      }
+      return true
+    })
+
+    const total = filtered.length
+    const start = (pageNumber - 1) * pageSize
+    const slice = filtered.slice(start, start + pageSize).map((t: any) => ({
+      identifier: t.identifier ?? '',
+      title: t.title ?? '',
+      callIdentifier: t.callIdentifier ?? '',
+      programme: t.frameworkProgramme ?? t.programmeDivision ?? '',
+      destination: t.destinationDetails ?? t.destinationGroup ?? '',
+      status: t.status ?? '',
+      openingDate: t.plannedOpeningDate ?? t.openingDate ?? undefined,
+      deadlineDate: t.deadlineDate ?? undefined,
+      deadlineModel: t.deadlineModel ?? undefined,
+      budgetOverview: t.budgetOverview ?? undefined,
+      trl: t.trl ?? undefined,
+      keywords: t.keywords ?? [],
+      url: t.identifier
+        ? `https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/topic-details/${t.identifier}`
+        : undefined,
+    }))
+
+    return res.status(200).json({ topics: slice, total, pageSize, pageNumber, cachedAt: topicListCache?.fetchedAt ?? null })
+  } catch (err: any) {
+    return res.status(502).json({ error: `Failed to load F&T topic list: ${err?.message ?? 'unknown'}` })
   }
 }

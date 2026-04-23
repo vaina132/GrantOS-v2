@@ -372,12 +372,13 @@ async function loadUserContext(
     return
   }
 
-  // No org membership — check if user is a collab partner
-  const { data: collabPartner } = await supabase
-    .from('collab_partners')
+  // No org membership — check if user is an external project partner
+  const { data: collabPartner } = await (supabase as any)
+    .from('project_partners')
     .select('id')
     .eq('user_id', user.id)
     .eq('invite_status', 'accepted')
+    .eq('is_host', false)
     .limit(1)
     .maybeSingle()
 

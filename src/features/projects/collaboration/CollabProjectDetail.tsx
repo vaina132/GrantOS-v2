@@ -1105,7 +1105,7 @@ export function CollabProjectDetail() {
                             <p className="text-xs text-muted-foreground">{t('common.loading')}...</p>
                           ) : (
                             reports.map(r => {
-                              const rPartner = (r as any).collab_partners
+                              const rPartner = r.partner
                               const statusColor: Record<string, string> = {
                                 draft: 'bg-slate-100 text-slate-700',
                                 submitted: 'bg-blue-100 text-blue-800',

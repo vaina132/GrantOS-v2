@@ -4,7 +4,7 @@ import {
   LayoutDashboard,
   FolderKanban,
   Lightbulb,
-  Globe,
+  Satellite,
   Users,
   CalendarDays,
   ClipboardCheck,
@@ -44,9 +44,9 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/dashboard', labelKey: 'nav.dashboard', icon: LayoutDashboard, permission: 'canSeeDashboard' },
       { path: '/staff', labelKey: 'nav.staff', icon: Users, permission: 'canSeeStaff' },
+      { path: '/calls', labelKey: 'nav.calls', icon: Satellite, permission: 'canSeeProposals' },
       { path: '/proposals', labelKey: 'nav.proposals', icon: Lightbulb, permission: 'canSeeProposals' },
       { path: '/projects', labelKey: 'nav.projects', icon: FolderKanban, permission: 'canSeeProjects' },
-      { path: '/projects/collaboration', labelKey: 'nav.collaboration', icon: Globe, permission: 'canSeeCollaboration' },
     ],
   },
   {
@@ -81,11 +81,10 @@ export function Sidebar() {
       items: group.items.filter((item) => {
         if (!item.permission) return true
         if (!can(item.permission)) return false
-        // Hide collaboration module on free plan
-        if (item.path === '/projects/collaboration' && !planLimits.hasCollaboration) return false
         return true
       }),
     })).filter((group) => group.items.length > 0)
+  void planLimits
 
   return (
     <>

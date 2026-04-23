@@ -134,7 +134,7 @@ export function ProjectDetail() {
   const [milestonesCount, setMilestonesCount] = useState(0)
   const [periodsCount, setPeriodsCount] = useState(0)
 
-  // Collab effort data (for "Our Effort" tab — loaded when project has collab_project_id)
+  // External-partner effort data (shown on the "Effort" tab when the project has partners)
   const [collabPartners, setCollabPartners] = useState<CollabPartner[]>([])
   const [collabWps, setCollabWps] = useState<CollabWorkPackage[]>([])
   const [collabTasks, setCollabTasks] = useState<CollabTask[]>([])
@@ -174,23 +174,30 @@ export function ProjectDetail() {
     deliverablesService.listReportingPeriods(id).then(p => setPeriodsCount(p.length)).catch(() => {})
   }, [id])
 
-  // Load collab effort data when project is linked to a collab project
+  // Load collab effort data if the project has any external partners
   useEffect(() => {
-    const cpId = project?.collab_project_id
-    if (!cpId) return
+    if (!id) return
     setEffortLoading(true)
     Promise.all([
-      collabPartnerService.list(cpId),
-      collabWpService.list(cpId),
-      collabTaskService.listByProject(cpId),
-      collabTaskEffortService.listByProject(cpId),
+      collabPartnerService.list(id),
+      collabWpService.list(id),
+      collabTaskService.listByProject(id),
+      collabTaskEffortService.listByProject(id),
     ]).then(([partners, wps, tasks, effort]) => {
+      const externals = partners.filter(p => !p.is_host)
+      if (externals.length === 0) {
+        setCollabPartners([])
+        setCollabWps([])
+        setCollabTasks([])
+        setCollabEffort([])
+        return
+      }
       setCollabPartners(partners)
       setCollabWps(wps)
       setCollabTasks(tasks)
       setCollabEffort(effort)
     }).catch(() => {}).finally(() => setEffortLoading(false))
-  }, [project?.collab_project_id])
+  }, [id])
 
   // Group collab tasks by WP for effort table
   const collabTasksByWp = useMemo(() => {
@@ -1005,15 +1012,7 @@ export function ProjectDetail() {
 
         {/* ── Our Effort Tab ───────────────────────────────────── */}
         <TabsContent value="effort" className="mt-4">
-          {!project.collab_project_id ? (
-            <Card>
-              <CardContent className="py-12 text-center text-sm text-muted-foreground">
-                <Target className="h-8 w-8 mx-auto mb-3 text-muted-foreground/50" />
-                <p className="font-medium">{t('projects.noCollabLinked')}</p>
-                <p className="text-xs mt-1">{t('projects.noCollabLinkedDesc')}</p>
-              </CardContent>
-            </Card>
-          ) : effortLoading ? (
+          {effortLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-8 w-full" />
               <Skeleton className="h-8 w-full" />

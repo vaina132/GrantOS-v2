@@ -140,7 +140,6 @@ export interface Project {
   budget_subcontracting: number | null
   budget_other: number | null
   responsible_person_id: string | null
-  collab_project_id: string | null
   created_at: string
   updated_at: string
   funding_schemes?: FundingScheme | null
@@ -381,6 +380,44 @@ export interface Proposal {
   created_at: string
   updated_at: string
   responsible_person?: Person | null
+}
+
+// ── Proposal phase tracker ──────────────────────────────────────
+export type ProposalPhaseStatus = 'todo' | 'in_progress' | 'done' | 'blocked' | 'skipped'
+export type ProposalTaskStatus = 'todo' | 'in_progress' | 'done' | 'blocked'
+
+export interface ProposalPhase {
+  id: string
+  org_id: string
+  proposal_id: string
+  name: string
+  description: string | null
+  sort_order: number
+  status: ProposalPhaseStatus
+  due_date: string | null
+  owner_person_id: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+  owner?: { id: string; full_name: string; avatar_url: string | null } | null
+}
+
+export interface ProposalTask {
+  id: string
+  org_id: string
+  proposal_id: string
+  phase_id: string
+  title: string
+  description: string | null
+  sort_order: number
+  status: ProposalTaskStatus
+  owner_person_id: string | null
+  due_date: string | null
+  completed_at: string | null
+  completed_by: string | null
+  created_at: string
+  updated_at: string
+  owner?: { id: string; full_name: string; avatar_url: string | null } | null
 }
 
 export type NotificationType = 'info' | 'success' | 'warning' | 'assignment' | 'approval' | 'alert' | 'invitation' | 'system'

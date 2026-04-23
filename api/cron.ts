@@ -422,11 +422,11 @@ async function runCollabReminders(
   }
 
   try {
-    // Load all active collab projects with their reminder settings
+    // Load all active projects with their reminder settings
     const { data: activeProjects } = await supabase
-      .from('collab_projects')
-      .select('id, acronym, title, start_date, duration_months, reminder_settings, host_org_id, created_by')
-      .eq('status', 'active')
+      .from('projects')
+      .select('id, acronym, title, start_date, duration_months, reminder_settings, org_id, created_by')
+      .eq('status', 'Active')
 
     if (!activeProjects || activeProjects.length === 0) {
       return res.status(200).json({ job: 'collab-reminders', sent: 0, notifications: 0 })
@@ -443,7 +443,7 @@ async function runCollabReminders(
         const reminderDateStr = reminderDate.toISOString().split('T')[0]
 
         const { data: duePeriods } = await supabase
-          .from('collab_reporting_periods')
+          .from('reporting_periods')
           .select('id, title, start_month, end_month, due_date')
           .eq('project_id', proj.id)
           .eq('due_date', reminderDateStr)
@@ -452,7 +452,7 @@ async function runCollabReminders(
         if (duePeriods && duePeriods.length > 0) {
           for (const period of duePeriods) {
             const { data: draftReports } = await supabase
-              .from('collab_reports')
+              .from('project_reports')
               .select('id, partner_id, status')
               .eq('period_id', period.id)
               .in('status', ['draft', 'rejected'])
@@ -461,7 +461,7 @@ async function runCollabReminders(
 
             for (const report of draftReports) {
               const { data: partner } = await supabase
-                .from('collab_partners')
+                .from('project_partners')
                 .select('id, org_name, contact_name, contact_email, user_id')
                 .eq('id', report.partner_id)
                 .single()
@@ -502,7 +502,7 @@ async function runCollabReminders(
                 try {
                   await supabase.from('notifications').insert({
                     user_id: partner.user_id,
-                    org_id: proj.host_org_id,
+                    org_id: proj.org_id,
                     type: 'collab_report_reminder',
                     title: `Report due: ${period.title} — ${proj.acronym}`,
                     message: `Your financial report for ${partner.org_name} is due on ${period.due_date}. Please submit it on time.`,
@@ -522,7 +522,7 @@ async function runCollabReminders(
         const projectStart = new Date(proj.start_date)
 
         const { data: dels } = await supabase
-          .from('collab_deliverables')
+          .from('deliverables')
           .select('id, number, title, due_month, leader_partner_id')
           .eq('project_id', proj.id)
 
@@ -542,16 +542,17 @@ async function runCollabReminders(
             if (del.leader_partner_id) partnerIds.add(del.leader_partner_id)
 
             const { data: coordPartner } = await supabase
-              .from('collab_partners')
+              .from('project_partners')
               .select('id')
               .eq('project_id', proj.id)
-              .eq('role', 'coordinator')
-              .single()
+              .in('role', ['coordinator', 'host'])
+              .limit(1)
+              .maybeSingle()
             if (coordPartner) partnerIds.add(coordPartner.id)
 
             for (const pid of partnerIds) {
               const { data: partner } = await supabase
-                .from('collab_partners')
+                .from('project_partners')
                 .select('id, org_name, contact_name, contact_email, user_id')
                 .eq('id', pid)
                 .single()
@@ -590,7 +591,7 @@ async function runCollabReminders(
                 try {
                   await supabase.from('notifications').insert({
                     user_id: partner.user_id,
-                    org_id: proj.host_org_id,
+                    org_id: proj.org_id,
                     type: 'collab_deliverable_reminder',
                     title: `Deliverable due: ${del.number} — ${proj.acronym}`,
                     message: `Deliverable "${del.title}" is due in ${leadDays} day(s) (M${del.due_month}).`,
@@ -610,8 +611,8 @@ async function runCollabReminders(
         const projectStart = new Date(proj.start_date)
 
         const { data: milestones } = await supabase
-          .from('collab_milestones')
-          .select('id, number, title, due_month, wp_id')
+          .from('milestones')
+          .select('id, number, title, due_month, work_package_id')
           .eq('project_id', proj.id)
 
         if (milestones && milestones.length > 0) {
@@ -627,11 +628,12 @@ async function runCollabReminders(
 
             // Notify the coordinator (milestones don't have a leader_partner_id)
             const { data: coordPartner } = await supabase
-              .from('collab_partners')
+              .from('project_partners')
               .select('id, org_name, contact_name, contact_email, user_id')
               .eq('project_id', proj.id)
-              .eq('role', 'coordinator')
-              .single()
+              .in('role', ['coordinator', 'host'])
+              .limit(1)
+              .maybeSingle()
 
             if (coordPartner) {
               if (coordPartner.contact_email) {
@@ -667,7 +669,7 @@ async function runCollabReminders(
                 try {
                   await supabase.from('notifications').insert({
                     user_id: coordPartner.user_id,
-                    org_id: proj.host_org_id,
+                    org_id: proj.org_id,
                     type: 'collab_milestone_reminder',
                     title: `Milestone due: ${ms.number} — ${proj.acronym}`,
                     message: `Milestone "${ms.title}" is due in ${leadDays} day(s) (M${ms.due_month}).`,
@@ -683,7 +685,7 @@ async function runCollabReminders(
               try {
                 await supabase.from('notifications').insert({
                   user_id: proj.created_by,
-                  org_id: proj.host_org_id,
+                  org_id: proj.org_id,
                   type: 'collab_milestone_reminder',
                   title: `Milestone due: ${ms.number} — ${proj.acronym}`,
                   message: `Milestone "${ms.title}" is due in ${leadDays} day(s) (M${ms.due_month}).`,
