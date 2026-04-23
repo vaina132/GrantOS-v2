@@ -1,3 +1,10 @@
+/* Self-hosted variable fonts. One request per face, GDPR-friendly
+   (no Google Fonts → no IP leak to google.com). */
+@import '@fontsource-variable/inter/wght.css';
+@import '@fontsource-variable/inter-tight/wght.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -58,24 +65,21 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  /* Editorial refinements — scoped to elements that opt in via font-display /
-     font-mono (via Tailwind). We don't touch the default `sans` elsewhere. */
+  /* Marketing-site font feature tuning — opt-in via Tailwind font families.
+     App UI keeps system defaults. */
   .font-display {
-    font-feature-settings: "ss01" 1, "ss02" 1, "kern" 1, "liga" 1;
-    font-variation-settings: "opsz" 80;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "ss01" 1;
   }
   .font-mono {
-    font-feature-settings: "zero" 1, "tnum" 1, "ss02" 1;
+    font-feature-settings: "zero" 1, "tnum" 1, "ss01" 1;
   }
 }
 
 @layer utilities {
-  /* Respect reduced-motion at the marketing-site level. Any utility whose name
-     starts with `motion-safe` / `motion-reduce` will work out-of-the-box via
-     Tailwind; this rule covers generic transitions we add inline. */
+  /* Global reduced-motion rule — applies to every element, not just
+     opt-in utility classes. Covers vestibular disorders properly. */
   @media (prefers-reduced-motion: reduce) {
-    .motion-aware,
-    .motion-aware * {
+    *, *::before, *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
