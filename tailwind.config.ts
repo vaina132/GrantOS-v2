@@ -17,20 +17,21 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        // Inter Tight — tight-tracking display companion to Inter.
-        // Used for all display/headline copy on the marketing site.
+        // DM Serif Display — for hero + section headlines on marketing.
         display: [
-          'Inter Tight Variable',
-          'Inter Tight',
-          'Inter Variable',
-          'Inter',
-          'ui-sans-serif',
-          'system-ui',
-          'sans-serif',
+          '"DM Serif Display"',
+          'ui-serif',
+          'Georgia',
+          'Cambria',
+          '"Times New Roman"',
+          'Times',
+          'serif',
         ],
-        // Inter — body / UI default. Shared with the app (app is already on
-        // the system sans stack; adding Inter here does not break it).
+        // Plus Jakarta Sans — body + UI on marketing; app can fall back to
+        // system-ui as before.
         sans: [
+          '"Plus Jakarta Sans Variable"',
+          '"Plus Jakarta Sans"',
           'Inter Variable',
           'Inter',
           'ui-sans-serif',
@@ -40,7 +41,6 @@ const config: Config = {
           'Roboto',
           'sans-serif',
         ],
-        // JetBrains Mono — labels, eyebrows, metrics.
         mono: [
           '"JetBrains Mono"',
           'ui-monospace',
@@ -49,7 +49,7 @@ const config: Config = {
         ],
       },
       colors: {
-        // Existing shadcn/ui tokens — still used across the rest of the app.
+        // Existing shadcn/ui tokens — untouched, still drive the app UI.
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
@@ -83,50 +83,40 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        // ── Marketing site palette ("Lindisfarne") ───────────────────────────
-        // Canvas / surfaces — warm ivory, not stark white.
-        canvas: {
-          DEFAULT: '#F7F5EF',
-          raised: '#FFFFFF',
-          warm: '#F1EDE2',
+        // ── Marketing site palette ("Prism") ────────────────────────────
+        // Studio Prism's cream+plum system with butter/cobalt/sage accents.
+        cream: {
+          DEFAULT: '#FBF7EF',
+          warm:    '#F4EEDF',
+          deep:    '#EFE7D3',
         },
-        // Foregrounds — navy-ink, not pure black. Reads softer at display sizes.
-        foreground2: {
-          DEFAULT: '#0B1B2B',
-          soft: '#1A2B3C',
-          muted: '#5A6B7B',
+        plum: {
+          DEFAULT: '#2B1D3A',
+          soft:    '#4A3860',
+          ink:     '#1A1126',
         },
-        // Rules / hairlines — ivory-tinted, not neutral grey.
-        rule: {
-          DEFAULT: '#E4E1D8',
-          soft: '#EDEAE1',
-        },
-        // Accent — deep teal. AAA contrast on canvas (7.5:1) and raised (8.2:1).
-        // This is the ONLY accent colour on the marketing site. Never red.
-        brand: {
-          DEFAULT: '#0F4C5C',
-          hover:   '#0B3A47',
-          pressed: '#082B35',
-          wash:    '#E6EEF0', // quiet tinted background for callouts
-          ink:     '#F0F7F8', // accent-foreground on filled buttons
-        },
-        // State (non-accent) — ochre warning, forest success, burgundy error.
-        // Burgundy replaces red for error semantics; still not vermillion.
-        state: {
-          success: '#2F7D5B',
-          warning: '#B07A1F',
-          error:   '#8C2F3A',
+        butter: '#F2CE5A',
+        cobalt: '#5A6CF2',
+        sage:   '#9FBFA0',
+        prism: {
+          muted: '#6A5C7A',
+          line:  '#E1DAC8',
         },
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+        prism: '22px',
       },
       letterSpacing: {
         tight2: '-0.02em',
         snug: '-0.01em',
-        label: '0.08em',
+        label: '0.12em',
+      },
+      boxShadow: {
+        prism: '0 18px 40px -22px rgba(43,29,58,0.35)',
+        'prism-lg': '0 30px 60px -30px rgba(43,29,58,0.5)',
       },
       keyframes: {
         'accordion-down': {
@@ -137,10 +127,15 @@ const config: Config = {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: '0' },
         },
+        'spin-slow': {
+          from: { transform: 'rotate(0deg)' },
+          to:   { transform: 'rotate(360deg)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'spin-slow': 'spin-slow 26s linear infinite',
       },
     },
   },

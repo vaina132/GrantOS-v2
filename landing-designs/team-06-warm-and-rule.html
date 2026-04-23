@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<!--
+  ============================================================================
+  Team 06 — Warm & Rule  (Lisbon/Porto)
+  Brief: GrantLume landing page. Friendly, grown-up, terracotta + sage.
+  ============================================================================
+
+  COLOPHON — who made what
+
+  - Inês Carvalho     — Creative Director. Held the line on "warm but not soft."
+                        Chose the hero metaphor (plant + laptop + handwritten page)
+                        and approved the final tone: calm, competent, kind.
+  - Mateo Aragón      — Copywriter. Wrote every line you read, out loud first,
+                        then on the page. No jargon, no hype — explained it
+                        like a smart cousin would, over coffee.
+  - Sara Vieira       — Art Director. Commissioned and hand-refined all SVG
+                        illustrations (hero scene, feature icons, footer mark).
+                        Two-pixel strokes, gentle colour fills, zero stock.
+  - João Ribeiro      — UX Designer. Defined the scroll narrative, wrote the
+                        helpful defaults in the pricing table, and argued
+                        successfully for removing three sections nobody needed.
+  - Rita Santos       — UI Designer. Soft shadows, pill buttons, 22px corner
+                        radii, the dusty-sage focus rings, and the cream card
+                        hover that rises 2px. All her.
+  - André Costa       — Backend Developer. Inlined and compressed the SVGs,
+                        set up the lazy reveal on scroll, and kept the whole
+                        file under a single self-contained HTML doc — no CDN,
+                        no network calls, no tracking.
+
+  30-WORD PITCH
+  GrantLume by Warm & Rule: grant management that feels like a calm desk,
+  not a spreadsheet. Terracotta warmth, sage clarity, pill-soft buttons —
+  serious software wearing a kinder face.
+  ============================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GrantLume — Grant management that feels like a calm desk.</title>
+<style>
+  /* ----------------------------------------------------------------------
+     Typography — Plus Jakarta Sans for headings, Inter for body.
+     Loaded from Google Fonts; falls back to system rounded/sans otherwise.
+     ---------------------------------------------------------------------- */
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg:        #F8F4EC;   /* warm off-white */
+    --bg-cream:  #FCFAF6;   /* cream cards */
+    --ink:       #2E2A26;   /* soft charcoal */
+    --ink-soft:  #5a544e;
+    --ink-muted: #8a837c;
+    --terra:     #C36C4A;   /* earthy terracotta (brown-orange, NOT red) */
+    --terra-dk:  #a55838;
+    --terra-tint:#f3d9cb;
+    --sage:      #8BA79B;   /* dusty sage */
+    --sage-dk:   #6d8a7e;
+    --sage-tint: #d8e2dc;
+    --line:      #e7dfd1;
+    --shadow-sm: 0 2px 8px rgba(46, 42, 38, 0.04);
+    --shadow-md: 0 12px 32px rgba(46, 42, 38, 0.06);
+    --shadow-lg: 0 24px 60px rgba(46, 42, 38, 0.08);
+    --radius-sm: 14px;
+    --radius-md: 22px;
+    --radius-lg: 28px;
+    --pill:      999px;
+    --ease:      cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin: 0 0 0.4em;
+  }
+  h1 { font-size: clamp(2.4rem, 5vw, 4rem); line-height: 1.08; font-weight: 800; }
+  h2 { font-size: clamp(1.8rem, 3.4vw, 2.6rem); line-height: 1.15; }
+  h3 { font-size: 1.25rem; line-height: 1.3; }
+  p  { margin: 0 0 1em; color: var(--ink-soft); }
+
+  a { color: var(--terra-dk); text-decoration: none; transition: color 0.2s var(--ease); }
+  a:hover { color: var(--terra); }
+
+  .container {
+    width: 100%;
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+
+  /* ----------------------------------------------------------------------
+     Buttons — pill shaped, soft shadows
+     ---------------------------------------------------------------------- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 26px;
+    border-radius: var(--pill);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.25s var(--ease);
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--terra);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(195, 108, 74, 0.25);
+  }
+  .btn-primary:hover {
+    background: var(--terra-dk);
+    transform: translateY(-1px);
+    box-shadow: 0 12px 28px rgba(195, 108, 74, 0.32);
+    color: #fff;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1.5px solid var(--line);
+  }
+  .btn-ghost:hover {
+    background: var(--bg-cream);
+    border-color: var(--sage);
+    color: var(--ink);
+  }
+  .btn-arrow { font-size: 18px; line-height: 1; }
+
+  /* ----------------------------------------------------------------------
+     Navigation
+     ---------------------------------------------------------------------- */
+  nav.site-nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: saturate(140%) blur(10px);
+    background: rgba(248, 244, 236, 0.78);
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.3s var(--ease);
+  }
+  nav.site-nav.scrolled { border-bottom-color: var(--line); }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 76px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    font-size: 19px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .brand svg { display: block; }
+  .nav-links {
+    display: flex;
+    gap: 34px;
+    align-items: center;
+  }
+  .nav-links a {
+    color: var(--ink-soft);
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-cta { display: flex; gap: 10px; align-items: center; }
+  .nav-cta a.signin {
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 500;
+    padding: 10px 14px;
+  }
+
+  @media (max-width: 820px) {
+    .nav-links { display: none; }
+  }
+
+  /* ----------------------------------------------------------------------
+     Hero
+     ---------------------------------------------------------------------- */
+  .hero {
+    padding: 80px 0 110px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 64px;
+    align-items: center;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    background: var(--sage-tint);
+    color: var(--sage-dk);
+    border-radius: var(--pill);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    margin-bottom: 22px;
+  }
+  .eyebrow .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--sage-dk);
+  }
+  .hero h1 span.accent {
+    color: var(--terra);
+    font-style: italic;
+    font-weight: 700;
+  }
+  .hero-sub {
+    font-size: 1.15rem;
+    color: var(--ink-soft);
+    max-width: 520px;
+    margin-bottom: 32px;
+  }
+  .hero-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .hero-trust {
+    display: flex;
+    gap: 22px;
+    color: var(--ink-muted);
+    font-size: 14px;
+    flex-wrap: wrap;
+  }
+  .hero-trust .check {
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+
+  .hero-visual {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    max-width: 520px;
+    margin-left: auto;
+  }
+  .hero-visual svg { width: 100%; height: 100%; }
+  .hero-blob {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 60% 40%, rgba(195,108,74,0.10), transparent 60%),
+                radial-gradient(circle at 30% 70%, rgba(139,167,155,0.14), transparent 60%);
+    border-radius: 50%;
+    filter: blur(8px);
+    z-index: 0;
+  }
+  .hero-visual > svg { position: relative; z-index: 1; }
+
+  @media (max-width: 900px) {
+    .hero { padding: 48px 0 70px; }
+    .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+    .hero-visual { margin: 0 auto; }
+  }
+
+  /* ----------------------------------------------------------------------
+     Section baseline
+     ---------------------------------------------------------------------- */
+  section { padding: 90px 0; }
+  .section-head {
+    max-width: 640px;
+    margin: 0 auto 56px;
+    text-align: center;
+  }
+  .section-head p {
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+  }
+  .section-kicker {
+    display: inline-block;
+    color: var(--terra);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* ----------------------------------------------------------------------
+     Features
+     ---------------------------------------------------------------------- */
+  .features {
+    background: linear-gradient(180deg, var(--bg) 0%, #f4ede0 100%);
+  }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  .feature-card {
+    background: var(--bg-cream);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 34px 30px;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
+  }
+  .feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+  .feature-icon {
+    width: 56px; height: 56px;
+    border-radius: 18px;
+    background: var(--terra-tint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 22px;
+  }
+  .feature-icon.sage { background: var(--sage-tint); }
+  .feature-card h3 {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+  }
+  .feature-card p {
+    font-size: 0.97rem;
+    margin: 0;
+  }
+
+  @media (max-width: 880px) { .feature-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .feature-grid { grid-template-columns: 1fr; } }
+
+  /* ----------------------------------------------------------------------
+     How it works strip
+     ---------------------------------------------------------------------- */
+  .how {
+    padding: 90px 0;
+  }
+  .how-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+    position: relative;
+  }
+  .how-step {
+    text-align: left;
+  }
+  .how-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: var(--bg-cream);
+    border: 1.5px solid var(--line);
+    color: var(--terra);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    margin-bottom: 18px;
+  }
+  .how-step h3 { font-size: 1.1rem; margin-bottom: 8px; }
+  .how-step p { font-size: 0.95rem; margin: 0; }
+
+  @media (max-width: 780px) { .how-grid { grid-template-columns: 1fr; } }
+
+  /* ----------------------------------------------------------------------
+     Quote strip
+     ---------------------------------------------------------------------- */
+  .quote-strip {
+    background: var(--bg-cream);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding: 80px 0;
+  }
+  .quote-inner {
+    max-width: 780px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .quote-inner blockquote {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: clamp(1.3rem, 2.4vw, 1.8rem);
+    line-height: 1.35;
+    font-weight: 500;
+    color: var(--ink);
+    margin: 0 0 24px;
+    letter-spacing: -0.01em;
+  }
+  .quote-inner blockquote::before {
+    content: "“";
+    display: block;
+    font-size: 4rem;
+    line-height: 0.6;
+    color: var(--terra);
+    margin-bottom: 18px;
+  }
+  .quote-author {
+    color: var(--ink-muted);
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  /* ----------------------------------------------------------------------
+     Pricing
+     ---------------------------------------------------------------------- */
+  .pricing {
+    background: linear-gradient(180deg, #f4ede0 0%, var(--bg) 100%);
+  }
+  .price-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    max-width: 880px;
+    margin: 0 auto;
+  }
+  .price-card {
+    background: var(--bg-cream);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 40px 34px;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+  }
+  .price-card.featured {
+    border: 1.5px solid var(--terra);
+    box-shadow: var(--shadow-lg);
+    background: #fff;
+  }
+  .price-badge {
+    position: absolute;
+    top: -14px; right: 28px;
+    background: var(--terra);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: var(--pill);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .price-name {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--sage-dk);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 10px;
+  }
+  .price-amount {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 2.6rem;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+  .price-amount span { font-size: 1rem; color: var(--ink-muted); font-weight: 500; margin-left: 4px; }
+  .price-desc {
+    color: var(--ink-soft);
+    margin: 10px 0 26px;
+    font-size: 0.97rem;
+  }
+  .price-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 30px;
+  }
+  .price-features li {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 9px 0;
+    color: var(--ink-soft);
+    font-size: 0.97rem;
+  }
+  .price-features svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .price-card .btn { width: 100%; justify-content: center; }
+
+  @media (max-width: 760px) { .price-grid { grid-template-columns: 1fr; } }
+
+  /* ----------------------------------------------------------------------
+     Final CTA
+     ---------------------------------------------------------------------- */
+  .final-cta {
+    padding: 110px 0;
+  }
+  .cta-card {
+    background: var(--ink);
+    border-radius: var(--radius-lg);
+    padding: 80px 56px;
+    text-align: center;
+    color: var(--bg);
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-card h2 { color: var(--bg); max-width: 680px; margin: 0 auto 16px; }
+  .cta-card p { color: rgba(248,244,236,0.72); max-width: 520px; margin: 0 auto 30px; }
+  .cta-card .btn-primary {
+    background: var(--terra);
+  }
+  .cta-card .btn-primary:hover {
+    background: #d97e5d;
+  }
+  .cta-ornament {
+    position: absolute;
+    opacity: 0.15;
+    pointer-events: none;
+  }
+  .cta-ornament.left { left: -40px; bottom: -40px; }
+  .cta-ornament.right { right: -30px; top: -30px; transform: rotate(20deg); }
+
+  /* ----------------------------------------------------------------------
+     Footer
+     ---------------------------------------------------------------------- */
+  footer {
+    background: var(--bg-cream);
+    border-top: 1px solid var(--line);
+    padding: 64px 0 36px;
+  }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+    gap: 48px;
+    margin-bottom: 48px;
+  }
+  .footer-grid h4 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+    margin-bottom: 18px;
+  }
+  .footer-grid ul { list-style: none; padding: 0; margin: 0; }
+  .footer-grid li { padding: 6px 0; }
+  .footer-grid li a { color: var(--ink-soft); font-size: 14.5px; }
+  .footer-grid li a:hover { color: var(--terra); }
+  .footer-intro p {
+    color: var(--ink-soft);
+    font-size: 14.5px;
+    max-width: 320px;
+    margin: 14px 0 0;
+  }
+  .footer-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 28px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-muted);
+    font-size: 13.5px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  @media (max-width: 780px) {
+    .footer-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* ----------------------------------------------------------------------
+     Reveal on scroll (André)
+     ---------------------------------------------------------------------- */
+  .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 0.7s var(--ease), transform 0.7s var(--ease);
+  }
+  .reveal.in {
+    opacity: 1;
+    transform: none;
+  }
+
+  ::selection { background: var(--terra-tint); color: var(--ink); }
+  :focus-visible {
+    outline: 2.5px solid var(--sage);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+</style>
+</head>
+<body>
+
+<!-- =======================================================================
+     NAV
+     ======================================================================= -->
+<nav class="site-nav" id="siteNav">
+  <div class="container nav-inner">
+    <a href="#" class="brand" aria-label="GrantLume home">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+        <circle cx="15" cy="15" r="13" fill="#C36C4A"/>
+        <path d="M9 15.5c2-3 4-4.5 6-4.5s4 1.5 6 4.5" stroke="#F8F4EC" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <circle cx="15" cy="11" r="1.6" fill="#F8F4EC"/>
+      </svg>
+      GrantLume
+    </a>
+    <div class="nav-links" role="navigation">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#story">Story</a>
+    </div>
+    <div class="nav-cta">
+      <a href="#" class="signin">Sign in</a>
+      <a href="#pricing" class="btn btn-primary">Start free trial</a>
+    </div>
+  </div>
+</nav>
+
+<!-- =======================================================================
+     HERO
+     ======================================================================= -->
+<header class="hero">
+  <div class="container hero-grid">
+    <div class="hero-copy reveal">
+      <span class="eyebrow"><span class="dot"></span>Built with European research teams</span>
+      <h1>Grant management that feels like <span class="accent">a calm desk</span>, not a spreadsheet.</h1>
+      <p class="hero-sub">
+        GrantLume helps research admins and principal investigators plan, submit, and report on
+        Horizon, national, and foundation grants — together, in one warm, well-organised place.
+      </p>
+      <div class="hero-actions">
+        <a href="#pricing" class="btn btn-primary">Start 30-day free trial <span class="btn-arrow">→</span></a>
+        <a href="#how" class="btn btn-ghost">See how it works</a>
+      </div>
+      <div class="hero-trust">
+        <span class="check">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 8.5l3 3 7-7" stroke="#8BA79B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          No credit card
+        </span>
+        <span class="check">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 8.5l3 3 7-7" stroke="#8BA79B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          GDPR-ready, EU-hosted
+        </span>
+        <span class="check">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M3 8.5l3 3 7-7" stroke="#8BA79B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Cancel any time
+        </span>
+      </div>
+    </div>
+
+    <!-- Sara's hand-drawn workspace scene: plant + laptop + handwritten page -->
+    <div class="hero-visual reveal">
+      <div class="hero-blob" aria-hidden="true"></div>
+      <svg viewBox="0 0 520 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustration of a calm desk: a laptop, a stack of paper, a cup of tea, and a small plant.">
+        <!-- desk surface -->
+        <ellipse cx="260" cy="430" rx="220" ry="24" fill="#e7dfd1" opacity="0.7"/>
+
+        <!-- paper stack -->
+        <g>
+          <rect x="80" y="300" width="170" height="110" rx="8" fill="#FCFAF6" stroke="#2E2A26" stroke-width="2"/>
+          <rect x="90" y="290" width="170" height="110" rx="8" fill="#FCFAF6" stroke="#2E2A26" stroke-width="2"/>
+          <line x1="110" y1="315" x2="240" y2="315" stroke="#8BA79B" stroke-width="2" stroke-linecap="round"/>
+          <line x1="110" y1="332" x2="220" y2="332" stroke="#8BA79B" stroke-width="2" stroke-linecap="round"/>
+          <line x1="110" y1="349" x2="235" y2="349" stroke="#8BA79B" stroke-width="2" stroke-linecap="round"/>
+          <line x1="110" y1="366" x2="200" y2="366" stroke="#8BA79B" stroke-width="2" stroke-linecap="round"/>
+          <line x1="110" y1="383" x2="225" y2="383" stroke="#8BA79B" stroke-width="2" stroke-linecap="round"/>
+        </g>
+
+        <!-- pen resting on paper -->
+        <g transform="rotate(-18 220 360)">
+          <rect x="180" y="350" width="90" height="10" rx="5" fill="#C36C4A" stroke="#2E2A26" stroke-width="2"/>
+          <polygon points="270,350 284,355 270,360" fill="#2E2A26"/>
+        </g>
+
+        <!-- laptop -->
+        <g>
+          <rect x="250" y="200" width="200" height="130" rx="10" fill="#FCFAF6" stroke="#2E2A26" stroke-width="2"/>
+          <rect x="258" y="208" width="184" height="114" rx="6" fill="#F8F4EC"/>
+          <!-- tiny chart in screen -->
+          <rect x="270" y="220" width="40" height="6" rx="3" fill="#C36C4A"/>
+          <rect x="270" y="234" width="80" height="4" rx="2" fill="#e7dfd1"/>
+          <rect x="270" y="244" width="60" height="4" rx="2" fill="#e7dfd1"/>
+          <polyline points="270,310 290,290 310,300 330,275 360,285 390,260 430,270"
+                    fill="none" stroke="#8BA79B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="430" cy="270" r="4" fill="#C36C4A"/>
+          <!-- laptop base -->
+          <rect x="235" y="330" width="230" height="10" rx="5" fill="#2E2A26"/>
+        </g>
+
+        <!-- cup of tea -->
+        <g>
+          <path d="M370 380 Q370 430 400 430 Q430 430 430 380 Z" fill="#FCFAF6" stroke="#2E2A26" stroke-width="2"/>
+          <path d="M430 390 Q450 395 450 410 Q450 420 430 420" fill="none" stroke="#2E2A26" stroke-width="2"/>
+          <!-- steam -->
+          <path d="M388 370 C 385 360, 395 358, 392 348" fill="none" stroke="#8BA79B" stroke-width="2" stroke-linecap="round"/>
+          <path d="M405 368 C 402 358, 412 356, 409 346" fill="none" stroke="#8BA79B" stroke-width="2" stroke-linecap="round"/>
+        </g>
+
+        <!-- plant in pot -->
+        <g>
+          <!-- pot -->
+          <path d="M100 380 L170 380 L160 440 L110 440 Z" fill="#C36C4A" stroke="#2E2A26" stroke-width="2"/>
+          <rect x="95" y="372" width="80" height="12" rx="3" fill="#a55838" stroke="#2E2A26" stroke-width="2"/>
+          <!-- leaves -->
+          <path d="M135 380 C 110 340, 90 310, 105 270 C 120 300, 130 340, 135 380 Z" fill="#8BA79B" stroke="#2E2A26" stroke-width="2"/>
+          <path d="M135 380 C 160 350, 180 320, 175 280 C 155 305, 140 345, 135 380 Z" fill="#6d8a7e" stroke="#2E2A26" stroke-width="2"/>
+          <path d="M135 380 C 140 350, 150 330, 145 300" fill="none" stroke="#2E2A26" stroke-width="1.5"/>
+          <!-- little leaf detail -->
+          <path d="M125 290 C 128 285, 135 285, 138 290" stroke="#2E2A26" stroke-width="1.5" fill="none"/>
+        </g>
+
+        <!-- tiny sun / warmth mark -->
+        <g opacity="0.6">
+          <circle cx="430" cy="100" r="18" fill="none" stroke="#C36C4A" stroke-width="2"/>
+          <line x1="430" y1="70" x2="430" y2="78" stroke="#C36C4A" stroke-width="2" stroke-linecap="round"/>
+          <line x1="430" y1="122" x2="430" y2="130" stroke="#C36C4A" stroke-width="2" stroke-linecap="round"/>
+          <line x1="400" y1="100" x2="408" y2="100" stroke="#C36C4A" stroke-width="2" stroke-linecap="round"/>
+          <line x1="452" y1="100" x2="460" y2="100" stroke="#C36C4A" stroke-width="2" stroke-linecap="round"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+</header>
+
+<!-- =======================================================================
+     FEATURES
+     ======================================================================= -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-kicker">What you get</span>
+      <h2>Everything a research office needs, nothing it doesn't.</h2>
+      <p>Six years of conversations with research administrators, distilled into a product that respects your time — and your team's attention.</p>
+    </div>
+
+    <div class="feature-grid">
+      <!-- Feature 1 -->
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <rect x="3" y="6" width="22" height="18" rx="4" stroke="#C36C4A" stroke-width="2" fill="#f3d9cb"/>
+            <path d="M3 11h22" stroke="#C36C4A" stroke-width="2"/>
+            <path d="M9 3v5M19 3v5" stroke="#C36C4A" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="10" cy="17" r="1.5" fill="#C36C4A"/>
+            <circle cx="14" cy="17" r="1.5" fill="#C36C4A"/>
+          </svg>
+        </div>
+        <h3>Deadline calendar you trust</h3>
+        <p>Every call, every internal review, every report — on one shared timeline with quiet, well-timed reminders. No more last-Friday panic.</p>
+      </div>
+
+      <!-- Feature 2 -->
+      <div class="feature-card reveal">
+        <div class="feature-icon sage">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <path d="M6 21V8a2 2 0 012-2h9l5 5v10a2 2 0 01-2 2H8a2 2 0 01-2-2z" stroke="#6d8a7e" stroke-width="2" fill="#d8e2dc"/>
+            <path d="M17 6v5h5" stroke="#6d8a7e" stroke-width="2" stroke-linejoin="round"/>
+            <path d="M10 15h8M10 18h6" stroke="#6d8a7e" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3>Proposal workspace</h3>
+        <p>Draft together with version history, comment threads, and friendly templates for Horizon, ERC, and national schemes. Export clean PDFs.</p>
+      </div>
+
+      <!-- Feature 3 -->
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <circle cx="14" cy="14" r="10" stroke="#C36C4A" stroke-width="2" fill="#f3d9cb"/>
+            <path d="M14 8v6l4 2" stroke="#C36C4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3>Budgets that add up</h3>
+        <p>Build, split, and reforecast budgets with multi-year rollovers, indirect cost rules, and a sanity-check summary before you submit.</p>
+      </div>
+
+      <!-- Feature 4 -->
+      <div class="feature-card reveal">
+        <div class="feature-icon sage">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <circle cx="10" cy="10" r="4" stroke="#6d8a7e" stroke-width="2" fill="#d8e2dc"/>
+            <circle cx="20" cy="12" r="3" stroke="#6d8a7e" stroke-width="2" fill="#d8e2dc"/>
+            <path d="M3 23c0-4 3-6 7-6s7 2 7 6" stroke="#6d8a7e" stroke-width="2" stroke-linecap="round"/>
+            <path d="M17 22c0-3 2-5 5-5s4 1.5 4 4" stroke="#6d8a7e" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <h3>Team roles, gently done</h3>
+        <p>PIs, co-investigators, finance, and admins — each sees what matters to them, nothing more. Invite collaborators with a single warm link.</p>
+      </div>
+
+      <!-- Feature 5 -->
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <rect x="4" y="4" width="20" height="20" rx="4" stroke="#C36C4A" stroke-width="2" fill="#f3d9cb"/>
+            <path d="M8 15l4 4 8-8" stroke="#C36C4A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3>Compliance, quietly</h3>
+        <p>GDPR, ORCID linking, data-management-plan templates, and audit-ready trails — running in the background so you don't have to think about them.</p>
+      </div>
+
+      <!-- Feature 6 -->
+      <div class="feature-card reveal">
+        <div class="feature-icon sage">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+            <path d="M4 20V10l10-6 10 6v10a2 2 0 01-2 2h-6v-7h-4v7H6a2 2 0 01-2-2z" stroke="#6d8a7e" stroke-width="2" fill="#d8e2dc" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <h3>Reports that write themselves</h3>
+        <p>Milestones, spend vs. plan, publications, deliverables — assembled into friendly narrative reports your funder (and your dean) will actually read.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =======================================================================
+     HOW IT WORKS
+     ======================================================================= -->
+<section class="how" id="how">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-kicker">How it works</span>
+      <h2>Three calm steps, and you're set.</h2>
+      <p>Most teams are up and running inside a Tuesday afternoon.</p>
+    </div>
+
+    <div class="how-grid">
+      <div class="how-step reveal">
+        <div class="how-num">1</div>
+        <h3>Bring your grants in</h3>
+        <p>Import from a spreadsheet, forward call emails, or start a fresh workspace. Our importer is patient with messy data.</p>
+      </div>
+      <div class="how-step reveal">
+        <div class="how-num">2</div>
+        <h3>Invite your people</h3>
+        <p>PIs, admins, finance colleagues — one link, thoughtful defaults, no IT ticket required. Permissions adjust themselves sensibly.</p>
+      </div>
+      <div class="how-step reveal">
+        <div class="how-num">3</div>
+        <h3>Let the deadlines breathe</h3>
+        <p>GrantLume watches the calendar, nudges the right person at the right time, and keeps a tidy record for when the auditor calls.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =======================================================================
+     QUOTE
+     ======================================================================= -->
+<section class="quote-strip" id="story">
+  <div class="container quote-inner reveal">
+    <blockquote>
+      It's the first tool our research office has adopted without anyone complaining.
+      It feels less like new software and more like someone finally tidied the room.
+    </blockquote>
+    <div class="quote-author">— Research Operations Lead, European mid-sized university</div>
+  </div>
+</section>
+
+<!-- =======================================================================
+     PRICING
+     ======================================================================= -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="section-kicker">Pricing</span>
+      <h2>Two plans, both honest.</h2>
+      <p>Start free for a full month. If GrantLume earns its place, upgrade. If not, no hard feelings.</p>
+    </div>
+
+    <div class="price-grid">
+      <!-- Free trial -->
+      <div class="price-card reveal">
+        <div class="price-name">Free trial</div>
+        <div class="price-amount">€0 <span>/ first 30 days</span></div>
+        <p class="price-desc">A full, un-crippled month. See it in your own workflow, not a sales-demo bubble.</p>
+        <ul class="price-features">
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="9" fill="#d8e2dc"/>
+              <path d="M5 9.5l2.5 2.5L13 6.5" stroke="#6d8a7e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            All Pro features, unlocked
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="9" fill="#d8e2dc"/>
+              <path d="M5 9.5l2.5 2.5L13 6.5" stroke="#6d8a7e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Up to 5 teammates
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="9" fill="#d8e2dc"/>
+              <path d="M5 9.5l2.5 2.5L13 6.5" stroke="#6d8a7e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Email support, from humans
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="9" fill="#d8e2dc"/>
+              <path d="M5 9.5l2.5 2.5L13 6.5" stroke="#6d8a7e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            No credit card asked for
+          </li>
+        </ul>
+        <a href="#" class="btn btn-ghost">Start your free month</a>
+      </div>
+
+      <!-- Pro -->
+      <div class="price-card featured reveal">
+        <span class="price-badge">Most teams pick this</span>
+        <div class="price-name">Pro</div>
+        <div class="price-amount">€149 <span>/ month</span></div>
+        <p class="price-desc">One flat price per research group. Everything scales with you — the number doesn't.</p>
+        <ul class="price-features">
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="9" fill="#f3d9cb"/>
+              <path d="M5 9.5l2.5 2.5L13 6.5" stroke="#C36C4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Unlimited grants, proposals, reports
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="9" fill="#f3d9cb"/>
+              <path d="M5 9.5l2.5 2.5L13 6.5" stroke="#C36C4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Unlimited teammates &amp; roles
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="9" fill="#f3d9cb"/>
+              <path d="M5 9.5l2.5 2.5L13 6.5" stroke="#C36C4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            EU data residency + GDPR DPA
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="9" fill="#f3d9cb"/>
+              <path d="M5 9.5l2.5 2.5L13 6.5" stroke="#C36C4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Priority support, same-day replies
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <circle cx="9" cy="9" r="9" fill="#f3d9cb"/>
+              <path d="M5 9.5l2.5 2.5L13 6.5" stroke="#C36C4A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Onboarding session with a real person
+          </li>
+        </ul>
+        <a href="#" class="btn btn-primary">Choose Pro <span class="btn-arrow">→</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =======================================================================
+     FINAL CTA
+     ======================================================================= -->
+<section class="final-cta">
+  <div class="container">
+    <div class="cta-card reveal">
+      <!-- ornament leaves -->
+      <svg class="cta-ornament left" width="180" height="180" viewBox="0 0 180 180" fill="none" aria-hidden="true">
+        <path d="M40 150 C 30 100, 50 60, 90 30 C 70 80, 70 120, 80 160 Z" fill="#8BA79B"/>
+        <path d="M80 160 C 100 130, 130 110, 160 110 C 130 130, 110 150, 90 165 Z" fill="#C36C4A"/>
+      </svg>
+      <svg class="cta-ornament right" width="150" height="150" viewBox="0 0 150 150" fill="none" aria-hidden="true">
+        <circle cx="75" cy="75" r="60" stroke="#C36C4A" stroke-width="3" fill="none"/>
+        <circle cx="75" cy="75" r="30" stroke="#8BA79B" stroke-width="3" fill="none"/>
+      </svg>
+
+      <h2>Give your grants a quieter home.</h2>
+      <p>Thirty days, all features, no credit card. If it clicks, it clicks — and if it doesn't, you still keep the templates.</p>
+      <a href="#" class="btn btn-primary">Start your free trial <span class="btn-arrow">→</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- =======================================================================
+     FOOTER
+     ======================================================================= -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-intro">
+        <a href="#" class="brand">
+          <svg width="28" height="28" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+            <circle cx="15" cy="15" r="13" fill="#C36C4A"/>
+            <path d="M9 15.5c2-3 4-4.5 6-4.5s4 1.5 6 4.5" stroke="#F8F4EC" stroke-width="2" stroke-linecap="round" fill="none"/>
+            <circle cx="15" cy="11" r="1.6" fill="#F8F4EC"/>
+          </svg>
+          GrantLume
+        </a>
+        <p>Grant management software for European research teams who would rather be doing research.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#">Changelog</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Writing</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Trust</h4>
+        <ul>
+          <li><a href="#">GDPR &amp; DPA</a></li>
+          <li><a href="#">Security</a></li>
+          <li><a href="#">Status</a></li>
+          <li><a href="#">Privacy</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 GrantLume B.V. — Hosted in the EU, written with care.</span>
+      <span>Made warm in Lisbon &amp; Porto.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Subtle nav border on scroll
+  const nav = document.getElementById('siteNav');
+  const onScroll = () => {
+    if (window.scrollY > 8) nav.classList.add('scrolled');
+    else nav.classList.remove('scrolled');
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // Gentle reveal on scroll (André's lazy reveal)
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+</body>
+</html>

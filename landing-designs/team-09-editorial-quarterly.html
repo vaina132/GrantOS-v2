@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<!--
+  ========================================================================
+  TEAM 09 — EDITORIAL QUARTERLY
+  GrantLume · The Quarterly Review of Research Administration
+  Vol. IV · Issue No. 02 · Spring MMXXVI
+  ========================================================================
+
+  COLOPHON — masthead & contributions
+
+  · Constance Weyland, Creative Director — set the issue's editorial voice;
+    chose the cream-and-charcoal palette and the "chapters-not-sections"
+    structure; approved every pull-quote placement.
+  · Tobias Brandt, Copywriter — wrote the hero standfirst, the numbered
+    chapter ledes, the pricing standfirsts, and the closing dispatch.
+  · Camille Valois, Art Director — designed the numbered roman-numeral
+    openers, the oversized hanging pull-quote, the gold-rule dividers,
+    and the byline strips under each chapter head.
+  · Hannah Sorensen, UX Designer — paced the scroll as page-turns: opening
+    spread, feature spread, pull-quote verso, pricing, dispatch, masthead.
+  · Maya Fischer, UI Designer — paired Playfair Display at oversized sizes
+    with Inter tabular for figures; refined small-caps bylines, oldstyle
+    numerals, and the folio strip at the bottom of each section.
+  · Niko Petraki, Backend Developer — authored the inline magazine-cover
+    SVG (under 40 KB, no raster), the serif-era glyph icons, and the
+    hand-drawn pull-quote ornament.
+
+  THIRTY-WORD PITCH —
+  GrantLume, read like a quarterly: oversized serif chapters, hanging
+  pull-quotes, byline strips, oldstyle numerals. Research administration
+  treated as feature journalism — calm, printed, legible. A weekend read
+  for serious offices.
+
+  ========================================================================
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GrantLume — The Quarterly Review of Research Administration</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;0,900;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --paper:    #F4EFE3;
+      --paper-2:  #EBE4D2;
+      --ink:      #1E1B17;
+      --ink-soft: #4A443B;
+      --teal:     #5C7C7A;
+      --lilac:    #B2A5C4;
+      --gold:     #9A7A36;
+      --rule:     rgba(30, 27, 23, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      font-feature-settings: "onum" 1, "kern" 1;
+      background-color: var(--paper);
+      color: var(--ink);
+      line-height: 1.55;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .display { font-family: 'Playfair Display', Georgia, serif; }
+    .sc { font-variant-caps: all-small-caps; letter-spacing: 0.14em; }
+    .num { font-feature-settings: "onum" 1, "tnum" 1; }
+
+    .wrap { max-width: 1240px; margin: 0 auto; padding: 0 40px; }
+
+    /* ---------- MASTHEAD / NAV ---------- */
+    .masthead {
+      border-bottom: 1px solid var(--ink);
+      background: var(--paper);
+      position: sticky; top: 0; z-index: 20;
+    }
+    .masthead-top {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 11px; padding: 10px 0;
+      border-bottom: 1px solid var(--rule);
+      color: var(--ink-soft);
+    }
+    .masthead-top span { letter-spacing: 0.18em; text-transform: uppercase; }
+    .masthead-main {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      padding: 14px 0;
+    }
+    .masthead-main nav, .masthead-main .actions {
+      display: flex; gap: 28px; align-items: center;
+    }
+    .masthead-main nav a, .masthead-main .actions a {
+      text-decoration: none; color: var(--ink);
+      font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+    }
+    .masthead-main nav a:hover { color: var(--teal); }
+    .masthead-main .actions { justify-content: flex-end; }
+    .masthead-title {
+      font-family: 'Playfair Display', serif;
+      font-weight: 900; font-size: 34px; letter-spacing: -0.01em;
+      text-align: center;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 18px;
+      border: 1px solid var(--ink);
+      background: var(--ink);
+      color: var(--paper);
+      font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+      text-decoration: none;
+      transition: all .2s ease;
+    }
+    .btn:hover { background: var(--teal); border-color: var(--teal); color: var(--paper); }
+    .btn-ghost {
+      background: transparent; color: var(--ink);
+    }
+    .btn-ghost:hover { background: var(--ink); color: var(--paper); }
+
+    /* ---------- FOLIO STRIP ---------- */
+    .folio {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--ink-soft);
+      padding: 14px 0;
+      border-top: 1px solid var(--rule);
+      margin-top: 80px;
+    }
+    .folio .gold { color: var(--gold); }
+
+    /* ---------- HERO ---------- */
+    .hero {
+      padding: 70px 0 40px;
+      border-bottom: 1px solid var(--ink);
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 60px;
+      align-items: start;
+    }
+    .hero-label {
+      display: flex; align-items: center; gap: 14px;
+      font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 28px;
+    }
+    .hero-label .bar { flex: 0 0 40px; height: 1px; background: var(--gold); }
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-weight: 900;
+      font-size: clamp(56px, 8.6vw, 132px);
+      line-height: 0.94;
+      letter-spacing: -0.022em;
+      color: var(--ink);
+    }
+    .hero h1 em {
+      font-style: italic;
+      font-weight: 400;
+      color: var(--teal);
+    }
+    .hero-standfirst {
+      margin-top: 34px;
+      font-size: 19px;
+      line-height: 1.55;
+      max-width: 540px;
+      color: var(--ink-soft);
+    }
+    .hero-standfirst::first-letter {
+      font-family: 'Playfair Display', serif;
+      font-size: 60px;
+      float: left;
+      line-height: 0.9;
+      padding: 6px 10px 0 0;
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .hero-byline {
+      margin-top: 30px;
+      padding-top: 14px;
+      border-top: 1px solid var(--rule);
+      font-size: 11px;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .hero-byline strong { color: var(--ink); font-weight: 600; }
+    .hero-cta { margin-top: 38px; display: flex; gap: 16px; flex-wrap: wrap; }
+    .hero-figure {
+      position: relative;
+      aspect-ratio: 3 / 4;
+      background: var(--paper-2);
+      border: 1px solid var(--ink);
+      overflow: hidden;
+    }
+    .hero-figure svg { width: 100%; height: 100%; display: block; }
+    .hero-caption {
+      margin-top: 10px;
+      font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .hero-caption .gold { color: var(--gold); }
+
+    /* ---------- PULL QUOTE ---------- */
+    .pullquote {
+      padding: 110px 0;
+      border-bottom: 1px solid var(--ink);
+      position: relative;
+    }
+    .pullquote .pq-inner {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 36px;
+      align-items: start;
+    }
+    .pullquote .mark {
+      font-family: 'Playfair Display', serif;
+      font-weight: 900;
+      font-size: 180px;
+      line-height: 0.6;
+      color: var(--gold);
+      margin-top: -12px;
+    }
+    .pullquote blockquote {
+      font-family: 'Playfair Display', serif;
+      font-weight: 500;
+      font-style: italic;
+      font-size: clamp(32px, 4.2vw, 58px);
+      line-height: 1.15;
+      color: var(--ink);
+      letter-spacing: -0.01em;
+      max-width: 900px;
+    }
+    .pullquote cite {
+      display: block;
+      margin-top: 30px;
+      font-style: normal;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+    .pullquote cite::before {
+      content: "";
+      display: inline-block;
+      width: 28px; height: 1px;
+      background: var(--ink-soft);
+      vertical-align: middle;
+      margin-right: 12px;
+    }
+
+    /* ---------- CHAPTERS (SECTIONS) ---------- */
+    .chapter-head {
+      display: grid;
+      grid-template-columns: 160px 1fr auto;
+      gap: 40px;
+      align-items: end;
+      padding-top: 90px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--ink);
+    }
+    .chapter-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 78px;
+      font-weight: 400;
+      font-style: italic;
+      color: var(--gold);
+      line-height: 0.9;
+    }
+    .chapter-title {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      font-size: clamp(32px, 4vw, 54px);
+      line-height: 1;
+      letter-spacing: -0.015em;
+    }
+    .chapter-byline {
+      font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--ink-soft); text-align: right;
+      line-height: 1.6;
+    }
+    .chapter-byline strong { color: var(--ink); font-weight: 600; display: block; }
+
+    /* ---------- FEATURES (Chapter I) ---------- */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      padding-top: 50px;
+    }
+    .feature {
+      padding: 40px 32px 44px;
+      border-right: 1px solid var(--rule);
+    }
+    .feature:last-child { border-right: none; }
+    .feature .icon {
+      width: 56px; height: 56px;
+      margin-bottom: 24px;
+      color: var(--teal);
+    }
+    .feature .kicker {
+      font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 10px;
+    }
+    .feature h3 {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      font-size: 26px;
+      line-height: 1.1;
+      margin-bottom: 14px;
+    }
+    .feature p {
+      font-size: 15px;
+      color: var(--ink-soft);
+      line-height: 1.6;
+    }
+    .feature .drop {
+      font-family: 'Playfair Display', serif;
+      float: left;
+      font-size: 42px;
+      line-height: 0.9;
+      padding: 4px 8px 0 0;
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .features-wide {
+      grid-template-columns: repeat(2, 1fr);
+      border-top: 1px solid var(--rule);
+    }
+
+    /* ---------- HOW IT WORKS (Chapter II) ---------- */
+    .how {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 32px;
+      padding-top: 60px;
+    }
+    .step {
+      border-top: 3px solid var(--ink);
+      padding-top: 20px;
+    }
+    .step .n {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 42px;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 10px;
+    }
+    .step h4 {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+    .step p { font-size: 14px; color: var(--ink-soft); }
+
+    /* ---------- PRICING (Chapter III) ---------- */
+    .pricing {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      padding-top: 60px;
+    }
+    .plan {
+      padding: 48px 40px 44px;
+      border: 1px solid var(--ink);
+      background: var(--paper);
+      position: relative;
+    }
+    .plan + .plan { border-left: none; }
+    .plan.featured { background: var(--ink); color: var(--paper); }
+    .plan.featured h3, .plan.featured .price-figure { color: var(--paper); }
+    .plan.featured .plan-desc, .plan.featured ul li { color: rgba(244,239,227,0.72); }
+    .plan.featured .plan-desc { border-color: rgba(244,239,227,0.22); }
+    .plan.featured ul li::before { color: var(--lilac); }
+    .plan.featured .btn-ghost { border-color: var(--paper); color: var(--paper); }
+    .plan.featured .btn-ghost:hover { background: var(--paper); color: var(--ink); }
+
+    .plan-kicker {
+      font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 12px;
+    }
+    .plan.featured .plan-kicker { color: var(--lilac); }
+    .plan h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .plan-desc {
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      color: var(--ink-soft);
+      border-bottom: 1px solid var(--rule);
+      padding-bottom: 22px; margin-bottom: 28px;
+      font-style: italic;
+    }
+    .price-figure {
+      font-family: 'Playfair Display', serif;
+      font-size: 72px;
+      line-height: 1;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .price-figure sup {
+      font-size: 28px;
+      vertical-align: top;
+      margin-right: 4px;
+      font-weight: 400;
+    }
+    .price-unit {
+      font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--ink-soft);
+      margin-top: 4px; margin-bottom: 28px;
+    }
+    .plan ul { list-style: none; margin-bottom: 32px; }
+    .plan ul li {
+      padding: 10px 0 10px 26px;
+      position: relative;
+      font-size: 14px;
+      border-bottom: 1px dotted var(--rule);
+      color: var(--ink-soft);
+    }
+    .plan ul li::before {
+      content: "§";
+      font-family: 'Playfair Display', serif;
+      position: absolute; left: 0; top: 8px;
+      color: var(--gold);
+      font-size: 16px;
+    }
+
+    /* ---------- FINAL CTA (Dispatch) ---------- */
+    .dispatch {
+      margin-top: 100px;
+      padding: 90px 60px;
+      background: var(--teal);
+      color: var(--paper);
+      border-top: 6px double var(--paper);
+      border-bottom: 6px double var(--paper);
+      text-align: center;
+      position: relative;
+    }
+    .dispatch .ornament {
+      font-family: 'Playfair Display', serif;
+      color: var(--lilac);
+      font-size: 24px;
+      letter-spacing: 1em;
+      margin-bottom: 22px;
+    }
+    .dispatch h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(44px, 6vw, 82px);
+      font-weight: 500;
+      font-style: italic;
+      line-height: 1.02;
+      max-width: 900px;
+      margin: 0 auto 22px;
+      letter-spacing: -0.015em;
+    }
+    .dispatch p {
+      max-width: 620px;
+      margin: 0 auto 36px;
+      font-size: 16px;
+      line-height: 1.6;
+      color: rgba(244, 239, 227, 0.8);
+    }
+    .dispatch .btn {
+      background: var(--paper); color: var(--ink); border-color: var(--paper);
+    }
+    .dispatch .btn:hover { background: var(--gold); color: var(--paper); border-color: var(--gold); }
+    .dispatch .btn-ghost { background: transparent; color: var(--paper); border-color: var(--paper); }
+    .dispatch .btn-ghost:hover { background: var(--paper); color: var(--teal); }
+
+    /* ---------- FOOTER / MASTHEAD CLOSE ---------- */
+    footer {
+      padding: 70px 0 40px;
+      border-top: 1px solid var(--ink);
+      margin-top: 0;
+      background: var(--paper);
+    }
+    .foot-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr 1fr;
+      gap: 40px;
+    }
+    .foot-grid h5 {
+      font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .foot-grid ul { list-style: none; }
+    .foot-grid a {
+      color: var(--ink); text-decoration: none;
+      font-size: 14px; display: block; padding: 5px 0;
+    }
+    .foot-grid a:hover { color: var(--teal); text-decoration: underline; }
+    .foot-mark {
+      font-family: 'Playfair Display', serif;
+      font-weight: 900;
+      font-size: 40px;
+      letter-spacing: -0.01em;
+      margin-bottom: 14px;
+    }
+    .foot-blurb {
+      font-size: 13px;
+      color: var(--ink-soft);
+      line-height: 1.6;
+      font-style: italic;
+      max-width: 340px;
+    }
+    .foot-base {
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 1px solid var(--rule);
+      display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+      font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    /* ---------- RESPONSIVE ---------- */
+    @media (max-width: 920px) {
+      .hero-grid, .features, .pricing, .how, .foot-grid { grid-template-columns: 1fr; }
+      .features .feature { border-right: none; border-bottom: 1px solid var(--rule); }
+      .plan + .plan { border-left: 1px solid var(--ink); border-top: none; }
+      .chapter-head { grid-template-columns: 80px 1fr; }
+      .chapter-byline { grid-column: 1 / -1; text-align: left; margin-top: 10px; }
+      .masthead-main { grid-template-columns: 1fr; gap: 10px; }
+      .masthead-main nav, .masthead-main .actions { justify-content: center; flex-wrap: wrap; gap: 16px; }
+      .pullquote .pq-inner { grid-template-columns: 1fr; }
+      .pullquote .mark { font-size: 100px; margin-bottom: -30px; }
+      .how { gap: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ====================== MASTHEAD ====================== -->
+<header class="masthead">
+  <div class="wrap">
+    <div class="masthead-top">
+      <span>Vol. IV &nbsp;&middot;&nbsp; Issue No. 02</span>
+      <span>The Quarterly Review of Research Administration</span>
+      <span class="num">23 April 2026</span>
+    </div>
+    <div class="masthead-main">
+      <nav>
+        <a href="#chapter-i">Chapters</a>
+        <a href="#chapter-ii">Method</a>
+        <a href="#chapter-iii">Subscribe</a>
+        <a href="#dispatch">Dispatch</a>
+      </nav>
+      <div class="masthead-title display">GrantLume</div>
+      <div class="actions">
+        <a href="#login">Sign in</a>
+        <a href="#trial" class="btn">Begin Trial</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ====================== HERO ====================== -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-label">
+          <span class="bar"></span>
+          <span>Opening Spread &nbsp;&middot;&nbsp; The Brief</span>
+        </div>
+
+        <h1 class="display">
+          Grant work, read like a <em>quarterly.</em>
+        </h1>
+
+        <p class="hero-standfirst">
+          GrantLume is a grant-management studio for European research teams who
+          would rather file a proposal than a spreadsheet. Deadlines arrive as
+          dated entries, budgets as readable ledgers, and the compliance folder
+          keeps itself. We built it for the research office that wants a record
+          it can be proud to hand over.
+        </p>
+
+        <div class="hero-cta">
+          <a href="#trial" class="btn">Begin 30-day trial</a>
+          <a href="#chapter-i" class="btn btn-ghost">Read the issue</a>
+        </div>
+
+        <div class="hero-byline">
+          Words by <strong>Tobias Brandt</strong> &nbsp;&middot;&nbsp;
+          Art Direction <strong>Camille Valois</strong> &nbsp;&middot;&nbsp;
+          Photography <strong>The Archive</strong>
+        </div>
+      </div>
+
+      <div>
+        <div class="hero-figure" aria-label="Magazine cover illustration for this issue">
+          <!-- Inline magazine-cover SVG — under 40KB, no raster -->
+          <svg viewBox="0 0 400 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The Quarterly cover, Volume IV Number 02">
+            <defs>
+              <pattern id="hatch" patternUnits="userSpaceOnUse" width="4" height="4">
+                <path d="M 0 4 L 4 0" stroke="#1E1B17" stroke-width="0.4" opacity="0.35"/>
+              </pattern>
+            </defs>
+
+            <!-- Paper -->
+            <rect width="400" height="540" fill="#EBE4D2"/>
+            <rect x="18" y="18" width="364" height="504" fill="none" stroke="#1E1B17" stroke-width="0.8"/>
+
+            <!-- Top strip: issue info -->
+            <line x1="30" y1="54" x2="370" y2="54" stroke="#1E1B17" stroke-width="0.6"/>
+            <text x="30" y="46" font-family="Inter, sans-serif" font-size="8" letter-spacing="2" fill="#1E1B17">VOL. IV  ·  NO. 02  ·  SPRING MMXXVI</text>
+            <text x="370" y="46" text-anchor="end" font-family="Inter, sans-serif" font-size="8" letter-spacing="2" fill="#9A7A36">£12 / €14</text>
+
+            <!-- Large wordmark -->
+            <text x="200" y="160" text-anchor="middle" font-family="Playfair Display, serif" font-weight="900" font-size="68" fill="#1E1B17" letter-spacing="-1">GrantLume</text>
+            <text x="200" y="184" text-anchor="middle" font-family="Playfair Display, serif" font-style="italic" font-weight="400" font-size="16" fill="#5C7C7A">— the quarterly review —</text>
+
+            <!-- Gold rule -->
+            <line x1="80" y1="210" x2="320" y2="210" stroke="#9A7A36" stroke-width="1.4"/>
+
+            <!-- Feature strapline -->
+            <text x="200" y="236" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" letter-spacing="2.5" fill="#1E1B17">A FIELD GUIDE FOR EUROPEAN RESEARCH OFFICES</text>
+
+            <!-- Central emblem -->
+            <g transform="translate(200 310)">
+              <circle r="54" fill="none" stroke="#1E1B17" stroke-width="0.8"/>
+              <circle r="40" fill="url(#hatch)"/>
+              <circle r="20" fill="#F4EFE3" stroke="#9A7A36" stroke-width="1"/>
+              <text y="5" text-anchor="middle" font-family="Playfair Display, serif" font-style="italic" font-size="22" fill="#1E1B17">GL</text>
+              <!-- ornamental ticks -->
+              <g stroke="#1E1B17" stroke-width="0.6">
+                <line x1="0" y1="-64" x2="0" y2="-58"/>
+                <line x1="0" y1="58" x2="0" y2="64"/>
+                <line x1="-64" y1="0" x2="-58" y2="0"/>
+                <line x1="58" y1="0" x2="64" y2="0"/>
+              </g>
+            </g>
+
+            <!-- Inside-this-issue block -->
+            <line x1="30" y1="400" x2="370" y2="400" stroke="#1E1B17" stroke-width="0.5"/>
+            <text x="30" y="396" font-family="Inter, sans-serif" font-size="8" letter-spacing="2" fill="#9A7A36">INSIDE THIS ISSUE</text>
+            <text x="30" y="422" font-family="Playfair Display, serif" font-size="13" fill="#1E1B17">I · Capabilities, plainly stated</text>
+            <text x="30" y="440" font-family="Playfair Display, serif" font-size="13" fill="#1E1B17">II · On a calmer submission week</text>
+            <text x="30" y="458" font-family="Playfair Display, serif" font-size="13" fill="#1E1B17">III · Pricing, in two columns</text>
+            <text x="30" y="476" font-family="Playfair Display, serif" font-size="13" fill="#1E1B17">IV · A dispatch from the office</text>
+
+            <!-- Product glimpse corner card -->
+            <g transform="translate(246 404)">
+              <rect width="108" height="94" fill="#F4EFE3" stroke="#1E1B17" stroke-width="0.6"/>
+              <rect x="6" y="6" width="96" height="12" fill="#1E1B17"/>
+              <text x="10" y="15" font-family="Inter, sans-serif" font-size="7" fill="#F4EFE3" letter-spacing="1">BUDGET · H2024-PROJ-12</text>
+              <!-- rows -->
+              <g font-family="Inter, sans-serif" font-size="7" fill="#1E1B17">
+                <text x="8" y="32">Personnel</text>     <text x="98" y="32" text-anchor="end">€184,200</text>
+                <line x1="8" y1="36" x2="100" y2="36" stroke="#1E1B17" stroke-width="0.25" stroke-dasharray="1 1"/>
+                <text x="8" y="48">Equipment</text>     <text x="98" y="48" text-anchor="end">€42,600</text>
+                <line x1="8" y1="52" x2="100" y2="52" stroke="#1E1B17" stroke-width="0.25" stroke-dasharray="1 1"/>
+                <text x="8" y="64">Travel</text>        <text x="98" y="64" text-anchor="end">€9,800</text>
+                <line x1="8" y1="68" x2="100" y2="68" stroke="#1E1B17" stroke-width="0.25" stroke-dasharray="1 1"/>
+                <text x="8" y="80">Overheads</text>     <text x="98" y="80" text-anchor="end">€31,400</text>
+              </g>
+              <line x1="8" y1="84" x2="100" y2="84" stroke="#9A7A36" stroke-width="0.8"/>
+              <text x="8" y="91" font-family="Playfair Display, serif" font-style="italic" font-size="8" fill="#1E1B17">Total €268,000</text>
+            </g>
+
+            <!-- Byline strip at bottom -->
+            <line x1="30" y1="500" x2="370" y2="500" stroke="#1E1B17" stroke-width="0.5"/>
+            <text x="30" y="514" font-family="Inter, sans-serif" font-size="7" letter-spacing="2" fill="#1E1B17">COVER — STILL LIFE WITH LEDGER, FOLIO &amp; INK</text>
+            <text x="370" y="514" text-anchor="end" font-family="Inter, sans-serif" font-size="7" letter-spacing="2" fill="#1E1B17">PLATE ONE</text>
+          </svg>
+        </div>
+        <div class="hero-caption">
+          <span class="gold">Plate one.</span>
+          &nbsp;Cover of the current issue. Still life, the office at 7.15 on a Tuesday.
+        </div>
+      </div>
+    </div>
+
+    <div class="folio">
+      <span>GrantLume &nbsp;&middot;&nbsp; The Opening Spread</span>
+      <span class="gold num">Folio 001</span>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== PULL QUOTE ====================== -->
+<section class="pullquote">
+  <div class="wrap">
+    <div class="pq-inner">
+      <div class="mark" aria-hidden="true">&ldquo;</div>
+      <div>
+        <blockquote class="display">
+          The research-office shift from spreadsheet chaos to readable archive
+          happens around the twelfth day &mdash; quietly, without ceremony,
+          the way a well-set page simply begins to hold.
+        </blockquote>
+        <cite class="sc">Editor&rsquo;s note, spring issue</cite>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== CHAPTER I — FEATURES ====================== -->
+<section id="chapter-i">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num display">I.</div>
+      <div>
+        <div class="sc" style="color:var(--gold); font-size:11px; margin-bottom:8px;">Capabilities</div>
+        <h2 class="chapter-title display">The tools, plainly stated.</h2>
+      </div>
+      <div class="chapter-byline">
+        <strong>A field inventory</strong>
+        Assembled by the<br>GrantLume editors
+      </div>
+    </div>
+
+    <div class="features">
+
+      <article class="feature">
+        <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.1">
+          <rect x="8" y="10" width="32" height="30" rx="1"/>
+          <line x1="8" y1="18" x2="40" y2="18"/>
+          <line x1="16" y1="6" x2="16" y2="14"/>
+          <line x1="32" y1="6" x2="32" y2="14"/>
+          <circle cx="18" cy="26" r="1.2" fill="currentColor"/>
+          <circle cx="24" cy="26" r="1.2" fill="currentColor"/>
+          <circle cx="30" cy="26" r="1.2" fill="currentColor"/>
+          <circle cx="18" cy="32" r="1.2" fill="currentColor"/>
+        </svg>
+        <div class="kicker">Section 01</div>
+        <h3 class="display">A proposal calendar that keeps its own counsel.</h3>
+        <p><span class="drop display">A</span>ll deadlines, call windows and internal review dates in one dated list. Framework-programme rhythms and national calls arrive pre-stamped, with sensible reminders that never shout.</p>
+      </article>
+
+      <article class="feature">
+        <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.1">
+          <path d="M10 38 L10 14 L24 8 L38 14 L38 38 Z"/>
+          <line x1="10" y1="20" x2="38" y2="20"/>
+          <line x1="16" y1="26" x2="32" y2="26"/>
+          <line x1="16" y1="32" x2="32" y2="32"/>
+          <circle cx="24" cy="14" r="1.5" fill="currentColor"/>
+        </svg>
+        <div class="kicker">Section 02</div>
+        <h3 class="display">A budget ledger that reads like prose.</h3>
+        <p><span class="drop display">B</span>udgets as plain accounts: personnel, equipment, overhead. Multi-year columns, currency conversion at the footer, and a clean PDF export that a finance officer can actually sign.</p>
+      </article>
+
+      <article class="feature">
+        <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.1">
+          <path d="M14 8 L30 8 L38 16 L38 40 L14 40 Z"/>
+          <path d="M30 8 L30 16 L38 16"/>
+          <line x1="20" y1="22" x2="32" y2="22"/>
+          <line x1="20" y1="28" x2="32" y2="28"/>
+          <line x1="20" y1="34" x2="28" y2="34"/>
+        </svg>
+        <div class="kicker">Section 03</div>
+        <h3 class="display">A compliance folder that keeps itself.</h3>
+        <p><span class="drop display">E</span>thics approvals, data-management plans, GDPR artefacts and signed consortium agreements live together, versioned quietly. An auditor walks in; you hand over a folder, already tidy.</p>
+      </article>
+    </div>
+
+    <div class="features features-wide">
+      <article class="feature">
+        <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.1">
+          <circle cx="16" cy="18" r="5"/>
+          <circle cx="32" cy="18" r="5"/>
+          <path d="M8 38 C8 30 14 28 16 28 C18 28 24 30 24 38"/>
+          <path d="M24 38 C24 30 30 28 32 28 C34 28 40 30 40 38"/>
+        </svg>
+        <div class="kicker">Section 04</div>
+        <h3 class="display">Collaborators, kept in the loop without noise.</h3>
+        <p>PIs, co-Is, admin and finance each get a role-appropriate view. Comments read like margin notes rather than a chat feed; @-mentions arrive once, by email, and wait.</p>
+      </article>
+
+      <article class="feature">
+        <svg class="icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.1">
+          <path d="M8 36 L16 24 L22 30 L30 18 L40 32"/>
+          <line x1="8" y1="40" x2="40" y2="40"/>
+          <line x1="8" y1="8" x2="8" y2="40"/>
+        </svg>
+        <div class="kicker">Section 05</div>
+        <h3 class="display">Reporting, in language a trustee will read.</h3>
+        <p>Interim and final reports generated from your live data with the archive's tone &mdash; tables where tables belong, sentences where sentences do. Branded templates for each funder, legible at A4.</p>
+      </article>
+    </div>
+
+    <div class="folio">
+      <span>Chapter I &nbsp;&middot;&nbsp; Capabilities</span>
+      <span class="gold num">Folio 014</span>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== CHAPTER II — HOW IT WORKS ====================== -->
+<section id="chapter-ii">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num display">II.</div>
+      <div>
+        <div class="sc" style="color:var(--gold); font-size:11px; margin-bottom:8px;">Method</div>
+        <h2 class="chapter-title display">On a calmer submission week.</h2>
+      </div>
+      <div class="chapter-byline">
+        <strong>In four movements</strong>
+        A photo-essay<br>without photographs
+      </div>
+    </div>
+
+    <div class="how">
+      <div class="step">
+        <div class="n">i.</div>
+        <h4 class="display">Open the issue</h4>
+        <p>Sign in and import your open calls, partners and recurring budget lines. Takes a morning; most admins do it over coffee.</p>
+      </div>
+      <div class="step">
+        <div class="n">ii.</div>
+        <h4 class="display">Lay out the spread</h4>
+        <p>Draft proposals from templates, invite co-Is by email, assemble a budget in readable columns. The cursor feels unhurried.</p>
+      </div>
+      <div class="step">
+        <div class="n">iii.</div>
+        <h4 class="display">Send to press</h4>
+        <p>Submit to the funder portal with a single checked export, and keep the signed copy, dated, in the compliance folder.</p>
+      </div>
+      <div class="step">
+        <div class="n">iv.</div>
+        <h4 class="display">Archive the issue</h4>
+        <p>Post-award, the reporting calendar takes over &mdash; milestones, spend, narrative sections &mdash; and the project moves, quietly, into the archive.</p>
+      </div>
+    </div>
+
+    <div class="folio">
+      <span>Chapter II &nbsp;&middot;&nbsp; Method</span>
+      <span class="gold num">Folio 028</span>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== CHAPTER III — PRICING ====================== -->
+<section id="chapter-iii">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num display">III.</div>
+      <div>
+        <div class="sc" style="color:var(--gold); font-size:11px; margin-bottom:8px;">Subscribe</div>
+        <h2 class="chapter-title display">Two columns. Both honest.</h2>
+      </div>
+      <div class="chapter-byline">
+        <strong>Rates &amp; terms</strong>
+        Inclusive of VAT<br>where applicable
+      </div>
+    </div>
+
+    <div class="pricing">
+      <div class="plan">
+        <div class="plan-kicker">Plan No. I &mdash; Trial</div>
+        <h3 class="display">Free Trial</h3>
+        <p class="plan-desc">For the research admin who would like a proper look before signing anything. Unabridged, un-metered, and entirely serious.</p>
+        <div class="price-figure num"><sup>&euro;</sup>0</div>
+        <div class="price-unit sc">for thirty days &middot; no card</div>
+        <ul>
+          <li>Full feature set, nothing held back</li>
+          <li>Up to three live proposals in flight</li>
+          <li>Compliance folder and budget ledger</li>
+          <li>Email support from a real editor</li>
+          <li>Keep your archive if you stay</li>
+        </ul>
+        <a href="#trial" class="btn btn-ghost">Begin the trial</a>
+      </div>
+
+      <div class="plan featured">
+        <div class="plan-kicker">Plan No. II &mdash; Pro</div>
+        <h3 class="display">Pro Subscription</h3>
+        <p class="plan-desc">For research offices and labs running a proper grant portfolio across the year. Priced to be forgettable in the good sense.</p>
+        <div class="price-figure num"><sup>&euro;</sup>149</div>
+        <div class="price-unit sc">per office &middot; per month</div>
+        <ul>
+          <li>Unlimited proposals and partner records</li>
+          <li>Multi-year budgets with currency columns</li>
+          <li>Funder-branded report templates</li>
+          <li>Role-based access for PIs, admin, finance</li>
+          <li>Priority support &amp; onboarding session</li>
+          <li>Annual data export, readable and dated</li>
+        </ul>
+        <a href="#pro" class="btn">Subscribe to Pro</a>
+      </div>
+    </div>
+
+    <div class="folio">
+      <span>Chapter III &nbsp;&middot;&nbsp; Subscribe</span>
+      <span class="gold num">Folio 042</span>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== CHAPTER IV — DISPATCH / FINAL CTA ====================== -->
+<section id="dispatch" class="dispatch">
+  <div class="wrap">
+    <div class="ornament">&sect; &middot; &sect; &middot; &sect;</div>
+    <h2 class="display">A closing note, <br>from the editors.</h2>
+    <p>
+      Research work deserves the same care a weekend magazine gives its pages.
+      Begin the trial this morning; by the twelfth day your archive will already
+      feel like something worth keeping on the shelf.
+    </p>
+    <div class="hero-cta" style="justify-content:center;">
+      <a href="#trial" class="btn">Begin 30-day trial</a>
+      <a href="#demo" class="btn btn-ghost">Request a demo issue</a>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== FOOTER / MASTHEAD CLOSE ====================== -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-mark display">GrantLume</div>
+        <p class="foot-blurb">
+          The quarterly review of research administration, published
+          continuously from a small office in northern Europe.
+        </p>
+      </div>
+      <div>
+        <h5>Masthead</h5>
+        <ul>
+          <li><a href="#about">About the review</a></li>
+          <li><a href="#editors">Editors &amp; staff</a></li>
+          <li><a href="#letters">Letters</a></li>
+          <li><a href="#careers">Careers</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>The Issue</h5>
+        <ul>
+          <li><a href="#chapter-i">Capabilities</a></li>
+          <li><a href="#chapter-ii">Method</a></li>
+          <li><a href="#chapter-iii">Subscribe</a></li>
+          <li><a href="#dispatch">Dispatch</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Imprint</h5>
+        <ul>
+          <li><a href="#privacy">Privacy &amp; cookies</a></li>
+          <li><a href="#terms">Terms of service</a></li>
+          <li><a href="#gdpr">GDPR &amp; data</a></li>
+          <li><a href="#contact">Contact the office</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="foot-base">
+      <span>&copy; MMXXVI GrantLume Editorial Ltd.</span>
+      <span class="num">ISSN 2753-0419</span>
+      <span>Set in Playfair Display &amp; Inter</span>
+      <span>Printed on-screen, in Europe</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

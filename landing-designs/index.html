@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GrantLume · 10 competing landing designs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0B1B2B;
+      --ink-soft: #3A4A5C;
+      --muted: #6B7280;
+      --rule: #E5E2DA;
+      --canvas: #F7F5EF;
+      --card: #FFFFFF;
+      --accent: #0F4C5C;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 48px 32px 80px;
+    }
+    header {
+      border-bottom: 1px solid var(--rule);
+      padding-bottom: 40px;
+      margin-bottom: 48px;
+    }
+    .eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-size: clamp(32px, 5vw, 56px);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      max-width: 18ch;
+    }
+    h1 em {
+      font-style: italic;
+      color: var(--accent);
+      font-weight: 500;
+    }
+    .lede {
+      margin-top: 20px;
+      font-size: 17px;
+      color: var(--ink-soft);
+      max-width: 62ch;
+      line-height: 1.55;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--rule);
+      border-radius: 14px;
+      padding: 22px 22px 20px;
+      display: flex;
+      flex-direction: column;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.15s ease, transform 0.15s ease;
+    }
+    .card:hover {
+      border-color: var(--ink);
+      transform: translateY(-1px);
+    }
+    .card:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+    .card__num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .card__title {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      margin-bottom: 6px;
+    }
+    .card__style {
+      font-size: 13px;
+      color: var(--muted);
+      font-style: italic;
+      margin-bottom: 16px;
+    }
+    .card__pitch {
+      font-size: 14px;
+      color: var(--ink-soft);
+      line-height: 1.55;
+      flex: 1;
+    }
+    .card__footer {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--rule);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .card__open { color: var(--accent); font-weight: 500; }
+    .card:hover .card__open { color: var(--ink); }
+
+    /* colour swatches */
+    .swatches {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .swatches span {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    /* summary row */
+    .summary {
+      margin-top: 56px;
+      padding: 24px 28px;
+      border: 1px solid var(--rule);
+      border-radius: 14px;
+      background: var(--card);
+      font-size: 13px;
+      color: var(--ink-soft);
+      line-height: 1.6;
+    }
+    .summary b { color: var(--ink); }
+    .summary ul { list-style: none; display: grid; gap: 6px; margin-top: 10px; }
+    .summary li { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 28px;
+      border-top: 1px solid var(--rule);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">— GrantLume · Landing-page bake-off · 10 competing teams</div>
+      <h1>Ten studios. Ten aesthetics. <em>One page to judge.</em></h1>
+      <p class="lede">
+        Each card below links to one self-contained HTML file written by a different design team. Every team had the same product brief, the same hard constraints (no red, no named institutions, no Fraunces, must include visuals) and a distinct creative identity. Click any card to open that team's design; hit Back to return here.
+      </p>
+    </header>
+
+    <div class="grid">
+
+      <a class="card" href="team-01-atelier-grain.html">
+        <div class="card__num">01 · Atelier Grain · Zürich</div>
+        <div class="card__title">Atelier Grain</div>
+        <div class="card__style">Editorial serif · warm paper · hairline rules</div>
+        <div class="swatches"><span style="background:#F6F1E7"></span><span style="background:#2A211A"></span><span style="background:#3E6B5E"></span></div>
+        <p class="card__pitch">Research administrators read budgets like a broadsheet. GrantLume earns their trust through typography, hairlines, and considered silence — no manufactured enthusiasm.</p>
+        <div class="card__footer"><span>6 roles · 700 lines</span><span class="card__open">Open →</span></div>
+      </a>
+
+      <a class="card" href="team-02-kontrast-grotesk.html">
+        <div class="card__num">02 · Kontrast Grotesk · Basel</div>
+        <div class="card__title">Kontrast Grotesk</div>
+        <div class="card__style">Brutalist Swiss · monospace-everywhere · 12-col grid</div>
+        <div class="swatches"><span style="background:#FFFFFF;border-color:#CCC"></span><span style="background:#0A0A0A"></span><span style="background:#2234EA"></span></div>
+        <p class="card__pitch">GrantLume as an instrument panel. Monospace, twelve columns, one cobalt accent. Timesheets logged, not narrated. Spreadsheets retire. Structure survives the audit.</p>
+        <div class="card__footer"><span>6 roles · 700 lines</span><span class="card__open">Open →</span></div>
+      </a>
+
+      <a class="card" href="team-03-studio-prism.html">
+        <div class="card__num">03 · Studio Prism · Copenhagen</div>
+        <div class="card__title">Studio Prism</div>
+        <div class="card__style">Playful geometric · colour-block · soft-rounded cards</div>
+        <div class="swatches"><span style="background:#FBF7EF"></span><span style="background:#2B1D3A"></span><span style="background:#F2CE5A"></span><span style="background:#5A6CF2"></span><span style="background:#9FBFA0"></span></div>
+        <p class="card__pitch">Enterprise software starves for joy. Cream, plum, yellow, cobalt and sage played like a painter's chord — confident geometry, zero cartoon. Serious software, finally warm.</p>
+        <div class="card__footer"><span>6 roles · 700 lines</span><span class="card__open">Open →</span></div>
+      </a>
+
+      <a class="card" href="team-04-nocturne-labs.html">
+        <div class="card__num">04 · Nocturne Labs · Berlin</div>
+        <div class="card__title">Nocturne Labs</div>
+        <div class="card__style">Dark dev-tools · aurora glow · product-mockup hero</div>
+        <div class="swatches"><span style="background:#0B0D10"></span><span style="background:#14171C"></span><span style="background:#22D3EE"></span><span style="background:#6366F1"></span></div>
+        <p class="card__pitch">A calm, keyboard-first grant workspace. Dark by default, quiet by design. Track budgets, deadlines, and work packages without the noise of legacy tools.</p>
+        <div class="card__footer"><span>6 roles · 900 lines</span><span class="card__open">Open →</span></div>
+      </a>
+
+      <a class="card" href="team-05-collegium-press.html">
+        <div class="card__num">05 · Collegium Press · Oxford</div>
+        <div class="card__title">Collegium Press</div>
+        <div class="card__style">Academic · roman numerals · architectural plate</div>
+        <div class="swatches"><span style="background:#F3ECE0"></span><span style="background:#0D2136"></span><span style="background:#B08D3A"></span><span style="background:#8B8A84"></span></div>
+        <p class="card__pitch">Rendered as a quiet academic plate: ivory paper, oxford ink, one ochre rule, an etched diagram of the modules — grant administration as a scholarly discipline.</p>
+        <div class="card__footer"><span>6 roles · 800 lines</span><span class="card__open">Open →</span></div>
+      </a>
+
+      <a class="card" href="team-06-warm-and-rule.html">
+        <div class="card__num">06 · Warm & Rule · Lisbon</div>
+        <div class="card__title">Warm &amp; Rule</div>
+        <div class="card__style">Humanist rounded · terracotta + sage · pill buttons</div>
+        <div class="swatches"><span style="background:#F8F4EC"></span><span style="background:#2E2A26"></span><span style="background:#C36C4A"></span><span style="background:#8BA79B"></span></div>
+        <p class="card__pitch">Grant management that feels like a calm desk, not a spreadsheet. Terracotta warmth, sage clarity, pill-soft buttons. Serious software wearing a kinder face.</p>
+        <div class="card__footer"><span>6 roles · 900 lines</span><span class="card__open">Open →</span></div>
+      </a>
+
+      <a class="card" href="team-07-swiss-blade.html">
+        <div class="card__num">07 · Swiss Blade · Lausanne</div>
+        <div class="card__title">Swiss Blade</div>
+        <div class="card__style">Minimal Swiss grid · one jewel accent · ruthless alignment</div>
+        <div class="swatches"><span style="background:#F6F4EF"></span><span style="background:#0E1116"></span><span style="background:#0E7C57"></span></div>
+        <p class="card__pitch">Grant management as a structural system — eight modules on a single grid, priced for European research teams who prefer clarity over ornament. Nothing extra. Nothing missing.</p>
+        <div class="card__footer"><span>6 roles · 700 lines</span><span class="card__open">Open →</span></div>
+      </a>
+
+      <a class="card" href="team-08-dataform.html">
+        <div class="card__num">08 · Dataform · Edinburgh</div>
+        <div class="card__title">Dataform</div>
+        <div class="card__style">Data-viz native · 14 inline charts · evidence over adjectives</div>
+        <div class="swatches"><span style="background:#FBFBF9"></span><span style="background:#1F2937"></span><span style="background:#0F766E"></span><span style="background:#64748B"></span></div>
+        <p class="card__pitch">Shown, not told. A dashboard-as-landing-page: fourteen inline charts prove what other sites merely claim — hours saved, grants won, partners on track.</p>
+        <div class="card__footer"><span>6 roles · 900 lines</span><span class="card__open">Open →</span></div>
+      </a>
+
+      <a class="card" href="team-09-editorial-quarterly.html">
+        <div class="card__num">09 · Editorial Quarterly · London</div>
+        <div class="card__title">Editorial Quarterly</div>
+        <div class="card__style">Magazine layout · pull-quotes · small-caps bylines</div>
+        <div class="swatches"><span style="background:#F4EFE3"></span><span style="background:#1E1B17"></span><span style="background:#5C7C7A"></span><span style="background:#B2A5C4"></span><span style="background:#9A7A36"></span></div>
+        <p class="card__pitch">Read like a quarterly: oversized serif chapters, hanging pull-quotes, byline strips, oldstyle numerals. Research administration as feature journalism. A weekend read for serious offices.</p>
+        <div class="card__footer"><span>6 roles · 800 lines</span><span class="card__open">Open →</span></div>
+      </a>
+
+      <a class="card" href="team-10-ma.html">
+        <div class="card__num">10 · Ma (間) · Kyoto / Berlin</div>
+        <div class="card__title">Ma · 間</div>
+        <div class="card__style">Japanese-inspired quiet · monochrome · vast whitespace</div>
+        <div class="swatches"><span style="background:#FAF8F4"></span><span style="background:#1A1A1A"></span><span style="background:#1F3A8A"></span></div>
+        <p class="card__pitch">Between the grant and the granted lies a long silence. GrantLume is built for that silence — room to think, not software to manage.</p>
+        <div class="card__footer"><span>6 roles · 600 lines</span><span class="card__open">Open →</span></div>
+      </a>
+
+    </div>
+
+    <div class="summary">
+      <p><b>How to judge.</b> Open each team's file, scroll through the whole page (hero → features → pricing → footer), and come back here to click the next one. Each file's source opens with a colophon crediting the six named team members and each member's contribution.</p>
+      <ul>
+        <li>▸ Shortlist 2–3 you could actually see live</li>
+        <li>▸ For each shortlist pick, note one specific thing you love and one you would kill</li>
+        <li>▸ Reply with your picks — I'll merge the winners into the canonical landing page</li>
+      </ul>
+    </div>
+
+    <footer>
+      <span>GrantLume · Landing bake-off · 60 fictional designers · 10 files · 0 red</span>
+      <span>Generated <span id="today"></span></span>
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById('today').textContent =
+      new Date().toISOString().slice(0, 10);
+  </script>
+</body>
+</html>

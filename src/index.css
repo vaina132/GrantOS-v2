@@ -1,7 +1,9 @@
 /* Self-hosted variable fonts. One request per face, GDPR-friendly
    (no Google Fonts → no IP leak to google.com). */
 @import '@fontsource-variable/inter/wght.css';
-@import '@fontsource-variable/inter-tight/wght.css';
+@import '@fontsource-variable/plus-jakarta-sans/wght.css';
+@import '@fontsource/dm-serif-display/400.css';
+@import '@fontsource/dm-serif-display/400-italic.css';
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/500.css';
 

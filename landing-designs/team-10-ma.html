@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  TEAM 10 — Ma (間)
+  Kyoto / Berlin
+  ============================================================
+
+  Colophon
+  --------
+  Ayame Nakagawa     Creative Director   Held the line against decoration.
+  Leo Müller-Brand   Copywriter          Cut every sentence until it breathed.
+  Rin Takahashi      Art Director        Drew the single horizontal rule.
+  Felix Ortmann      UX Designer         Let the user hear their own thoughts.
+  Yuna Kobayashi     UI Designer         Composed silence between elements.
+  Anselm Ritter      Backend Developer   Removed features until only the necessary remained.
+
+  Pitch (30 words)
+  ----------------
+  GrantLume, reconsidered as ma — the interval between work and worry.
+  Grant administration stripped of noise, so European research teams can
+  hear the application itself, not the software around it.
+
+  ============================================================
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GrantLume — 間</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&family=Noto+Sans+JP:wght@300;400&display=swap" rel="stylesheet">
+
+  <style>
+    /* --------------------------------------------------
+       Ma (間) — the stylesheet reads like the page:
+       mostly empty, only what is necessary.
+       -------------------------------------------------- */
+
+    :root {
+      --paper:   #FAF8F4;   /* paper-white */
+      --sumi:    #1A1A1A;   /* sumi ink */
+      --sumi-60: rgba(26, 26, 26, 0.60);
+      --sumi-40: rgba(26, 26, 26, 0.40);
+      --sumi-20: rgba(26, 26, 26, 0.20);
+      --sumi-08: rgba(26, 26, 26, 0.08);
+      --cobalt:  #1F3A8A;   /* used exactly once */
+
+      --serif:   'Shippori Mincho', 'Cormorant Garamond', Georgia, serif;
+      --sans:    'Inter', 'Helvetica Neue', Arial, sans-serif;
+      --jp:      'Noto Sans JP', 'Shippori Mincho', serif;
+
+      --max:     1280px;
+      --gutter:  48px;
+      --breath:  clamp(96px, 14vw, 220px);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--paper);
+      color: var(--sumi);
+      font-family: var(--sans);
+      font-weight: 300;
+      font-size: 15px;
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    ::selection { background: var(--sumi); color: var(--paper); }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 400ms ease;
+    }
+    a:hover { border-bottom-color: var(--sumi); }
+
+    .wrap {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 0 var(--gutter);
+    }
+
+    /* -------- shared type -------- */
+    .eyebrow {
+      font-family: var(--sans);
+      font-size: 10px;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--sumi-60);
+      font-weight: 400;
+    }
+
+    .kanji {
+      font-family: var(--jp);
+      font-weight: 300;
+      color: var(--sumi-40);
+    }
+
+    .display {
+      font-family: var(--serif);
+      font-weight: 300;
+      letter-spacing: -0.01em;
+      line-height: 1.12;
+    }
+
+    .rule {
+      display: block;
+      width: 100%;
+      height: 1px;
+      background: var(--sumi-20);
+      border: 0;
+      margin: 0;
+    }
+
+    /* =========================================================
+       NAV
+       ========================================================= */
+    .nav {
+      padding: 32px 0;
+    }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-family: var(--serif);
+      font-size: 18px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+    }
+    .brand .mark {
+      font-family: var(--jp);
+      font-size: 13px;
+      color: var(--sumi-40);
+    }
+    .nav-links {
+      display: flex;
+      gap: 40px;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--sumi-60);
+    }
+    .nav-cta {
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--sumi);
+    }
+
+    /* =========================================================
+       HERO
+       ========================================================= */
+    .hero {
+      padding: var(--breath) 0 calc(var(--breath) * 1.2);
+      position: relative;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 80px;
+      align-items: end;
+      min-height: 54vh;
+    }
+
+    .hero-left .eyebrow { margin-bottom: 80px; display: block; }
+
+    .hero-title {
+      font-size: clamp(42px, 6vw, 84px);
+      font-weight: 300;
+    }
+    .hero-title em {
+      font-style: italic;
+      font-weight: 300;
+      color: var(--sumi-60);
+    }
+
+    .hero-sub {
+      margin-top: 48px;
+      max-width: 36ch;
+      font-size: 15px;
+      color: var(--sumi-60);
+      line-height: 1.8;
+    }
+
+    .hero-meta {
+      margin-top: 96px;
+      display: flex;
+      gap: 48px;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--sumi-40);
+    }
+
+    .hero-visual {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 420px;
+    }
+
+    .hero-svg {
+      width: 100%;
+      max-width: 420px;
+      height: auto;
+    }
+
+    .hero-caption {
+      margin-top: 32px;
+      text-align: right;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--sumi-40);
+    }
+
+    /* one single cobalt line — the entire page's one flourish */
+    .accent-line {
+      display: block;
+      width: 64px;
+      height: 1px;
+      background: var(--cobalt);
+      margin: 0 0 40px 0;
+    }
+
+    /* =========================================================
+       SPINE — the one horizontal hairline that organises the page
+       ========================================================= */
+    .spine {
+      padding: 0;
+    }
+    .spine-inner {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      align-items: center;
+      gap: 40px;
+      padding: 28px 0;
+    }
+    .spine-inner .eyebrow { letter-spacing: 0.3em; }
+    .spine-inner .center {
+      text-align: center;
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 14px;
+      color: var(--sumi-60);
+    }
+    .spine-inner .right {
+      text-align: right;
+    }
+
+    /* =========================================================
+       FEATURES
+       ========================================================= */
+    .features {
+      padding: var(--breath) 0;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 80px;
+      margin-bottom: 140px;
+    }
+    .section-head .title {
+      font-size: clamp(28px, 3.4vw, 44px);
+      font-weight: 300;
+      line-height: 1.2;
+    }
+    .section-head .title em {
+      font-style: italic;
+      color: var(--sumi-60);
+    }
+    .section-head .lede {
+      color: var(--sumi-60);
+      max-width: 40ch;
+      font-size: 15px;
+      line-height: 1.85;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+    }
+
+    .feature {
+      padding: 64px 48px 72px;
+      border-left: 1px solid var(--sumi-08);
+      min-height: 340px;
+      display: flex;
+      flex-direction: column;
+    }
+    .feature:first-child { border-left: 0; padding-left: 0; }
+    .feature:last-child  { padding-right: 0; }
+
+    .feature-icon {
+      margin-bottom: 48px;
+      color: var(--sumi);
+    }
+
+    .feature-no {
+      font-family: var(--jp);
+      font-size: 12px;
+      color: var(--sumi-40);
+      margin-bottom: 12px;
+      letter-spacing: 0.1em;
+    }
+
+    .feature-title {
+      font-family: var(--serif);
+      font-size: 22px;
+      font-weight: 400;
+      margin: 0 0 20px;
+      letter-spacing: -0.005em;
+    }
+
+    .feature-body {
+      font-size: 14px;
+      color: var(--sumi-60);
+      line-height: 1.8;
+      margin: 0;
+      max-width: 32ch;
+    }
+
+    /* =========================================================
+       A QUIET INTERLUDE — the pause
+       ========================================================= */
+    .interlude {
+      padding: calc(var(--breath) * 0.8) 0;
+      text-align: center;
+    }
+    .interlude .kanji {
+      font-size: 80px;
+      display: block;
+      margin-bottom: 48px;
+      color: var(--sumi-20);
+    }
+    .interlude p {
+      max-width: 42ch;
+      margin: 0 auto;
+      font-family: var(--serif);
+      font-style: italic;
+      font-size: 20px;
+      color: var(--sumi-60);
+      line-height: 1.6;
+    }
+
+    /* =========================================================
+       PRICING
+       ========================================================= */
+    .pricing {
+      padding: var(--breath) 0;
+    }
+
+    .price-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border-top: 1px solid var(--sumi-20);
+      border-bottom: 1px solid var(--sumi-20);
+    }
+
+    .plan {
+      padding: 80px 64px 88px;
+      display: flex;
+      flex-direction: column;
+    }
+    .plan + .plan {
+      border-left: 1px solid var(--sumi-08);
+    }
+
+    .plan-eyebrow {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 56px;
+    }
+    .plan-name {
+      font-family: var(--serif);
+      font-size: 22px;
+      font-weight: 400;
+    }
+    .plan-jp {
+      font-family: var(--jp);
+      font-size: 12px;
+      color: var(--sumi-40);
+    }
+
+    .plan-price {
+      font-family: var(--serif);
+      font-size: 64px;
+      font-weight: 300;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .plan-price .unit {
+      font-size: 14px;
+      color: var(--sumi-40);
+      font-family: var(--sans);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-left: 12px;
+    }
+    .plan-period {
+      margin-top: 14px;
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--sumi-40);
+    }
+
+    .plan-list {
+      list-style: none;
+      padding: 0;
+      margin: 56px 0 0;
+      font-size: 14px;
+      color: var(--sumi-60);
+    }
+    .plan-list li {
+      padding: 14px 0;
+      border-top: 1px solid var(--sumi-08);
+      display: flex;
+      gap: 16px;
+    }
+    .plan-list li:last-child { border-bottom: 1px solid var(--sumi-08); }
+    .plan-list li::before {
+      content: "—";
+      color: var(--sumi-40);
+      width: 1em;
+      flex-shrink: 0;
+    }
+
+    .plan-cta {
+      margin-top: 56px;
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 0;
+      font-family: var(--sans);
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--sumi);
+    }
+    .plan-cta:hover { border-bottom-color: var(--sumi); }
+    .plan-cta .arrow {
+      display: inline-block;
+      width: 24px;
+      height: 1px;
+      background: var(--sumi);
+      position: relative;
+    }
+    .plan-cta .arrow::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: -3px;
+      width: 7px;
+      height: 7px;
+      border-top: 1px solid var(--sumi);
+      border-right: 1px solid var(--sumi);
+      transform: rotate(45deg);
+    }
+
+    /* =========================================================
+       FINAL CTA
+       ========================================================= */
+    .final {
+      padding: calc(var(--breath) * 1.2) 0 var(--breath);
+      text-align: center;
+    }
+    .final .eyebrow { display: block; margin-bottom: 48px; }
+    .final h2 {
+      font-family: var(--serif);
+      font-weight: 300;
+      font-size: clamp(36px, 5vw, 64px);
+      line-height: 1.2;
+      margin: 0 auto;
+      max-width: 18ch;
+      letter-spacing: -0.01em;
+    }
+    .final h2 em {
+      font-style: italic;
+      color: var(--sumi-60);
+    }
+    .final p {
+      margin-top: 40px;
+      color: var(--sumi-60);
+      font-size: 14px;
+      max-width: 42ch;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.8;
+    }
+    .final .actions {
+      margin-top: 80px;
+      display: inline-flex;
+      gap: 64px;
+      align-items: center;
+    }
+    .final .actions a {
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+    .final .actions .primary {
+      border-bottom: 1px solid var(--sumi);
+      padding-bottom: 6px;
+    }
+    .final .actions .secondary {
+      color: var(--sumi-60);
+    }
+
+    /* =========================================================
+       FOOTER
+       ========================================================= */
+    footer {
+      padding: 64px 0 48px;
+      border-top: 1px solid var(--sumi-08);
+    }
+    .foot {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+    }
+    .foot h4 {
+      font-family: var(--sans);
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--sumi-40);
+      font-weight: 400;
+      margin: 0 0 20px;
+    }
+    .foot ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      font-size: 13px;
+      color: var(--sumi-60);
+    }
+    .foot ul li { padding: 6px 0; }
+
+    .foot-brand .brand { margin-bottom: 24px; }
+    .foot-brand p {
+      font-size: 12px;
+      color: var(--sumi-40);
+      max-width: 34ch;
+      line-height: 1.8;
+      margin: 0;
+    }
+
+    .colophon {
+      margin-top: 72px;
+      padding-top: 28px;
+      border-top: 1px solid var(--sumi-08);
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--sumi-40);
+    }
+
+    /* =========================================================
+       RESPONSIVE — silence adapts gracefully
+       ========================================================= */
+    @media (max-width: 900px) {
+      :root { --gutter: 28px; }
+      .hero-grid,
+      .section-head,
+      .price-grid,
+      .feature-grid,
+      .foot { grid-template-columns: 1fr; gap: 56px; }
+      .spine-inner { grid-template-columns: 1fr; text-align: left; gap: 12px; }
+      .spine-inner .right, .spine-inner .center { text-align: left; }
+      .feature {
+        border-left: 0;
+        border-top: 1px solid var(--sumi-08);
+        padding: 56px 0;
+        min-height: 0;
+      }
+      .feature:first-child { border-top: 0; padding-top: 0; }
+      .plan + .plan { border-left: 0; border-top: 1px solid var(--sumi-08); }
+      .plan { padding: 56px 0; }
+      .nav-links { display: none; }
+      .final .actions { flex-direction: column; gap: 28px; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- =====================================================
+       NAV
+       ===================================================== -->
+  <header class="nav">
+    <div class="wrap nav-inner">
+      <a class="brand" href="#">
+        GrantLume
+        <span class="mark">間</span>
+      </a>
+      <nav class="nav-links">
+        <a href="#features">Method</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#final">Begin</a>
+      </nav>
+      <a href="#final" class="nav-cta">Sign in</a>
+    </div>
+  </header>
+
+  <!-- =====================================================
+       HERO
+       ===================================================== -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+
+      <div class="hero-left">
+        <span class="eyebrow">Ma — the interval</span>
+
+        <h1 class="hero-title display">
+          Grant work, <em>with room to think.</em>
+        </h1>
+
+        <span class="accent-line" aria-hidden="true"></span>
+
+        <p class="hero-sub">
+          GrantLume is a grant management platform for European
+          research teams. We removed what distracts. What remains
+          is the proposal, the deadline, the decision.
+        </p>
+
+        <div class="hero-meta">
+          <span>For research admins</span>
+          <span>For principal investigators</span>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <div class="hero-visual">
+          <!-- The hero SVG: one thin circle, one horizontal line, a single mark.
+               No ornament. The eye completes the composition. -->
+          <svg class="hero-svg" viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A single thin circle, a hairline rule, and a small ink dot.">
+            <!-- faint field -->
+            <rect x="0" y="0" width="420" height="420" fill="none" />
+
+            <!-- the horizontal hairline -->
+            <line x1="20" y1="210" x2="400" y2="210"
+                  stroke="#1A1A1A" stroke-opacity="0.35" stroke-width="1" />
+
+            <!-- the thin circle, off-centre, as an ink-wash disc -->
+            <circle cx="240" cy="170" r="92"
+                    fill="none" stroke="#1A1A1A" stroke-opacity="0.75" stroke-width="1" />
+
+            <!-- a smaller, faint circle — echo -->
+            <circle cx="160" cy="258" r="26"
+                    fill="none" stroke="#1A1A1A" stroke-opacity="0.25" stroke-width="1" />
+
+            <!-- single sumi mark -->
+            <circle cx="240" cy="170" r="2.5" fill="#1A1A1A" />
+
+            <!-- tiny coordinate marks -->
+            <line x1="20" y1="206" x2="20" y2="214" stroke="#1A1A1A" stroke-opacity="0.4" stroke-width="1" />
+            <line x1="400" y1="206" x2="400" y2="214" stroke="#1A1A1A" stroke-opacity="0.4" stroke-width="1" />
+
+            <!-- whisper-sized type inside the frame -->
+            <text x="20" y="394" font-family="Inter, sans-serif" font-size="9" letter-spacing="3"
+                  fill="#1A1A1A" fill-opacity="0.45">FIG. 01 — A FIELD, A CIRCLE, A POINT</text>
+            <text x="20" y="408" font-family="Noto Sans JP, serif" font-size="9" letter-spacing="3"
+                  fill="#1A1A1A" fill-opacity="0.30">間  ·  MA  ·  THE INTERVAL</text>
+          </svg>
+        </div>
+        <div class="hero-caption">Fig. 01 — the interval</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- =====================================================
+       SPINE — the single horizontal rule that organises the page
+       ===================================================== -->
+  <section class="spine">
+    <div class="wrap">
+      <hr class="rule" />
+      <div class="spine-inner">
+        <span class="eyebrow">Est. 2024 · Kyoto / Berlin</span>
+        <span class="center">A platform that trusts the reader.</span>
+        <span class="right eyebrow">Made for EU research</span>
+      </div>
+      <hr class="rule" />
+    </div>
+  </section>
+
+  <!-- =====================================================
+       FEATURES
+       ===================================================== -->
+  <section class="features" id="features">
+    <div class="wrap">
+
+      <div class="section-head">
+        <h2 class="title display">
+          Method. <em>Not method­ology.</em>
+        </h2>
+        <p class="lede">
+          Three capabilities. Each one does a single thing well.
+          There is nothing else in the product — and that is the
+          point. What you do not see is the feature.
+        </p>
+      </div>
+
+      <div class="feature-grid">
+
+        <article class="feature">
+          <div class="feature-icon">
+            <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+              <circle cx="22" cy="22" r="14" />
+              <line x1="22" y1="14" x2="22" y2="22" />
+              <line x1="22" y1="22" x2="28" y2="26" />
+            </svg>
+          </div>
+          <span class="feature-no">— 01 · 一</span>
+          <h3 class="feature-title">Deadlines, quietly kept.</h3>
+          <p class="feature-body">
+            Every call, every milestone, every report — held in a
+            calendar that only speaks when it must. No dashboards
+            that shout.
+          </p>
+        </article>
+
+        <article class="feature">
+          <div class="feature-icon">
+            <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+              <rect x="10" y="8" width="24" height="28" />
+              <line x1="15" y1="16" x2="29" y2="16" />
+              <line x1="15" y1="22" x2="29" y2="22" />
+              <line x1="15" y1="28" x2="24" y2="28" />
+            </svg>
+          </div>
+          <span class="feature-no">— 02 · 二</span>
+          <h3 class="feature-title">Proposals, as a single document.</h3>
+          <p class="feature-body">
+            Budget, workplan, partners, ethics. Co-authored in one
+            place. Versioned. Comment threads that close
+            themselves when resolved.
+          </p>
+        </article>
+
+        <article class="feature">
+          <div class="feature-icon">
+            <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+              <line x1="8" y1="32" x2="36" y2="32" />
+              <line x1="12" y1="32" x2="12" y2="22" />
+              <line x1="20" y1="32" x2="20" y2="16" />
+              <line x1="28" y1="32" x2="28" y2="24" />
+            </svg>
+          </div>
+          <span class="feature-no">— 03 · 三</span>
+          <h3 class="feature-title">Reports that write themselves.</h3>
+          <p class="feature-body">
+            Spend, hours, outputs — gathered from the tools your
+            team already uses. A draft report waits for you on
+            the day it is due. You edit; you do not compile.
+          </p>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================
+       INTERLUDE — the pause between sections is a feature too
+       ===================================================== -->
+  <section class="interlude">
+    <div class="wrap">
+      <span class="kanji">間</span>
+      <p>
+        Between the grant and the granted,
+        there is a long silence.
+        We designed for that silence.
+      </p>
+    </div>
+  </section>
+
+  <!-- =====================================================
+       PRICING
+       ===================================================== -->
+  <section class="pricing" id="pricing">
+    <div class="wrap">
+
+      <div class="section-head">
+        <h2 class="title display">
+          Two plans. <em>Nothing hidden.</em>
+        </h2>
+        <p class="lede">
+          We do not negotiate. We do not price by seat tiers.
+          We do not ask for a call. Choose the one that fits,
+          and begin today.
+        </p>
+      </div>
+
+      <div class="price-grid">
+
+        <article class="plan">
+          <div class="plan-eyebrow">
+            <span class="plan-name">Free Trial</span>
+            <span class="plan-jp">試 · trial</span>
+          </div>
+          <div class="plan-price">0<span class="unit">EUR</span></div>
+          <div class="plan-period">30 days · no card required</div>
+
+          <ul class="plan-list">
+            <li>Full product, unrestricted.</li>
+            <li>Up to 3 collaborators.</li>
+            <li>One active proposal.</li>
+            <li>Email support within one working day.</li>
+          </ul>
+
+          <a href="#final" class="plan-cta">
+            Begin the trial
+            <span class="arrow" aria-hidden="true"></span>
+          </a>
+        </article>
+
+        <article class="plan">
+          <div class="plan-eyebrow">
+            <span class="plan-name">Pro</span>
+            <span class="plan-jp">専 · professional</span>
+          </div>
+          <div class="plan-price">149<span class="unit">EUR / month</span></div>
+          <div class="plan-period">Per research team · billed monthly</div>
+
+          <ul class="plan-list">
+            <li>Unlimited proposals, milestones, reports.</li>
+            <li>Unlimited collaborators.</li>
+            <li>Automated reporting from Git, Slack, and ledgers.</li>
+            <li>Audit-grade export. GDPR, always.</li>
+            <li>Priority support, within four hours.</li>
+          </ul>
+
+          <a href="#final" class="plan-cta">
+            Choose Pro
+            <span class="arrow" aria-hidden="true"></span>
+          </a>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================
+       FINAL CTA
+       ===================================================== -->
+  <section class="final" id="final">
+    <div class="wrap">
+      <span class="eyebrow">Begin · 始</span>
+      <h2 class="display">
+        The next proposal deserves <em>your attention,</em> not your administration.
+      </h2>
+      <p>
+        Thirty days. No card. No onboarding call.
+        Open the door; if it is not for you, close it.
+      </p>
+      <div class="actions">
+        <a href="#" class="primary">Start the free trial</a>
+        <a href="#pricing" class="secondary">Read the pricing again</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- =====================================================
+       FOOTER
+       ===================================================== -->
+  <footer>
+    <div class="wrap">
+
+      <div class="foot">
+        <div class="foot-brand">
+          <a class="brand" href="#">
+            GrantLume
+            <span class="mark">間</span>
+          </a>
+          <p>
+            A grant management platform for European research
+            teams. Designed in Kyoto and Berlin, with an
+            uncommon respect for empty space.
+          </p>
+        </div>
+
+        <div>
+          <h4>Product</h4>
+          <ul>
+            <li><a href="#features">Method</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#final">Free trial</a></li>
+            <li><a href="#">Changelog</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4>Company</h4>
+          <ul>
+            <li><a href="#">About</a></li>
+            <li><a href="#">Field notes</a></li>
+            <li><a href="#">Contact</a></li>
+            <li><a href="#">Careers</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <h4>Legal</h4>
+          <ul>
+            <li><a href="#">Privacy</a></li>
+            <li><a href="#">Terms</a></li>
+            <li><a href="#">GDPR</a></li>
+            <li><a href="#">Security</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="colophon">
+        <span>© 2026 GrantLume</span>
+        <span>Kyoto · Berlin</span>
+        <span>間 — the interval</span>
+      </div>
+
+    </div>
+  </footer>
+
+</body>
+</html>
