@@ -284,11 +284,22 @@ function ProposalsList() {
         call_template_id: templateIdToSave,
       }
 
+      // 20-second guard so the dialog can't hang forever if Supabase never
+      // responds (stale auth token, network stall). The user sees an error
+      // instead of an indefinite spinner.
+      const withTimeout = <T,>(p: Promise<T>, ms = 20000, label = 'save'): Promise<T> =>
+        Promise.race<T>([
+          p,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s — check your network or try again`)), ms),
+          ),
+        ])
+
       if (editingId) {
         // Detect status change for email notification
         const oldProposal = proposals.find(p => p.id === editingId)
         const oldStatus = oldProposal?.status
-        await proposalService.update(editingId, payload)
+        await withTimeout(proposalService.update(editingId, payload), 20000, 'Update proposal')
         toast({ title: t('proposals.proposalUpdated') })
 
         // Fire-and-forget: notify admins if proposal status changed
@@ -320,7 +331,7 @@ function ProposalsList() {
           }).catch(() => {})
         }
       } else {
-        const created = await proposalService.create(payload)
+        const created = await withTimeout(proposalService.create(payload), 20000, 'Create proposal')
         // Seed the required-documents checklist from the picked template.
         // Non-fatal: if seeding fails we keep the proposal — but we tell the
         // user clearly so they don't assume an empty checklist was intended.
@@ -329,7 +340,11 @@ function ProposalsList() {
           const template = callTemplates.find((tpl) => tpl.id === templateIdToSave)
           if (template) {
             try {
-              await proposalDocumentService.seedFromTemplate(created.id, template)
+              await withTimeout(
+                proposalDocumentService.seedFromTemplate(created.id, template),
+                15000,
+                'Seed checklist',
+              )
               seedStatus = 'ok'
             } catch (seedErr) {
               console.warn('[Proposals] Failed to seed document checklist:', seedErr)
@@ -351,6 +366,8 @@ function ProposalsList() {
       setDialogOpen(false)
       refetchProposals()
     } catch (err) {
+      // Verbose logging so the user can screenshot it for support.
+      console.error('[Proposals] Save failed', err)
       const message = err instanceof Error ? err.message : t('common.failedToSave')
       toast({ title: t('common.error'), description: message, variant: 'destructive' })
     } finally {
