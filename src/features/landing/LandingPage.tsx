@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Menu, X, Globe } from 'lucide-react'
+import { ArrowRight, Menu, X, Globe, Check } from 'lucide-react'
 import { GrantLumeLogo } from '@/components/common/GrantLumeLogo'
 
 /**
@@ -33,7 +33,6 @@ const i18n = {
       cta: 'Start free trial',
     },
     hero: {
-      eyebrow: 'For European research teams',
       h1a: 'The grant workspace',
       h1b: 'without',
       h1c: 'the',
@@ -100,11 +99,6 @@ const i18n = {
         { n: '4', tone: 'butter', title: 'Report and renew', desc: 'Interim reports generate from your actuals. Renewal is a button, not a quarter.' },
       ],
     },
-    quote: {
-      body:
-        '"We used to run four grants out of one very brave spreadsheet. Now we run eleven — and I take Fridays off."',
-      attrib: 'Research operations lead · life-sciences group',
-    },
     pricing: {
       eyebrow: 'Pricing',
       h2a: 'Two plans.',
@@ -149,11 +143,9 @@ const i18n = {
       body:
         'Thirty days. The whole product. No card, no call, no catch. Set up your first grant in about fifteen minutes.',
       primary: 'Start free trial',
-      secondary: 'Book a walkthrough',
     },
     footer: {
-      tagline:
-        'Grant management software for European research teams. Built in Europe, hosted in the EU, designed for calmer Fridays.',
+      tagline: 'Grant management software for all teams.',
       productHead: 'Product',
       companyHead: 'Company',
       trustHead: 'Trust',
@@ -161,7 +153,6 @@ const i18n = {
       company: ['About', 'Contact', 'Press kit', 'Careers'],
       trustLinks: ['GDPR & DPA', 'Security', 'Sub-processors', 'Status'],
       copyright: '© 2026 GrantLume',
-      tagline2: 'Made with cream, plum, and a little yellow.',
     },
   },
   de: {
@@ -173,7 +164,6 @@ const i18n = {
       cta: 'Kostenlos testen',
     },
     hero: {
-      eyebrow: 'Für europäische Forschungsteams',
       h1a: 'Der Arbeitsbereich für Fördermittel',
       h1b: 'ohne',
       h1c: 'die',
@@ -240,11 +230,6 @@ const i18n = {
         { n: '4', tone: 'butter', title: 'Berichten & erneuern', desc: 'Zwischenberichte aus Ist-Werten. Verlängerung ist ein Klick, nicht ein Quartal.' },
       ],
     },
-    quote: {
-      body:
-        '„Wir haben vier Projekte aus einer mutigen Tabelle geführt. Jetzt sind es elf — und ich nehme Freitags frei."',
-      attrib: 'Research Operations Lead · life-sciences-Team',
-    },
     pricing: {
       eyebrow: 'Preise',
       h2a: 'Zwei Pläne.',
@@ -289,11 +274,9 @@ const i18n = {
       body:
         'Dreißig Tage. Das ganze Produkt. Keine Karte, kein Anruf, kein Haken. In rund fünfzehn Minuten läuft Ihr erstes Projekt.',
       primary: 'Kostenlos starten',
-      secondary: 'Demo buchen',
     },
     footer: {
-      tagline:
-        'Fördermittel-Software für europäische Forschungsteams. Gebaut in Europa, gehostet in der EU, entworfen für ruhigere Freitage.',
+      tagline: 'Fördermittel-Software für alle Teams.',
       productHead: 'Produkt',
       companyHead: 'Unternehmen',
       trustHead: 'Vertrauen',
@@ -301,79 +284,215 @@ const i18n = {
       company: ['Über uns', 'Kontakt', 'Pressekit', 'Karriere'],
       trustLinks: ['DSGVO & AVV', 'Sicherheit', 'Subunternehmer', 'Status'],
       copyright: '© 2026 GrantLume',
-      tagline2: 'Gemischt aus Creme, Pflaume und einem Hauch Gelb.',
     },
   },
 }
 
-/* ─── Sticker (rotating wordmark, decorative) ──────────────────────────── */
-function Sticker() {
+/* ─── Hero product mockup — the real interface, inline SVG ─────────────
+   A faked but recognisable GrantLume dashboard: sidebar with nav +
+   program tags, main panel with KPI row, a work-package Gantt showing
+   five WPs + a "NOW" marker, and two bottom progress cards. Two floating
+   HTML sticker cards overlay the top-right and bottom-left corners to
+   highlight moments of product feedback (budget approved, partner
+   invited). No customer names, no real project codes. */
+function ProductMockup() {
   return (
-    <svg viewBox="0 0 120 120" aria-hidden="true"
-      className="absolute -top-2 -right-2 w-[108px] h-[108px] motion-safe:animate-spin-slow">
-      <defs>
-        <path id="gl-circ" d="M60,60 m-46,0 a46,46 0 1,1 92,0 a46,46 0 1,1 -92,0" fill="none" />
-      </defs>
-      <circle cx="60" cy="60" r="58" fill="#2B1D3A" />
-      <circle cx="60" cy="60" r="10" fill="#F2CE5A" />
-      <text fill="#FBF7EF" fontFamily="Plus Jakarta Sans, sans-serif" fontSize="10" fontWeight="600" letterSpacing="2">
-        <textPath href="#gl-circ">GRANTLUME · BUILT IN THE EU · GRANTLUME · </textPath>
-      </text>
-    </svg>
-  )
-}
+    <div className="relative w-full max-w-[640px] ml-auto">
+      {/* Ambient wash behind the mockup */}
+      <div
+        aria-hidden
+        className="absolute -inset-10 rounded-[40px] pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(ellipse at 60% 40%, rgba(90,108,242,0.18), transparent 60%), radial-gradient(ellipse at 30% 80%, rgba(242,206,90,0.25), transparent 60%)',
+          filter: 'blur(30px)',
+        }}
+      />
 
-/* ─── Hero canvas (sun arc + plum slab + cobalt half-moon + shapes) ───── */
-function HeroCanvas() {
-  return (
-    <svg viewBox="0 0 560 560" fill="none" className="w-full h-full block" aria-hidden="true">
-      <rect x="0" y="0" width="560" height="560" rx="36" fill="#F4EEDF" />
-      <path d="M60 420 A220 220 0 0 1 500 420" stroke="#F2CE5A" strokeWidth="64" strokeLinecap="round" fill="none" />
-      <rect x="72" y="60" width="200" height="200" rx="24" fill="#2B1D3A" transform="rotate(-8 172 160)" />
-      <path d="M420 90 a90 90 0 1 1 0 180 a70 70 0 0 0 0 -180 z" fill="#5A6CF2" />
-      <circle cx="160" cy="350" r="58" fill="#9FBFA0" />
-      <circle cx="450" cy="360" r="44" stroke="#2B1D3A" strokeWidth="6" fill="none" />
-      <circle cx="300" cy="120" r="14" fill="#F2CE5A" />
-      <path d="M320 220 Q380 260 460 240" stroke="#2B1D3A" strokeWidth="3" fill="none" strokeLinecap="round" />
-    </svg>
-  )
-}
+      <svg
+        viewBox="0 0 680 520"
+        xmlns="http://www.w3.org/2000/svg"
+        role="img"
+        aria-label="GrantLume dashboard — project overview with work-package timeline"
+        className="relative w-full h-auto rounded-[18px] border border-prism-line shadow-[0_40px_80px_-30px_rgba(43,29,58,0.32)]"
+      >
+        <defs>
+          <linearGradient id="gl-progress" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#5A6CF2" />
+            <stop offset="100%" stopColor="#F2CE5A" />
+          </linearGradient>
+        </defs>
 
-/* ─── Floating UI preview card (lives over the hero canvas) ───────────── */
-function UIPreview() {
-  return (
-    <div
-      role="img"
-      aria-label="Sample budget card"
-      className="absolute left-[6%] bottom-[9%] w-[62%] bg-cream rounded-[14px] border border-prism-line shadow-prism p-4"
-    >
-      <div className="flex items-center justify-between text-xs text-prism-muted mb-2.5">
-        <b className="text-plum font-semibold">Project · WP3 Budget</b>
-        <span>€412,000</span>
-      </div>
-      <div className="h-2.5 rounded-md bg-cream-warm overflow-hidden mb-3">
-        <div className="h-full rounded-md" style={{ width: '68%', background: 'linear-gradient(90deg,#5A6CF2,#F2CE5A)' }} />
-      </div>
-      <div className="flex flex-col gap-1.5 text-[12.5px]">
-        <Row label="Personnel" value="€218,400" />
-        <Row label="Equipment" value="€64,200" />
-        <Row label="Travel" pill="on track" pillTone="sage" />
-        <Row label="Reporting" pill="due Fri" pillTone="butter" />
-      </div>
-    </div>
-  )
-}
+        {/* Frame */}
+        <rect x="0" y="0" width="680" height="520" rx="18" fill="#FBF7EF" />
 
-function Row({ label, value, pill, pillTone }: { label: string; value?: string; pill?: string; pillTone?: 'sage' | 'butter' | 'cobalt' }) {
-  const pillClass =
-    pillTone === 'sage'   ? 'bg-sage text-[#163820]' :
-    pillTone === 'butter' ? 'bg-butter text-plum' :
-                            'bg-cobalt text-white'
-  return (
-    <div className="flex justify-between text-plum-soft">
-      <span>{label}</span>
-      {value ? <b className="text-plum font-semibold">{value}</b> :
-        pill ? <span className={`inline-block rounded-full px-2 py-[2px] text-[11px] font-semibold ${pillClass}`}>{pill}</span> : null}
+        {/* Chrome */}
+        <rect x="0" y="0" width="680" height="38" fill="#F4EEDF" />
+        <line x1="0" y1="38" x2="680" y2="38" stroke="#E1DAC8" />
+        <circle cx="18" cy="19" r="5" fill="#E1DAC8" />
+        <circle cx="34" cy="19" r="5" fill="#E1DAC8" />
+        <circle cx="50" cy="19" r="5" fill="#E1DAC8" />
+        <rect x="240" y="9" width="200" height="20" rx="10" fill="#FBF7EF" stroke="#E1DAC8" />
+        <text x="340" y="23" textAnchor="middle" fill="#6A5C7A" fontFamily="JetBrains Mono, monospace" fontSize="10">app.grantlume.com</text>
+
+        {/* Sidebar */}
+        <rect x="0" y="38" width="150" height="482" fill="#F4EEDF" />
+        <line x1="150" y1="38" x2="150" y2="520" stroke="#E1DAC8" />
+
+        {/* Sidebar logo */}
+        <circle cx="28" cy="68" r="12" fill="#2B1D3A" />
+        <path d="M20 72 A9 9 0 0 1 35 66" stroke="#F2CE5A" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+        <circle cx="33" cy="63" r="2.2" fill="#5A6CF2" />
+        <text x="46" y="72" fontFamily="DM Serif Display, serif" fontSize="15" fill="#2B1D3A">GrantLume</text>
+
+        {/* Active nav pill */}
+        <rect x="10" y="102" width="130" height="30" rx="8" fill="#2B1D3A" />
+        <rect x="22" y="114" width="8" height="8" rx="1.5" fill="#F2CE5A" />
+        <text x="36" y="121" fill="#FBF7EF" fontSize="12" fontWeight="500">Overview</text>
+
+        {/* Inactive nav */}
+        <g fontSize="12" fill="#6A5C7A">
+          <circle cx="26" cy="150" r="2" fill="#6A5C7A" />
+          <text x="36" y="154">Projects</text>
+          <circle cx="26" cy="176" r="2" fill="#6A5C7A" />
+          <text x="36" y="180">Proposals</text>
+          <circle cx="26" cy="202" r="2" fill="#6A5C7A" />
+          <text x="36" y="206">Work packages</text>
+          <circle cx="26" cy="228" r="2" fill="#6A5C7A" />
+          <text x="36" y="232">Budgets</text>
+          <circle cx="26" cy="254" r="2" fill="#6A5C7A" />
+          <text x="36" y="258">Timesheets</text>
+          <circle cx="26" cy="280" r="2" fill="#6A5C7A" />
+          <text x="36" y="284">Partners</text>
+          <circle cx="26" cy="306" r="2" fill="#6A5C7A" />
+          <text x="36" y="310">Reports</text>
+        </g>
+
+        {/* Program labels in sidebar */}
+        <line x1="12" y1="336" x2="138" y2="336" stroke="#E1DAC8" />
+        <text x="18" y="354" fontFamily="JetBrains Mono, monospace" fontSize="8" letterSpacing="1.4" fill="#6A5C7A">PROGRAMS</text>
+        <rect x="18" y="366" width="10" height="10" rx="2" fill="#5A6CF2" fillOpacity="0.3" stroke="#5A6CF2" strokeWidth="0.8" />
+        <text x="34" y="375" fill="#4A3860" fontSize="11">Horizon Europe</text>
+        <rect x="18" y="386" width="10" height="10" rx="2" fill="#F2CE5A" fillOpacity="0.55" stroke="#F2CE5A" strokeWidth="0.8" />
+        <text x="34" y="395" fill="#4A3860" fontSize="11">National</text>
+        <rect x="18" y="406" width="10" height="10" rx="2" fill="#9FBFA0" fillOpacity="0.55" stroke="#9FBFA0" strokeWidth="0.8" />
+        <text x="34" y="415" fill="#4A3860" fontSize="11">Foundation</text>
+
+        {/* Main header */}
+        <text x="168" y="76" fontFamily="DM Serif Display, serif" fontSize="22" fill="#2B1D3A">Project overview</text>
+        <text x="168" y="96" fill="#6A5C7A" fontSize="11">3 active work packages · 12 deliverables</text>
+        <rect x="570" y="62" width="92" height="24" rx="12" fill="#FBF7EF" stroke="#E1DAC8" />
+        <text x="616" y="77" textAnchor="middle" fill="#4A3860" fontFamily="JetBrains Mono, monospace" fontSize="10">Month 14 / 48</text>
+
+        {/* KPI — Budget burn */}
+        <rect x="168" y="110" width="160" height="72" rx="12" fill="#FBF7EF" stroke="#E1DAC8" />
+        <text x="182" y="130" fontSize="10" fill="#6A5C7A">Budget burn</text>
+        <text x="182" y="158" fontFamily="DM Serif Display, serif" fontSize="26" fill="#2B1D3A">62%</text>
+        <text x="182" y="173" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="#4A3860">€2.4M of €3.9M</text>
+
+        {/* KPI — Hours */}
+        <rect x="336" y="110" width="160" height="72" rx="12" fill="#FBF7EF" stroke="#E1DAC8" />
+        <text x="350" y="130" fontSize="10" fill="#6A5C7A">Hours this month</text>
+        <text x="350" y="158" fontFamily="DM Serif Display, serif" fontSize="26" fill="#2B1D3A">1,284</text>
+        <text x="350" y="173" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="#5A6CF2">38 researchers</text>
+
+        {/* KPI — Partners (dark plum card) */}
+        <rect x="504" y="110" width="162" height="72" rx="12" fill="#2B1D3A" />
+        <text x="518" y="130" fontSize="10" fill="#9FBFA0">Partners on track</text>
+        <text x="518" y="158" fontFamily="DM Serif Display, serif" fontSize="26" fill="#FBF7EF">7 / 9</text>
+        <rect x="518" y="168" width="134" height="4" rx="2" fill="rgba(251,247,239,0.22)" />
+        <rect x="518" y="168" width="104" height="4" rx="2" fill="#F2CE5A" />
+
+        {/* Gantt frame */}
+        <rect x="168" y="196" width="498" height="198" rx="12" fill="#FBF7EF" stroke="#E1DAC8" />
+        <text x="182" y="220" fontFamily="DM Serif Display, serif" fontSize="15" fill="#2B1D3A">Work packages</text>
+        <text x="288" y="220" fontSize="11" fill="#6A5C7A">· 5 active · Gantt</text>
+
+        {/* Month labels & grid */}
+        <g fontFamily="JetBrains Mono, monospace" fontSize="8" fill="#6A5C7A">
+          <text x="250" y="244" textAnchor="middle">M1</text>
+          <text x="332" y="244" textAnchor="middle">M12</text>
+          <text x="414" y="244" textAnchor="middle">M24</text>
+          <text x="496" y="244" textAnchor="middle">M36</text>
+          <text x="578" y="244" textAnchor="middle">M48</text>
+        </g>
+        <g stroke="#E1DAC8" strokeDasharray="2 3">
+          <line x1="250" y1="252" x2="250" y2="378" />
+          <line x1="332" y1="252" x2="332" y2="378" />
+          <line x1="414" y1="252" x2="414" y2="378" />
+          <line x1="496" y1="252" x2="496" y2="378" />
+          <line x1="578" y1="252" x2="578" y2="378" />
+        </g>
+
+        {/* NOW marker */}
+        <line x1="349" y1="252" x2="349" y2="378" stroke="#F2CE5A" strokeWidth="2" strokeDasharray="3 3" />
+        <rect x="333" y="246" width="32" height="14" rx="4" fill="#F2CE5A" />
+        <text x="349" y="256" textAnchor="middle" fontFamily="JetBrains Mono, monospace" fontSize="8" fill="#2B1D3A" fontWeight="700">NOW</text>
+
+        {/* WP1 — full bar */}
+        <text x="182" y="284" fontSize="10" fill="#4A3860">WP1 — Coordination</text>
+        <rect x="250" y="274" width="388" height="14" rx="4" fill="#2B1D3A" opacity="0.88" />
+        <text x="260" y="284" fill="#FBF7EF" fontSize="9" fontWeight="500">on track · 95%</text>
+
+        {/* WP2 — short cobalt */}
+        <text x="182" y="308" fontSize="10" fill="#4A3860">WP2 — Data</text>
+        <rect x="250" y="298" width="138" height="14" rx="4" fill="#5A6CF2" />
+        <text x="258" y="308" fill="#FBF7EF" fontSize="9" fontWeight="500">M1 — M6</text>
+
+        {/* WP3 — mid sage */}
+        <text x="182" y="332" fontSize="10" fill="#4A3860">WP3 — Modeling</text>
+        <rect x="290" y="322" width="180" height="14" rx="4" fill="#9FBFA0" />
+
+        {/* WP4 — butter */}
+        <text x="182" y="356" fontSize="10" fill="#4A3860">WP4 — Pilot</text>
+        <rect x="349" y="346" width="230" height="14" rx="4" fill="#F2CE5A" />
+
+        {/* WP5 — planned, dashed outline */}
+        <text x="182" y="380" fontSize="10" fill="#4A3860">WP5 — Dissemination</text>
+        <rect x="455" y="370" width="185" height="14" rx="4" fill="#5A6CF2" fillOpacity="0.35" stroke="#5A6CF2" strokeDasharray="3 3" />
+
+        {/* Bottom card — Next deliverable */}
+        <rect x="168" y="410" width="244" height="94" rx="12" fill="#F4EEDF" stroke="#E1DAC8" />
+        <circle cx="186" cy="432" r="6" fill="#5A6CF2" />
+        <text x="200" y="436" fontSize="10" fill="#6A5C7A">Next deliverable</text>
+        <text x="182" y="460" fontFamily="DM Serif Display, serif" fontSize="15" fill="#2B1D3A">D3.2 — Interim report</text>
+        <text x="182" y="476" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="#4A3860">Due in 6 days · 60% complete</text>
+        <rect x="182" y="486" width="216" height="4" rx="2" fill="#E1DAC8" />
+        <rect x="182" y="486" width="130" height="4" rx="2" fill="#9FBFA0" />
+
+        {/* Bottom card — Budget WP2 */}
+        <rect x="420" y="410" width="244" height="94" rx="12" fill="#F4EEDF" stroke="#E1DAC8" />
+        <circle cx="438" cy="432" r="6" fill="#F2CE5A" />
+        <text x="452" y="436" fontSize="10" fill="#6A5C7A">Budget — WP2</text>
+        <text x="434" y="460" fontFamily="DM Serif Display, serif" fontSize="15" fill="#2B1D3A">€184k / €320k</text>
+        <text x="434" y="476" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="#4A3860">57% committed</text>
+        <rect x="434" y="486" width="216" height="4" rx="2" fill="#E1DAC8" />
+        <rect x="434" y="486" width="123" height="4" rx="2" fill="url(#gl-progress)" />
+      </svg>
+
+      {/* Floating notification: budget approved (top-right) */}
+      <div className="hidden sm:flex absolute -top-3 right-4 sm:-right-3 z-10 items-center gap-2 rounded-xl bg-cream border border-prism-line shadow-[0_18px_40px_-22px_rgba(43,29,58,0.45)] px-3 py-2">
+        <div className="h-7 w-7 rounded-full bg-sage/40 flex items-center justify-center shrink-0">
+          <Check className="h-3.5 w-3.5 text-[#163820]" strokeWidth={2.5} />
+        </div>
+        <div>
+          <div className="text-[11px] font-semibold text-plum leading-tight">Budget approved</div>
+          <div className="text-[10px] text-plum-soft font-mono">WP3 · €48,200</div>
+        </div>
+      </div>
+
+      {/* Floating notification: partner invited (bottom-left) */}
+      <div className="hidden sm:flex absolute -bottom-3 -left-3 z-10 items-center gap-2 rounded-xl bg-cream border border-prism-line shadow-[0_18px_40px_-22px_rgba(43,29,58,0.45)] px-3 py-2">
+        <div className="h-7 w-7 rounded-full bg-cobalt/15 flex items-center justify-center shrink-0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 6v12M6 12h12" stroke="#5A6CF2" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
+        </div>
+        <div>
+          <div className="text-[11px] font-semibold text-plum leading-tight">Partner invited</div>
+          <div className="text-[10px] text-plum-soft font-mono">2 min ago</div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -537,12 +656,7 @@ export function LandingPage() {
           <div className="max-w-6xl mx-auto px-8">
             <div className="grid lg:grid-cols-[1.05fr_1fr] gap-14 items-center">
               <div>
-                <span className="inline-flex items-center gap-2.5 px-[14px] py-[7px] rounded-full bg-cream-warm border border-prism-line text-[13px] font-medium text-plum-soft">
-                  <span className="w-2 h-2 rounded-full bg-sage" />
-                  {c.hero.eyebrow}
-                </span>
-
-                <h1 className="font-display text-[46px] sm:text-[62px] lg:text-[82px] leading-[1.03] tracking-tight2 text-plum-ink mt-5 mb-5">
+                <h1 className="font-display text-[46px] sm:text-[62px] lg:text-[82px] leading-[1.03] tracking-tight2 text-plum-ink mb-5">
                   {c.hero.h1a},{' '}
                   <span className="bg-gradient-to-b from-transparent from-[62%] via-butter via-[62%] to-transparent to-[92%] px-[0.08em]">
                     {c.hero.h1b}
@@ -581,12 +695,8 @@ export function LandingPage() {
                 </div>
               </div>
 
-              {/* Hero visual */}
-              <div className="relative aspect-square max-w-[560px] ml-auto">
-                <HeroCanvas />
-                <Sticker />
-                <UIPreview />
-              </div>
+              {/* Hero visual — real product interface, not abstract shapes */}
+              <ProductMockup />
             </div>
           </div>
         </section>
@@ -706,31 +816,6 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* ═══════════════════ QUOTE ═══════════════════ */}
-        <section className="py-[60px]">
-          <div className="max-w-6xl mx-auto px-8 grid lg:grid-cols-[1fr_1.4fr] gap-12 items-center">
-            <div className="aspect-square max-w-[340px]">
-              <svg viewBox="0 0 340 340" className="w-full h-full" aria-hidden="true">
-                <rect x="10" y="10" width="320" height="320" rx="28" fill="#F4EEDF" />
-                <circle cx="110" cy="130" r="74" fill="#5A6CF2" />
-                <path d="M80 250 A120 120 0 0 1 300 250" stroke="#F2CE5A" strokeWidth="40" strokeLinecap="round" fill="none" />
-                <circle cx="240" cy="110" r="28" fill="#9FBFA0" />
-                <path d="M50 80 q 40 -30 90 0" stroke="#2B1D3A" strokeWidth="4" fill="none" strokeLinecap="round" />
-                <circle cx="170" cy="180" r="10" fill="#2B1D3A" />
-              </svg>
-            </div>
-            <div>
-              <div className="text-[13px] font-semibold uppercase tracking-label text-cobalt mb-3">
-                {lang === 'en' ? 'From our users' : 'Aus dem Alltag unserer Nutzer'}
-              </div>
-              <blockquote className="font-display text-[26px] sm:text-[32px] lg:text-[36px] leading-[1.25] tracking-snug text-plum-ink">
-                {c.quote.body}
-              </blockquote>
-              <cite className="not-italic block mt-5 text-[15px] text-plum-soft">{c.quote.attrib}</cite>
-            </div>
-          </div>
-        </section>
-
         {/* ═══════════════════ PRICING ═══════════════════ */}
         <section id="pricing" className="py-[110px]">
           <div className="max-w-6xl mx-auto px-8">
@@ -824,13 +909,6 @@ export function LandingPage() {
                     {c.cta.primary}
                     <ArrowRight className="h-[14px] w-[14px]" />
                   </a>
-                  <a
-                    href={`${appBase}/signup`}
-                    className="inline-flex items-center gap-2 px-[18px] py-[11px] rounded-full bg-plum/8 text-plum font-semibold hover:bg-plum/12 transition-colors"
-                    style={{ backgroundColor: 'rgba(43,29,58,0.08)' }}
-                  >
-                    {c.cta.secondary}
-                  </a>
                 </div>
               </div>
             </div>
@@ -856,9 +934,8 @@ export function LandingPage() {
             <FooterColumn title={c.footer.trustHead}   items={c.footer.trustLinks} />
           </div>
 
-          <div className="mt-12 pt-5 border-t border-cream/12 flex justify-between gap-5 flex-wrap text-[13px] text-cream/60">
+          <div className="mt-12 pt-5 border-t border-cream/12 text-[13px] text-cream/60">
             <span>{c.footer.copyright}</span>
-            <span>{c.footer.tagline2}</span>
           </div>
         </div>
       </footer>
