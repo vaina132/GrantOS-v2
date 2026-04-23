@@ -45,6 +45,7 @@ import { ImportDialog } from '@/components/import/ImportDialog'
 import { exportToExcel } from '@/lib/exportUtils'
 import { ComboInput, type ComboOption } from '@/components/common/ComboInput'
 import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/apiClient'
 
 const STATUS_OPTIONS: ProposalStatus[] = ['In Preparation', 'Submitted', 'Rejected', 'Granted']
 
@@ -103,7 +104,7 @@ function ProposalsList() {
   // Search EU Funding & Tenders Portal for call identifiers
   const searchEuCalls = useCallback(async (query: string): Promise<ComboOption[]> => {
     try {
-      const res = await fetch(`/api/ai?action=eu-calls&q=${encodeURIComponent(query)}&pageSize=15`)
+      const res = await apiFetch(`/api/ai?action=eu-calls&q=${encodeURIComponent(query)}&pageSize=15`)
       if (!res.ok) return []
       const { topics } = await res.json()
       return (topics ?? []).map((t: any) => ({

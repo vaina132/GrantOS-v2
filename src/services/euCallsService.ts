@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/apiClient'
 
 // Not in the generated database.types.ts yet.
 const sb = supabase as any
@@ -57,7 +58,7 @@ export const euCallsService = {
     qs.set('pageNumber', String(params.pageNumber ?? 1))
     qs.set('pageSize', String(params.pageSize ?? 100))
 
-    const res = await fetch(`/api/ai?action=eu-calls-list&${qs.toString()}`)
+    const res = await apiFetch(`/api/ai?action=eu-calls-list&${qs.toString()}`)
     if (!res.ok) {
       const body = await res.json().catch(() => ({}))
       throw new Error(body.error ?? `Failed to load calls (${res.status})`)
