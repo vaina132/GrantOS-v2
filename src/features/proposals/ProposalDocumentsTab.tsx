@@ -30,6 +30,7 @@ import {
   proposalPartnerService,
   proposalSubmissionService,
   proposalAuditService,
+  proposalCallTemplateService,
 } from '@/services/proposalWorkflowService'
 import type {
   Proposal,
@@ -67,6 +68,7 @@ export function ProposalDocumentsTab({ proposal, canManage }: Props) {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<{ partner: ProposalPartner; doc: ProposalDocument; submission: ProposalSubmission | null } | null>(null)
   const [managing, setManaging] = useState(false)
+  const [reseeding, setReseeding] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -170,14 +172,64 @@ export function ProposalDocumentsTab({ proposal, canManage }: Props) {
             </span>
           </CardTitle>
           {canManage && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setManaging(true)}
-              title="Edit the checklist of required documents"
-            >
-              <Plus className="h-4 w-4 mr-1" /> Manage documents
-            </Button>
+            <div className="flex gap-2">
+              {proposal.call_template_id && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={reseeding}
+                  title="Add any documents from this proposal's preset that aren't already in the checklist. Existing rows are preserved."
+                  onClick={async () => {
+                    if (!proposal.call_template_id) return
+                    setReseeding(true)
+                    try {
+                      const templates = await proposalCallTemplateService.list(proposal.org_id)
+                      const tpl = templates.find((t) => t.id === proposal.call_template_id)
+                      if (!tpl) {
+                        toast({
+                          title: 'Preset not found',
+                          description: 'The preset linked to this proposal no longer exists.',
+                          variant: 'destructive',
+                        })
+                        return
+                      }
+                      const beforeCount = documents.length
+                      const result = await proposalDocumentService.reseedFromTemplate(proposal.id, tpl, { mode: 'append_missing' })
+                      const added = result.length - beforeCount
+                      toast({
+                        title: added > 0 ? 'Checklist updated' : 'Nothing to add',
+                        description:
+                          added > 0
+                            ? `Added ${added} document${added === 1 ? '' : 's'} from the preset.`
+                            : 'Every document from the preset is already on this proposal.',
+                      })
+                      void load()
+                    } catch (err) {
+                      toast({
+                        title: 'Re-seed failed',
+                        description: err instanceof Error ? err.message : 'Unknown error',
+                        variant: 'destructive',
+                      })
+                    } finally {
+                      setReseeding(false)
+                    }
+                  }}
+                >
+                  {reseeding
+                    ? <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    : <Sparkles className="h-4 w-4 mr-1" />}
+                  Re-seed from preset
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setManaging(true)}
+                title="Edit the checklist of required documents"
+              >
+                <Plus className="h-4 w-4 mr-1" /> Manage documents
+              </Button>
+            </div>
           )}
         </CardHeader>
         <CardContent>
@@ -185,7 +237,16 @@ export function ProposalDocumentsTab({ proposal, canManage }: Props) {
             <div className="space-y-2"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
           ) : documents.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
-              No required documents configured for this proposal. Pick a call template when creating the proposal, or add documents manually.
+              {canManage ? (
+                <>
+                  No required documents configured for this proposal.{' '}
+                  {proposal.call_template_id
+                    ? <>Click <b>Re-seed from preset</b> above to restore the default checklist, or use <b>Manage documents</b> to add your own.</>
+                    : <>Edit the proposal to pick a preset, or click <b>Manage documents</b> above to build a checklist manually.</>}
+                </>
+              ) : (
+                <>The coordinator hasn&apos;t set up the document checklist yet.</>
+              )}
             </div>
           ) : visiblePartners.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
@@ -560,16 +621,45 @@ function ManageDocumentsPanel({ proposalId, onClose, onChanged }: ManagePanelPro
   }
 
   const handleDelete = async (id: string, label: string) => {
-    const ok = window.confirm(
-      `Delete "${label}" from the checklist? Partners will no longer see this row. Any existing submissions for it will also be removed.`,
-    )
-    if (!ok) return
+    // Pre-flight: how many submissions + uploaded versions reference this
+    // document? The FK cascades (submissions → versions → storage paths),
+    // so deleting here destroys partner uploads permanently. We name the
+    // impact before asking for confirmation.
     setBusyId(id)
+    let uploadedCount = 0
+    let submittedCount = 0
+    try {
+      const { data: subs } = await (supabase as any)
+        .from('proposal_submissions')
+        .select('id, current_version_id, status')
+        .eq('document_id', id)
+      submittedCount = (subs ?? []).length
+      uploadedCount = (subs ?? []).filter((s: any) => s.current_version_id != null).length
+    } catch {
+      // Non-fatal — we still let the user confirm, just without stats.
+    }
+
+    const warning = uploadedCount > 0
+      ? `\n\nWARNING: ${uploadedCount} partner${uploadedCount === 1 ? '' : 's'} ${uploadedCount === 1 ? 'has' : 'have'} already uploaded a file for this document. Deleting will permanently destroy those uploads + every past version.`
+      : submittedCount > 0
+        ? `\n\n${submittedCount} partner submission record${submittedCount === 1 ? '' : 's'} (no files yet) will also be removed.`
+        : ''
+
+    const ok = window.confirm(
+      `Delete "${label}" from the checklist?\n\nPartners will no longer see this row.${warning}\n\nType OK to confirm.`,
+    )
+    if (!ok) {
+      setBusyId(null)
+      return
+    }
     try {
       await proposalDocumentService.remove(id)
       setDocs((prev) => prev.filter((d) => d.id !== id))
       onChanged()
-      toast({ title: 'Document removed' })
+      toast({
+        title: 'Document removed',
+        description: uploadedCount > 0 ? `${uploadedCount} uploaded file${uploadedCount === 1 ? '' : 's'} destroyed.` : undefined,
+      })
     } catch (err) {
       toast({
         title: 'Delete failed',

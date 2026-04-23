@@ -46,7 +46,12 @@
       "Bash(grep -E \"\\\\\\\\.sql\")",
       "Bash(grep -E \"\\\\.\\(sql|ts|tsx\\)$\")",
       "Bash(npm run *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "WebFetch(domain:ec.europa.eu)",
+      "WebFetch(domain:accelopment.com)",
+      "WebFetch(domain:webgate.ec.europa.eu)",
+      "WebFetch(domain:commission.europa.eu)",
+      "WebFetch(domain:cinea.ec.europa.eu)"
     ]
   }
 }

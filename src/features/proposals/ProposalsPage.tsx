@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate, Routes, Route, useSearchParams } from 'react-router-dom'
 import { ProposalDetail } from './ProposalDetail'
 import { useTranslation } from 'react-i18next'
@@ -76,7 +76,23 @@ const EMPTY_FORM = {
   responsible_person_id: '',
   notes: '',
   call_template_id: '',
+  // UI-only helper (not persisted). Lets the user tell us what kind of
+  // funder they're applying to, which adjusts placeholder / help-text
+  // copy on the Call Identifier field so non-EU users don't feel routed
+  // through SEDIA. Leave '' for "I don't know / mixed".
+  funder_hint: '' as '' | 'eu' | 'ukri' | 'dfg' | 'nsf' | 'snsf' | 'anr' | 'other',
 }
+
+const FUNDER_OPTIONS: Array<{ value: (typeof EMPTY_FORM)['funder_hint']; label: string; callLabel: string; callPlaceholder: string }> = [
+  { value: '',      label: '— I don\'t know / mixed —',              callLabel: 'Topic ID / Call identifier',  callPlaceholder: 'Search EU calls, or type any identifier' },
+  { value: 'eu',    label: 'European Commission (Horizon, LIFE, Erasmus+…)', callLabel: 'Topic ID',                callPlaceholder: 'e.g. HORIZON-CL5-2024-D2-01-02' },
+  { value: 'ukri',  label: 'UKRI (EPSRC, ESRC, BBSRC…)',             callLabel: 'Opportunity reference',           callPlaceholder: 'e.g. EP/Z000000/1' },
+  { value: 'dfg',   label: 'DFG (Sachbeihilfe, SFB, GRK…)',           callLabel: 'Programme / Antragsreferenz',     callPlaceholder: 'e.g. Sachbeihilfe 2026-01' },
+  { value: 'nsf',   label: 'NSF (Solicitation or Program)',           callLabel: 'Solicitation / Program number',   callPlaceholder: 'e.g. NSF 24-500' },
+  { value: 'snsf',  label: 'SNSF Project Funding',                    callLabel: 'Scheme reference',                callPlaceholder: 'e.g. Project Funding Oct 2025' },
+  { value: 'anr',   label: 'ANR (AAPG, LabCom…)',                     callLabel: 'Appel à projets',                 callPlaceholder: 'e.g. ANR AAPG 2026 — PRC' },
+  { value: 'other', label: 'Other (national, private, internal)',     callLabel: 'Call reference',                  callPlaceholder: 'Any identifier, number, or name' },
+]
 
 export function ProposalsPage() {
   return (
@@ -108,10 +124,22 @@ function ProposalsList() {
   const [staffList, setStaffList] = useState<Person[]>([])
   const [callTemplates, setCallTemplates] = useState<ProposalCallTemplate[]>([])
 
-  // Search EU Funding & Tenders Portal for call identifiers
+  // Search EU Funding & Tenders Portal for call identifiers.
+  // Uses an AbortController so out-of-order responses from a fast typist
+  // can't clobber a newer query result, and times out after 8s so a slow
+  // SEDIA doesn't stall the dropdown indefinitely.
+  const searchAbortRef = useRef<AbortController | null>(null)
   const searchEuCalls = useCallback(async (query: string): Promise<ComboOption[]> => {
+    // Cancel any in-flight request from a previous keystroke.
+    searchAbortRef.current?.abort()
+    const ctrl = new AbortController()
+    searchAbortRef.current = ctrl
+    const timeout = setTimeout(() => ctrl.abort(), 8000)
     try {
-      const res = await apiFetch(`/api/ai?action=eu-calls&q=${encodeURIComponent(query)}&pageSize=15`)
+      const res = await apiFetch(
+        `/api/ai?action=eu-calls&q=${encodeURIComponent(query)}&pageSize=15`,
+        { signal: ctrl.signal } as RequestInit,
+      )
       if (!res.ok) return []
       const { topics } = await res.json()
       return (topics ?? []).map((t: any) => ({
@@ -123,6 +151,8 @@ function ProposalsList() {
       }))
     } catch {
       return []
+    } finally {
+      clearTimeout(timeout)
     }
   }, [])
 
@@ -150,7 +180,9 @@ function ProposalsList() {
   useEffect(() => {
     if (!orgId) return
     staffService.list(orgId, { is_active: true }).then(setStaffList).catch(() => {})
-    proposalCallTemplateService.list().then(setCallTemplates).catch(() => setCallTemplates([]))
+    // Explicit org scope (defense-in-depth; RLS already scopes, but if the
+    // policy ever regresses this client-side filter prevents cross-tenant leak).
+    proposalCallTemplateService.list(orgId).then(setCallTemplates).catch(() => setCallTemplates([]))
     supabase
       .from('funding_schemes')
       .select('id, name, type')
@@ -208,6 +240,7 @@ function ProposalsList() {
       responsible_person_id: p.responsible_person_id ?? '',
       notes: p.notes ?? '',
       call_template_id: p.call_template_id ?? '',
+      funder_hint: '', // UI-only; not persisted on the proposal row
     })
     setDialogOpen(true)
   }
@@ -217,13 +250,26 @@ function ProposalsList() {
       toast({ title: t('validation.projectNameRequired'), variant: 'destructive' })
       return
     }
+    // Basic length / format guardrails on free-text fields so a paste of 10 MB
+    // or a trailing URL slash doesn't make it to the DB.
+    const cleanCallId = form.call_identifier
+      .trim()
+      .replace(/\/+$/, '') // strip trailing slashes
+      .slice(0, 200)
+    const cleanFundingScheme = form.funding_scheme.trim().slice(0, 120)
+    // Guard against stale template IDs (e.g. template deleted by an admin
+    // between page-load and save).
+    const templateIdToSave =
+      form.call_template_id && callTemplates.some((tpl) => tpl.id === form.call_template_id)
+        ? form.call_template_id
+        : null
     setSaving(true)
     try {
       const payload = {
         org_id: orgId,
-        project_name: form.project_name.trim(),
-        call_identifier: form.call_identifier.trim(),
-        funding_scheme: form.funding_scheme.trim(),
+        project_name: form.project_name.trim().slice(0, 300),
+        call_identifier: cleanCallId,
+        funding_scheme: cleanFundingScheme,
         submission_deadline: form.submission_deadline || null,
         expected_decision: form.expected_decision || null,
         our_pms: Number(form.our_pms) || 0,
@@ -235,7 +281,7 @@ function ProposalsList() {
         responsible_person_id: form.responsible_person_id || null,
         notes: form.notes.trim() || null,
         created_by: user?.id ?? null,
-        call_template_id: form.call_template_id || null,
+        call_template_id: templateIdToSave,
       }
 
       if (editingId) {
@@ -276,19 +322,31 @@ function ProposalsList() {
       } else {
         const created = await proposalService.create(payload)
         // Seed the required-documents checklist from the picked template.
-        // Non-fatal: if seeding fails we keep the proposal and log — the user
-        // can add documents manually from the Documents tab.
-        if (form.call_template_id) {
-          const template = callTemplates.find(tpl => tpl.id === form.call_template_id)
+        // Non-fatal: if seeding fails we keep the proposal — but we tell the
+        // user clearly so they don't assume an empty checklist was intended.
+        let seedStatus: 'skipped' | 'ok' | 'failed' = 'skipped'
+        if (templateIdToSave) {
+          const template = callTemplates.find((tpl) => tpl.id === templateIdToSave)
           if (template) {
             try {
               await proposalDocumentService.seedFromTemplate(created.id, template)
+              seedStatus = 'ok'
             } catch (seedErr) {
               console.warn('[Proposals] Failed to seed document checklist:', seedErr)
+              seedStatus = 'failed'
             }
           }
         }
-        toast({ title: t('proposals.proposalCreated') })
+        if (seedStatus === 'failed') {
+          toast({
+            title: t('proposals.proposalCreated'),
+            description:
+              'Proposal created, but the document checklist failed to seed. Open the proposal and click "Re-seed checklist" in the Documents tab.',
+            variant: 'destructive',
+          })
+        } else {
+          toast({ title: t('proposals.proposalCreated') })
+        }
       }
       setDialogOpen(false)
       refetchProposals()
@@ -541,49 +599,74 @@ function ProposalsList() {
                 <Input value={form.project_name} onChange={(e) => setField('project_name', e.target.value)} placeholder="e.g. AI-Enhanced Grant Management" />
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label>Call Identifier</Label>
+                <Label>Funder</Label>
+                <select
+                  value={form.funder_hint}
+                  onChange={(e) => setField('funder_hint', e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {FUNDER_OPTIONS.map((opt) => (
+                    <option key={opt.value || 'unset'} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-muted-foreground">
+                  Adjusts the Call identifier placeholder and search behaviour. Not stored on the proposal.
+                </p>
+              </div>
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label>{FUNDER_OPTIONS.find(o => o.value === form.funder_hint)?.callLabel ?? 'Topic ID / Call identifier'}</Label>
                 <ComboInput
                   value={form.call_identifier}
                   onChange={(v) => setField('call_identifier', v)}
-                  onSearch={searchEuCalls}
-                  placeholder="Search EU calls or type custom identifier..."
-                  emptyMessage="Type at least 2 characters to search EU calls, or enter your own"
+                  onSearch={form.funder_hint === '' || form.funder_hint === 'eu' ? searchEuCalls : undefined}
+                  placeholder={FUNDER_OPTIONS.find(o => o.value === form.funder_hint)?.callPlaceholder ?? 'Any identifier, number, or name'}
+                  emptyMessage={form.funder_hint === 'eu' || form.funder_hint === ''
+                    ? 'Keep typing — at least 2 characters — to search the EU portal. Any value you type is also accepted.'
+                    : 'No suggestions for this funder — type the reference exactly as it appears on the funder\'s call page.'}
                   debounceMs={400}
                 />
-                <p className="text-[11px] text-muted-foreground">Start typing to search open EU Funding &amp; Tenders calls, or enter any identifier</p>
+                <p className="text-xs text-muted-foreground">
+                  {form.funder_hint === 'eu' || form.funder_hint === ''
+                    ? 'Searches open calls on the EU Funding & Tenders Portal. For national, private, or internal calls, just type the reference.'
+                    : 'Any text you enter is saved exactly. We don\'t currently auto-search this funder\'s database.'}
+                </p>
               </div>
+
               <div className="space-y-2">
-                <Label>Funding Scheme</Label>
+                <Label>{form.funder_hint === 'eu' ? 'Type of action / Scheme' : 'Funding scheme'}</Label>
                 <ComboInput
                   value={form.funding_scheme}
                   onChange={(v) => setField('funding_scheme', v)}
                   options={fundingSchemeOptions}
-                  placeholder="Select or type a funding scheme..."
-                  emptyMessage="No matching schemes — type to enter custom"
+                  placeholder={form.funder_hint === 'eu' ? 'RIA / IA / CSA / Cofund…' : 'Select a scheme, or type a new one'}
+                  emptyMessage={fundingSchemeOptions.length === 0
+                    ? 'No schemes saved yet. Type the scheme name to add it.'
+                    : 'No match. Press Enter to save what you typed.'}
                 />
               </div>
-              {!editingId && (
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>Call template</Label>
-                  <select
-                    value={form.call_template_id}
-                    onChange={(e) => setField('call_template_id', e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    <option value="">— None (no document checklist seeded) —</option>
-                    {callTemplates.map((tpl) => (
-                      <option key={tpl.id} value={tpl.id}>
-                        {tpl.name}
-                        {tpl.is_builtin ? '' : ' (custom)'}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-[11px] text-muted-foreground">
-                    Picking a template pre-populates the required-document checklist for this proposal.
-                    You can still add or remove documents afterwards.
-                  </p>
-                </div>
-              )}
+
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Submission preset (document checklist)</Label>
+                <select
+                  value={form.call_template_id}
+                  onChange={(e) => setField('call_template_id', e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">— Start with an empty checklist —</option>
+                  {callTemplates.map((tpl) => (
+                    <option key={tpl.id} value={tpl.id}>
+                      {tpl.name}
+                      {tpl.is_builtin ? '' : ' (custom)'}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  {editingId
+                    ? 'Changing the preset here updates the record but does NOT re-seed the checklist — use "Re-seed from preset" in the Documents tab to merge in any missing documents.'
+                    : 'Adds that preset\'s required documents to this proposal\'s checklist. You can add or remove documents later from the Documents tab.'}
+                </p>
+              </div>
               <div className="space-y-2">
                 <Label>Status</Label>
                 <select

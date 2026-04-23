@@ -22,13 +22,27 @@ const sb = supabase as any
 // ============================================================================
 
 export const proposalCallTemplateService = {
-  /** List all templates the current user can see (global + own org). */
-  async list(): Promise<ProposalCallTemplate[]> {
-    const { data, error } = await sb
+  /** List all templates the current user can see (global built-ins + own org).
+   *
+   *  Defense-in-depth: we explicitly filter by org_id even though RLS already
+   *  scopes reads to `org_id IS NULL OR org_id = auth_org_id()`. If the RLS
+   *  policy is ever dropped during a migration, this client-side filter still
+   *  prevents a cross-tenant template leak. Pass the orgId (from `useAuthStore`)
+   *  — the old zero-arg form remains for callers that haven't been updated. */
+  async list(orgId?: string | null): Promise<ProposalCallTemplate[]> {
+    let query = sb
       .from('proposal_call_templates')
       .select('*')
       .order('is_builtin', { ascending: false })
       .order('name', { ascending: true })
+    if (orgId) {
+      query = query.or(`org_id.is.null,org_id.eq.${orgId}`)
+    } else {
+      // No orgId provided — at least restrict to the global built-ins so an
+      // unauthenticated or half-loaded client can't enumerate per-org customisations.
+      query = query.is('org_id', null)
+    }
+    const { data, error } = await query
     if (error) throw error
     return (data ?? []) as ProposalCallTemplate[]
   },
@@ -180,6 +194,67 @@ export const proposalDocumentService = {
       .select()
     if (error) throw error
     return (data ?? []) as ProposalDocument[]
+  },
+
+  /** Re-seed / reset an existing proposal's checklist against the given
+   *  template. Modes:
+   *   - `append_missing` (default): add rows whose `document_type` isn't
+   *     already present. Preserves user edits. Safe default for "restore".
+   *   - `replace_all`: delete every existing doc row and re-insert the
+   *     template's full set. Destructive — caller must confirm, and any
+   *     submissions attached to deleted docs will cascade away.
+   *
+   *  Returns the new/updated `proposal_documents` list. */
+  async reseedFromTemplate(
+    proposalId: string,
+    template: ProposalCallTemplate,
+    opts: { mode?: 'append_missing' | 'replace_all' } = {},
+  ): Promise<ProposalDocument[]> {
+    const mode = opts.mode ?? 'append_missing'
+
+    const { data: existing, error: existingErr } = await sb
+      .from('proposal_documents')
+      .select('*')
+      .eq('proposal_id', proposalId)
+    if (existingErr) throw existingErr
+    const existingTypes = new Set<string>(((existing ?? []) as ProposalDocument[]).map((d) => d.document_type))
+
+    if (mode === 'replace_all') {
+      const { error: delErr } = await sb
+        .from('proposal_documents')
+        .delete()
+        .eq('proposal_id', proposalId)
+      if (delErr) throw delErr
+      return this.seedFromTemplate(proposalId, template)
+    }
+
+    // append_missing
+    const maxOrder = ((existing ?? []) as ProposalDocument[])
+      .reduce((m, d) => Math.max(m, d.sort_order), -1)
+    const toAdd = template.default_documents
+      .filter((d) => !existingTypes.has(d.type))
+      .map((d, idx) => ({
+        proposal_id: proposalId,
+        document_type: d.type,
+        label: d.label,
+        description: d.description,
+        handler: d.handler,
+        template_url: d.template_url,
+        required: d.required,
+        sort_order: maxOrder + 1 + idx,
+      }))
+    if (toAdd.length === 0) {
+      return (existing ?? []) as ProposalDocument[]
+    }
+    const { error: insErr } = await sb.from('proposal_documents').insert(toAdd)
+    if (insErr) throw insErr
+    const { data: final, error: listErr } = await sb
+      .from('proposal_documents')
+      .select('*')
+      .eq('proposal_id', proposalId)
+      .order('sort_order', { ascending: true })
+    if (listErr) throw listErr
+    return (final ?? []) as ProposalDocument[]
   },
 
   async create(doc: Omit<ProposalDocument, 'id' | 'created_at' | 'updated_at'>): Promise<ProposalDocument> {
