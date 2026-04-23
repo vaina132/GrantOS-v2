@@ -42,7 +42,8 @@
       "Bash(xargs grep *)",
       "Bash(cat)",
       "Bash(bash /tmp/audit.sh)",
-      "Bash(grep -c \"DO \\\\$\\\\$\" supabase/security_audit_fixes.sql)"
+      "Bash(grep -c \"DO \\\\$\\\\$\" supabase/security_audit_fixes.sql)",
+      "Bash(grep -E \"\\\\\\\\.sql\")"
     ]
   }
 }
