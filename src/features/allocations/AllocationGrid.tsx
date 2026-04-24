@@ -18,6 +18,11 @@ import { toast } from '@/components/ui/use-toast'
 import { Undo2, Redo2, Save, Grid3x3, Plus, UserPlus, ChevronDown, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PersonAvatar } from '@/components/common/PersonAvatar'
+import { useDraftKeeper } from '@/lib/draftKeeper'
+import {
+  DraftSavePill,
+  DraftRestoreBanner,
+} from '@/components/draft'
 import { getWorkingDaysInMonth, hoursToPm } from '@/lib/pmUtils'
 import { settingsService } from '@/services/settingsService'
 import { timesheetService } from '@/services/timesheetService'
@@ -73,10 +78,22 @@ interface GridRow {
   wpName: string | null
 }
 
+/**
+ * Shape DraftKeeper persists for the grid. `cells` is the sparse map of
+ * PM values keyed by person:project:wp:month; `manualRows` are rows the
+ * user added for a (person, project) pair that has no server assignments
+ * yet. UI-only state (collapsed persons, add-row panel open) is NOT in
+ * the draft — restoring shouldn't fiddle with the user's current view.
+ */
+type AllocationDraft = {
+  cells: Record<string, number>
+  manualRows: Array<{ personId: string; projectId: string }>
+}
+
 export function AllocationGrid() {
   const { t } = useTranslation()
   const mode: AssignmentType = 'actual'
-  const { orgId } = useAuthStore()
+  const { orgId, user } = useAuthStore()
   const { globalYear } = useUiStore()
   const { staff, isLoading: loadingStaff } = useStaff({ is_active: true })
   const { projects, isLoading: loadingProjects } = useProjects()
@@ -153,7 +170,7 @@ export function AllocationGrid() {
 
   // Local editable state with undo/redo
   const { state: cells, set: setCells, undo, redo, reset: resetCells, canUndo, canRedo } = useUndoRedo<Record<CellKey, number>>({})
-  const [dirty, setDirty] = useState(false)
+  const [baseline, setBaseline] = useState<AllocationDraft | null>(null)
   const [saving, setSaving] = useState(false)
   const [bulkFillOpen, setBulkFillOpen] = useState(false)
   const [bulkFillTarget, setBulkFillTarget] = useState<{ personId: string; projectId: string; wpId: string | null } | null>(null)
@@ -184,7 +201,7 @@ export function AllocationGrid() {
         map[key] = Math.round(pms * 100) / 100
       }
       resetCells(map)
-      setDirty(false)
+      setBaseline({ cells: map, manualRows: [] })
     } else {
       const map: Record<CellKey, number> = {}
       for (const a of assignments) {
@@ -192,7 +209,7 @@ export function AllocationGrid() {
         map[key] = a.pms
       }
       resetCells(map)
-      setDirty(false)
+      setBaseline({ cells: map, manualRows: [] })
     }
   }, [assignments, resetCells, timesheetDriven, tsAggregates, globalYear, hoursPerDay])
 
@@ -290,11 +307,39 @@ export function AllocationGrid() {
     return groups
   }, [rows])
 
+  // Combined draft value — the sparse cell map plus any manually-added
+  // rows the user was building. Persisted as a single blob; with ~1,400
+  // cells this is ~50KB stringified, well within localStorage limits,
+  // and the 1.5 s debounce means we don't rewrite on every keystroke.
+  const draftValue = useMemo<AllocationDraft>(
+    () => ({ cells, manualRows }),
+    [cells, manualRows],
+  )
+
+  const draft = useDraftKeeper<AllocationDraft>({
+    key: {
+      orgId: orgId ?? '_no-org',
+      userId: user?.id ?? '_anon',
+      formKey: 'allocation-grid',
+      recordId: String(globalYear),
+    },
+    value: draftValue,
+    setValue: (next) => {
+      resetCells(next.cells)
+      setManualRows(next.manualRows)
+    },
+    // Skip DraftKeeper in timesheet-driven mode — cells are computed
+    // read-only from server data; nothing for the user to lose.
+    enabled: !isLoading && !timesheetDriven,
+    schemaVersion: 1,
+    baseline,
+    silentRestoreWindowMs: 0,
+  })
+
   const updateCell = useCallback(
     (personId: string, projectId: string, wpId: string | null, month: number, value: number) => {
       const key = makeCellKey(personId, projectId, wpId, month)
       setCells({ ...cells, [key]: value })
-      setDirty(true)
     },
     [cells, setCells],
   )
@@ -404,7 +449,12 @@ export function AllocationGrid() {
 
       await allocationsService.bulkUpsertAssignments(upserts)
       toast({ title: t('allocations.saved'), description: t('allocations.allocationsSaved') })
-      setDirty(false)
+      // Promote current state to baseline; DraftKeeper will see value ===
+      // baseline on the next tick and clear the local draft. Manual rows
+      // are emptied because their (person, project) pairs now resolve via
+      // server assignments.
+      setBaseline({ cells: { ...cells }, manualRows: [] })
+      setManualRows([])
       refetchActual()
 
       // Fire-and-forget: notify persons whose annual PMs changed
@@ -455,7 +505,6 @@ export function AllocationGrid() {
       newCells[key] = pms
     }
     setCells(newCells)
-    setDirty(true)
     setBulkFillTarget(null)
   }
 
@@ -651,6 +700,17 @@ export function AllocationGrid() {
 
   return (
     <div className="space-y-3">
+      {/* Draft recovery — only appears when an unsaved edit was stashed on
+          a previous visit. Timesheet-driven mode disables DraftKeeper, so
+          this never surfaces there. */}
+      {draft.hasDraft && (
+        <DraftRestoreBanner
+          ageMs={draft.draftAge}
+          onRestore={draft.restore}
+          onDiscard={draft.discard}
+        />
+      )}
+
       {/* Toolbar */}
       {timesheetDriven && (
         <div className="rounded-lg border border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 px-4 py-3 flex items-start gap-3">
@@ -672,10 +732,11 @@ export function AllocationGrid() {
             <Redo2 className="mr-1 h-3.5 w-3.5" /> {t('allocations.redo')}
           </Button>
           <div className="flex-1" />
-          {dirty && (
+          <DraftSavePill status={draft.status} lastSavedAt={draft.lastSavedAt} className="mr-1" />
+          {draft.isDirty && (
             <Badge variant="secondary" className="text-xs animate-pulse">{t('allocations.unsavedChanges')}</Badge>
           )}
-          <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="h-8">
+          <Button size="sm" onClick={handleSave} disabled={!draft.isDirty || saving} className="h-8">
             <Save className="mr-1 h-3.5 w-3.5" />
             {saving ? t('common.saving') : t('common.save')}
           </Button>

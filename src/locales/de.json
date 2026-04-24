@@ -1320,5 +1320,37 @@
     "thisWeek": "Diese Woche",
     "thisMonth": "Dieser Monat",
     "thisYear": "Dieses Jahr"
+  },
+  "draftKeeper": {
+    "status": {
+      "idle": "",
+      "dirty": "Ungespeicherte Änderungen",
+      "saving": "Entwurf wird gespeichert…",
+      "saved": "Entwurf gespeichert",
+      "savedAgo": "Entwurf gespeichert {{time}}",
+      "error": "Entwurf konnte nicht gespeichert werden"
+    },
+    "restore": {
+      "title": "Wir haben einen Entwurf dieses Formulars gespeichert",
+      "description": "Sie haben ungespeicherte Änderungen von {{time}}. Stellen Sie sie wieder her oder verwerfen Sie sie und beginnen Sie mit der aktuellen Version.",
+      "restore": "Entwurf wiederherstellen",
+      "discard": "Verwerfen",
+      "dismiss": "Später"
+    },
+    "conflict": {
+      "title": "Dieser Datensatz wurde während Ihrer Abwesenheit geändert",
+      "description": "Jemand (oder ein anderes Gerät) hat nach Erstellung Ihres Entwurfs neue Änderungen an diesem Datensatz gespeichert. Das Wiederherstellen Ihres Entwurfs überschreibt diese Änderungen.",
+      "compare": "Beide anzeigen",
+      "restoreAnyway": "Meinen Entwurf wiederherstellen",
+      "discardDraft": "Meinen Entwurf verwerfen",
+      "keepServer": "Serverversion behalten"
+    },
+    "just": "gerade eben",
+    "agoMinutes_one": "vor {{count}} Minute",
+    "agoMinutes_other": "vor {{count}} Minuten",
+    "agoHours_one": "vor {{count}} Stunde",
+    "agoHours_other": "vor {{count}} Stunden",
+    "agoDays_one": "vor {{count}} Tag",
+    "agoDays_other": "vor {{count}} Tagen"
   }
 }

@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { queryClient } from './queryClient'
+import { flushAllDrafts, pruneExpired } from './draftKeeper'
 
 /**
  * Tab-lifecycle rescue — two independent recovery paths:
@@ -18,7 +19,11 @@ import { queryClient } from './queryClient'
  * All logs use console.log (Chrome/Edge hide console.debug by default).
  */
 
-const VERSION = 'tab-lifecycle v5 (watchdog)'
+const VERSION = 'tab-lifecycle v6 (watchdog + draftKeeper flush)'
+
+// TTL for stored drafts. Matches the hook default — kept here so the prune
+// sweep at install-time doesn't depend on any hook being mounted.
+const DRAFT_TTL_MS = 30 * 24 * 60 * 60 * 1_000
 
 // Soft rescue: any focus → refresh auth + invalidate queries. Overhead = 1
 // API call per focus. Worth it: covers short alt-tabs where auth can still
@@ -58,7 +63,8 @@ async function softRescue(reason: string) {
     console.log(`[tabLifecycle] rescue via ${reason}`)
     const refreshed = await tryRefreshSession(AUTH_REFRESH_TIMEOUT_MS)
     if (!refreshed) {
-      console.log('[tabLifecycle] auth refresh failed → reloading')
+      console.log('[tabLifecycle] auth refresh failed → flushing drafts then reloading')
+      try { flushAllDrafts() } catch { /* best-effort */ }
       window.location.reload()
       return
     }
@@ -110,7 +116,8 @@ async function wedgeRecovery(queryKey: unknown) {
   // Refresh auth. If it also hangs, reload immediately.
   const refreshed = await tryRefreshSession(WATCHDOG_GRACE_MS)
   if (!refreshed) {
-    console.warn('[watchdog] auth refresh also wedged → reloading')
+    console.warn('[watchdog] auth refresh also wedged → flushing drafts then reloading')
+    try { flushAllDrafts() } catch { /* best-effort */ }
     window.location.reload()
     return
   }
@@ -136,8 +143,26 @@ export function installTabLifecycle() {
     if (document.visibilityState === 'visible') {
       void softRescue('visibilitychange')
     } else {
+      // Tab going background — flush any dirty drafts synchronously before
+      // the browser potentially suspends us.
+      const flushed = flushAllDrafts()
+      if (flushed > 0) console.log(`[tabLifecycle] flushed ${flushed} draft(s) on hide`)
       console.log('[tabLifecycle] tab hidden')
     }
+  })
+
+  // pagehide fires even when the page is being discarded (bfcache or real
+  // unload). It's the last reliable hook to persist work to localStorage.
+  window.addEventListener('pagehide', () => {
+    const flushed = flushAllDrafts()
+    if (flushed > 0) console.log(`[tabLifecycle] flushed ${flushed} draft(s) on pagehide`)
+  })
+
+  // beforeunload is the classic "user is leaving" hook. Modern browsers
+  // strip custom messages, but they DO still run synchronous listeners,
+  // which is exactly what localStorage.setItem is.
+  window.addEventListener('beforeunload', () => {
+    flushAllDrafts()
   })
 
   window.addEventListener('focus', () => {
@@ -167,4 +192,14 @@ export function installTabLifecycle() {
   // Watchdog — the new independent recovery path.
   startWatchdog()
   console.log('[tabLifecycle] watchdog armed (5s interval, 15s wedge threshold)')
+
+  // Drop drafts older than TTL on install. Cheap, runs once, keeps
+  // localStorage bounded regardless of how much idle time the user has
+  // accumulated between sessions.
+  try {
+    const pruned = pruneExpired(DRAFT_TTL_MS)
+    if (pruned > 0) console.log(`[tabLifecycle] pruned ${pruned} expired draft(s)`)
+  } catch (err) {
+    console.warn('[tabLifecycle] draft prune failed', err)
+  }
 }

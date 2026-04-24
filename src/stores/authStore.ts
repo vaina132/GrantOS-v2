@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { queryClient } from '@/lib/queryClient'
+import { clearAllDraftsFor, clearAllRegisteredDrafts } from '@/lib/draftKeeper'
 import {
   computePermissions,
   rolePermissionToPermissions,
@@ -114,6 +115,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // (or the same user on a fresh sign-in) shouldn't see anyone
         // else's queries.
         queryClient.clear()
+
+        // Purge every localStorage draft belonging to the user who just
+        // signed out. Hard-gate against cross-user draft leakage on
+        // shared browsers. We also clear drafts for any forms currently
+        // mounted (edge: sign-out fired while a form is still open).
+        try {
+          const priorUser = get().user
+          if (priorUser?.id) clearAllDraftsFor(priorUser.id)
+          clearAllRegisteredDrafts()
+        } catch (err) {
+          console.warn('[authStore] draft cleanup on SIGNED_OUT failed', err)
+        }
+
         set({
           user: null,
           orgId: null,
@@ -278,7 +292,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     writeSecurityAudit({ action: 'logout' })
     initialized = false
+    // Capture userId BEFORE supabase clears the session — we need it to
+    // scope the draft purge to the user that's leaving.
+    const leavingUserId = get().user?.id ?? null
     await supabase.auth.signOut()
+    try {
+      if (leavingUserId) clearAllDraftsFor(leavingUserId)
+      clearAllRegisteredDrafts()
+    } catch (err) {
+      console.warn('[authStore] draft cleanup on signOut failed', err)
+    }
     set({
       user: null,
       orgId: null,

@@ -19,6 +19,12 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
+import { useDraftKeeper } from '@/lib/draftKeeper'
+import {
+  DraftSavePill,
+  DraftRestoreBanner,
+  DraftConflictDialog,
+} from '@/components/draft'
 import {
   proposalPartAService,
   proposalSubmissionService,
@@ -152,13 +158,17 @@ interface Props {
 export function ProposalPartAForm({
   proposal, partner, document, submission, locked, onBack, onChanged,
 }: Props) {
-  const { user } = useAuthStore()
+  const { user, orgId: memberOrgId } = useAuthStore()
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
-  const [dirty, setDirty] = useState(false)
+  // Server-loaded snapshot — DraftKeeper diffs against this to decide what
+  // counts as an "unsaved change." Null until the initial load finishes.
+  const [baseline, setBaseline] = useState<FormState | null>(null)
+  const [serverUpdatedAt, setServerUpdatedAt] = useState<string | null>(null)
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false)
 
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['1.1']))
   const toggle = (id: string) => setOpenSections(prev => {
@@ -175,10 +185,15 @@ export function ProposalPartAForm({
         const row = await proposalPartAService.get(proposal.id, partner.id)
         if (cancelled) return
         if (row) {
-          setForm({ ...EMPTY_FORM, ...row })
+          const filled = { ...EMPTY_FORM, ...row }
+          setForm(filled)
+          setBaseline(filled)
+          setServerUpdatedAt(row.updated_at)
           setLastSavedAt(new Date(row.updated_at))
         } else {
           setForm(EMPTY_FORM)
+          setBaseline(EMPTY_FORM)
+          setServerUpdatedAt(null)
         }
       } catch (err) {
         toast({
@@ -196,8 +211,37 @@ export function ProposalPartAForm({
 
   const update = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm(prev => ({ ...prev, [key]: value }))
-    setDirty(true)
   }, [])
+
+  // DraftKeeper — autosaves the form to localStorage as the user types so
+  // a tab-resume reload / crash / accidental navigation never erases work.
+  // Narrative-heavy form → silent restore is OFF (team Decision A); we
+  // always surface the restore banner so the user makes an explicit choice.
+  const draft = useDraftKeeper<FormState>({
+    key: {
+      orgId: memberOrgId ?? '_collab',
+      userId: user?.id ?? '_anon',
+      formKey: 'proposal-part-a',
+      recordId: `${proposal.id}:${partner.id}`,
+    },
+    value: form,
+    setValue: setForm,
+    enabled: !locked && !loading,
+    serverLastModified: serverUpdatedAt,
+    schemaVersion: 1,
+    baseline,
+    silentRestoreWindowMs: 0,
+  })
+
+  // Surface the conflict dialog when a loaded draft's server-mtime
+  // disagrees with what the server returned — another editor beat us.
+  useEffect(() => {
+    if (draft.hasDraft && draft.conflict) {
+      setConflictDialogOpen(true)
+    } else if (!draft.hasDraft) {
+      setConflictDialogOpen(false)
+    }
+  }, [draft.hasDraft, draft.conflict])
 
   const doSave = useCallback(async (opts?: { silent?: boolean }): Promise<ProposalPartA | null> => {
     if (saving || submitting) return null
@@ -209,7 +253,11 @@ export function ProposalPartAForm({
         partner_id: partner.id,
       })
       setLastSavedAt(new Date())
-      setDirty(false)
+      // Promote the saved row to the new baseline — DraftKeeper will then
+      // see value === baseline and clear the local draft automatically.
+      const newBaseline = { ...EMPTY_FORM, ...saved }
+      setBaseline(newBaseline)
+      setServerUpdatedAt(saved.updated_at)
       let sub = submission
       if (!sub) {
         sub = await proposalSubmissionService.ensure({
@@ -248,15 +296,9 @@ export function ProposalPartAForm({
     }
   }, [form, proposal.id, partner.id, document.id, saving, submitting, submission, user?.id])
 
-  // Auto-save on unmount if dirty.
-  useEffect(() => {
-    return () => {
-      if (dirty && !locked) {
-        void doSave({ silent: true })
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, locked])
+  // (Unmount-save removed — DraftKeeper's localStorage autosave plus the
+  // tab-lifecycle `pagehide`/`beforeunload` flushes make it redundant, and
+  // unmount-saves caused double-write races when Strict Mode re-mounted.)
 
   const handleSubmitForReview = async () => {
     if (submitting || saving) return
@@ -317,6 +359,27 @@ export function ProposalPartAForm({
 
   return (
     <div className="space-y-4">
+      {/* Draft recovery surfaces — only one is visible at a time. */}
+      {draft.hasDraft && !draft.conflict && (
+        <DraftRestoreBanner
+          ageMs={draft.draftAge}
+          onRestore={draft.restore}
+          onDiscard={draft.discard}
+        />
+      )}
+      <DraftConflictDialog
+        open={conflictDialogOpen}
+        onOpenChange={setConflictDialogOpen}
+        onRestoreAnyway={() => {
+          draft.restore()
+          setConflictDialogOpen(false)
+        }}
+        onKeepServer={() => {
+          draft.discard()
+          setConflictDialogOpen(false)
+        }}
+      />
+
       {/* Header */}
       <Card>
         <CardContent className="pt-4 flex items-start justify-between gap-4">
@@ -336,7 +399,7 @@ export function ProposalPartAForm({
                 Saved {lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
             )}
-            {dirty && <span className="text-amber-700">Unsaved changes</span>}
+            <DraftSavePill status={draft.status} lastSavedAt={draft.lastSavedAt} />
             {submission?.status && (
               <Badge variant="outline" className="text-[10px] mt-1 capitalize">
                 {submission.status.replace('_', ' ')}
@@ -994,7 +1057,12 @@ export function ProposalPartAForm({
                 : 'Fill in legal name, country and organisation type to submit.'}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={locked || saving || !dirty} onClick={() => void doSave()}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={locked || saving || !draft.isDirty}
+                onClick={() => void doSave()}
+              >
                 {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
                 Save draft
               </Button>

@@ -1766,6 +1766,38 @@
     "orgInviteAcceptedDesc": "You've been added to the organisation. You can now access all features available to your role.",
     "goToCollaboration": "Go to Collaboration",
     "goToDashboard": "Go to Dashboard"
+  },
+  "draftKeeper": {
+    "status": {
+      "idle": "",
+      "dirty": "Unsaved changes",
+      "saving": "Saving draft…",
+      "saved": "Draft saved",
+      "savedAgo": "Draft saved {{time}}",
+      "error": "Couldn't save draft"
+    },
+    "restore": {
+      "title": "We saved a draft of this form",
+      "description": "You have unsaved changes from {{time}}. Restore them, or discard and start from the current version.",
+      "restore": "Restore draft",
+      "discard": "Discard",
+      "dismiss": "Later"
+    },
+    "conflict": {
+      "title": "This record changed while you were away",
+      "description": "Someone (or another device) saved new changes to this record after your draft was taken. Restoring your draft will overwrite their changes.",
+      "compare": "Show both",
+      "restoreAnyway": "Restore my draft",
+      "discardDraft": "Discard my draft",
+      "keepServer": "Keep server version"
+    },
+    "just": "just now",
+    "agoMinutes_one": "{{count}} minute ago",
+    "agoMinutes_other": "{{count}} minutes ago",
+    "agoHours_one": "{{count}} hour ago",
+    "agoHours_other": "{{count}} hours ago",
+    "agoDays_one": "{{count}} day ago",
+    "agoDays_other": "{{count}} days ago"
   }
 }
 

@@ -16,6 +16,12 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/use-toast'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
+import { useDraftKeeper } from '@/lib/draftKeeper'
+import {
+  DraftSavePill,
+  DraftRestoreBanner,
+  DraftConflictDialog,
+} from '@/components/draft'
 import {
   proposalBudgetService,
   proposalSubmissionService,
@@ -63,6 +69,14 @@ type LineState = {
   notes: string
 }
 
+/**
+ * Combined value DraftKeeper persists — header + lines are stored together
+ * so restoring one without the other can't leave the form in a weird
+ * half-state. Keyed by (proposalId, partnerId); the wp_id inside each line
+ * survives coordinator-side WP reorders because the id is server-assigned.
+ */
+type BudgetDraft = { header: HeaderState; lines: LineState[] }
+
 const EMPTY_HEADER: HeaderState = {
   pm_rate_currency: 'EUR',
   pm_rate_amount: null,
@@ -89,7 +103,7 @@ interface Props {
 export function ProposalBudgetForm({
   proposal, partner, document, submission, locked, onBack, onChanged,
 }: Props) {
-  const { user } = useAuthStore()
+  const { user, orgId: memberOrgId } = useAuthStore()
   const [header, setHeader] = useState<HeaderState>(EMPTY_HEADER)
   const [wps, setWps] = useState<ProposalWorkPackage[]>([])
   const [lines, setLines] = useState<LineState[]>([])
@@ -97,7 +111,9 @@ export function ProposalBudgetForm({
   const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
-  const [dirty, setDirty] = useState(false)
+  const [baseline, setBaseline] = useState<BudgetDraft | null>(null)
+  const [serverUpdatedAt, setServerUpdatedAt] = useState<string | null>(null)
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -112,7 +128,7 @@ export function ProposalBudgetForm({
         setWps(wpRows)
 
         if (budget) {
-          setHeader({
+          const loadedHeader: HeaderState = {
             pm_rate_currency: budget.pm_rate_currency ?? 'EUR',
             pm_rate_amount: budget.pm_rate_amount,
             budget_travel: budget.budget_travel ?? 0,
@@ -123,13 +139,15 @@ export function ProposalBudgetForm({
             indirect_cost_rate: budget.indirect_cost_rate ?? 25,
             indirect_cost_base: budget.indirect_cost_base ?? 'all_except_subcontracting',
             notes: budget.notes ?? '',
-          })
+          }
+          setHeader(loadedHeader)
           setLastSavedAt(new Date(budget.updated_at))
+          setServerUpdatedAt(budget.updated_at)
           // Seed lines from persisted values, one per existing WP. Any WP
           // without a stored line starts at 0 PMs.
           const byWp = new Map<string, ProposalBudgetLine>()
           for (const l of budget.lines ?? []) byWp.set(l.wp_id, l)
-          setLines(wpRows.map(wp => {
+          const loadedLines: LineState[] = wpRows.map(wp => {
             const l = byWp.get(wp.id)
             return {
               wp_id: wp.id,
@@ -137,12 +155,17 @@ export function ProposalBudgetForm({
               partner_role: l?.partner_role ?? 'partner',
               notes: l?.notes ?? '',
             }
-          }))
+          })
+          setLines(loadedLines)
+          setBaseline({ header: loadedHeader, lines: loadedLines })
         } else {
+          const emptyLines = wpRows.map(wp => ({
+            wp_id: wp.id, person_months: 0, partner_role: 'partner' as const, notes: '',
+          }))
           setHeader(EMPTY_HEADER)
-          setLines(wpRows.map(wp => ({
-            wp_id: wp.id, person_months: 0, partner_role: 'partner', notes: '',
-          })))
+          setLines(emptyLines)
+          setBaseline({ header: EMPTY_HEADER, lines: emptyLines })
+          setServerUpdatedAt(null)
         }
       } catch (err) {
         toast({
@@ -160,13 +183,47 @@ export function ProposalBudgetForm({
 
   const patchHeader = useCallback(<K extends keyof HeaderState>(key: K, value: HeaderState[K]) => {
     setHeader(prev => ({ ...prev, [key]: value }))
-    setDirty(true)
   }, [])
 
   const patchLine = useCallback((wpId: string, patch: Partial<LineState>) => {
     setLines(prev => prev.map(l => l.wp_id === wpId ? { ...l, ...patch } : l))
-    setDirty(true)
   }, [])
+
+  // Combined draft value — header + lines travel together in storage so a
+  // partial restore can't leave the form inconsistent.
+  const draftValue = useMemo<BudgetDraft>(() => ({ header, lines }), [header, lines])
+
+  const draft = useDraftKeeper<BudgetDraft>({
+    key: {
+      orgId: memberOrgId ?? '_collab',
+      userId: user?.id ?? '_anon',
+      formKey: 'proposal-budget',
+      recordId: `${proposal.id}:${partner.id}`,
+    },
+    value: draftValue,
+    setValue: (next) => {
+      setHeader(next.header)
+      // Reconcile restored lines against current WP list so removed-WP
+      // rows drop out and newly-added WPs appear with defaults.
+      const byWp = new Map(next.lines.map(l => [l.wp_id, l]))
+      setLines(wps.map(wp => byWp.get(wp.id) ?? {
+        wp_id: wp.id, person_months: 0, partner_role: 'partner', notes: '',
+      }))
+    },
+    enabled: !locked && !loading,
+    serverLastModified: serverUpdatedAt,
+    schemaVersion: 1,
+    baseline,
+    silentRestoreWindowMs: 0,
+  })
+
+  useEffect(() => {
+    if (draft.hasDraft && draft.conflict) {
+      setConflictDialogOpen(true)
+    } else if (!draft.hasDraft) {
+      setConflictDialogOpen(false)
+    }
+  }, [draft.hasDraft, draft.conflict])
 
   // ── Derived totals ──────────────────────────────────────────────
   const totals = useMemo(() => {
@@ -215,7 +272,10 @@ export function ProposalBudgetForm({
           })),
       )
       setLastSavedAt(new Date())
-      setDirty(false)
+      // Promote current state to the new baseline — DraftKeeper then sees
+      // value === baseline and clears the local draft automatically.
+      setBaseline({ header, lines })
+      setServerUpdatedAt(savedHeader.updated_at)
 
       let sub = submission
       if (!sub) {
@@ -255,15 +315,9 @@ export function ProposalBudgetForm({
     }
   }, [header, lines, proposal.id, partner.id, document.id, saving, submitting, submission, user?.id])
 
-  // Auto-save on unmount if dirty.
-  useEffect(() => {
-    return () => {
-      if (dirty && !locked) {
-        void doSave({ silent: true })
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, locked])
+  // (Unmount-save removed — DraftKeeper's localStorage autosave plus the
+  // tab-lifecycle pagehide/beforeunload flushes cover this case, and
+  // unmount-saves caused double-write races in Strict Mode.)
 
   const handleSubmitForReview = async () => {
     if (submitting || saving) return
@@ -321,6 +375,26 @@ export function ProposalBudgetForm({
 
   return (
     <div className="space-y-4">
+      {draft.hasDraft && !draft.conflict && (
+        <DraftRestoreBanner
+          ageMs={draft.draftAge}
+          onRestore={draft.restore}
+          onDiscard={draft.discard}
+        />
+      )}
+      <DraftConflictDialog
+        open={conflictDialogOpen}
+        onOpenChange={setConflictDialogOpen}
+        onRestoreAnyway={() => {
+          draft.restore()
+          setConflictDialogOpen(false)
+        }}
+        onKeepServer={() => {
+          draft.discard()
+          setConflictDialogOpen(false)
+        }}
+      />
+
       {/* Header bar */}
       <Card>
         <CardContent className="pt-4 flex items-start justify-between gap-4">
@@ -340,7 +414,7 @@ export function ProposalBudgetForm({
                 Saved {lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
             )}
-            {dirty && <span className="text-amber-700">Unsaved changes</span>}
+            <DraftSavePill status={draft.status} lastSavedAt={draft.lastSavedAt} />
             {submission?.status && (
               <Badge variant="outline" className="text-[10px] mt-1 capitalize">
                 {submission.status.replace('_', ' ')}
@@ -554,7 +628,12 @@ export function ProposalBudgetForm({
                 : 'Fill in the average PM rate to submit.'}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={locked || saving || !dirty} onClick={() => void doSave()}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={locked || saving || !draft.isDirty}
+                onClick={() => void doSave()}
+              >
                 {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
                 Save draft
               </Button>
