@@ -112,7 +112,12 @@ export function Sidebar() {
             ? 'w-64 translate-x-0 border-r'
             : '-translate-x-full w-64 border-r lg:-translate-x-0 lg:w-0 lg:border-r-0 lg:overflow-hidden',
         )}
-        aria-hidden={!sidebarOpen ? 'true' : undefined}
+        // Use `inert` (not `aria-hidden`) when the sidebar is collapsed so
+        // focus can't get stuck on an active nav link inside an
+        // invisible container — modern Chromium / Edge warn about
+        // aria-hidden on a focused ancestor. React 18 types don't know
+        // `inert` yet; spread it conditionally as a native attribute.
+        {...(!sidebarOpen ? { inert: '' } : {})}
       >
         <div className="flex h-16 items-center justify-between border-b px-6">
           <div className="flex items-center gap-2 min-w-0">
