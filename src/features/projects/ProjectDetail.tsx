@@ -24,7 +24,19 @@ import { BudgetConsumptionChart } from './BudgetConsumptionChart'
 import { ProjectExpenses } from './ProjectExpenses'
 import { ProjectGanttChart } from './ProjectGanttChart'
 import { collabTaskEffortService, collabPartnerService, collabWpService, collabTaskService } from '@/services/collabProjectService'
+import { useDraftKeeper } from '@/lib/draftKeeper'
+import { DraftSavePill, DraftRestoreBanner } from '@/components/draft'
 import type { WorkPackage, PmBudget, Assignment, CollabPartner, CollabWorkPackage, CollabTask, CollabPartnerTaskEffort } from '@/types'
+
+/**
+ * Composite draft for both PM-budget editors on the project page. They
+ * share a single envelope keyed by projectId so a partial save (e.g. user
+ * saves annual budgets but not per-WP) doesn't orphan half the draft.
+ */
+type PmBudgetDraft = {
+  pmBudgetValues: Record<number, number>
+  wpPmBudgets: Record<string, number>
+}
 
 type DetailTab = 'general' | 'budget' | 'expenses' | 'workpackages' | 'periods' | 'deliverables' | 'reporting' | 'effort' | 'timeline' | 'documents'
 
@@ -54,7 +66,7 @@ export function ProjectDetail() {
   const { id } = useParams<{ id: string }>()
   const { project, isLoading } = useProject(id)
   const { workPackages, isLoading: loadingWPs, refetch: refetchWPs } = useWorkPackages(id)
-  const { orgId, can } = useAuthStore()
+  const { orgId, can, user } = useAuthStore()
   const [detailTab, setDetailTab] = useState<DetailTab>('general')
 
   const [wpNumber, setWpNumber] = useState<number>(1)
@@ -125,6 +137,7 @@ export function ProjectDetail() {
   const [wpPmBudgets, setWpPmBudgets] = useState<Record<string, number>>({})
   const [wpPmBudgetDirty, setWpPmBudgetDirty] = useState(false)
   const [wpPmBudgetSaving, setWpPmBudgetSaving] = useState(false)
+  const [pmBudgetBaseline, setPmBudgetBaseline] = useState<PmBudgetDraft | null>(null)
 
   // Allocations for this project (to show allocated vs budget)
   const [projectAllocations, setProjectAllocations] = useState<Assignment[]>([])
@@ -159,12 +172,40 @@ export function ProjectDetail() {
       setWpPmBudgets(wpMap)
       setPmBudgetDirty(false)
       setWpPmBudgetDirty(false)
+      setPmBudgetBaseline({ pmBudgetValues: map, wpPmBudgets: wpMap })
     } catch { /* ignore */ }
   }, [id])
 
   useEffect(() => {
     loadPmBudgets()
   }, [loadPmBudgets])
+
+  // Composite draft for both PM-budget editors. One envelope keyed by
+  // projectId carries both the annual and per-WP maps so a mid-edit
+  // reload restores the full in-progress state.
+  const pmBudgetDraftValue = useMemo<PmBudgetDraft>(
+    () => ({ pmBudgetValues, wpPmBudgets }),
+    [pmBudgetValues, wpPmBudgets],
+  )
+  const pmBudgetDraft = useDraftKeeper<PmBudgetDraft>({
+    key: {
+      orgId: orgId ?? '_no-org',
+      userId: user?.id ?? '_anon',
+      formKey: 'project-pm-budgets',
+      recordId: id ?? 'new',
+    },
+    value: pmBudgetDraftValue,
+    setValue: (next) => {
+      setPmBudgetValues(next.pmBudgetValues)
+      setWpPmBudgets(next.wpPmBudgets)
+      setPmBudgetDirty(true)
+      setWpPmBudgetDirty(true)
+    },
+    enabled: !!id && !!orgId && can('canManageProjects') && pmBudgetBaseline != null,
+    schemaVersion: 1,
+    baseline: pmBudgetBaseline,
+    silentRestoreWindowMs: 0,
+  })
 
   // Load KPI counts for summary
   useEffect(() => {
@@ -566,8 +607,20 @@ export function ProjectDetail() {
 
         {/* ── Budget Tab ─────────────────────────────────────── */}
         <TabsContent value="budget" className="mt-4 space-y-6">
+          {pmBudgetDraft.hasDraft && (
+            <DraftRestoreBanner
+              ageMs={pmBudgetDraft.draftAge}
+              onRestore={pmBudgetDraft.restore}
+              onDiscard={pmBudgetDraft.discard}
+            />
+          )}
           <Card>
-            <CardHeader><CardTitle>{t('projects.budgetBreakdown')}</CardTitle></CardHeader>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle>{t('projects.budgetBreakdown')}</CardTitle>
+                <DraftSavePill status={pmBudgetDraft.status} lastSavedAt={pmBudgetDraft.lastSavedAt} />
+              </div>
+            </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>

@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Send, CheckCircle, XCircle, RotateCcw, Clock, Plus, Trash2, Save } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
+import { useDraftKeeper } from '@/lib/draftKeeper'
+import { DraftSavePill, DraftRestoreBanner } from '@/components/draft'
 import { collabReportService, collabLineService, collabWpService, collabPartnerService, collabAllocService, collabProjectService } from '@/services/collabProjectService'
 import { emailService } from '@/services/emailService'
 import { Button } from '@/components/ui/button'
@@ -30,11 +32,24 @@ const SECTIONS: { key: CollabReportSection; labelKey: string }[] = [
   { key: 'other_goods', labelKey: 'collaboration.sectionOtherGoods' },
 ]
 
+/**
+ * Shape DraftKeeper persists for this page. Covers the three pieces of
+ * user input that have no server counterpart yet: edits to existing lines
+ * (keyed by line id), the array of unsaved new lines, and the coordinator's
+ * rejection note. If the user's session ends mid-edit, these are all
+ * recoverable on next load.
+ */
+type CollabReportDraft = {
+  editData: Record<string, { amount: string; justification: string }>
+  newLines: { section: CollabReportSection; wp_id: string; amount: string; justification: string }[]
+  rejectionNote: string
+}
+
 export function CollabReportPage() {
   const { t } = useTranslation()
   const { reportId } = useParams<{ reportId: string }>()
   const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const { user, orgId: memberOrgId } = useAuthStore()
   const [report, setReport] = useState<CollabReport | null>(null)
   const [lines, setLines] = useState<CollabReportLine[]>([])
   const [wps, setWps] = useState<CollabWorkPackage[]>([])
@@ -45,6 +60,7 @@ export function CollabReportPage() {
   const [saving, setSaving] = useState(false)
   const [rejectionNote, setRejectionNote] = useState('')
   const [showRejectForm, setShowRejectForm] = useState(false)
+  const [baseline, setBaseline] = useState<CollabReportDraft | null>(null)
 
   // Editable line data — keyed by line ID
   const [editData, setEditData] = useState<Record<string, { amount: string; justification: string }>>({})
@@ -94,6 +110,11 @@ export function CollabReportPage() {
         }
       }
       setEditData(ed)
+      setNewLines([])
+      setRejectionNote('')
+      // Baseline reflects pristine server state — any user-side diff from
+      // this set is "unsaved work" as far as DraftKeeper is concerned.
+      setBaseline({ editData: ed, newLines: [], rejectionNote: '' })
     } catch {
       toast({ title: t('common.error'), description: t('collaboration.failedToLoadReport'), variant: 'destructive' })
     } finally {
@@ -104,8 +125,35 @@ export function CollabReportPage() {
   useEffect(() => { load() }, [reportId])
 
   const canEdit = report?.status === 'draft' || report?.status === 'rejected'
-  const canSubmit = canEdit && lines.length > 0
   const canReview = report?.status === 'submitted'
+
+  const draftValue = useMemo<CollabReportDraft>(
+    () => ({ editData, newLines, rejectionNote }),
+    [editData, newLines, rejectionNote],
+  )
+
+  // DraftKeeper persists partner + coordinator edits alike. Role-based
+  // visibility of the reject form means a partner and a coordinator can't
+  // contend over the same fields on the same user account.
+  const draft = useDraftKeeper<CollabReportDraft>({
+    key: {
+      orgId: memberOrgId ?? '_collab',
+      userId: user?.id ?? '_anon',
+      formKey: 'collab-report',
+      recordId: reportId ?? 'new',
+    },
+    value: draftValue,
+    setValue: (next) => {
+      setEditData(next.editData)
+      setNewLines(next.newLines)
+      setRejectionNote(next.rejectionNote)
+    },
+    enabled: !loading && !!reportId && (canEdit || canReview),
+    schemaVersion: 1,
+    baseline,
+    silentRestoreWindowMs: 0,
+  })
+  const canSubmit = canEdit && lines.length > 0
 
   const handleSaveLine = async (lineId: string) => {
     const ed = editData[lineId]
@@ -298,6 +346,14 @@ export function CollabReportPage() {
 
   return (
     <div className="space-y-6">
+      {draft.hasDraft && (
+        <DraftRestoreBanner
+          ageMs={draft.draftAge}
+          onRestore={draft.restore}
+          onDiscard={draft.discard}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
@@ -321,6 +377,7 @@ export function CollabReportPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <DraftSavePill status={draft.status} lastSavedAt={draft.lastSavedAt} />
           {canEdit && (
             <>
               <Button variant="outline" onClick={handleSaveAll} disabled={saving} className="gap-2">

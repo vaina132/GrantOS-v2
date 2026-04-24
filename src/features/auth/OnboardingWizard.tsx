@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
+import { useDraftKeeper } from '@/lib/draftKeeper'
+import { DraftSavePill, DraftRestoreBanner } from '@/components/draft'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,6 +14,36 @@ import { Building2, ArrowRight, Check } from 'lucide-react'
 import { CURRENCIES } from '@/data/currencies'
 
 type Step = 'org' | 'project' | 'done'
+
+/**
+ * One draft envelope covering both phases of onboarding. Per the team
+ * Decision C, using separate keys per phase would mean the 'org' draft
+ * silently goes stale the moment the user advances — so we carry `step`
+ * and the already-created `orgId` inside the draft. On reload mid-wizard
+ * we jump straight back to the right phase without making the user
+ * re-type the organisation they already created on the server.
+ */
+type OnboardingDraft = {
+  step: Step
+  orgName: string
+  currency: string
+  projectAcronym: string
+  projectTitle: string
+  startDate: string
+  endDate: string
+  orgId: string | null
+}
+
+const EMPTY_ONBOARDING: OnboardingDraft = {
+  step: 'org',
+  orgName: '',
+  currency: 'EUR',
+  projectAcronym: '',
+  projectTitle: '',
+  startDate: '',
+  endDate: '',
+  orgId: null,
+}
 
 export function OnboardingWizard() {
   const { t } = useTranslation()
@@ -39,6 +71,41 @@ export function OnboardingWizard() {
   const [endDate, setEndDate] = useState('')
 
   const [orgId, setOrgId] = useState<string | null>(null)
+
+  const draftValue = useMemo<OnboardingDraft>(
+    () => ({ step, orgName, currency, projectAcronym, projectTitle, startDate, endDate, orgId }),
+    [step, orgName, currency, projectAcronym, projectTitle, startDate, endDate, orgId],
+  )
+
+  // Single-key-with-phase draft (team Decision C). User has no org yet,
+  // so we use the sentinel '_no-org' for orgId in the key. The draft
+  // auto-clears when the user hits the 'done' terminal state.
+  const draft = useDraftKeeper<OnboardingDraft>({
+    key: {
+      orgId: '_no-org',
+      userId: user?.id ?? '_anon',
+      formKey: 'onboarding',
+      recordId: 'new',
+    },
+    value: draftValue,
+    setValue: (next) => {
+      // Never rehydrate into 'done' — it's a terminal state with no
+      // recoverable intent. If the draft was saved at 'done', treat it
+      // as already finished and drop to the initial step.
+      setStep(next.step === 'done' ? 'org' : next.step)
+      setOrgName(next.orgName)
+      setCurrency(next.currency || 'EUR')
+      setProjectAcronym(next.projectAcronym)
+      setProjectTitle(next.projectTitle)
+      setStartDate(next.startDate)
+      setEndDate(next.endDate)
+      setOrgId(next.orgId)
+    },
+    enabled: !!user?.id && step !== 'done',
+    schemaVersion: 1,
+    baseline: EMPTY_ONBOARDING,
+    silentRestoreWindowMs: 0,
+  })
 
   const handleCreateOrg = async () => {
     if (!orgName.trim() || !user) return
@@ -102,6 +169,10 @@ export function OnboardingWizard() {
       }).catch(() => { /* non-blocking */ })
     }
 
+    // Onboarding committed — drop the draft so the user doesn't see a
+    // restore banner the next time they land somewhere form-y.
+    draft.discard()
+
     // Re-initialize auth to pick up the new org membership
     window.location.href = '/dashboard'
   }
@@ -112,6 +183,21 @@ export function OnboardingWizard() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-4">
+      <div className="w-full max-w-lg space-y-3">
+        {draft.hasDraft && (
+          <DraftRestoreBanner
+            ageMs={draft.draftAge}
+            onRestore={draft.restore}
+            onDiscard={draft.discard}
+          />
+        )}
+        <div className="flex justify-end">
+          <DraftSavePill
+            status={draft.status}
+            lastSavedAt={draft.lastSavedAt}
+            className="text-white/80"
+          />
+        </div>
       <Card className="w-full max-w-lg border-0 shadow-2xl">
         {step === 'org' && (
           <>
@@ -260,6 +346,7 @@ export function OnboardingWizard() {
           </>
         )}
       </Card>
+      </div>
     </div>
   )
 }

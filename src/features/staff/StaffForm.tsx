@@ -4,6 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useDraftKeeper } from '@/lib/draftKeeper'
+import { DraftSavePill, DraftRestoreBanner } from '@/components/draft'
 import { apiFetch } from '@/lib/apiClient'
 import { staffService } from '@/services/staffService'
 import { settingsService } from '@/services/settingsService'
@@ -131,9 +133,11 @@ export function StaffForm() {
     }
   }, [watchedCountry, setValue])
 
+  const [baseline, setBaseline] = useState<StaffFormData | null>(null)
+
   useEffect(() => {
     if (person) {
-      reset({
+      const loaded: StaffFormData = {
         full_name: person.full_name,
         email: person.email ?? '',
         department: person.department ?? '',
@@ -147,10 +151,57 @@ export function StaffForm() {
         country: person.country ?? '',
         region: person.region ?? '',
         is_active: person.is_active,
-      })
+      }
+      reset(loaded)
+      setBaseline(loaded)
       setExistingAvatarUrl(person.avatar_url ?? null)
     }
-  }, [person, reset])
+  }, [person, reset, orgDefaultVacationDays])
+
+  // For new-person mode the baseline is the empty defaults once we know
+  // the org's default vacation days. Only set it once — otherwise the
+  // baseline would keep flipping with every render and mask real edits.
+  useEffect(() => {
+    if (!isEdit && baseline == null) {
+      setBaseline({
+        full_name: '',
+        email: '',
+        department: '',
+        role: '',
+        employment_type: 'Full-time',
+        fte: 1,
+        start_date: '',
+        end_date: '',
+        annual_salary: null,
+        vacation_days_per_year: orgDefaultVacationDays,
+        country: '',
+        region: '',
+        is_active: true,
+      })
+    }
+  }, [isEdit, baseline, orgDefaultVacationDays])
+
+  // Watch every form field in one pass so DraftKeeper gets a single,
+  // debounced value to diff. useWatch returns a fresh object on each
+  // field change — that's what we want for autosave.
+  const watched = useWatch({ control }) as StaffFormData
+
+  const draft = useDraftKeeper<StaffFormData>({
+    key: {
+      orgId: orgId ?? '_no-org',
+      userId: user?.id ?? '_anon',
+      formKey: 'staff-form',
+      recordId: isEdit ? (id ?? 'new') : 'new',
+    },
+    value: watched,
+    setValue: (next) => reset(next),
+    enabled: !!orgId && !(isEdit && loadingPerson),
+    schemaVersion: 1,
+    // Staff records contain personal data — always show the banner, never
+    // silent-restore (Decision A).
+    silentRestoreWindowMs: 0,
+    baseline,
+  })
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -278,6 +329,9 @@ export function StaffForm() {
         await staffService.update(savedPerson.id, { avatar_url: null })
       }
       invalidateStaff()
+      // Committed — drop any in-flight draft so the next visit to this
+      // route doesn't offer a stale restore.
+      draft.discard()
       navigate('/staff')
     } catch (err) {
       const message = err instanceof Error ? err.message : t('common.failedToSave')
@@ -301,11 +355,22 @@ export function StaffForm() {
       <PageHeader
         title={isEdit ? `${t('common.edit')} ${person?.full_name ?? t('common.person')}` : t('staff.addNewPerson')}
         actions={
-          <Button variant="outline" onClick={() => navigate('/staff')}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> {t('common.back')}
-          </Button>
+          <div className="flex items-center gap-3">
+            <DraftSavePill status={draft.status} lastSavedAt={draft.lastSavedAt} />
+            <Button variant="outline" onClick={() => navigate('/staff')}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> {t('common.back')}
+            </Button>
+          </div>
         }
       />
+
+      {draft.hasDraft && (
+        <DraftRestoreBanner
+          ageMs={draft.draftAge}
+          onRestore={draft.restore}
+          onDiscard={draft.discard}
+        />
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="grid gap-6 lg:grid-cols-2">

@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
+import { useDraftKeeper } from '@/lib/draftKeeper'
+import { DraftSavePill, DraftRestoreBanner } from '@/components/draft'
 import {
   DATA_SOURCES,
   getDataSource,
@@ -52,6 +54,25 @@ interface ReportBuilderProps {
 
 type BuilderStep = 'source' | 'columns' | 'filters' | 'visualise' | 'preview'
 
+/**
+ * Everything the user has configured in the wizard. `step` is persisted
+ * so reload rehydrates to the same screen the user was on. Preview /
+ * export state is transient and not persisted.
+ */
+type ReportBuilderDraft = {
+  step: BuilderStep
+  source: ReportDataSource | null
+  selectedColumns: string[]
+  filters: Record<string, unknown>
+  groupBy: string | null
+  sortField: string | null
+  sortDir: 'asc' | 'desc'
+  chartType: ReportChartType
+  reportName: string
+  reportDesc: string
+  isShared: boolean
+}
+
 const STEPS: { key: BuilderStep; label: string }[] = [
   { key: 'source', label: 'Data Source' },
   { key: 'columns', label: 'Columns' },
@@ -86,6 +107,59 @@ export function ReportBuilder({ editTemplate, onClose, onSaved }: ReportBuilderP
   const [exporting, setExporting] = useState(false)
 
   const sourceDef = useMemo(() => source ? getDataSource(source) : null, [source])
+
+  // DraftKeeper: persists the entire wizard state so a reload in the
+  // middle of configuring a report never forces the user to start over.
+  // Baseline is the initial values derived from editTemplate (or the
+  // brand-new empty state) — edits diverge, draft catches.
+  const baseline = useMemo<ReportBuilderDraft>(() => ({
+    step: editTemplate ? 'columns' : 'source',
+    source: editTemplate?.data_source ?? null,
+    selectedColumns: editTemplate?.config.columns ?? [],
+    filters: editTemplate?.config.filters ?? {},
+    groupBy: editTemplate?.config.group_by ?? null,
+    sortField: editTemplate?.config.sort_by?.field ?? null,
+    sortDir: editTemplate?.config.sort_by?.direction ?? 'asc',
+    chartType: editTemplate?.config.chart_type ?? 'table',
+    reportName: editTemplate?.name ?? '',
+    reportDesc: editTemplate?.description ?? '',
+    isShared: editTemplate?.is_shared ?? false,
+  }), [editTemplate])
+
+  const draftValue = useMemo<ReportBuilderDraft>(
+    () => ({
+      step, source, selectedColumns, filters, groupBy, sortField, sortDir,
+      chartType, reportName, reportDesc, isShared,
+    }),
+    [step, source, selectedColumns, filters, groupBy, sortField, sortDir, chartType, reportName, reportDesc, isShared],
+  )
+
+  const draft = useDraftKeeper<ReportBuilderDraft>({
+    key: {
+      orgId: orgId ?? '_no-org',
+      userId: user?.id ?? '_anon',
+      formKey: 'report-builder',
+      recordId: editTemplate?.id ?? 'new',
+    },
+    value: draftValue,
+    setValue: (next) => {
+      setStep(next.step)
+      setSource(next.source)
+      setSelectedColumns(next.selectedColumns)
+      setFilters(next.filters)
+      setGroupBy(next.groupBy)
+      setSortField(next.sortField)
+      setSortDir(next.sortDir)
+      setChartType(next.chartType)
+      setReportName(next.reportName)
+      setReportDesc(next.reportDesc)
+      setIsShared(next.isShared)
+    },
+    enabled: !!orgId && !!user,
+    schemaVersion: 1,
+    baseline,
+    silentRestoreWindowMs: 0,
+  })
 
   const currentStepIdx = STEPS.findIndex(s => s.key === step)
   const canGoNext = (() => {
@@ -168,6 +242,7 @@ export function ReportBuilder({ editTemplate, onClose, onSaved }: ReportBuilderP
         })
         toast({ title: 'Report saved', description: `"${reportName}" is now available in your reports.` })
       }
+      draft.discard()
       onSaved()
     } catch (err) {
       toast({ title: 'Error', description: err instanceof Error ? err.message : 'Failed to save', variant: 'destructive' })
@@ -231,7 +306,17 @@ export function ReportBuilder({ editTemplate, onClose, onSaved }: ReportBuilderP
             )}
           </div>
         </div>
+        <DraftSavePill status={draft.status} lastSavedAt={draft.lastSavedAt} />
       </div>
+
+      {draft.hasDraft && (
+        <DraftRestoreBanner
+          ageMs={draft.draftAge}
+          onRestore={draft.restore}
+          onDiscard={draft.discard}
+          className="mb-4"
+        />
+      )}
 
       {/* ── Step indicator ── */}
       <div className="flex items-center gap-1 mb-8">

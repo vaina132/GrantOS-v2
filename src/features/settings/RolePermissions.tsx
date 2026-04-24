@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useDraftKeeper } from '@/lib/draftKeeper'
+import { DraftSavePill, DraftRestoreBanner } from '@/components/draft'
 import { useTranslation } from 'react-i18next'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
@@ -59,12 +61,13 @@ type RolePermissionMap = Record<string, Partial<RolePermission>>
 
 export function RolePermissions() {
   const { t } = useTranslation()
-  const { orgId } = useAuthStore()
+  const { orgId, user } = useAuthStore()
   const [permissions, setPermissions] = useState<RolePermissionMap>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [selectedRole, setSelectedRole] = useState<OrgRole>('Project Manager')
+  const [baseline, setBaseline] = useState<RolePermissionMap | null>(null)
 
   const fetchPermissions = useCallback(async () => {
     if (!orgId) return
@@ -82,6 +85,7 @@ export function RolePermissions() {
         map[rp.role] = rp
       }
       setPermissions(map)
+      setBaseline(map)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load role permissions'
       toast({ title: t('common.error'), description: message, variant: 'destructive' })
@@ -93,6 +97,32 @@ export function RolePermissions() {
   useEffect(() => {
     fetchPermissions()
   }, [fetchPermissions])
+
+  // Role-permission drafts ARE sensitive security state. Two deviations
+  // from the standard DraftKeeper config (per the security decision):
+  //   1. TTL capped at 24h — a week-old draft suggesting a permission flip
+  //      could be weaponised if a forgotten tab resurfaces. Prefer short
+  //      half-life over convenience.
+  //   2. Never silent-restore. Even within the TTL, the user must make an
+  //      explicit choice via the banner — no surprise flips.
+  const draft = useDraftKeeper<RolePermissionMap>({
+    key: {
+      orgId: orgId ?? '_no-org',
+      userId: user?.id ?? '_anon',
+      formKey: 'role-permissions',
+      recordId: 'all',
+    },
+    value: permissions,
+    setValue: (next) => {
+      setPermissions(next)
+      setDirty(true)
+    },
+    enabled: !!orgId && !loading && baseline != null,
+    schemaVersion: 1,
+    baseline,
+    ttlMs: 24 * 60 * 60 * 1_000,
+    silentRestoreWindowMs: 0,
+  })
 
   const getPermValue = (role: OrgRole, key: keyof RolePermission): boolean => {
     const rp = permissions[role]
@@ -179,6 +209,9 @@ export function RolePermissions() {
 
       toast({ title: t('common.success'), description: t('settings.permissionsSaved') })
       setDirty(false)
+      // Security-adjacent state — drop the local draft the moment the
+      // change is committed server-side, so nothing stale lingers.
+      draft.discard()
       fetchPermissions()
     } catch (err) {
       const message = err instanceof Error ? err.message : t('common.error')
@@ -287,6 +320,14 @@ export function RolePermissions() {
   )
 
   return (
+    <div className="space-y-3">
+    {draft.hasDraft && (
+      <DraftRestoreBanner
+        ageMs={draft.draftAge}
+        onRestore={draft.restore}
+        onDiscard={draft.discard}
+      />
+    )}
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div>
@@ -298,7 +339,8 @@ export function RolePermissions() {
             {t('settings.rolePermDesc')}
           </CardDescription>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <DraftSavePill status={draft.status} lastSavedAt={draft.lastSavedAt} />
           <Button variant="outline" size="sm" onClick={handleResetToDefaults} className="gap-1.5">
             <RotateCcw className="h-3.5 w-3.5" />
             {t('settings.resetToDefaults')}
@@ -360,5 +402,6 @@ export function RolePermissions() {
         </div>
       </CardContent>
     </Card>
+    </div>
   )
 }

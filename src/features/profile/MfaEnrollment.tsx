@@ -6,10 +6,24 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/use-toast'
-import { ShieldCheck, QrCode, Trash2, CheckCircle, Loader2 } from 'lucide-react'
+import { ShieldCheck, QrCode, Trash2, CheckCircle, Loader2, AlertTriangle } from 'lucide-react'
 import { writeSecurityAudit } from '@/services/auditWriter'
 
 type MfaStatus = 'loading' | 'not-enrolled' | 'enrolling' | 'verifying' | 'enrolled'
+
+/**
+ * Unlike every other form in GrantLume, MFA enrollment intentionally
+ * does NOT use DraftKeeper. TOTP secrets and QR codes are sensitive
+ * enough that persisting them to localStorage would be a meaningful
+ * regression — someone with disk access to the browser profile could
+ * reconstruct the seed even if the user never completed verification.
+ *
+ * Instead, we surface Supabase's own record of unverified factors as
+ * the orphan signal. If the user starts enrollment and walks away, the
+ * next visit shows an explicit "you have an unfinished MFA setup"
+ * warning with explicit resume/remove actions — no automatic rehydration
+ * of QR/secret.
+ */
 
 export function MfaEnrollment() {
   const { t } = useTranslation()
@@ -20,6 +34,10 @@ export function MfaEnrollment() {
   const [verifyCode, setVerifyCode] = useState('')
   const [verifying, setVerifying] = useState(false)
   const [unenrolling, setUnenrolling] = useState(false)
+  // Id of any orphan (unverified) factor left behind by a previous
+  // enrollment attempt that didn't complete. We only expose a
+  // resume/remove affordance — never auto-restore the QR/secret.
+  const [orphanFactorId, setOrphanFactorId] = useState<string | null>(null)
 
   useEffect(() => {
     checkMfaStatus()
@@ -29,16 +47,52 @@ export function MfaEnrollment() {
     setStatus('loading')
     try {
       const { data } = await supabase.auth.mfa.listFactors()
-      const totp = data?.totp?.[0]
-      if (totp && totp.status === 'verified') {
-        setFactorId(totp.id)
+      const factors = data?.totp ?? []
+      const verified = factors.find((f) => f.status === 'verified')
+      const unverified = factors.find((f) => f.status !== 'verified')
+      if (verified) {
+        setFactorId(verified.id)
+        setOrphanFactorId(null)
         setStatus('enrolled')
       } else {
         setFactorId(null)
+        // A lingering unverified factor is an orphan — surface it so the
+        // user can resume or remove explicitly.
+        setOrphanFactorId(unverified?.id ?? null)
         setStatus('not-enrolled')
       }
     } catch {
+      setOrphanFactorId(null)
       setStatus('not-enrolled')
+    }
+  }
+
+  /**
+   * Remove the orphan and start a fresh enrollment. We can't re-show the
+   * original QR — Supabase doesn't expose the secret after enroll —
+   * so the only safe path is to unenroll and re-enroll.
+   */
+  const handleResumeOrphan = async () => {
+    if (!orphanFactorId) return
+    try {
+      await supabase.auth.mfa.unenroll({ factorId: orphanFactorId }).catch(() => {})
+      setOrphanFactorId(null)
+      await handleStartEnrollment()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to resume MFA setup'
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
+    }
+  }
+
+  const handleRemoveOrphan = async () => {
+    if (!orphanFactorId) return
+    try {
+      await supabase.auth.mfa.unenroll({ factorId: orphanFactorId })
+      setOrphanFactorId(null)
+      writeSecurityAudit({ action: 'mfa_unenroll', details: 'Removed unverified TOTP factor' })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to remove unverified factor'
+      toast({ title: t('common.error'), description: message, variant: 'destructive' })
     }
   }
 
@@ -126,6 +180,28 @@ export function MfaEnrollment() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             {t('common.loading')}
+          </div>
+        )}
+
+        {orphanFactorId && status === 'not-enrolled' && (
+          <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm dark:border-amber-900/40 dark:bg-amber-900/15">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" strokeWidth={2} />
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-amber-900 dark:text-amber-200">
+                Unfinished MFA setup
+              </div>
+              <p className="mt-0.5 text-xs text-amber-900/80 dark:text-amber-200/80">
+                You started setting up two-factor authentication but didn't finish verifying it. For security we can't show the original QR again — start fresh or remove the pending setup.
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button size="sm" variant="outline" onClick={handleRemoveOrphan}>
+                Remove
+              </Button>
+              <Button size="sm" onClick={handleResumeOrphan}>
+                Start fresh
+              </Button>
+            </div>
           </div>
         )}
 

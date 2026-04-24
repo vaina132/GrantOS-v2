@@ -1,6 +1,8 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { grantAIService } from '@/services/grantAIService'
+import { useDraftKeeper } from '@/lib/draftKeeper'
+import { DraftSavePill, DraftRestoreBanner } from '@/components/draft'
 import { projectsService } from '@/services/projectsService'
 import { deliverablesService } from '@/services/deliverablesService'
 import { useAuthStore } from '@/stores/authStore'
@@ -21,9 +23,27 @@ import { AiQuotaWidget } from '@/components/ai/AiQuotaWidget'
 
 type WizardStep = 'upload' | 'processing' | 'review' | 'saving'
 
+/**
+ * Draft shape for the wizard. The `file` input itself isn't serialisable
+ * (and the user reconstructs it in ~5 seconds), so we only persist the
+ * text inputs and the AI-extracted payload — which costs real AI quota
+ * and is the actual valuable state. `originalExtraction` captures the
+ * first-returned extraction so mid-edit the baseline stays stable; any
+ * divergence → draft. When `data === originalExtraction` again the draft
+ * auto-clears.
+ */
+type WizardDraft = {
+  orgAbbreviation: string
+  userInstructions: string
+  data: GrantAIExtraction | null
+  confidenceNotes: string
+  step: WizardStep
+  originalExtraction: GrantAIExtraction | null
+}
+
 export function GrantAIWizard() {
   const navigate = useNavigate()
-  const { orgId, aiEnabled } = useAuthStore()
+  const { orgId, aiEnabled, user } = useAuthStore()
   const invalidateProjects = useInvalidateProjects()
 
   // Redirect if AI is disabled for this organisation
@@ -44,6 +64,53 @@ export function GrantAIWizard() {
   // Extracted data (editable)
   const [data, setData] = useState<GrantAIExtraction | null>(null)
   const [confidenceNotes, setConfidenceNotes] = useState('')
+  // Snapshot of the AI-extracted payload the first time it came back.
+  // Used as the DraftKeeper baseline so user edits register as "unsaved
+  // work" and empty edits clear the draft automatically.
+  const [originalExtraction, setOriginalExtraction] = useState<GrantAIExtraction | null>(null)
+
+  // DraftKeeper — protects the AI-extracted payload (which costs real AI
+  // quota) and the text inputs. The `file` object itself isn't captured
+  // because it's not serialisable and the user can re-drop it in a few
+  // seconds. Drafts never silent-restore here — we always ask, because
+  // rehydrating into the wrong wizard step would be confusing.
+  const draftValue = useMemo<WizardDraft>(
+    () => ({ orgAbbreviation, userInstructions, data, confidenceNotes, step, originalExtraction }),
+    [orgAbbreviation, userInstructions, data, confidenceNotes, step, originalExtraction],
+  )
+  const draft = useDraftKeeper<WizardDraft>({
+    key: {
+      orgId: orgId ?? '_no-org',
+      userId: user?.id ?? '_anon',
+      formKey: 'grant-ai-wizard',
+      // Only one in-flight wizard per user at a time; we don't shard by
+      // anything else since the wizard is inherently single-instance.
+      recordId: 'new',
+    },
+    value: draftValue,
+    setValue: (next) => {
+      setOrgAbbreviation(next.orgAbbreviation)
+      setUserInstructions(next.userInstructions)
+      setData(next.data)
+      setConfidenceNotes(next.confidenceNotes)
+      setOriginalExtraction(next.originalExtraction)
+      // Only jump back to 'review' if we actually have extracted data —
+      // never rehydrate into processing/saving, those are transient.
+      if (next.step === 'review' && next.data) setStep('review')
+      else if (next.step === 'upload') setStep('upload')
+    },
+    // Disabled while the AI is running or we're saving — those steps are
+    // transient and shouldn't be checkpointed.
+    enabled: !!orgId && (step === 'upload' || step === 'review'),
+    schemaVersion: 1,
+    // Baseline snapshots the initial extraction. Edits diverge → draft.
+    // On upload step (no extraction yet) baseline is null, so any typed
+    // text counts as dirty.
+    baseline: originalExtraction
+      ? { orgAbbreviation: '', userInstructions: '', data: originalExtraction, confidenceNotes: originalExtraction.confidence_notes || '', step: 'review', originalExtraction }
+      : null,
+    silentRestoreWindowMs: 0,
+  })
 
   // ── Upload & Parse ────────────────────────────────────────────
 
@@ -81,6 +148,10 @@ export function GrantAIWizard() {
       })
       setData(result.extraction)
       setConfidenceNotes(result.extraction.confidence_notes || '')
+      // Freeze the AI output as the baseline — DraftKeeper tracks edits
+      // against this. Deep-clone via JSON to decouple from future setData
+      // calls that would otherwise mutate the original reference.
+      setOriginalExtraction(JSON.parse(JSON.stringify(result.extraction)))
       setStep('review')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse document')
@@ -269,6 +340,9 @@ export function GrantAIWizard() {
       }
 
       invalidateProjects()
+      // Project committed — discard any lingering wizard draft so the
+      // banner doesn't re-appear if the user starts another import later.
+      draft.discard()
       toast({ title: 'Project Created!', description: `${p.acronym} and all related data have been imported successfully.` })
       navigate(`/projects/${project.id}`)
     } catch (err) {
@@ -284,11 +358,22 @@ export function GrantAIWizard() {
       <PageHeader
         title="Import from Grant Agreement"
         actions={
-          <Button variant="outline" onClick={() => navigate('/projects')}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Projects
-          </Button>
+          <div className="flex items-center gap-3">
+            <DraftSavePill status={draft.status} lastSavedAt={draft.lastSavedAt} />
+            <Button variant="outline" onClick={() => navigate('/projects')}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Projects
+            </Button>
+          </div>
         }
       />
+
+      {draft.hasDraft && (
+        <DraftRestoreBanner
+          ageMs={draft.draftAge}
+          onRestore={draft.restore}
+          onDiscard={draft.discard}
+        />
+      )}
 
       {/* ─── Step: Upload ─── */}
       {step === 'upload' && (

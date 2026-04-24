@@ -46,6 +46,8 @@ import { exportToExcel } from '@/lib/exportUtils'
 import { ComboInput, type ComboOption } from '@/components/common/ComboInput'
 import { supabase } from '@/lib/supabase'
 import { apiFetch } from '@/lib/apiClient'
+import { useDraftKeeper } from '@/lib/draftKeeper'
+import { DraftSavePill, DraftRestoreBanner } from '@/components/draft'
 import {
   proposalCallTemplateService,
   proposalDocumentService,
@@ -120,9 +122,33 @@ function ProposalsList() {
   const [importOpen, setImportOpen] = useState(false)
   const [importAiOpen, setImportAiOpen] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
+  const [baseline, setBaseline] = useState<typeof EMPTY_FORM | null>(null)
   const [fundingSchemeOptions, setFundingSchemeOptions] = useState<ComboOption[]>([])
   const [staffList, setStaffList] = useState<Person[]>([])
   const [callTemplates, setCallTemplates] = useState<ProposalCallTemplate[]>([])
+
+  // Draft persists the in-progress dialog fields so a tab-resume doesn't
+  // erase typing. Key shards by editingId (or 'new') so edits to one
+  // proposal can't leak into another. The draft stays alive even after
+  // the user closes the dialog — so reopening on the same proposal offers
+  // a restore banner. On save we discard.
+  const draft = useDraftKeeper<typeof EMPTY_FORM>({
+    key: {
+      orgId: orgId ?? '_no-org',
+      userId: user?.id ?? '_anon',
+      formKey: 'proposal-dialog',
+      recordId: editingId ?? 'new',
+    },
+    value: form,
+    setValue: setForm,
+    // Only keep the draft warm while the dialog is open. Closing the
+    // dialog flushes whatever is pending via the registry/beforeunload
+    // paths; reopening rehydrates.
+    enabled: dialogOpen && !!orgId,
+    schemaVersion: 1,
+    baseline,
+    silentRestoreWindowMs: 0,
+  })
 
   // Search EU Funding & Tenders Portal for call identifiers.
   // Uses an AbortController so out-of-order responses from a fast typist
@@ -156,17 +182,24 @@ function ProposalsList() {
     }
   }, [])
 
-  // Pre-fill from ?call=…&name=… coming from the Calls module.
+  // Pre-fill from ?call=…&name=… coming from the Calls module. Per the
+  // team decision, URL params ALWAYS win over any stored draft — so we
+  // discard any pending 'new' draft before seeding and opening the dialog.
   useEffect(() => {
     const call = searchParams.get('call')
     const name = searchParams.get('name')
     if (call || name) {
-      setEditingId(null)
-      setForm({
+      // Kill any in-flight draft for 'new' so the URL-supplied values are
+      // the canonical starting point, not a stale restore banner.
+      draft.discard()
+      const prefilled = {
         ...EMPTY_FORM,
         call_identifier: call ?? '',
         project_name: name ?? '',
-      })
+      }
+      setEditingId(null)
+      setForm(prefilled)
+      setBaseline(prefilled)
       setDialogOpen(true)
       const next = new URLSearchParams(searchParams)
       next.delete('call')
@@ -220,12 +253,12 @@ function ProposalsList() {
   const openCreate = () => {
     setEditingId(null)
     setForm(EMPTY_FORM)
+    setBaseline(EMPTY_FORM)
     setDialogOpen(true)
   }
 
   const openEdit = (p: Proposal) => {
-    setEditingId(p.id)
-    setForm({
+    const loaded = {
       project_name: p.project_name,
       call_identifier: p.call_identifier,
       funding_scheme: p.funding_scheme,
@@ -240,8 +273,11 @@ function ProposalsList() {
       responsible_person_id: p.responsible_person_id ?? '',
       notes: p.notes ?? '',
       call_template_id: p.call_template_id ?? '',
-      funder_hint: '', // UI-only; not persisted on the proposal row
-    })
+      funder_hint: '' as (typeof EMPTY_FORM)['funder_hint'], // UI-only; not persisted on the proposal row
+    }
+    setEditingId(p.id)
+    setForm(loaded)
+    setBaseline(loaded)
     setDialogOpen(true)
   }
 
@@ -363,6 +399,9 @@ function ProposalsList() {
           toast({ title: t('proposals.proposalCreated') })
         }
       }
+      // Committed to server — discard the local draft so next open starts
+      // from the freshly-saved state, not a stale in-progress one.
+      draft.discard()
       setDialogOpen(false)
       refetchProposals()
     } catch (err) {
@@ -604,11 +643,23 @@ function ProposalsList() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Edit Proposal' : 'New Proposal'}</DialogTitle>
-            <DialogDescription>
-              {editingId ? 'Update the proposal details below.' : 'Enter the details of your grant proposal application.'}
-            </DialogDescription>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <DialogTitle>{editingId ? 'Edit Proposal' : 'New Proposal'}</DialogTitle>
+                <DialogDescription>
+                  {editingId ? 'Update the proposal details below.' : 'Enter the details of your grant proposal application.'}
+                </DialogDescription>
+              </div>
+              <DraftSavePill status={draft.status} lastSavedAt={draft.lastSavedAt} />
+            </div>
           </DialogHeader>
+          {draft.hasDraft && (
+            <DraftRestoreBanner
+              ageMs={draft.draftAge}
+              onRestore={draft.restore}
+              onDiscard={draft.discard}
+            />
+          )}
           <div className="space-y-4 py-2">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
