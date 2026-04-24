@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { initSentry } from './lib/sentry'
 import { getStripe } from './lib/stripe'
 import { queryClient } from './lib/queryClient'
+import { installTabLifecycle } from './lib/tabLifecycle'
 import App from './App'
 import './index.css'
 import './lib/i18n'
@@ -14,6 +15,11 @@ initSentry()
 
 // Pre-warm Stripe.js (no-op if VITE_STRIPE_PUBLISHABLE_KEY not set)
 getStripe()
+
+// Recover from Edge Sleeping Tabs / Chrome tab-suspend wedges — probes the
+// auth session + invalidates queries when the tab becomes visible again
+// after being backgrounded for 30 s or more.
+installTabLifecycle()
 
 // Apply dark mode class before first render to avoid flash
 const stored = localStorage.getItem('grantlume-dark-mode')
