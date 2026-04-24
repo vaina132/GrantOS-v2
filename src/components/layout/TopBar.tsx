@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { differenceInDays } from 'date-fns'
+import { differenceInCalendarDays } from 'date-fns'
 import { NotificationBell } from '@/components/layout/NotificationBell'
 import { Crown } from 'lucide-react'
 
@@ -26,9 +26,13 @@ export function TopBar() {
   const userEmail = user?.email ?? ''
   const initials = userEmail.slice(0, 2).toUpperCase()
 
+  // Calendar-day semantics: a trial ending at 14:00 tomorrow should count
+  // as "1 day remaining" all of today, not flip at 14:00. differenceInDays
+  // uses 24-hour blocks and was causing the counter to look frozen — see
+  // the 10-agent audit note.
   const trialDaysLeft =
     orgPlan === 'trial' && trialEndsAt
-      ? Math.max(0, differenceInDays(new Date(trialEndsAt), new Date()))
+      ? Math.max(0, differenceInCalendarDays(new Date(trialEndsAt), new Date()))
       : null
 
   const isFree = orgPlan === 'free'

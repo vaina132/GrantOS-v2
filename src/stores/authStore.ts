@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import { queryClient } from '@/lib/queryClient'
 import {
   computePermissions,
   rolePermissionToPermissions,
@@ -109,6 +110,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           await loadUserContext(session.user, set)
         }
       } else if (event === 'SIGNED_OUT') {
+        // Drop all cached data when the session ends — the next user
+        // (or the same user on a fresh sign-in) shouldn't see anyone
+        // else's queries.
+        queryClient.clear()
         set({
           user: null,
           orgId: null,
@@ -122,6 +127,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isLoading: false,
           error: null,
         })
+      } else if (event === 'TOKEN_REFRESHED') {
+        // Supabase has issued a new JWT. Any React Query fetches that
+        // were mid-flight / failed with 401 during the refresh window
+        // need to be re-run with the new token. Without this, the UI
+        // sits on skeleton placeholders until the user hits refresh.
+        queryClient.invalidateQueries()
       }
     })
   },

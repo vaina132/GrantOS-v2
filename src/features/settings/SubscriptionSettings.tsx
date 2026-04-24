@@ -28,7 +28,7 @@ import {
   Infinity,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { differenceInDays } from 'date-fns'
+import { differenceInCalendarDays } from 'date-fns'
 import type { OrgPlan, AiUsage } from '@/types'
 import { AI_PLAN_LIMITS } from '@/types'
 
@@ -111,9 +111,10 @@ export function SubscriptionSettings() {
     }
   }, [fetchData])
 
-  // Trial days remaining
+  // Trial days remaining — calendar-day semantics so the counter decrements
+  // at midnight, not at the exact clock time the trial was created.
   const trialDaysLeft = currentPlan === 'trial' && (trialEnd || trialEndsAt)
-    ? Math.max(0, differenceInDays(new Date(trialEnd || trialEndsAt!), new Date()))
+    ? Math.max(0, differenceInCalendarDays(new Date(trialEnd || trialEndsAt!), new Date()))
     : null
 
   const trialExpired = trialDaysLeft !== null && trialDaysLeft <= 0
