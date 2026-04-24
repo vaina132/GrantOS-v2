@@ -51,7 +51,9 @@
       "WebFetch(domain:accelopment.com)",
       "WebFetch(domain:webgate.ec.europa.eu)",
       "WebFetch(domain:commission.europa.eu)",
-      "WebFetch(domain:cinea.ec.europa.eu)"
+      "WebFetch(domain:cinea.ec.europa.eu)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts|sql\\)$\")",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
     ]
   }
 }

@@ -31,6 +31,8 @@ import {
   proposalSubmissionService,
   proposalAuditService,
   proposalCallTemplateService,
+  DOCUMENT_PRESETS,
+  type PresetDocumentKey,
 } from '@/services/proposalWorkflowService'
 import type {
   Proposal,
@@ -41,6 +43,7 @@ import type {
   ProposalSubmissionStatus,
 } from '@/types'
 import { ProposalFormPreview } from './ProposalFormPreview'
+import { generateOcdTemplatePdf } from '@/lib/ocdTemplate'
 
 const STATUS_META: Record<ProposalSubmissionStatus, {
   label: string
@@ -236,18 +239,16 @@ export function ProposalDocumentsTab({ proposal, canManage }: Props) {
           {loading ? (
             <div className="space-y-2"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
           ) : documents.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              {canManage ? (
-                <>
-                  No required documents configured for this proposal.{' '}
-                  {proposal.call_template_id
-                    ? <>Click <b>Re-seed from preset</b> above to restore the default checklist, or use <b>Manage documents</b> to add your own.</>
-                    : <>Edit the proposal to pick a preset, or click <b>Manage documents</b> above to build a checklist manually.</>}
-                </>
-              ) : (
-                <>The coordinator hasn&apos;t set up the document checklist yet.</>
-              )}
-            </div>
+            canManage ? (
+              <EmptyStateActions
+                proposalId={proposal.id}
+                onSeeded={load}
+              />
+            ) : (
+              <div className="py-10 text-center text-sm text-muted-foreground">
+                The coordinator hasn&apos;t set up the document checklist yet.
+              </div>
+            )
           ) : visiblePartners.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
               No partners yet. Invite partners from the Partners tab — they'll appear here with their submissions.
@@ -336,6 +337,58 @@ export function ProposalDocumentsTab({ proposal, canManage }: Props) {
         />
       )}
     </>
+  )
+}
+
+/**
+ * Empty-state CTA shown when a proposal has no required documents yet.
+ * One-click creates the universal baseline (Part A + Budget + OCD); the
+ * coordinator can then add optional extras or customise in Manage.
+ */
+function EmptyStateActions({
+  proposalId,
+  onSeeded,
+}: {
+  proposalId: string
+  onSeeded: () => void
+}) {
+  const [seeding, setSeeding] = useState(false)
+  const seedBaseline = async () => {
+    setSeeding(true)
+    try {
+      await proposalDocumentService.seedBaseline(proposalId)
+      toast({
+        title: 'Checklist ready',
+        description: 'Added Part A, Budget, and Ownership Control Declaration. Invite your partners to start filling them.',
+      })
+      onSeeded()
+    } catch (err) {
+      toast({
+        title: 'Could not seed checklist',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      })
+    } finally {
+      setSeeding(false)
+    }
+  }
+  return (
+    <div className="py-10 text-center space-y-4">
+      <div className="mx-auto max-w-md space-y-1.5">
+        <p className="text-sm font-medium">No document checklist yet</p>
+        <p className="text-xs text-muted-foreground">
+          Start with the three documents every EU-style proposal needs: Part A,
+          Budget, and an Ownership Control Declaration. You can add custom documents
+          afterwards.
+        </p>
+      </div>
+      <Button size="sm" disabled={seeding} onClick={seedBaseline}>
+        {seeding
+          ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+          : <Sparkles className="mr-1.5 h-4 w-4" />}
+        Add Part A, Budget &amp; OCD
+      </Button>
+    </div>
   )
 }
 
@@ -442,6 +495,22 @@ function ReviewPanel({ proposal, partner, doc, submission, canReview, onClose, o
               <ExternalLink className="h-3 w-3" />
               Official template on EC Portal
             </a>
+          )}
+
+          {/* Built-in OCD template — the EC doesn't publish a single stable
+              OCD PDF, so we generate a blank one modelled on their format.
+              Shown whenever the doc is an OCD OR when the coordinator left
+              `template_url` blank on any upload_with_template doc. */}
+          {doc.document_type === 'ownership_control' && !doc.template_url && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => generateOcdTemplatePdf({ partnerName: partner.org_name })}
+              className="gap-1.5"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download blank OCD template (PDF)
+            </Button>
           )}
 
           {doc.handler === 'form' ? (
@@ -599,6 +668,33 @@ function ManageDocumentsPanel({ proposalId, onClose, onChanged }: ManagePanelPro
     }
   }
 
+  /** One-click add a common EC document by preset key. Idempotent — if
+   *  the document_type is already present, the service skips silently. */
+  const handleAddPreset = async (key: PresetDocumentKey) => {
+    setAdding(true)
+    try {
+      const created = await proposalDocumentService.addPreset(proposalId, key)
+      if (!created) {
+        toast({
+          title: 'Already on the checklist',
+          description: `${DOCUMENT_PRESETS[key].label} is already configured.`,
+        })
+        return
+      }
+      setDocs((prev) => [...prev, created])
+      onChanged()
+      toast({ title: 'Added', description: created.label })
+    } catch (err) {
+      toast({
+        title: 'Add failed',
+        description: err instanceof Error ? err.message : 'Unknown error',
+        variant: 'destructive',
+      })
+    } finally {
+      setAdding(false)
+    }
+  }
+
   const handlePatch = async (id: string, patch: Partial<ProposalDocument>) => {
     setBusyId(id)
     // Optimistic update
@@ -741,6 +837,34 @@ function ManageDocumentsPanel({ proposalId, onClose, onChanged }: ManagePanelPro
             ))
           )}
 
+          {/* Preset picker — one-click add any common EC document that
+              isn't already on the list. */}
+          <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+            <div className="text-xs font-medium text-muted-foreground">
+              Add from presets
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(DOCUMENT_PRESETS) as PresetDocumentKey[]).map((key) => {
+                const preset = DOCUMENT_PRESETS[key]
+                const already = docs.some((d) => d.document_type === preset.document_type)
+                return (
+                  <Button
+                    key={key}
+                    size="sm"
+                    variant={already ? 'secondary' : 'outline'}
+                    disabled={adding || already}
+                    onClick={() => handleAddPreset(key)}
+                    className="text-xs"
+                    title={preset.description ?? undefined}
+                  >
+                    {already ? <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-600" /> : <Plus className="h-3 w-3 mr-1" />}
+                    {preset.label}
+                  </Button>
+                )
+              })}
+            </div>
+          </div>
+
           <Button
             variant="outline"
             className="w-full"
@@ -748,7 +872,7 @@ function ManageDocumentsPanel({ proposalId, onClose, onChanged }: ManagePanelPro
             disabled={adding}
           >
             {adding ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
-            Add document
+            Add custom document
           </Button>
         </div>
       </div>

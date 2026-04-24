@@ -368,9 +368,11 @@ function ProposalsList() {
         }
       } else {
         const created = await withTimeout(proposalService.create(payload), 20000, 'Create proposal')
-        // Seed the required-documents checklist from the picked template.
-        // Non-fatal: if seeding fails we keep the proposal — but we tell the
-        // user clearly so they don't assume an empty checklist was intended.
+        // Seed the required-documents checklist. If the user picked a call
+        // template, use it — otherwise fall back to the universal baseline
+        // (Part A + Budget + OCD) so the proposal is never shipped with an
+        // empty Documents tab. Non-fatal: if seeding fails we keep the
+        // proposal and surface a toast so the user can re-seed manually.
         let seedStatus: 'skipped' | 'ok' | 'failed' = 'skipped'
         if (templateIdToSave) {
           const template = callTemplates.find((tpl) => tpl.id === templateIdToSave)
@@ -386,6 +388,18 @@ function ProposalsList() {
               console.warn('[Proposals] Failed to seed document checklist:', seedErr)
               seedStatus = 'failed'
             }
+          }
+        } else {
+          try {
+            await withTimeout(
+              proposalDocumentService.seedBaseline(created.id),
+              15000,
+              'Seed baseline checklist',
+            )
+            seedStatus = 'ok'
+          } catch (seedErr) {
+            console.warn('[Proposals] Failed to seed baseline checklist:', seedErr)
+            seedStatus = 'failed'
           }
         }
         if (seedStatus === 'failed') {

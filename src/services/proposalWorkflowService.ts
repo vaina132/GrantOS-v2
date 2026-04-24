@@ -284,6 +284,202 @@ export const proposalDocumentService = {
     const { error } = await sb.from('proposal_documents').delete().eq('id', id)
     if (error) throw error
   },
+
+  /**
+   * Seed the universal baseline checklist — Part A, Budget, OCD — so a
+   * proposal that was created without a call template still ships with
+   * the three documents every EU-style grant expects. Idempotent per
+   * document_type: documents that already exist are skipped.
+   *
+   * Returns the final `proposal_documents` list (in sort order).
+   */
+  async seedBaseline(proposalId: string): Promise<ProposalDocument[]> {
+    const { data: existing, error: existingErr } = await sb
+      .from('proposal_documents')
+      .select('*')
+      .eq('proposal_id', proposalId)
+    if (existingErr) throw existingErr
+    const existingList = (existing ?? []) as ProposalDocument[]
+    const existingTypes = new Set<string>(existingList.map((d) => d.document_type))
+
+    const baseline = BASELINE_DOCUMENTS
+    const maxOrder = existingList.reduce((m, d) => Math.max(m, d.sort_order), -1)
+    const toAdd = baseline
+      .filter((b) => !existingTypes.has(b.document_type))
+      .map((b, idx) => ({
+        proposal_id: proposalId,
+        document_type: b.document_type,
+        label: b.label,
+        description: b.description,
+        handler: b.handler,
+        template_url: b.template_url,
+        required: b.required,
+        sort_order: maxOrder + 1 + idx,
+      }))
+
+    if (toAdd.length === 0) return existingList
+    const { error: insErr } = await sb.from('proposal_documents').insert(toAdd)
+    if (insErr) throw insErr
+
+    const { data: final, error: listErr } = await sb
+      .from('proposal_documents')
+      .select('*')
+      .eq('proposal_id', proposalId)
+      .order('sort_order', { ascending: true })
+    if (listErr) throw listErr
+    return (final ?? []) as ProposalDocument[]
+  },
+
+  /**
+   * Add a single preset document to a proposal (coordinator-side quick-add).
+   * Skipped silently if an entry with the same `document_type` already
+   * exists — presets identify by type, not label.
+   */
+  async addPreset(proposalId: string, presetKey: PresetDocumentKey): Promise<ProposalDocument | null> {
+    const preset = DOCUMENT_PRESETS[presetKey]
+    if (!preset) throw new Error(`Unknown preset: ${presetKey}`)
+
+    const { data: existing } = await sb
+      .from('proposal_documents')
+      .select('id, sort_order, document_type')
+      .eq('proposal_id', proposalId)
+    const list = (existing ?? []) as Array<{ id: string; sort_order: number; document_type: string }>
+    if (list.some((d) => d.document_type === preset.document_type)) return null
+    const maxOrder = list.reduce((m, d) => Math.max(m, d.sort_order), -1)
+
+    const { data, error } = await sb
+      .from('proposal_documents')
+      .insert({
+        proposal_id: proposalId,
+        document_type: preset.document_type,
+        label: preset.label,
+        description: preset.description,
+        handler: preset.handler,
+        template_url: preset.template_url,
+        required: preset.required,
+        sort_order: maxOrder + 1,
+      })
+      .select()
+      .single()
+    if (error) throw error
+    return data as ProposalDocument
+  },
+}
+
+// ============================================================================
+// Baseline + preset catalogue
+// ============================================================================
+
+type BaselineDoc = {
+  document_type: string
+  label: string
+  description: string | null
+  handler: 'form' | 'upload' | 'upload_with_template'
+  template_url: string | null
+  required: boolean
+}
+
+/**
+ * The three documents every EU-style proposal needs. Kept separate from
+ * call templates so a coordinator who forgets to pick a template on
+ * create still gets sane defaults.
+ *
+ *   part_a     → structured form, handled by `ProposalPartAForm`
+ *   budget     → structured form, handled by `ProposalBudgetForm`
+ *   ownership_control → EC OCD; partner downloads template, signs, uploads.
+ *                       `template_url` is null so the UI offers our built-in
+ *                       jsPDF-generated template via a "Download template"
+ *                       button (see `generateOcdTemplatePdf` in lib/ocdTemplate.ts).
+ *                       Coordinator can override per-proposal with a specific
+ *                       EC PDF URL if their call provides one.
+ */
+const BASELINE_DOCUMENTS: BaselineDoc[] = [
+  {
+    document_type: 'part_a',
+    label: 'Part A — Partner profile',
+    description: 'Administrative and profile information for each partner organisation (legal identity, researchers, contributions).',
+    handler: 'form',
+    template_url: null,
+    required: true,
+  },
+  {
+    document_type: 'budget',
+    label: 'Budget commitment',
+    description: 'Person-months per work package, PM rate, and other direct costs.',
+    handler: 'form',
+    template_url: null,
+    required: true,
+  },
+  {
+    document_type: 'ownership_control',
+    label: 'Ownership Control Declaration',
+    description: 'Download the EC OCD template, fill it in, sign, and upload the signed PDF. One per partner organisation.',
+    handler: 'upload_with_template',
+    template_url: null,
+    required: true,
+  },
+]
+
+/** Coordinator-side quick-add presets beyond the baseline. */
+export type PresetDocumentKey =
+  | 'ownership_control'
+  | 'commitment_letter'
+  | 'mandate_letter'
+  | 'cv'
+  | 'ethics_assessment'
+  | 'gdpr_statement'
+  | 'letter_of_intent'
+
+export const DOCUMENT_PRESETS: Record<PresetDocumentKey, BaselineDoc> = {
+  ownership_control: BASELINE_DOCUMENTS[2],
+  commitment_letter: {
+    document_type: 'commitment_letter',
+    label: 'Letter of Commitment',
+    description: 'Signed letter committing the partner organisation to the project.',
+    handler: 'upload',
+    template_url: null,
+    required: true,
+  },
+  mandate_letter: {
+    document_type: 'mandate_letter',
+    label: 'Mandate letter',
+    description: 'Signed mandate giving the coordinator authority to act on the partner’s behalf.',
+    handler: 'upload',
+    template_url: null,
+    required: true,
+  },
+  cv: {
+    document_type: 'cv',
+    label: 'CVs of key researchers',
+    description: 'PDFs of CVs for each key researcher listed in Part A.',
+    handler: 'upload',
+    template_url: null,
+    required: false,
+  },
+  ethics_assessment: {
+    document_type: 'ethics_assessment',
+    label: 'Ethics self-assessment',
+    description: 'Horizon Europe ethics checklist — download from the EC reference documents page, complete, and upload.',
+    handler: 'upload_with_template',
+    template_url: 'https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/how-to-participate/reference-documents',
+    required: false,
+  },
+  gdpr_statement: {
+    document_type: 'gdpr_statement',
+    label: 'GDPR / data-protection statement',
+    description: 'Partner’s statement on how personal data collected during the project will be handled.',
+    handler: 'upload',
+    template_url: null,
+    required: false,
+  },
+  letter_of_intent: {
+    document_type: 'letter_of_intent',
+    label: 'Letter of Intent',
+    description: 'Non-binding letter expressing the partner’s intent to collaborate on the proposal.',
+    handler: 'upload',
+    template_url: null,
+    required: false,
+  },
 }
 
 // ============================================================================
