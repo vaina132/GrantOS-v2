@@ -2,45 +2,40 @@ import { supabase } from './supabase'
 import { queryClient } from './queryClient'
 
 /**
- * Tab-lifecycle rescue — fixes Edge "Sleeping Tabs" and Chrome tab-suspend
- * wedges where every query sits on a skeleton placeholder until manual
- * refresh.
+ * Tab-lifecycle rescue — two independent recovery paths:
  *
- * Strategy:
- *   - away < SOFT_THRESHOLD → ignore (quick alt-tabs)
- *   - SOFT ≤ away < HARD → soft rescue (probe + refresh + invalidate)
- *   - away ≥ HARD → reload immediately (what you'd do manually)
+ *   1. **Tab-event based** (existing): visibilitychange / focus / pageshow
+ *      / heartbeat-drift. On wake, proactively refreshSession(); if that
+ *      fails, reload.
  *
- * Triggers (all debounced through `lastActivity`):
- *   - visibilitychange → visible
- *   - window focus (alt-tab to window that wasn't covering ours)
- *   - pageshow with persisted=true (bfcache restore)
- *   - setTimeout drift heartbeat — unambiguous JS-suspension signal
+ *   2. **Watchdog** (new): a 5-second interval that scans every React
+ *      Query entry. If any query has been in `fetchStatus: 'fetching'`
+ *      state for more than 15 seconds, the client is wedged — we cancel
+ *      the stuck queries, refresh auth, and reload if that doesn't clear
+ *      them within 5 more seconds. This catches the bug even when NO
+ *      browser event fires (the Edge Sleeping-Tabs silent-wake case).
  *
- * All diagnostics use `console.log` (not `console.debug`) because Chromium
- * DevTools hides `debug` level by default. If you see no logs at all in
- * the console, this file didn't ship — redeploy / hard-refresh.
+ * All logs use console.log (Chrome/Edge hide console.debug by default).
  */
 
-const VERSION = 'tab-lifecycle v4 (2026-04)'
-const SOFT_THRESHOLD_MS = 10_000 // below → ignore
-const HARD_THRESHOLD_MS = 30_000 // above → reload
-const SESSION_PROBE_MS = 3_000
-const SESSION_REFRESH_MS = 5_000
-const HEARTBEAT_MS = 30_000
+const VERSION = 'tab-lifecycle v5 (watchdog)'
 
-let lastActivity = typeof document !== 'undefined' ? Date.now() : 0
+// Soft rescue: any focus → refresh auth + invalidate queries. Overhead = 1
+// API call per focus. Worth it: covers short alt-tabs where auth can still
+// go stale.
+const AUTH_REFRESH_TIMEOUT_MS = 3_000
+
+// Watchdog thresholds.
+const WATCHDOG_INTERVAL_MS = 5_000
+const WEDGED_FETCH_THRESHOLD_MS = 15_000 // query stuck fetching this long
+const WATCHDOG_GRACE_MS = 5_000 // give auth refresh this long to clear it
+
+// Heartbeat — drift detection for cases where no browser event fires.
+const HEARTBEAT_MS = 10_000
+const DRIFT_THRESHOLD_MS = 5_000
+
 let inFlight = false
-
-async function probeSession(timeoutMs: number): Promise<boolean> {
-  return await Promise.race<boolean>([
-    supabase.auth
-      .getSession()
-      .then(({ error }) => !error)
-      .catch(() => false),
-    new Promise<boolean>((resolve) => setTimeout(() => resolve(false), timeoutMs)),
-  ])
-}
+const fetchStartTimes = new Map<string, number>()
 
 async function tryRefreshSession(timeoutMs: number): Promise<boolean> {
   try {
@@ -56,44 +51,73 @@ async function tryRefreshSession(timeoutMs: number): Promise<boolean> {
   }
 }
 
-async function onWake(reason: string) {
+async function softRescue(reason: string) {
   if (inFlight) return
-  const awayMs = Date.now() - lastActivity
-  lastActivity = Date.now()
-
-  // Log every wake so you can see the handler firing.
-  console.log(`[tabLifecycle] wake via ${reason} · away ${Math.round(awayMs / 1000)}s`)
-
-  if (awayMs < SOFT_THRESHOLD_MS) {
-    console.log('[tabLifecycle] under 10s — ignoring')
-    return
-  }
-
   inFlight = true
   try {
-    if (awayMs >= HARD_THRESHOLD_MS) {
-      console.log('[tabLifecycle] ≥30s away → reloading page now')
+    console.log(`[tabLifecycle] rescue via ${reason}`)
+    const refreshed = await tryRefreshSession(AUTH_REFRESH_TIMEOUT_MS)
+    if (!refreshed) {
+      console.log('[tabLifecycle] auth refresh failed → reloading')
       window.location.reload()
       return
     }
-
-    console.log('[tabLifecycle] soft rescue: probing session')
-    const alive = await probeSession(SESSION_PROBE_MS)
-    if (!alive) {
-      console.log('[tabLifecycle] session probe failed, refreshing')
-      const refreshed = await tryRefreshSession(SESSION_REFRESH_MS)
-      if (!refreshed) {
-        console.log('[tabLifecycle] refresh failed → reloading')
-        window.location.reload()
-        return
-      }
-    }
     queryClient.cancelQueries()
     queryClient.invalidateQueries()
-    console.log('[tabLifecycle] queries invalidated')
+    console.log('[tabLifecycle] queries invalidated after auth refresh')
   } finally {
     inFlight = false
   }
+}
+
+/**
+ * Watchdog — detects a stuck client by watching for queries that have been
+ * in `fetching` state longer than WEDGED_FETCH_THRESHOLD_MS.
+ */
+function startWatchdog() {
+  setInterval(() => {
+    const cache = queryClient.getQueryCache()
+    const now = Date.now()
+
+    for (const query of cache.getAll()) {
+      const key = JSON.stringify(query.queryKey)
+      const isFetching = query.state.fetchStatus === 'fetching'
+
+      if (isFetching && !fetchStartTimes.has(key)) {
+        fetchStartTimes.set(key, now)
+      } else if (!isFetching && fetchStartTimes.has(key)) {
+        fetchStartTimes.delete(key)
+      }
+
+      const startedAt = fetchStartTimes.get(key)
+      if (isFetching && startedAt && now - startedAt > WEDGED_FETCH_THRESHOLD_MS) {
+        console.warn(
+          `[watchdog] query ${key} has been fetching for ${Math.round((now - startedAt) / 1000)}s — wedged.`,
+        )
+        // Clear the tracking so we don't loop on the same query.
+        fetchStartTimes.delete(key)
+        void wedgeRecovery(query.queryKey)
+      }
+    }
+  }, WATCHDOG_INTERVAL_MS)
+}
+
+async function wedgeRecovery(queryKey: unknown) {
+  console.log('[watchdog] running wedge recovery')
+  // Try cancelling the stuck fetches first.
+  queryClient.cancelQueries({ queryKey: queryKey as any })
+
+  // Refresh auth. If it also hangs, reload immediately.
+  const refreshed = await tryRefreshSession(WATCHDOG_GRACE_MS)
+  if (!refreshed) {
+    console.warn('[watchdog] auth refresh also wedged → reloading')
+    window.location.reload()
+    return
+  }
+
+  // Auth is alive. Re-run the specific query plus anything else stale.
+  queryClient.invalidateQueries()
+  console.log('[watchdog] recovered — queries invalidated')
 }
 
 let installed = false
@@ -101,50 +125,46 @@ export function installTabLifecycle() {
   if (installed || typeof document === 'undefined') return
   installed = true
 
-  // Loud, guaranteed-visible install banner. If you don't see this line
-  // in the console on page load, this code didn't ship to your browser.
-  // Force-refresh (Ctrl+Shift+R) or wait for the Vercel deploy to finish.
   console.log(
     `%c[GrantLume] ${VERSION} installed`,
     'color:#0F766E;font-weight:600;background:#F0FDF4;padding:2px 6px;border-radius:4px',
   )
 
-  lastActivity = Date.now()
-
+  // Tab-event triggers. Every event → soft rescue (no threshold — the
+  // overhead is one ~100ms API call, vs. broken data-load = user rage).
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-      lastActivity = Date.now()
-      console.log('[tabLifecycle] tab hidden — marking away start')
-    } else if (document.visibilityState === 'visible') {
-      void onWake('visibilitychange')
+    if (document.visibilityState === 'visible') {
+      void softRescue('visibilitychange')
+    } else {
+      console.log('[tabLifecycle] tab hidden')
     }
   })
 
   window.addEventListener('focus', () => {
-    void onWake('focus')
-  })
-  window.addEventListener('blur', () => {
-    lastActivity = Date.now()
+    void softRescue('focus')
   })
 
   window.addEventListener('pageshow', (e) => {
     if ((e as PageTransitionEvent).persisted) {
-      void onWake('pageshow-bfcache')
+      void softRescue('pageshow-bfcache')
     }
   })
 
-  // Heartbeat: if setTimeout drifts significantly, the JS context was
-  // suspended. Catches Sleeping-Tab wakes that fire no browser event.
+  // Heartbeat drift — catches suspensions that fire no browser event.
   let expectedNext = Date.now() + HEARTBEAT_MS
   const heartbeat = () => {
     const now = Date.now()
     const drift = now - expectedNext
     expectedNext = now + HEARTBEAT_MS
-    if (drift > SOFT_THRESHOLD_MS) {
-      console.log(`[tabLifecycle] heartbeat detected ${Math.round(drift / 1000)}s drift`)
-      void onWake(`heartbeat-drift-${Math.round(drift / 1000)}s`)
+    if (drift > DRIFT_THRESHOLD_MS) {
+      console.log(`[tabLifecycle] heartbeat detected ${Math.round(drift / 1000)}s drift — forcing rescue`)
+      void softRescue(`heartbeat-drift-${Math.round(drift / 1000)}s`)
     }
     setTimeout(heartbeat, HEARTBEAT_MS)
   }
   setTimeout(heartbeat, HEARTBEAT_MS)
+
+  // Watchdog — the new independent recovery path.
+  startWatchdog()
+  console.log('[tabLifecycle] watchdog armed (5s interval, 15s wedge threshold)')
 }
