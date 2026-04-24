@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Dialog,
@@ -15,22 +15,46 @@ interface BulkFillDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onApply: (pms: number, months: number[]) => void
+  /**
+   * Months the caller forbids — used by the allocation grid to hide months
+   * outside the project's active window. These buttons render disabled
+   * and are excluded from both manual toggle and "All".
+   */
+  disabledMonths?: number[]
 }
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const ALL_MONTHS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
-export function BulkFillDialog({ open, onOpenChange, onApply }: BulkFillDialogProps) {
+export function BulkFillDialog({ open, onOpenChange, onApply, disabledMonths }: BulkFillDialogProps) {
   const { t } = useTranslation()
   const [pms, setPms] = useState('0')
-  const [selectedMonths, setSelectedMonths] = useState<number[]>([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+  const disabledSet = new Set(disabledMonths ?? [])
+  const allowedMonths = ALL_MONTHS.filter((m) => !disabledSet.has(m))
+  const [selectedMonths, setSelectedMonths] = useState<number[]>(allowedMonths)
+
+  // Reset selection to the currently-allowed months each time the dialog
+  // opens — otherwise a prior project's selection (possibly including
+  // months now disabled for a different project) leaks into the new session.
+  const disabledKey = disabledMonths?.slice().sort((a, b) => a - b).join(',') ?? ''
+  useEffect(() => {
+    if (open) {
+      setSelectedMonths(ALL_MONTHS.filter((m) => !disabledSet.has(m)))
+    }
+    // We depend on the string-encoded disabled set to avoid effect churn
+    // from new array references. disabledSet isn't stable across renders,
+    // and listing it directly would trigger every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, disabledKey])
 
   const toggleMonth = (month: number) => {
+    if (disabledSet.has(month)) return
     setSelectedMonths((prev) =>
       prev.includes(month) ? prev.filter((m) => m !== month) : [...prev, month].sort((a, b) => a - b),
     )
   }
 
-  const selectAll = () => setSelectedMonths([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
+  const selectAll = () => setSelectedMonths(allowedMonths)
   const selectNone = () => setSelectedMonths([])
 
   const handleApply = () => {
@@ -76,13 +100,16 @@ export function BulkFillDialog({ open, onOpenChange, onApply }: BulkFillDialogPr
               {MONTH_LABELS.map((label, i) => {
                 const month = i + 1
                 const selected = selectedMonths.includes(month)
+                const isDisabled = disabledSet.has(month)
                 return (
                   <Button
                     key={month}
                     variant={selected ? 'default' : 'outline'}
                     size="sm"
                     className="text-xs"
+                    disabled={isDisabled}
                     onClick={() => toggleMonth(month)}
+                    title={isDisabled ? t('allocations.monthOutsideProjectRange', { defaultValue: 'Outside project window' }) : undefined}
                   >
                     {label}
                   </Button>

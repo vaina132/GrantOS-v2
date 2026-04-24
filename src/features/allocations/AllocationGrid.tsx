@@ -71,6 +71,56 @@ function makeCellKey(personId: string, projectId: string, wpId: string | null, m
   return `${personId}:${projectId}:${wpId ?? 'null'}:${month}`
 }
 
+/**
+ * Year-month ordinal — lets us compare (year, month) pairs as a single
+ * integer without fighting Date arithmetic or DST.
+ */
+function monthOrdinal(year: number, month: number): number {
+  return year * 12 + (month - 1)
+}
+
+/**
+ * True when the (year, month) falls within the project's active window
+ * (inclusive on both ends). A project with start 2026-04-01 / end
+ * 2029-03-31 allows months Apr 2026 through Mar 2029 — nothing before,
+ * nothing after.
+ *
+ * Missing or malformed dates fall back to "no constraint" so legacy
+ * projects without dates aren't silently blocked. Project.start_date /
+ * end_date are declared as required strings today, but the guard costs
+ * nothing and protects us if that ever changes.
+ */
+function isMonthInProjectRange(
+  project: { start_date?: string | null; end_date?: string | null },
+  year: number,
+  month: number,
+): boolean {
+  const startRaw = project.start_date
+  const endRaw = project.end_date
+  if (!startRaw || !endRaw) return true
+  const start = new Date(startRaw)
+  const end = new Date(endRaw)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return true
+  const target = monthOrdinal(year, month)
+  const lo = monthOrdinal(start.getFullYear(), start.getMonth() + 1)
+  const hi = monthOrdinal(end.getFullYear(), end.getMonth() + 1)
+  return target >= lo && target <= hi
+}
+
+/** Short "Apr 2026 – Mar 2029" summary for tooltips. */
+function formatProjectRange(
+  project: { start_date?: string | null; end_date?: string | null },
+): string {
+  const startRaw = project.start_date
+  const endRaw = project.end_date
+  if (!startRaw || !endRaw) return ''
+  const s = new Date(startRaw)
+  const e = new Date(endRaw)
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return ''
+  const fmt = (d: Date) => `${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+  return `${fmt(s)} – ${fmt(e)}`
+}
+
 interface GridRow {
   person: Person
   project: Project
@@ -338,10 +388,15 @@ export function AllocationGrid() {
 
   const updateCell = useCallback(
     (personId: string, projectId: string, wpId: string | null, month: number, value: number) => {
+      // Hard guard: the input is already disabled for out-of-range months,
+      // but a stray programmatic write (bulk fill, hotkey, rehydrated
+      // draft) must not sneak through.
+      const project = projects.find((p) => p.id === projectId)
+      if (project && !isMonthInProjectRange(project, globalYear, month)) return
       const key = makeCellKey(personId, projectId, wpId, month)
       setCells({ ...cells, [key]: value })
     },
-    [cells, setCells],
+    [cells, setCells, projects, globalYear],
   )
 
   // Person-month totals per person per month
@@ -499,8 +554,12 @@ export function AllocationGrid() {
 
   const handleBulkFill = (pms: number, months: number[]) => {
     if (!bulkFillTarget) return
+    const project = projects.find((p) => p.id === bulkFillTarget.projectId)
     const newCells = { ...cells }
     for (const month of months) {
+      // Silently drop months outside the project window — the dialog
+      // already disables those buttons, this is belt-and-suspenders.
+      if (project && !isMonthInProjectRange(project, globalYear, month)) continue
       const key = makeCellKey(bulkFillTarget.personId, bulkFillTarget.projectId, bulkFillTarget.wpId, month)
       newCells[key] = pms
     }
@@ -868,22 +927,30 @@ export function AllocationGrid() {
                             const value = cells[key] ?? 0
                             rowTotal += value
                             const locked = isLocked(month)
+                            const outOfRange = !isMonthInProjectRange(row.project, globalYear, month)
                             const isCurrent = isCurrentYear && month === CURRENT_MONTH
                             const personTotal = personMonthTotals[`${row.person.id}:${month}`] ?? 0
                             const absencePm = absencePmMap[`${row.person.id}:${month}`] ?? 0
                             const availableCapacity = Math.max(0, row.person.fte - absencePm)
+                            const projectRange = outOfRange ? formatProjectRange(row.project) : ''
+                            const cellTitle = outOfRange
+                              ? `${row.project.acronym} — outside project window${projectRange ? ` (${projectRange})` : ''}. Change the project dates to allocate here.`
+                              : `${row.project.acronym} · ${MONTHS[i]} — ${value.toFixed(2)} PM\n${(availableCapacity > 0 ? (personTotal / availableCapacity * 100) : personTotal > 0 ? 999 : 0).toFixed(0)}% person utilisation`
 
                             return (
                               <td
                                 key={month}
                                 className={cn(
                                   'px-0 py-0 text-center relative',
-                                  locked && 'bg-amber-50/40 dark:bg-amber-950/10',
-                                  isCurrent && !locked && 'bg-primary/[0.03]',
-                                  !locked && !isCurrent && availableCapacity > 0 && heatmapBg(personTotal / availableCapacity),
-                                  !locked && availableCapacity === 0 && personTotal > 0 && 'bg-red-50 dark:bg-red-950/20',
+                                  // Out-of-range wins over every heatmap / locked tint so
+                                  // the "not applicable" state reads at a glance.
+                                  outOfRange && 'bg-muted/30 dark:bg-muted/10',
+                                  !outOfRange && locked && 'bg-amber-50/40 dark:bg-amber-950/10',
+                                  !outOfRange && isCurrent && !locked && 'bg-primary/[0.03]',
+                                  !outOfRange && !locked && !isCurrent && availableCapacity > 0 && heatmapBg(personTotal / availableCapacity),
+                                  !outOfRange && !locked && availableCapacity === 0 && personTotal > 0 && 'bg-red-50 dark:bg-red-950/20',
                                 )}
-                                title={`${row.project.acronym} · ${MONTHS[i]} — ${value.toFixed(2)} PM\n${(availableCapacity > 0 ? (personTotal / availableCapacity * 100) : personTotal > 0 ? 999 : 0).toFixed(0)}% person utilisation`}
+                                title={cellTitle}
                               >
                                 <input
                                   type="number"
@@ -892,13 +959,13 @@ export function AllocationGrid() {
                                   max="1"
                                   value={value || ''}
                                   placeholder=""
-                                  disabled={locked || timesheetDriven}
+                                  disabled={locked || timesheetDriven || outOfRange}
                                   onChange={(e) => {
                                     const v = Math.min(1, Math.max(0, Number(e.target.value) || 0))
                                     updateCell(row.person.id, row.project.id, row.wpId, month, v)
                                   }}
                                   onContextMenu={(e) => {
-                                    if (timesheetDriven) return
+                                    if (timesheetDriven || outOfRange) return
                                     e.preventDefault()
                                     setBulkFillTarget({ personId: row.person.id, projectId: row.project.id, wpId: row.wpId })
                                     setBulkFillOpen(true)
@@ -907,7 +974,8 @@ export function AllocationGrid() {
                                     'w-full h-8 text-center text-xs tabular-nums bg-transparent border-0 outline-none',
                                     'focus:ring-2 focus:ring-primary/40 focus:bg-white dark:focus:bg-slate-900 rounded-sm transition-shadow',
                                     (locked || timesheetDriven) && 'opacity-40 cursor-not-allowed',
-                                    value > 0 && 'font-semibold text-foreground',
+                                    outOfRange && 'opacity-25 cursor-not-allowed',
+                                    value > 0 && !outOfRange && 'font-semibold text-foreground',
                                     !value && 'text-muted-foreground/30',
                                   )}
                                 />
@@ -952,6 +1020,16 @@ export function AllocationGrid() {
         open={bulkFillOpen}
         onOpenChange={setBulkFillOpen}
         onApply={handleBulkFill}
+        disabledMonths={(() => {
+          if (!bulkFillTarget) return []
+          const project = projects.find((p) => p.id === bulkFillTarget.projectId)
+          if (!project) return []
+          const out: number[] = []
+          for (let m = 1; m <= 12; m++) {
+            if (!isMonthInProjectRange(project, globalYear, m)) out.push(m)
+          }
+          return out
+        })()}
       />
     </div>
   )
