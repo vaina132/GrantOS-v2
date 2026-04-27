@@ -43,6 +43,8 @@ import type {
   ProposalSubmissionStatus,
 } from '@/types'
 import { ProposalFormPreview } from './ProposalFormPreview'
+import { ProposalPartAForm } from './ProposalPartAForm'
+import { ProposalBudgetForm } from './ProposalBudgetForm'
 import { generateOcdTemplatePdf } from '@/lib/ocdTemplate'
 
 const STATUS_META: Record<ProposalSubmissionStatus, {
@@ -72,6 +74,13 @@ export function ProposalDocumentsTab({ proposal, canManage }: Props) {
   const [selected, setSelected] = useState<{ partner: ProposalPartner; doc: ProposalDocument; submission: ProposalSubmission | null } | null>(null)
   const [managing, setManaging] = useState(false)
   const [reseeding, setReseeding] = useState(false)
+  // Coordinator-side inline editor for structured forms (Part A, Budget).
+  // When set, the tab contents are replaced with the full editable form
+  // so the host can fill in their own row's profile without leaving the
+  // proposal — and can also pre-fill any other partner's row if needed.
+  const [editingForm, setEditingForm] = useState<{ partner: ProposalPartner; doc: ProposalDocument; submission: ProposalSubmission | null } | null>(null)
+
+  const locked = !!proposal.converted_project_id
 
   const load = async () => {
     setLoading(true)
@@ -162,6 +171,41 @@ export function ProposalDocumentsTab({ proposal, canManage }: Props) {
         variant: 'destructive',
       })
     }
+  }
+
+  // When the coordinator chooses to edit a Part A or Budget row, swap the
+  // tab contents for the full-width form editor. This is the same form
+  // external partners see on /proposals/partner/:id.
+  if (editingForm && editingForm.doc.document_type === 'part_a') {
+    return (
+      <div className="space-y-4">
+        <ProposalPartAForm
+          proposal={proposal}
+          partner={editingForm.partner}
+          document={editingForm.doc}
+          submission={editingForm.submission}
+          locked={locked}
+          onBack={() => { setEditingForm(null); void load() }}
+          onChanged={() => { void load() }}
+        />
+      </div>
+    )
+  }
+
+  if (editingForm && editingForm.doc.document_type === 'budget') {
+    return (
+      <div className="space-y-4">
+        <ProposalBudgetForm
+          proposal={proposal}
+          partner={editingForm.partner}
+          document={editingForm.doc}
+          submission={editingForm.submission}
+          locked={locked}
+          onBack={() => { setEditingForm(null); void load() }}
+          onChanged={() => { void load() }}
+        />
+      </div>
+    )
   }
 
   return (
@@ -326,6 +370,10 @@ export function ProposalDocumentsTab({ proposal, canManage }: Props) {
           onClose={() => setSelected(null)}
           onReview={handleReview}
           onRefresh={() => void load()}
+          onOpenForm={(partner, doc, submission) => {
+            setSelected(null)
+            setEditingForm({ partner, doc, submission })
+          }}
         />
       )}
 
@@ -421,9 +469,11 @@ interface PanelProps {
   onClose: () => void
   onReview: (status: ProposalSubmissionStatus, note: string) => Promise<void>
   onRefresh: () => void
+  /** Coordinator-side: open the full editable form for this (partner, doc). */
+  onOpenForm?: (partner: ProposalPartner, doc: ProposalDocument, submission: ProposalSubmission | null) => void
 }
 
-function ReviewPanel({ proposal, partner, doc, submission, canReview, onClose, onReview }: PanelProps) {
+function ReviewPanel({ proposal, partner, doc, submission, canReview, onClose, onReview, onOpenForm }: PanelProps) {
   const [note, setNote] = useState('')
   const [downloading, setDownloading] = useState(false)
 
@@ -515,11 +565,28 @@ function ReviewPanel({ proposal, partner, doc, submission, canReview, onClose, o
 
           {doc.handler === 'form' ? (
             (doc.document_type === 'part_a' || doc.document_type === 'budget') ? (
-              <ProposalFormPreview
-                proposalId={proposal.id}
-                partnerId={partner.id}
-                kind={doc.document_type}
-              />
+              <div className="space-y-3">
+                {/* Coordinator can open the full editable form for this
+                    partner's row — either their own (host) row, or any
+                    invited partner's if they need to pre-fill. Partners
+                    themselves fill in their own row via the dedicated
+                    partner page reached from their invite email. */}
+                {canReview && onOpenForm && (
+                  <Button
+                    size="sm"
+                    onClick={() => onOpenForm(partner, doc, submission)}
+                    className="gap-1.5"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    {doc.document_type === 'part_a' ? 'Open Part A form' : 'Open Budget form'}
+                  </Button>
+                )}
+                <ProposalFormPreview
+                  proposalId={proposal.id}
+                  partnerId={partner.id}
+                  kind={doc.document_type}
+                />
+              </div>
             ) : (
               <div className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">
                 No preview available for this form type.
