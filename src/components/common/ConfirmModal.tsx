@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,7 @@ interface ConfirmModalProps {
   onOpenChange: (open: boolean) => void
   title: string
   message: string
+  /** Override the default "Confirm" / "Cancel" labels with translated copy. */
   confirmLabel?: string
   cancelLabel?: string
   destructive?: boolean
@@ -25,12 +27,17 @@ export function ConfirmModal({
   onOpenChange,
   title,
   message,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   destructive = false,
   loading = false,
   onConfirm,
 }: ConfirmModalProps) {
+  const { t } = useTranslation()
+  // Defaults pull from the `common` namespace so caller doesn't have to
+  // pass labels for every modal — and they translate automatically.
+  const resolvedConfirm = confirmLabel ?? t('common.confirm')
+  const resolvedCancel = cancelLabel ?? t('common.cancel')
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -40,14 +47,14 @@ export function ConfirmModal({
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            {cancelLabel}
+            {resolvedCancel}
           </Button>
           <Button
             variant={destructive ? 'destructive' : 'default'}
             onClick={onConfirm}
             disabled={loading}
           >
-            {loading ? 'Processing...' : confirmLabel}
+            {loading ? t('common.processing') : resolvedConfirm}
           </Button>
         </DialogFooter>
       </DialogContent>

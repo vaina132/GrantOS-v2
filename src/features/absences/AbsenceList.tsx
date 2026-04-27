@@ -29,11 +29,13 @@ import type { Absence, AbsenceType, AbsenceStatus } from '@/types'
 
 const ABSENCE_TYPES: AbsenceType[] = ['Annual Leave', 'Sick Leave', 'Training', 'Public Holiday', 'Other']
 
-const STATUS_BADGE: Record<AbsenceStatus, { label: string; className: string }> = {
-  pending: { label: 'Pending', className: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-300' },
-  approved: { label: 'Approved', className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-300' },
-  rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-300' },
-  cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-gray-300' },
+// Status badge styling. The label is resolved at render time via t() so
+// it follows the active locale; the className is static.
+const STATUS_BADGE_CLASS: Record<AbsenceStatus, string> = {
+  pending:   'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-300',
+  approved:  'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-300',
+  rejected:  'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border-red-300',
+  cancelled: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-gray-300',
 }
 
 export function AbsenceList() {
@@ -421,7 +423,6 @@ export function AbsenceList() {
               <tbody>
                 {filteredAbsences.map((absence) => {
                   const status = ((absence as any).status as AbsenceStatus) || 'approved'
-                  const badge = STATUS_BADGE[status]
                   return (
                     <tr key={absence.id} className="border-b last:border-0 hover:bg-muted/20">
                       <td className="px-4 py-2 font-medium">
@@ -436,9 +437,9 @@ export function AbsenceList() {
                       <td className="px-4 py-2 text-center">
                         <span className={cn(
                           'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold border',
-                          badge.className,
+                          STATUS_BADGE_CLASS[status],
                         )}>
-                          {badge.label}
+                          {t(`absences.status.${status}`)}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-muted-foreground text-xs">

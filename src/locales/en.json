@@ -1,4 +1,10 @@
 {
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "unexpected": "An unexpected error occurred. Please try again.",
+    "tryAgain": "Try Again",
+    "reload": "Reload Page"
+  },
   "nav": {
     "core": "Core",
     "operations": "Operations",
@@ -22,6 +28,8 @@
     "help": "Help & FAQ"
   },
   "common": {
+    "notFound": "Not found",
+    "processing": "Processing…",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -621,6 +629,8 @@
     "fileTooLargeDesc": "Maximum file size is 2 MB."
   },
   "allocations": {
+    "monthOutsideProjectRange": "Outside project window",
+    "unallocated": "Unallocated",
     "title": "Allocations",
     "description": "Manage person-month allocations across projects",
     "personMonth": "Person-Month",
@@ -760,6 +770,13 @@
     "employeeSigned": "Employee signed"
   },
   "absences": {
+    "youHaveBeenNominatedAsSubstitute": "{{absenteeName}} nominated you as substitute for their {{absenceType}} from {{startDate}} to {{endDate}}.",
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
+    },
     "title": "Absences",
     "description": "Track staff absences and leave",
     "newAbsence": "New Absence",
@@ -1188,6 +1205,9 @@
     "uploadedAt": "Uploaded At"
   },
   "collaboration": {
+    "assignPmsPerWp": "Assign person-months across work packages (budgeted total: {{budgeted}})",
+    "wpAllocsUpdated": "Updated work-package allocations for {{name}}.",
+    "wpUpdatedCount": "Saved {{count}} work package(s).",
     "title": "Collaboration Projects",
     "description": "Manage multi-partner collaboration projects",
     "newProject": "New Collaboration Project",
@@ -1681,6 +1701,9 @@
     "jan": "Jan", "feb": "Feb", "mar": "Mar", "apr": "Apr",
     "may": "May", "jun": "Jun", "jul": "Jul", "aug": "Aug",
     "sep": "Sep", "oct": "Oct", "nov": "Nov", "dec": "Dec",
+    "january": "January", "february": "February", "march": "March", "april": "April",
+    "june": "June", "july": "July", "august": "August", "september": "September",
+    "october": "October", "november": "November", "december": "December",
     "monday": "Monday", "tuesday": "Tuesday", "wednesday": "Wednesday",
     "thursday": "Thursday", "friday": "Friday", "saturday": "Saturday", "sunday": "Sunday",
     "today": "Today", "yesterday": "Yesterday", "tomorrow": "Tomorrow",

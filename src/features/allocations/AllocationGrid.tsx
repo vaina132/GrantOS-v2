@@ -56,9 +56,13 @@ function heatmapText(utilisation: number): string {
   return 'text-red-600 dark:text-red-400 font-bold'
 }
 
-/** Returns a utilisation badge for the person header. */
-function utilisationBadge(utilisation: number): { label: string; className: string } {
-  if (utilisation <= 0) return { label: 'Unallocated', className: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' }
+/**
+ * Returns a utilisation badge for the person header. The "unallocated"
+ * label is the only translatable string here — all other branches show a
+ * percentage. Pass the localised label so this function stays pure.
+ */
+function utilisationBadge(utilisation: number, unallocatedLabel: string): { label: string; className: string } {
+  if (utilisation <= 0) return { label: unallocatedLabel, className: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' }
   if (utilisation <= 0.5) return { label: `${(utilisation * 100).toFixed(0)}%`, className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' }
   if (utilisation <= 0.8) return { label: `${(utilisation * 100).toFixed(0)}%`, className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400' }
   if (utilisation <= 1.0) return { label: `${(utilisation * 100).toFixed(0)}%`, className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400' }
@@ -856,7 +860,7 @@ export function AllocationGrid() {
                 })
                 const yearCap = group.person.fte * 12
                 const yearUtil = yearCap > 0 ? personYearTotal / yearCap : 0
-                const badge = utilisationBadge(yearUtil)
+                const badge = utilisationBadge(yearUtil, t('allocations.unallocated'))
 
                 return (
                   <Fragment key={group.personId}>

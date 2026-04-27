@@ -1,4 +1,10 @@
 {
+  "errorBoundary": {
+    "title": "Algo correu mal",
+    "unexpected": "Ocorreu um erro inesperado. Tente novamente.",
+    "tryAgain": "Tentar novamente",
+    "reload": "Recarregar página"
+  },
   "nav": {
     "core": "Principal",
     "operations": "Operações",
@@ -22,6 +28,8 @@
     "help": "Ajuda e FAQ"
   },
   "common": {
+    "notFound": "Não encontrado",
+    "processing": "A processar…",
     "save": "Guardar",
     "cancel": "Cancelar",
     "delete": "Eliminar",
@@ -546,6 +554,8 @@
     "fileTooLargeDesc": "O tamanho máximo do ficheiro é 2 MB."
   },
   "allocations": {
+    "monthOutsideProjectRange": "Fora do período do projeto",
+    "unallocated": "Sem atribuição",
     "title": "Alocações",
     "description": "Gerir alocações de pessoa-mês entre projetos",
     "personMonth": "Pessoa-mês",
@@ -650,6 +660,13 @@
     "timesheetRecalled": "Folha de horas revertida para rascunho. Pode editar as horas novamente."
   },
   "absences": {
+    "youHaveBeenNominatedAsSubstitute": "{{absenteeName}} indicou-o(a) como substituto(a) para a sua {{absenceType}} de {{startDate}} a {{endDate}}.",
+    "status": {
+      "pending": "Pendente",
+      "approved": "Aprovada",
+      "rejected": "Rejeitada",
+      "cancelled": "Cancelada"
+    },
     "title": "Ausências",
     "description": "Acompanhar ausências e férias do pessoal",
     "newAbsence": "Nova ausência",
@@ -1005,6 +1022,9 @@
     "uploadedAt": "Carregado em"
   },
   "collaboration": {
+    "assignPmsPerWp": "Atribuir pessoas-mês entre pacotes de trabalho (total orçamentado: {{budgeted}})",
+    "wpAllocsUpdated": "Atribuições de pacote de trabalho atualizadas para {{name}}.",
+    "wpUpdatedCount": "Foram guardados {{count}} pacote(s) de trabalho.",
     "title": "Projetos de colaboração",
     "description": "Gerir projetos de colaboração com múltiplos parceiros",
     "newProject": "Novo projeto de colaboração",
@@ -1524,6 +1544,17 @@
     "oct": "Out",
     "nov": "Nov",
     "dec": "Dez",
+    "january": "Janeiro",
+    "february": "Fevereiro",
+    "march": "Março",
+    "april": "Abril",
+    "june": "Junho",
+    "july": "Julho",
+    "august": "Agosto",
+    "september": "Setembro",
+    "october": "Outubro",
+    "november": "Novembro",
+    "december": "Dezembro",
     "monday": "Segunda",
     "tuesday": "Terça",
     "wednesday": "Quarta",

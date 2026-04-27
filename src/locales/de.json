@@ -1,4 +1,10 @@
 {
+  "errorBoundary": {
+    "title": "Etwas ist schiefgelaufen",
+    "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+    "tryAgain": "Erneut versuchen",
+    "reload": "Seite neu laden"
+  },
   "nav": {
     "core": "Kern",
     "operations": "Betrieb",
@@ -22,6 +28,8 @@
     "help": "Hilfe & FAQ"
   },
   "common": {
+    "notFound": "Nicht gefunden",
+    "processing": "Wird verarbeitet…",
     "save": "Speichern",
     "cancel": "Abbrechen",
     "delete": "Löschen",
@@ -451,6 +459,8 @@
     "projectsInvolved": "Beteiligte Projekte"
   },
   "allocations": {
+    "monthOutsideProjectRange": "Außerhalb des Projektzeitraums",
+    "unallocated": "Nicht zugewiesen",
     "title": "Zuweisungen",
     "description": "Personenmonat-Zuweisungen projektübergreifend verwalten",
     "personMonth": "Personenmonat",
@@ -521,6 +531,13 @@
     "timesheetRecalled": "Zeiterfassung auf Entwurf zurückgesetzt. Sie können die Stunden wieder bearbeiten."
   },
   "absences": {
+    "youHaveBeenNominatedAsSubstitute": "{{absenteeName}} hat Sie als Vertretung für {{absenceType}} vom {{startDate}} bis {{endDate}} benannt.",
+    "status": {
+      "pending": "Ausstehend",
+      "approved": "Genehmigt",
+      "rejected": "Abgelehnt",
+      "cancelled": "Storniert"
+    },
     "title": "Abwesenheiten",
     "description": "Abwesenheiten und Urlaub des Personals verfolgen",
     "newAbsence": "Neue Abwesenheit",
@@ -799,6 +816,9 @@
     "uploadedAt": "Hochgeladen am"
   },
   "collaboration": {
+    "assignPmsPerWp": "Personenmonate auf Arbeitspakete verteilen (geplante Summe: {{budgeted}})",
+    "wpAllocsUpdated": "Arbeitspaket-Zuweisungen für {{name}} aktualisiert.",
+    "wpUpdatedCount": "{{count}} Arbeitspaket(e) gespeichert.",
     "title": "Kollaborationsprojekte",
     "description": "Kollaborationsprojekte mit mehreren Partnern verwalten",
     "newProject": "Neues Kollaborationsprojekt",
@@ -1306,6 +1326,17 @@
     "sep": "Sep",
     "oct": "Okt",
     "nov": "Nov",
+    "january": "Januar",
+    "february": "Februar",
+    "march": "März",
+    "april": "April",
+    "june": "Juni",
+    "july": "Juli",
+    "august": "August",
+    "september": "September",
+    "october": "Oktober",
+    "november": "November",
+    "december": "Dezember",
     "dec": "Dez",
     "monday": "Montag",
     "tuesday": "Dienstag",

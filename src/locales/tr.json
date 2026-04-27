@@ -1,4 +1,10 @@
 {
+  "errorBoundary": {
+    "title": "Bir şeyler ters gitti",
+    "unexpected": "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
+    "tryAgain": "Tekrar dene",
+    "reload": "Sayfayı yeniden yükle"
+  },
   "nav": {
     "core": "Ana",
     "operations": "Operasyonlar",
@@ -22,6 +28,8 @@
     "help": "Yardım ve SSS"
   },
   "common": {
+    "notFound": "Bulunamadı",
+    "processing": "İşleniyor…",
     "save": "Kaydet",
     "cancel": "İptal",
     "delete": "Sil",
@@ -546,6 +554,8 @@
     "fileTooLargeDesc": "Maksimum dosya boyutu 2 MB'dır."
   },
   "allocations": {
+    "monthOutsideProjectRange": "Proje takvimi dışında",
+    "unallocated": "Atanmamış",
     "title": "Tahsisler",
     "description": "Projeler arası kişi-ay tahsislerini yönetin",
     "personMonth": "Kişi-Ay",
@@ -650,6 +660,13 @@
     "timesheetRecalled": "Zaman çizelgesi taslağa döndürüldü. Saatleri tekrar düzenleyebilirsiniz."
   },
   "absences": {
+    "youHaveBeenNominatedAsSubstitute": "{{absenteeName}} {{startDate}} - {{endDate}} tarihleri arasındaki {{absenceType}} için sizi yedek olarak görevlendirdi.",
+    "status": {
+      "pending": "Beklemede",
+      "approved": "Onaylandı",
+      "rejected": "Reddedildi",
+      "cancelled": "İptal edildi"
+    },
     "title": "İzinler",
     "description": "Personel izinlerini ve devamsızlıklarını takip edin",
     "newAbsence": "Yeni İzin",
@@ -1005,6 +1022,9 @@
     "uploadedAt": "Yüklenme Tarihi"
   },
   "collaboration": {
+    "assignPmsPerWp": "İş paketleri arasında adam-ay dağıtın (bütçelenen toplam: {{budgeted}})",
+    "wpAllocsUpdated": "{{name}} için iş paketi atamaları güncellendi.",
+    "wpUpdatedCount": "{{count}} iş paketi kaydedildi.",
     "title": "İş Birliği Projeleri",
     "description": "Çok ortaklı iş birliği projelerini yönetin",
     "newProject": "Yeni İş Birliği Projesi",
@@ -1524,6 +1544,17 @@
     "oct": "Eki",
     "nov": "Kas",
     "dec": "Ara",
+    "january": "Ocak",
+    "february": "Şubat",
+    "march": "Mart",
+    "april": "Nisan",
+    "june": "Haziran",
+    "july": "Temmuz",
+    "august": "Ağustos",
+    "september": "Eylül",
+    "october": "Ekim",
+    "november": "Kasım",
+    "december": "Aralık",
     "monday": "Pazartesi",
     "tuesday": "Salı",
     "wednesday": "Çarşamba",
