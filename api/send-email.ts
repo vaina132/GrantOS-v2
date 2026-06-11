@@ -110,25 +110,42 @@ const FROM_ADDRESS = 'GrantLume <notifications@grantlume.com>'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://app.grantlume.com'
 
+// The api layer consistently treats the service-role client as `any` to avoid
+// supabase-js generic-variance friction; follow that here.
+type ServiceClient = any
+
+/**
+ * Build a lowercase-email -> userId map for ALL auth users, paginating so
+ * recipients beyond the first page are still resolved. Previously each
+ * recipient triggered its own `listUsers({perPage:1000})` call (an N+1 that
+ * also silently ignored opt-outs for any user past #1000).
+ */
+async function buildEmailUserIdMap(sb: ServiceClient): Promise<Map<string, string>> {
+  const map = new Map<string, string>()
+  const perPage = 1000
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await sb.auth.admin.listUsers({ page, perPage })
+    const users = data?.users ?? []
+    for (const u of users as any[]) {
+      if (u.email) map.set(u.email.toLowerCase(), u.id)
+    }
+    if (error || users.length < perPage) break
+  }
+  return map
+}
+
 /**
  * Check if a recipient has opted out of a given template.
  * Also returns the user's unsubscribe_token for personalized email links.
  */
 async function checkRecipient(
-  recipientEmail: string,
+  sb: ServiceClient,
+  userId: string | undefined,
   templateName: string,
 ): Promise<{ allowed: boolean; unsubscribeToken: string | null }> {
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !serviceKey) return { allowed: true, unsubscribeToken: null }
+  if (!userId) return { allowed: true, unsubscribeToken: null }
 
   try {
-    const sb = createClient(supabaseUrl, serviceKey)
-
-    const { data: listData } = await sb.auth.admin.listUsers({ perPage: 1000 })
-    const authUser = listData?.users?.find((u: any) => u.email === recipientEmail)
-    if (!authUser) return { allowed: true, unsubscribeToken: null }
-
     // Query their preferences across all orgs (select preference column + token)
     const prefCol = PREF_COLUMN_MAP[templateName]
     const selectCols = prefCol ? `${prefCol}, unsubscribe_token` : 'unsubscribe_token'
@@ -136,7 +153,7 @@ async function checkRecipient(
     const { data: prefs } = await sb
       .from('user_preferences')
       .select(selectCols)
-      .eq('user_id', authUser.id)
+      .eq('user_id', userId)
 
     if (!prefs || prefs.length === 0) return { allowed: true, unsubscribeToken: null }
 
@@ -204,9 +221,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const recipients = Array.isArray(to) ? to : [to]
     const allowedRecipients: { email: string; unsubscribeToken: string | null }[] = []
 
-    for (const email of recipients) {
-      const { allowed, unsubscribeToken } = await checkRecipient(email, template)
-      if (allowed) allowedRecipients.push({ email, unsubscribeToken })
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (supabaseUrl && serviceKey) {
+      // Resolve every recipient's userId in a single (paginated) admin lookup,
+      // then check each one's preferences. No more per-recipient listUsers call.
+      const sb = createClient(supabaseUrl, serviceKey)
+      const emailToUserId = await buildEmailUserIdMap(sb)
+      for (const email of recipients) {
+        const userId = emailToUserId.get(String(email).toLowerCase())
+        const { allowed, unsubscribeToken } = await checkRecipient(sb, userId, template)
+        if (allowed) allowedRecipients.push({ email, unsubscribeToken })
+      }
+    } else {
+      // No service credentials — can't check prefs, so allow everyone.
+      for (const email of recipients) {
+        allowedRecipients.push({ email, unsubscribeToken: null })
+      }
     }
 
     if (allowedRecipients.length === 0) {
