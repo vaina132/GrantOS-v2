@@ -56,9 +56,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   switch (action) {
     case 'invite-member':
-      return handleInviteMember(req, res)
+      return handleInviteMember(req, res, authContext!)
     case 'resolve-emails':
-      return handleResolveEmails(req, res)
+      return handleResolveEmails(req, res, authContext!)
     case 'collab-send':
       return handleCollabSend(req, res)
     case 'collab-accept':
@@ -74,7 +74,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 // invite-member
 // ════════════════════════════════════════════════════════════════════════════
 
-async function handleInviteMember(req: VercelRequest, res: VercelResponse) {
+async function handleInviteMember(
+  req: VercelRequest,
+  res: VercelResponse,
+  auth: Awaited<ReturnType<typeof authenticateRequest>>,
+) {
   const sb = getSupabase()
   if (!sb) {
     return res.status(500).json({
@@ -85,6 +89,21 @@ async function handleInviteMember(req: VercelRequest, res: VercelResponse) {
   const { email, orgId, role, invitedBy, personId } = req.body ?? {}
   if (!email || !orgId || !role) {
     return res.status(400).json({ error: 'Missing required fields: email, orgId, role' })
+  }
+
+  // Authorization: the caller may only invite into their OWN organisation,
+  // and only Admins / Project Managers (the persons-writer roles) may invite.
+  // Without this, any authenticated user could insert themselves as Admin of
+  // an arbitrary org by supplying a foreign orgId.
+  if (!auth.orgId || auth.orgId !== orgId) {
+    return res.status(403).json({ error: 'You can only invite members into your own organisation' })
+  }
+  if (auth.role !== 'Admin' && auth.role !== 'Project Manager') {
+    return res.status(403).json({ error: 'You do not have permission to invite members' })
+  }
+  // Only Admins may grant the Admin role — prevents privilege escalation.
+  if (role === 'Admin' && auth.role !== 'Admin') {
+    return res.status(403).json({ error: 'Only an Admin can grant the Admin role' })
   }
 
   try {
@@ -178,7 +197,11 @@ async function handleInviteMember(req: VercelRequest, res: VercelResponse) {
 // resolve-emails
 // ════════════════════════════════════════════════════════════════════════════
 
-async function handleResolveEmails(req: VercelRequest, res: VercelResponse) {
+async function handleResolveEmails(
+  req: VercelRequest,
+  res: VercelResponse,
+  auth: Awaited<ReturnType<typeof authenticateRequest>>,
+) {
   const sb = getSupabase()
   if (!sb) {
     return res.status(500).json({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars' })
@@ -189,14 +212,30 @@ async function handleResolveEmails(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing required field: userIds (array)' })
   }
 
+  if (!auth.orgId) {
+    return res.status(403).json({ error: 'No organisation context' })
+  }
+
   try {
+    // Only resolve emails for users who are members of the caller's own org.
+    // Without this scoping, any authenticated user could enumerate emails for
+    // arbitrary user IDs harvested from another tenant.
+    const { data: members } = await sb.client
+      .from('org_members')
+      .select('user_id')
+      .eq('org_id', auth.orgId)
+      .in('user_id', userIds)
+    const allowedIds = new Set((members ?? []).map((m: any) => m.user_id))
+
     const { data: listData } = await sb.client.auth.admin.listUsers({ perPage: 1000 })
     const users = listData?.users ?? []
+    const emailById = new Map((users as any[]).map((u) => [u.id, u.email]))
 
     const emails: Record<string, string> = {}
     for (const uid of userIds) {
-      const u = users.find((x: any) => x.id === uid)
-      if (u?.email) emails[uid] = u.email
+      if (!allowedIds.has(uid)) continue
+      const email = emailById.get(uid)
+      if (email) emails[uid] = email
     }
 
     return res.status(200).json({ emails })
@@ -330,9 +369,8 @@ async function handleCollabSend(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Failed to fetch partners', detail: partErr.message })
   }
 
-  const baseUrl = process.env.VITE_APP_URL || process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:5173'
+  const baseUrl = process.env.VITE_APP_URL
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173')
 
   const sent: string[] = []
   const skipped: string[] = []
